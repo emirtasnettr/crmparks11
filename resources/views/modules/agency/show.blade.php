@@ -1,0 +1,282 @@
+@extends('layouts.app')
+
+@section('title', $agency['company_name'])
+
+@section('breadcrumb')
+    <a href="{{ route('agencies.index') }}" class="hover:text-gray-900 dark:hover:text-white">Acenteler</a>
+    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+    </svg>
+    <span class="font-medium text-gray-900 dark:text-white">{{ $agency['company_name'] }}</span>
+@endsection
+
+@section('content')
+<div class="max-w-6xl">
+    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div class="flex items-start gap-4">
+            <x-ui.entity-avatar
+                :url="$agency['logo_url'] ?? null"
+                :initials="$agency['logo']"
+                :color="$agency['logo_color']"
+                shape="rounded-2xl"
+                size="h-16 w-16"
+                text-size="text-lg"
+                :alt="$agency['company_name'].' logosu'"
+            />
+            <div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{{ $agency['company_name'] }}</h1>
+                    <x-agency.status-badge :status="$agency['status']" />
+                </div>
+                <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">
+                    {{ $agency['authorized_person'] }} · {{ $agency['location'] }} · {{ $agency['active_couriers'] }} kurye
+                </p>
+            </div>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <x-ui.button variant="secondary" href="{{ route('agencies.edit', $agency['id']) }}">Düzenle</x-ui.button>
+            <x-ui.button href="{{ route('agencies.index') }}" variant="secondary">Listeye Dön</x-ui.button>
+        </div>
+    </div>
+
+    <x-entity.tabs default="overview">
+        <x-entity.tab-list>
+            <x-entity.tab-trigger name="overview" label="Genel Bakış" />
+            <x-entity.tab-trigger name="contacts" label="Yetkililer" />
+            <x-entity.tab-trigger name="couriers" label="Kuryeler" />
+            <x-entity.tab-trigger name="contracts" label="Sözleşmeler" />
+            <x-entity.tab-trigger name="documents" label="Evraklar" />
+            <x-entity.tab-trigger name="activities" label="Hareket Geçmişi" />
+        </x-entity.tab-list>
+
+        <x-entity.tab-panel name="overview">
+            <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <x-ui.card title="Firma Bilgileri">
+                    <dl class="space-y-3 text-sm">
+                        <x-entity.detail-row label="Firma Ünvanı" :value="$agency['company_name']" />
+                        <x-entity.detail-row label="Marka Adı" :value="$agency['brand_name']" />
+                        <x-entity.detail-row label="Yetkili Kişi" :value="$agency['authorized_person']" />
+                        <x-entity.detail-row label="Kayıt No" :value="$agency['uuid']" />
+                        <x-entity.detail-row label="Aktif Kurye" :value="$agency['active_couriers']" />
+                        <x-entity.detail-row label="Aktif İşletme" :value="$agency['active_businesses']" />
+                        <x-entity.detail-row label="Kayıt Tarihi" :value="$agency['created_at_formatted']" />
+                        <x-entity.detail-row label="Durum">
+                            <x-agency.status-badge :status="$agency['status']" />
+                        </x-entity.detail-row>
+                    </dl>
+                </x-ui.card>
+
+                <x-ui.card title="İletişim ve Adres">
+                    <dl class="space-y-3 text-sm">
+                        <x-entity.detail-row label="Telefon" :value="$agency['phone']" />
+                        <x-entity.detail-row label="E-Posta" :value="$agency['email']" />
+                        <x-entity.detail-row label="Web Sitesi" :value="$agency['website']" />
+                        <x-entity.detail-row label="Vergi Dairesi" :value="$agency['tax_office']" />
+                        <x-entity.detail-row label="Vergi No" :value="$agency['tax_number']" />
+                        <x-entity.detail-row label="MERSİS No" :value="$agency['mersis_number']" />
+                        <x-entity.detail-row label="Ticaret Sicil No" :value="$agency['trade_registry_number']" />
+                        <x-entity.detail-row label="Konum" :value="$agency['location']" />
+                        <x-entity.detail-row label="Adres" :value="$agency['address']" />
+                    </dl>
+                </x-ui.card>
+
+                <x-ui.card title="Finans ve Banka">
+                    <dl class="space-y-3 text-sm">
+                        <x-entity.detail-row label="Komisyon Oranı" :value="$agency['commission_rate']" />
+                        <x-entity.detail-row label="Ödeme Periyodu" :value="$agency['payment_period_label']" />
+                        <x-entity.detail-row label="Banka" :value="$agency['bank_name']" />
+                        <x-entity.detail-row label="Hesap Sahibi" :value="$agency['account_holder']" />
+                        <x-entity.detail-row label="IBAN" :value="$agency['iban']" />
+                    </dl>
+                </x-ui.card>
+
+                <x-ui.card title="Notlar">
+                    <p class="text-sm text-gray-600 dark:text-slate-300">{{ $agency['notes'] }}</p>
+                </x-ui.card>
+            </div>
+        </x-entity.tab-panel>
+
+        <x-entity.tab-panel name="contacts" x-data="agencyContactPage(@js(['agencyId' => $agency['id']]))">
+            <x-ui.card title="Yetkililer">
+                <x-slot:actions>
+                    <x-entity.tab-add-button label="Yeni Yetkili" @click="openModal = true" />
+                </x-slot:actions>
+                @if (count($agency['contacts']))
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead>
+                                <tr class="border-b border-gray-200 dark:border-slate-700">
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Ad Soyad</th>
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Görev</th>
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Telefon</th>
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">E-Posta</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
+                                @foreach ($agency['contacts'] as $contact)
+                                    <tr>
+                                        <td class="py-2.5 font-medium text-gray-900 dark:text-white">{{ $contact['full_name'] }}</td>
+                                        <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $contact['title'] }}</td>
+                                        <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $contact['phone'] }}</td>
+                                        <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $contact['email'] }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <p class="text-sm text-gray-500 dark:text-slate-400">Yetkili kaydı bulunmuyor.</p>
+                @endif
+            </x-ui.card>
+            @include('modules.agency.contacts.partials.modal', [
+                'hideEntitySelector' => true,
+                'presetEntityLabel' => $agency['company_name'],
+                'titles' => $contactTitles,
+                'agencies' => [],
+            ])
+        </x-entity.tab-panel>
+
+        <x-entity.tab-panel name="couriers" x-data="agencyCourierPage(@js(['agencyId' => $agency['id']]))">
+            <x-ui.card title="Kuryeler">
+                <x-slot:actions>
+                    <x-entity.tab-add-button label="Kurye Ata" @click="openAssignModal = true" />
+                </x-slot:actions>
+                @if (count($agency['couriers']))
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead>
+                                <tr class="border-b border-gray-200 dark:border-slate-700">
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Kurye</th>
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Telefon</th>
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Araç</th>
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Durum</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
+                                @foreach ($agency['couriers'] as $record)
+                                    <tr>
+                                        <td class="py-2.5 text-gray-900 dark:text-white">{{ $record['courier_name'] }}</td>
+                                        <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $record['phone'] }}</td>
+                                        <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $record['vehicle_info'] }}</td>
+                                        <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $record['status'] ?? '—' }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <p class="text-sm text-gray-500 dark:text-slate-400">Kurye kaydı bulunmuyor.</p>
+                @endif
+            </x-ui.card>
+            @include('modules.agency.couriers.partials.assign-modal', [
+                'hideEntitySelector' => true,
+                'presetEntityLabel' => $agency['company_name'],
+                'couriers' => $assignCouriers,
+                'agencies' => [],
+            ])
+        </x-entity.tab-panel>
+
+        <x-entity.tab-panel name="contracts" x-data="agencyContractPage(@js(['agencyId' => $agency['id']]))">
+            <x-ui.card title="Sözleşmeler">
+                <x-slot:actions>
+                    <x-entity.tab-add-button label="Yeni Sözleşme" @click="openModal = true" />
+                </x-slot:actions>
+                @if (count($agency['contracts']))
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead>
+                                <tr class="border-b border-gray-200 dark:border-slate-700">
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Sözleşme No</th>
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Tür</th>
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Başlangıç</th>
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Bitiş</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
+                                @foreach ($agency['contracts'] as $contract)
+                                    <tr>
+                                        <td class="py-2.5 font-medium text-gray-900 dark:text-white">{{ $contract['contract_number'] }}</td>
+                                        <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $contract['contract_type_label'] ?? $contract['contract_type'] }}</td>
+                                        <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $contract['start_date_formatted'] ?? $contract['start_date'] }}</td>
+                                        <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $contract['end_date_formatted'] ?? $contract['end_date'] }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <p class="text-sm text-gray-500 dark:text-slate-400">Sözleşme kaydı bulunmuyor.</p>
+                @endif
+            </x-ui.card>
+            @include('modules.agency.contracts.partials.modal', [
+                'hideEntitySelector' => true,
+                'presetEntityLabel' => $agency['company_name'],
+                'contractTypes' => $contractTypes,
+                'agencies' => [],
+            ])
+        </x-entity.tab-panel>
+
+        <x-entity.tab-panel name="documents" x-data="agencyDocumentPage(@js(['agencyId' => $agency['id']]))">
+            <x-ui.card title="Evraklar">
+                <x-slot:actions>
+                    <x-entity.tab-add-button label="Evrak Yükle" @click="openModal = true" />
+                </x-slot:actions>
+                @if (count($agency['documents']))
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead>
+                                <tr class="border-b border-gray-200 dark:border-slate-700">
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Belge Türü</th>
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Belge No</th>
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Dosya</th>
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Durum</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
+                                @foreach ($agency['documents'] as $document)
+                                    <tr>
+                                        <td class="py-2.5 font-medium text-gray-900 dark:text-white">{{ $document['document_type_label'] ?? $document['document_type'] }}</td>
+                                        <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $document['document_number'] ?? '—' }}</td>
+                                        <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $document['file_name'] }}</td>
+                                        <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $document['status_label'] ?? ($document['computed_status'] ?? '—') }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <p class="text-sm text-gray-500 dark:text-slate-400">Evrak kaydı bulunmuyor.</p>
+                @endif
+            </x-ui.card>
+            @include('modules.agency.documents.partials.modal', [
+                'hideEntitySelector' => true,
+                'presetEntityLabel' => $agency['company_name'],
+                'documentTypes' => $documentTypes,
+                'agencies' => [],
+            ])
+        </x-entity.tab-panel>
+
+        <x-entity.tab-panel name="activities">
+            <x-ui.card title="Hareket Geçmişi">
+                @if (count($agency['activities']))
+                    <div class="space-y-3">
+                        @foreach ($agency['activities'] as $activity)
+                            <div class="flex flex-col gap-1 border-b border-gray-100 pb-3 last:border-0 last:pb-0 dark:border-slate-700 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $activity['action_label'] ?? $activity['action'] }}</p>
+                                    <p class="text-xs text-gray-500 dark:text-slate-400">{{ $activity['description'] }}</p>
+                                </div>
+                                <div class="text-xs text-gray-500 dark:text-slate-400">
+                                    {{ $activity['occurred_at_formatted'] ?? $activity['occurred_at'] }}
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <p class="text-sm text-gray-500 dark:text-slate-400">Hareket kaydı bulunmuyor.</p>
+                @endif
+            </x-ui.card>
+        </x-entity.tab-panel>
+    </x-entity.tabs>
+</div>
+@endsection

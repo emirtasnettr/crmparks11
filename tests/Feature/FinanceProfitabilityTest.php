@@ -1,0 +1,114 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\User;
+use App\Modules\Finance\Data\FinanceProfitabilityDummyData;
+use Database\Seeders\RoleAndPermissionSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class FinanceProfitabilityTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seed(RoleAndPermissionSeeder::class);
+    }
+
+    public function test_profitability_index_requires_authentication(): void
+    {
+        $response = $this->get(route('finance.profitability.index'));
+
+        $response->assertRedirect(route('login'));
+    }
+
+    public function test_authenticated_user_can_view_profitability_index(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $response = $this->actingAs($user)->get(route('finance.profitability.index'));
+
+        $response->assertOk();
+        $response->assertSee('Karlılık Analizi');
+        $response->assertSee('İşletme, kurye ve acente bazlı kârlılığı analiz edin.');
+        $response->assertSee('Toplam Gelir');
+        $response->assertSee('Toplam Gider');
+        $response->assertSee('Net Kâr');
+        $response->assertSee('Kâr Marjı');
+        $response->assertSee('Paket Başına Ortalama Kâr');
+        $response->assertSee('En Karlı İşletme');
+        $response->assertSee('En Karlı Acente');
+        $response->assertSee('En Karlı Kurye Operasyonu');
+        $response->assertSee('Gelir / Gider / Kâr');
+        $response->assertSee('İşletme Bazlı Kârlılık');
+        $response->assertSee('Acente Bazlı Kârlılık');
+        $response->assertSee('İl Bazlı Kârlılık');
+        $response->assertSee('Gelir Dağılımı');
+        $response->assertSee('İşletme Karlılık Tablosu');
+        $response->assertSee('Acente Karlılık Tablosu');
+        $response->assertSee('Kurye Maliyet Tablosu');
+        $response->assertSee('İlk 10 En Karlı İşletme');
+        $response->assertSee('İlk 10 En Düşük Karlı İşletme');
+        $response->assertSee('profitability-chart-trend');
+    }
+
+    public function test_user_without_financial_permission_cannot_view_profitability(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('operations_manager');
+
+        $response = $this->actingAs($user)->get(route('finance.profitability.index'));
+
+        $response->assertForbidden();
+    }
+
+    public function test_net_profit_calculation_is_correct(): void
+    {
+        $analysis = FinanceProfitabilityDummyData::analyze(['date_range' => 'month']);
+
+        $businessTotal = collect($analysis['business_table'])->sum('net_profit');
+        $this->assertEquals(round($businessTotal, 2), $analysis['kpis']['net_profit']);
+    }
+
+    public function test_profit_margin_formula_is_applied(): void
+    {
+        $analysis = FinanceProfitabilityDummyData::analyze(['date_range' => 'month']);
+        $row = $analysis['business_table'][0];
+
+        $expectedMargin = $row['revenue'] > 0
+            ? round(($row['net_profit'] / $row['revenue']) * 100, 1)
+            : 0;
+
+        $this->assertEquals($expectedMargin, $row['profit_margin']);
+    }
+
+    public function test_profitability_can_be_filtered_by_business(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $response = $this->actingAs($user)->get(route('finance.profitability.index', [
+            'business_id' => 1,
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('Burger House Gıda Ltd. Şti.');
+    }
+
+    public function test_charts_data_contains_trend_and_distributions(): void
+    {
+        $analysis = FinanceProfitabilityDummyData::analyze(['date_range' => 'month']);
+
+        $this->assertArrayHasKey('trend', $analysis['charts']);
+        $this->assertArrayHasKey('revenue', $analysis['charts']['trend']);
+        $this->assertArrayHasKey('expense', $analysis['charts']['trend']);
+        $this->assertArrayHasKey('profit', $analysis['charts']['trend']);
+        $this->assertNotEmpty($analysis['charts']['business_profitability']);
+        $this->assertNotEmpty($analysis['charts']['revenue_distribution']);
+    }
+}

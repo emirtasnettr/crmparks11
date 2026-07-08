@@ -1,0 +1,19 @@
+@props(['collection'])
+
+@php
+    use App\Core\Actions\RowActions;
+
+    $id = $collection['id'];
+
+    $items = [
+        RowActions::link('Görüntüle', route('finance.collections.show', $id)),
+        RowActions::modal('Düzenle', 'finance-row-action', 'create', $id),
+        RowActions::run('Tahsilat Makbuzu', 'download', message: 'Tahsilat makbuzu indiriliyor.'),
+        RowActions::run('Dekont Yükle', 'upload', message: 'Dekont yükleme ekranı açıldı.'),
+        RowActions::link('Cari Kartına Git', route('finance.current-accounts.index', ['search' => $collection['current_account_code'] ?? ''])),
+        RowActions::link('Gelire Git', route('finance.revenues.show', $collection['revenue_id'] ?? $id)),
+        RowActions::link('İşletmeye Git', route('businesses.index', ['search' => $collection['business_name'] ?? ''])),
+    ];
+@endphp
+
+<x-ui.action-menu :items="$items" width="w-52" />
