@@ -85,6 +85,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [CourierController::class, 'index'])->name('index');
         Route::get('/export', [CourierController::class, 'export'])->name('export');
         Route::get('/yeni', [CourierController::class, 'create'])->name('create');
+        Route::post('/', [CourierController::class, 'store'])->middleware('permission:courier.create')->name('store');
         Route::get('/belgeler', [CourierDocumentController::class, 'index'])->name('documents.index');
         Route::get('/belgeler/{id}', [CourierDocumentController::class, 'show'])->name('documents.show');
         Route::get('/hakedisler', [CourierEarningController::class, 'index'])->name('earnings.index');
@@ -189,6 +190,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [AgencyController::class, 'index'])->name('index');
         Route::get('/export', [AgencyController::class, 'export'])->name('export');
         Route::get('/yeni', [AgencyController::class, 'create'])->name('create');
+        Route::post('/', [AgencyController::class, 'store'])->middleware('permission:agency.create')->name('store');
         Route::get('/yetkililer', [AgencyContactController::class, 'index'])->name('contacts.index');
         Route::get('/yetkililer/export', [AgencyContactController::class, 'export'])->name('contacts.export');
         Route::get('/yetkililer/{id}', [AgencyContactController::class, 'show'])->name('contacts.show');

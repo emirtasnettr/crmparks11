@@ -3,6 +3,7 @@
 namespace App\Modules\Courier\Requests;
 
 use App\Modules\Courier\Data\CourierFormData;
+use App\Modules\Courier\Models\Courier;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -18,10 +19,17 @@ class UpdateCourierRequest extends FormRequest
      */
     public function rules(): array
     {
+        $courierId = (int) $this->route('id');
+
         return [
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
-            'tc_number' => ['nullable', 'string', 'max:11'],
+            'tc_number' => [
+                'nullable',
+                'string',
+                'max:11',
+                Rule::unique(Courier::class, 'tc_number')->ignore($courierId),
+            ],
             'birth_date' => ['nullable', 'date'],
             'phone' => ['required', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:255'],

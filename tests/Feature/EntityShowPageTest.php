@@ -6,11 +6,14 @@ use App\Models\City;
 use App\Models\District;
 use App\Models\PricingModelType;
 use App\Models\User;
+use App\Models\VehicleType;
 use App\Modules\Agency\Data\AgencyDummyData;
+use App\Modules\Agency\Models\Agency;
 use App\Modules\Business\Data\BusinessDummyData;
 use App\Modules\Business\Models\Business;
 use App\Modules\Business\Models\BusinessPricing;
 use App\Modules\Courier\Data\CourierDummyData;
+use App\Modules\Courier\Models\Courier;
 use Database\Seeders\CitySeeder;
 use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
@@ -107,8 +110,14 @@ class EntityShowPageTest extends TestCase
   {
     $user = User::factory()->create();
     $user->assignRole('super_admin');
+    $courier = $this->createCourier($user, [
+      'first_name' => 'Ahmet',
+      'last_name' => 'Yıldız',
+      'full_name' => 'Ahmet Yıldız',
+      'phone' => '0532 100 10 01',
+    ]);
 
-    $response = $this->actingAs($user)->get(route('couriers.show', 1));
+    $response = $this->actingAs($user)->get(route('couriers.show', $courier->id));
 
     $response->assertOk();
     $response->assertSee('Ahmet Yıldız');
@@ -123,8 +132,12 @@ class EntityShowPageTest extends TestCase
   {
     $user = User::factory()->create();
     $user->assignRole('super_admin');
+    $agency = $this->createAgency($user, [
+      'company_name' => 'Hızlı Kurye Acentesi Ltd. Şti.',
+      'authorized_person' => 'Serkan Yılmaz',
+    ]);
 
-    $response = $this->actingAs($user)->get(route('agencies.show', 1));
+    $response = $this->actingAs($user)->get(route('agencies.show', $agency->id));
 
     $response->assertOk();
     $response->assertSee('Hızlı Kurye Acentesi Ltd. Şti.');
@@ -258,6 +271,14 @@ class EntityShowPageTest extends TestCase
       'company_name' => 'Burger House Gıda Ltd. Şti.',
       'brand_name' => 'Burger House',
     ]);
+    $courier = $this->createCourier($user, [
+      'first_name' => 'Ahmet',
+      'last_name' => 'Yıldız',
+      'full_name' => 'Ahmet Yıldız',
+    ]);
+    $agency = $this->createAgency($user, [
+      'company_name' => 'Hızlı Kurye Acentesi Ltd. Şti.',
+    ]);
 
     $this->actingAs($user)->get(route('businesses.edit', $business->id))
       ->assertOk()
@@ -266,14 +287,14 @@ class EntityShowPageTest extends TestCase
       ->assertSee('Güncelle')
       ->assertSee('business-form');
 
-    $this->actingAs($user)->get(route('couriers.edit', 1))
+    $this->actingAs($user)->get(route('couriers.edit', $courier->id))
       ->assertOk()
       ->assertSee('Kuryeyi Düzenle')
       ->assertSee('Ahmet')
       ->assertSee('Yıldız')
       ->assertSee('courier-form');
 
-    $this->actingAs($user)->get(route('agencies.edit', 1))
+    $this->actingAs($user)->get(route('agencies.edit', $agency->id))
       ->assertOk()
       ->assertSee('Acenteyi Düzenle')
       ->assertSee('Hızlı Kurye Acentesi Ltd. Şti.')
@@ -320,5 +341,36 @@ class EntityShowPageTest extends TestCase
     ]);
 
     return $business;
+  }
+
+  /**
+   * @param  array<string, mixed>  $overrides
+   */
+  private function createCourier(User $user, array $overrides = []): Courier
+  {
+    $vehicleTypeId = VehicleType::query()->where('code', 'motor')->value('id');
+
+    return Courier::factory()->create(array_merge([
+      'vehicle_type_id' => $vehicleTypeId,
+      'created_by' => $user->id,
+    ], $overrides));
+  }
+
+  /**
+   * @param  array<string, mixed>  $overrides
+   */
+  private function createAgency(User $user, array $overrides = []): Agency
+  {
+    $city = City::query()->where('name', 'İstanbul')->firstOrFail();
+    $district = District::query()
+      ->where('city_id', $city->id)
+      ->where('name', 'Kadıköy')
+      ->firstOrFail();
+
+    return Agency::factory()->create(array_merge([
+      'city_id' => $city->id,
+      'district_id' => $district->id,
+      'created_by' => $user->id,
+    ], $overrides));
   }
 }

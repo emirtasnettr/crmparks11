@@ -2,8 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\City;
+use App\Models\District;
 use App\Models\User;
-use App\Modules\Agency\Services\AgencyProfileStore;
+use App\Modules\Agency\Models\Agency;
+use Database\Seeders\CitySeeder;
+use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -18,7 +22,11 @@ class AgencyUpdateTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(RoleAndPermissionSeeder::class);
+        $this->seed([
+            LookupTableSeeder::class,
+            CitySeeder::class,
+            RoleAndPermissionSeeder::class,
+        ]);
     }
 
     public function test_agency_can_be_updated_with_logo(): void
@@ -27,42 +35,52 @@ class AgencyUpdateTest extends TestCase
 
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $agency = $this->createAgency($user, [
+            'company_name' => 'Hızlı Kurye Acentesi Ltd. Şti.',
+            'tax_number' => '1234567890',
+        ]);
 
         $logo = UploadedFile::fake()->image('logo.png', 200, 200);
 
-        $response = $this->actingAs($user)->put(route('agencies.update', 1), [
+        $response = $this->actingAs($user)->put(route('agencies.update', $agency->id), [
             'company_name' => 'Hızlı Kurye Acentesi Ltd. Şti.',
             'phone' => '0212 555 00 01',
             'tax_number' => '1234567890',
             'city' => 'İstanbul',
-            'district' => 'Şişli',
+            'district' => 'Kadıköy',
             'address' => 'Test adres',
             'status' => 'active',
             'logo' => $logo,
         ]);
 
-        $response->assertRedirect(route('agencies.show', 1));
+        $response->assertRedirect(route('agencies.show', $agency->id));
         $response->assertSessionHas('success', 'Acente bilgileri güncellendi.');
 
-        $stored = AgencyProfileStore::get(1);
+        $agency->refresh();
 
-        $this->assertNotEmpty($stored['logo_path']);
-        $this->assertNotEmpty($stored['logo_url']);
+        $this->assertNotEmpty($agency->logo_path);
 
-        Storage::disk('public')->assertExists($stored['logo_path']);
+        Storage::disk('public')->assertExists($agency->logo_path);
 
-        $showResponse = $this->actingAs($user)->get(route('agencies.show', 1));
+        $showResponse = $this->actingAs($user)->get(route('agencies.show', $agency->id));
 
         $showResponse->assertOk();
-        $showResponse->assertSee($stored['logo_url'], false);
+        $showResponse->assertSee(app(\App\Modules\Agency\Services\AgencyMediaService::class)->url($agency->logo_path), false);
     }
 
     public function test_agency_status_change_reflects_on_show_and_index(): void
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $agency = $this->createAgency($user, [
+            'company_name' => 'Konya Merkez Lojistik',
+            'tax_number' => '9012345678',
+            'status' => 'inactive',
+            'city' => 'Konya',
+            'district' => 'Selçuklu',
+        ]);
 
-        $response = $this->actingAs($user)->put(route('agencies.update', 9), [
+        $response = $this->actingAs($user)->put(route('agencies.update', $agency->id), [
             'company_name' => 'Konya Merkez Lojistik',
             'phone' => '0332 555 90 09',
             'tax_number' => '9012345678',
@@ -72,12 +90,12 @@ class AgencyUpdateTest extends TestCase
             'status' => 'pending',
         ]);
 
-        $response->assertRedirect(route('agencies.show', 9));
+        $response->assertRedirect(route('agencies.show', $agency->id));
 
-        $stored = AgencyProfileStore::get(9);
-        $this->assertSame('pending', $stored['status']);
+        $agency->refresh();
+        $this->assertSame('pending', $agency->status);
 
-        $showResponse = $this->actingAs($user)->get(route('agencies.show', 9));
+        $showResponse = $this->actingAs($user)->get(route('agencies.show', $agency->id));
         $showResponse->assertOk();
         $showResponse->assertSee('Beklemede');
 
@@ -85,5 +103,27 @@ class AgencyUpdateTest extends TestCase
         $indexResponse->assertOk();
         $indexResponse->assertSee('Konya Merkez Lojistik');
         $indexResponse->assertSee('Beklemede');
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    private function createAgency(User $user, array $overrides = []): Agency
+    {
+        $cityName = $overrides['city'] ?? 'İstanbul';
+        $districtName = $overrides['district'] ?? 'Kadıköy';
+        unset($overrides['city'], $overrides['district']);
+
+        $city = City::query()->where('name', $cityName)->firstOrFail();
+        $district = District::query()
+            ->where('city_id', $city->id)
+            ->where('name', $districtName)
+            ->firstOrFail();
+
+        return Agency::factory()->create(array_merge([
+            'city_id' => $city->id,
+            'district_id' => $district->id,
+            'created_by' => $user->id,
+        ], $overrides));
     }
 }

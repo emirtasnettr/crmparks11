@@ -3,8 +3,10 @@
 namespace App\Modules\Courier\Exports;
 
 use App\Core\Exports\ListExport;
-use App\Modules\Courier\Data\CourierDummyData;
 use App\Modules\Courier\Data\CourierEarningDummyData;
+use App\Modules\Courier\Data\CourierFormData;
+use App\Modules\Courier\Services\CourierPresenter;
+use App\Modules\Courier\Services\CourierService;
 
 final class CourierListExportSheets
 {
@@ -14,10 +16,16 @@ final class CourierListExportSheets
      */
     public static function couriers(array $filters): array
     {
-        $statusLabels = CourierDummyData::statuses();
+        $statusLabels = CourierFormData::statuses();
+        $service = app(CourierService::class);
+        $presenter = app(CourierPresenter::class);
+
+        $rows = $service->filter($filters)
+            ->map(fn ($courier) => $presenter->indexRow($courier))
+            ->all();
 
         return ListExport::sheet(
-            CourierDummyData::filter($filters),
+            $rows,
             ['Ad Soyad', 'TC Kimlik No', 'Telefon', 'Kurye Tipi', 'Bağlı Acente', 'Araç Tipi', 'Aktif İşletme', 'Durum'],
             [
                 fn (array $row) => $row['full_name'],

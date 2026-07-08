@@ -50,6 +50,20 @@ class AgencyFormData
     /**
      * @return array<string, string>
      */
+    public static function courierCountRanges(): array
+    {
+        return [
+            '0' => '0 Kurye',
+            '1-5' => '1 – 5 Kurye',
+            '6-10' => '6 – 10 Kurye',
+            '11-20' => '11 – 20 Kurye',
+            '21+' => '21+ Kurye',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
     public static function banks(): array
     {
         return CourierFormData::banks();

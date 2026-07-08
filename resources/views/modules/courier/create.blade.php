@@ -33,12 +33,16 @@
         </div>
     </div>
 
-    <div x-show="submitted" x-cloak class="mb-6">
-        <x-ui.alert type="success">
-            Form doğrulandı. Kayıt işlemi backend bağlantısı sonrası aktif olacaktır.
-        </x-ui.alert>
-    </div>
-
-    @include('modules.courier.partials.form')
+    @include('modules.courier.partials.form', [
+        'formAction' => route('couriers.store'),
+        'formMethod' => 'POST',
+        'isEdit' => false,
+        'cities' => $cities,
+        'courierTypes' => $courierTypes,
+        'agencies' => $agencies,
+        'vehicleTypes' => $vehicleTypes,
+        'statuses' => $statuses,
+        'banks' => $banks,
+    ])
 </div>
 @endsection

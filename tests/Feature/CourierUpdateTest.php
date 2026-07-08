@@ -3,7 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Modules\Courier\Services\CourierProfileStore;
+use App\Models\VehicleType;
+use App\Modules\Courier\Models\Courier;
+use Database\Seeders\CitySeeder;
+use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -18,7 +21,11 @@ class CourierUpdateTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(RoleAndPermissionSeeder::class);
+        $this->seed([
+            LookupTableSeeder::class,
+            CitySeeder::class,
+            RoleAndPermissionSeeder::class,
+        ]);
     }
 
     public function test_courier_can_be_updated_with_profile_photo(): void
@@ -27,10 +34,15 @@ class CourierUpdateTest extends TestCase
 
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $courier = $this->createCourier($user, [
+            'first_name' => 'Ahmet',
+            'last_name' => 'Yıldız',
+            'phone' => '0532 100 10 01',
+        ]);
 
         $photo = UploadedFile::fake()->image('profile.jpg', 200, 200);
 
-        $response = $this->actingAs($user)->put(route('couriers.update', 1), [
+        $response = $this->actingAs($user)->put(route('couriers.update', $courier->id), [
             'first_name' => 'Ahmet',
             'last_name' => 'Yıldız',
             'phone' => '0532 100 10 01',
@@ -41,28 +53,33 @@ class CourierUpdateTest extends TestCase
             'profile_photo' => $photo,
         ]);
 
-        $response->assertRedirect(route('couriers.show', 1));
+        $response->assertRedirect(route('couriers.show', $courier->id));
         $response->assertSessionHas('success', 'Kurye bilgileri güncellendi.');
 
-        $stored = CourierProfileStore::get(1);
+        $courier->refresh();
 
-        $this->assertNotEmpty($stored['photo_path']);
-        $this->assertNotEmpty($stored['photo_url']);
+        $this->assertNotEmpty($courier->photo_path);
 
-        Storage::disk('public')->assertExists($stored['photo_path']);
+        Storage::disk('public')->assertExists($courier->photo_path);
 
-        $showResponse = $this->actingAs($user)->get(route('couriers.show', 1));
+        $showResponse = $this->actingAs($user)->get(route('couriers.show', $courier->id));
 
         $showResponse->assertOk();
-        $showResponse->assertSee($stored['photo_url'], false);
+        $showResponse->assertSee(app(\App\Modules\Courier\Services\CourierMediaService::class)->url($courier->photo_path), false);
     }
 
     public function test_courier_status_change_reflects_on_show_and_index(): void
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $courier = $this->createCourier($user, [
+            'first_name' => 'Kaan',
+            'last_name' => 'Aydın',
+            'phone' => '0546 200 20 14',
+            'status' => 'active',
+        ]);
 
-        $response = $this->actingAs($user)->put(route('couriers.update', 14), [
+        $response = $this->actingAs($user)->put(route('couriers.update', $courier->id), [
             'first_name' => 'Kaan',
             'last_name' => 'Aydın',
             'phone' => '0546 200 20 14',
@@ -72,12 +89,12 @@ class CourierUpdateTest extends TestCase
             'status' => 'on_leave',
         ]);
 
-        $response->assertRedirect(route('couriers.show', 14));
+        $response->assertRedirect(route('couriers.show', $courier->id));
 
-        $stored = CourierProfileStore::get(14);
-        $this->assertSame('on_leave', $stored['status']);
+        $courier->refresh();
+        $this->assertSame('on_leave', $courier->status);
 
-        $showResponse = $this->actingAs($user)->get(route('couriers.show', 14));
+        $showResponse = $this->actingAs($user)->get(route('couriers.show', $courier->id));
         $showResponse->assertOk();
         $showResponse->assertSee('İzinli');
 
@@ -85,5 +102,18 @@ class CourierUpdateTest extends TestCase
         $indexResponse->assertOk();
         $indexResponse->assertSee('Kaan Aydın');
         $indexResponse->assertSee('İzinli');
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    private function createCourier(User $user, array $overrides = []): Courier
+    {
+        $vehicleTypeId = VehicleType::query()->where('code', 'motor')->value('id');
+
+        return Courier::factory()->create(array_merge([
+            'vehicle_type_id' => $vehicleTypeId,
+            'created_by' => $user->id,
+        ], $overrides));
     }
 }

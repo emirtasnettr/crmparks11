@@ -6,13 +6,13 @@ use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
 use App\Modules\Courier\Data\CourierBankAccountDummyData;
 use App\Modules\Courier\Data\CourierDocumentDummyData;
-use App\Modules\Courier\Data\CourierDummyData;
-use App\Modules\Courier\Data\CourierVehicleDummyData;
 use App\Modules\Courier\Data\CourierFormData;
+use App\Modules\Courier\Data\CourierVehicleDummyData;
 use App\Modules\Courier\Exports\CourierListExportSheets;
+use App\Modules\Courier\Requests\StoreCourierRequest;
 use App\Modules\Courier\Requests\UpdateCourierRequest;
-use App\Modules\Courier\Services\CourierMediaService;
-use App\Modules\Courier\Services\CourierProfileStore;
+use App\Modules\Courier\Services\CourierPresenter;
+use App\Modules\Courier\Services\CourierService;
 use App\Support\RequestFilter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,6 +22,11 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class CourierController extends Controller
 {
     use DownloadsListExport;
+
+    public function __construct(
+        private readonly CourierService $couriers,
+        private readonly CourierPresenter $presenter,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -36,22 +41,32 @@ class CourierController extends Controller
         $perPage = 25;
         $page = max(1, (int) $request->query('page', 1));
 
-        $all = CourierDummyData::filter($filters);
-        $total = count($all);
-        $items = array_slice($all, ($page - 1) * $perPage, $perPage);
+        $all = $this->couriers->filter($filters);
+        $total = $all->count();
+        $items = $all
+            ->slice(($page - 1) * $perPage, $perPage)
+            ->map(fn ($courier) => $this->presenter->indexRow($courier))
+            ->values()
+            ->all();
         $lastPage = max(1, (int) ceil($total / $perPage));
 
         return view('modules.courier.index', [
             'couriers' => $items,
             'couriersForModal' => collect($items)
-                ->mapWithKeys(fn (array $courier) => [$courier['id'] => CourierDummyData::detailPayload($courier)])
+                ->mapWithKeys(function (array $courier) {
+                    $model = $this->couriers->find((int) $courier['id']);
+
+                    return $model
+                        ? [$courier['id'] => $this->presenter->detailPayload($model)]
+                        : [];
+                })
                 ->all(),
             'filters' => $filters,
-            'agencies' => CourierDummyData::agencies(),
-            'vehicleTypes' => CourierDummyData::vehicleTypes(),
-            'courierTypes' => CourierDummyData::courierTypes(),
-            'statuses' => CourierDummyData::statuses(),
-            'summary' => CourierDummyData::summary($filters),
+            'agencies' => $this->couriers->agencyOptions(),
+            'vehicleTypes' => CourierFormData::vehicleTypes(),
+            'courierTypes' => CourierFormData::courierTypes(),
+            'statuses' => CourierFormData::statuses(),
+            'summary' => $this->couriers->summary($filters),
             'total' => $total,
             'page' => $page,
             'perPage' => $perPage,
@@ -89,16 +104,31 @@ class CourierController extends Controller
         ]);
     }
 
+    public function store(StoreCourierRequest $request): RedirectResponse
+    {
+        $data = $request->validated();
+
+        if ($request->hasFile('profile_photo')) {
+            $data['profile_photo'] = $request->file('profile_photo');
+        }
+
+        $courier = $this->couriers->create($data, $request->user());
+
+        return redirect()
+            ->route('couriers.show', $courier->id)
+            ->with('success', 'Kurye başarıyla oluşturuldu.');
+    }
+
     public function show(int $id): View
     {
-        $courier = CourierDummyData::showPayload($id);
+        $courier = $this->couriers->find($id);
 
         if ($courier === null) {
             abort(404);
         }
 
         return view('modules.courier.show', [
-            'courier' => $courier,
+            'courier' => $this->presenter->showPayload($courier),
             'documentTypes' => CourierDocumentDummyData::documentTypes(),
             'banks' => CourierBankAccountDummyData::banks(),
             'bankStatuses' => CourierBankAccountDummyData::statuses(),
@@ -109,16 +139,15 @@ class CourierController extends Controller
 
     public function edit(int $id): View
     {
-        $courier = CourierDummyData::showPayload($id);
-        $formValues = CourierDummyData::formPayload($id);
+        $courier = $this->couriers->find($id);
 
-        if ($courier === null || $formValues === null) {
+        if ($courier === null) {
             abort(404);
         }
 
         return view('modules.courier.edit', [
-            'courier' => $courier,
-            'formValues' => $formValues,
+            'courier' => $this->presenter->showPayload($courier),
+            'formValues' => $this->presenter->formPayload($courier),
             'cities' => CourierFormData::cities(),
             'districtsByCity' => CourierFormData::districtsByCity(),
             'courierTypes' => CourierFormData::courierTypes(),
@@ -129,28 +158,21 @@ class CourierController extends Controller
         ]);
     }
 
-    public function update(UpdateCourierRequest $request, int $id, CourierMediaService $media): RedirectResponse
+    public function update(UpdateCourierRequest $request, int $id): RedirectResponse
     {
-        if (! CourierDummyData::exists($id)) {
+        $courier = $this->couriers->find($id);
+
+        if ($courier === null) {
             abort(404);
         }
 
         $data = $request->validated();
-        unset($data['profile_photo']);
 
         if ($request->hasFile('profile_photo')) {
-            $stored = CourierProfileStore::get($id);
-
-            if (! empty($stored['photo_path'])) {
-                $media->delete($stored['photo_path']);
-            }
-
-            $uploaded = $media->storePhoto($request->file('profile_photo'), $id);
-            $data['photo_path'] = $uploaded['path'];
-            $data['photo_url'] = $uploaded['url'];
+            $data['profile_photo'] = $request->file('profile_photo');
         }
 
-        CourierProfileStore::put($id, $data);
+        $this->couriers->update($courier, $data, $request->user());
 
         return redirect()
             ->route('couriers.show', $id)

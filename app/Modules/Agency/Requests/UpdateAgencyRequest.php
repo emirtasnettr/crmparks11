@@ -3,6 +3,7 @@
 namespace App\Modules\Agency\Requests;
 
 use App\Modules\Agency\Data\AgencyFormData;
+use App\Modules\Agency\Models\Agency;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -18,6 +19,8 @@ class UpdateAgencyRequest extends FormRequest
      */
     public function rules(): array
     {
+        $agencyId = (int) $this->route('id');
+
         return [
             'company_name' => ['required', 'string', 'max:255'],
             'brand_name' => ['nullable', 'string', 'max:255'],
@@ -25,7 +28,12 @@ class UpdateAgencyRequest extends FormRequest
             'email' => ['nullable', 'email', 'max:255'],
             'website' => ['nullable', 'url', 'max:255'],
             'tax_office' => ['nullable', 'string', 'max:255'],
-            'tax_number' => ['required', 'string', 'max:50'],
+            'tax_number' => [
+                'required',
+                'string',
+                'max:50',
+                Rule::unique(Agency::class, 'tax_number')->ignore($agencyId),
+            ],
             'mersis_number' => ['nullable', 'string', 'max:50'],
             'trade_registry_number' => ['nullable', 'string', 'max:50'],
             'city' => ['required', 'string', 'max:100'],

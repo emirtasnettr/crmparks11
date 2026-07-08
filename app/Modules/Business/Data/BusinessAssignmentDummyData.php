@@ -2,6 +2,8 @@
 
 namespace App\Modules\Business\Data;
 
+use App\Modules\Agency\Data\AgencyDummyData;
+use App\Modules\Agency\Models\Agency;
 use App\Support\DemoData;
 use Carbon\Carbon;
 
@@ -12,7 +14,26 @@ class BusinessAssignmentDummyData
      */
     public static function agencies(): array
     {
-        return \App\Modules\Agency\Data\AgencyDummyData::options();
+        $fromDb = Agency::query()
+            ->orderBy('company_name')
+            ->get(['id', 'company_name'])
+            ->map(fn (Agency $agency) => [
+                'id' => $agency->id,
+                'name' => $agency->company_name,
+            ])
+            ->all();
+
+        if (! DemoData::enabled()) {
+            return $fromDb;
+        }
+
+        $merged = collect(AgencyDummyData::options())->keyBy('id');
+
+        foreach ($fromDb as $agency) {
+            $merged[$agency['id']] = $agency;
+        }
+
+        return $merged->values()->all();
     }
 
     /**

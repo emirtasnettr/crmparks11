@@ -3,9 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Modules\Agency\Data\AgencyDummyData;
+use App\Modules\Agency\Models\Agency;
 use App\Modules\Business\Models\Business;
-use App\Modules\Courier\Data\CourierDummyData;
+use App\Modules\Courier\Models\Courier;
 use App\Modules\Dashboard\Services\DashboardService;
 use Database\Seeders\CitySeeder;
 use Database\Seeders\LookupTableSeeder;
@@ -40,14 +40,16 @@ class DashboardTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('super_admin');
         Business::factory()->count(3)->create(['created_by' => $user->id]);
+        Courier::factory()->count(4)->create(['created_by' => $user->id]);
+        Agency::factory()->count(2)->create(['created_by' => $user->id]);
 
         $response = $this->actingAs($user)->get(route('dashboard'));
 
         $response->assertOk();
         $response->assertSee('Dashboard');
         $response->assertSee(number_format(Business::query()->count()));
-        $response->assertSee(number_format(CourierDummyData::summary([])['total']));
-        $response->assertSee(number_format(AgencyDummyData::summary([])['total']));
+        $response->assertSee(number_format(Courier::query()->count()));
+        $response->assertSee(number_format(Agency::query()->count()));
         $response->assertSee('Son Eklenen İşletmeler');
         $response->assertSee('Son Eklenen Kuryeler');
         $response->assertSee('Kurye Tür Dağılımı');
@@ -57,6 +59,7 @@ class DashboardTest extends TestCase
     {
         $user = User::factory()->create();
         Business::factory()->count(6)->create(['created_by' => $user->id]);
+        Courier::factory()->count(6)->create(['created_by' => $user->id]);
 
         $service = app(DashboardService::class);
 
@@ -67,8 +70,8 @@ class DashboardTest extends TestCase
         $this->assertCount(5, $latestBusinesses);
         $this->assertCount(5, $latestCouriers);
         $this->assertSame(Business::query()->max('id'), $latestBusinesses[0]['id']);
-        $this->assertSame(32, $latestCouriers[0]['id']);
-        $this->assertSame(CourierDummyData::summary([])['total'], $distribution['total']);
+        $this->assertSame(Courier::query()->max('id'), $latestCouriers[0]['id']);
+        $this->assertSame(Courier::query()->count(), $distribution['total']);
         $this->assertCount(2, $distribution['items']);
     }
 
@@ -76,15 +79,20 @@ class DashboardTest extends TestCase
     {
         $user = User::factory()->create();
         Business::factory()->count(2)->create(['created_by' => $user->id]);
+        Courier::factory()->count(3)->create(['created_by' => $user->id, 'status' => 'active']);
+        Courier::factory()->count(1)->create(['created_by' => $user->id, 'status' => 'inactive']);
+        Agency::factory()->count(2)->create(['created_by' => $user->id]);
 
         $stats = app(DashboardService::class)->getStats();
-        $courierSummary = CourierDummyData::summary([]);
 
         $this->assertSame(Business::query()->count(), $stats['total_businesses']);
-        $this->assertSame($courierSummary['total'], $stats['total_couriers']);
-        $this->assertSame(AgencyDummyData::summary([])['total'], $stats['total_agencies']);
-        $this->assertSame($courierSummary['active'], $stats['active_couriers']);
-        $this->assertSame($courierSummary['total'] - $courierSummary['active'], $stats['inactive_couriers']);
+        $this->assertSame(Courier::query()->count(), $stats['total_couriers']);
+        $this->assertSame(Agency::query()->count(), $stats['total_agencies']);
+        $this->assertSame(Courier::query()->where('status', 'active')->count(), $stats['active_couriers']);
+        $this->assertSame(
+            Courier::query()->count() - Courier::query()->where('status', 'active')->count(),
+            $stats['inactive_couriers']
+        );
         $this->assertArrayNotHasKey('monthly_revenue', $stats);
     }
 }

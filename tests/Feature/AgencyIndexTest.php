@@ -2,8 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\City;
+use App\Models\District;
 use App\Models\User;
-use App\Modules\Agency\Data\AgencyDummyData;
+use App\Modules\Agency\Models\Agency;
+use App\Modules\Courier\Models\Courier;
+use Database\Seeders\CitySeeder;
+use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -16,7 +21,11 @@ class AgencyIndexTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(RoleAndPermissionSeeder::class);
+        $this->seed([
+            LookupTableSeeder::class,
+            CitySeeder::class,
+            RoleAndPermissionSeeder::class,
+        ]);
     }
 
     public function test_agencies_index_requires_authentication(): void
@@ -30,6 +39,18 @@ class AgencyIndexTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $this->createAgency($user, [
+            'company_name' => 'Hızlı Kurye Acentesi Ltd. Şti.',
+            'status' => 'active',
+        ]);
+        $this->createAgency($user, [
+            'company_name' => 'Metro Lojistik Acente A.Ş.',
+            'status' => 'active',
+        ]);
+        $this->createAgency($user, [
+            'company_name' => 'Express Dağıtım Acentesi',
+            'status' => 'pending',
+        ]);
 
         $response = $this->actingAs($user)->get(route('agencies.index'));
 
@@ -46,28 +67,33 @@ class AgencyIndexTest extends TestCase
         $response->assertSee('Beklemede');
     }
 
-    public function test_agency_dummy_data_has_at_least_twenty_records(): void
-    {
-        $agencies = AgencyDummyData::all();
-
-        $this->assertCount(25, $agencies);
-        $this->assertGreaterThanOrEqual(20, count($agencies));
-    }
-
     public function test_summary_stats_are_calculated(): void
     {
-        $summary = AgencyDummyData::summary();
+        $user = User::factory()->create();
+        $this->createAgency($user, ['status' => 'active']);
+        $this->createAgency($user, ['status' => 'active']);
+        $this->createAgency($user, ['status' => 'inactive']);
 
-        $this->assertEquals(25, $summary['total']);
-        $this->assertGreaterThan(0, $summary['active']);
-        $this->assertGreaterThan(0, $summary['total_couriers']);
-        $this->assertGreaterThan(0, $summary['monthly_earnings']);
+        $summary = app(\App\Modules\Agency\Services\AgencyService::class)->summary([]);
+
+        $this->assertEquals(3, $summary['total']);
+        $this->assertEquals(2, $summary['active']);
     }
 
     public function test_agencies_can_be_filtered_by_city(): void
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $this->createAgency($user, [
+            'company_name' => 'Anadolu Kurye Hizmetleri Ltd. Şti.',
+            'city' => 'Ankara',
+            'district' => 'Çankaya',
+        ]);
+        $this->createAgency($user, [
+            'company_name' => 'Hızlı Kurye Acentesi Ltd. Şti.',
+            'city' => 'İstanbul',
+            'district' => 'Kadıköy',
+        ]);
 
         $response = $this->actingAs($user)->get(route('agencies.index', [
             'city' => 'Ankara',
@@ -82,6 +108,14 @@ class AgencyIndexTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $this->createAgency($user, [
+            'company_name' => 'Konya Merkez Lojistik',
+            'status' => 'inactive',
+        ]);
+        $this->createAgency($user, [
+            'company_name' => 'Anadolu Kurye Hizmetleri Ltd. Şti.',
+            'status' => 'active',
+        ]);
 
         $response = $this->actingAs($user)->get(route('agencies.index', [
             'status' => 'inactive',
@@ -96,6 +130,20 @@ class AgencyIndexTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $this->createAgency($user, [
+            'company_name' => 'Konya Merkez Lojistik',
+            'status' => 'inactive',
+        ]);
+        $agencyWithCouriers = $this->createAgency($user, [
+            'company_name' => 'Aydın Ege Dağıtım Acentesi',
+            'status' => 'active',
+        ]);
+        Courier::factory()->count(3)->create([
+            'agency_id' => $agencyWithCouriers->id,
+            'courier_type' => 'agency',
+            'status' => 'active',
+            'created_by' => $user->id,
+        ]);
 
         $response = $this->actingAs($user)->get(route('agencies.index', [
             'courier_count' => '0',
@@ -103,7 +151,28 @@ class AgencyIndexTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Konya Merkez Lojistik');
-        $response->assertSee('Balıkesir Kurye Hizmetleri Ltd. Şti.');
         $response->assertDontSee('Aydın Ege Dağıtım Acentesi');
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    private function createAgency(User $user, array $overrides = []): Agency
+    {
+        $cityName = $overrides['city'] ?? 'İstanbul';
+        $districtName = $overrides['district'] ?? 'Kadıköy';
+        unset($overrides['city'], $overrides['district']);
+
+        $city = City::query()->where('name', $cityName)->firstOrFail();
+        $district = District::query()
+            ->where('city_id', $city->id)
+            ->where('name', $districtName)
+            ->firstOrFail();
+
+        return Agency::factory()->create(array_merge([
+            'city_id' => $city->id,
+            'district_id' => $district->id,
+            'created_by' => $user->id,
+        ], $overrides));
     }
 }

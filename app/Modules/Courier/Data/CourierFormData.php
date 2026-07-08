@@ -2,7 +2,7 @@
 
 namespace App\Modules\Courier\Data;
 
-use App\Modules\Business\Data\BusinessAssignmentDummyData;
+use App\Modules\Agency\Models\Agency;
 use App\Modules\Business\Data\BusinessFormData;
 
 class CourierFormData
@@ -39,7 +39,14 @@ class CourierFormData
      */
     public static function agencies(): array
     {
-        return BusinessAssignmentDummyData::agencies();
+        return Agency::query()
+            ->orderBy('company_name')
+            ->get(['id', 'company_name'])
+            ->map(fn (Agency $agency) => [
+                'id' => $agency->id,
+                'name' => $agency->company_name,
+            ])
+            ->all();
     }
 
     /**

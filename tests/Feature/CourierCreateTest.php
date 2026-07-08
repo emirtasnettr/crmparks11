@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use Database\Seeders\CitySeeder;
+use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -15,7 +17,11 @@ class CourierCreateTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(RoleAndPermissionSeeder::class);
+        $this->seed([
+            LookupTableSeeder::class,
+            CitySeeder::class,
+            RoleAndPermissionSeeder::class,
+        ]);
     }
 
     public function test_courier_create_requires_authentication(): void
@@ -43,5 +49,6 @@ class CourierCreateTest extends TestCase
         $response->assertSee('Esnaf Kurye');
         $response->assertSee('Acente Kuryesi');
         $response->assertSee('courier-form');
+        $response->assertSee(route('couriers.store'), false);
     }
 }

@@ -2,28 +2,31 @@
 
 namespace App\Modules\Dashboard\Services;
 
-use App\Modules\Agency\Data\AgencyDummyData;
+use App\Modules\Agency\Models\Agency;
 use App\Modules\Business\Models\Business;
 use App\Modules\Business\Services\BusinessPresenter;
-use App\Modules\Courier\Data\CourierDummyData;
+use App\Modules\Courier\Data\CourierFormData;
+use App\Modules\Courier\Models\Courier;
+use App\Modules\Courier\Services\CourierPresenter;
 
 class DashboardService
 {
     public function __construct(
         private readonly BusinessPresenter $businessPresenter,
+        private readonly CourierPresenter $courierPresenter,
     ) {}
 
     public function getStats(): array
     {
-        $courierSummary = CourierDummyData::summary([]);
-        $agencySummary = AgencyDummyData::summary([]);
+        $totalCouriers = Courier::query()->count();
+        $activeCouriers = Courier::query()->where('status', 'active')->count();
 
         return [
             'total_businesses' => Business::query()->count(),
-            'total_couriers' => $courierSummary['total'],
-            'total_agencies' => $agencySummary['total'],
-            'active_couriers' => $courierSummary['active'],
-            'inactive_couriers' => $courierSummary['total'] - $courierSummary['active'],
+            'total_couriers' => $totalCouriers,
+            'total_agencies' => Agency::query()->count(),
+            'active_couriers' => $activeCouriers,
+            'inactive_couriers' => $totalCouriers - $activeCouriers,
         ];
     }
 
@@ -50,10 +53,15 @@ class DashboardService
      */
     public function getLatestCouriers(int $limit = 5): array
     {
-        return collect(CourierDummyData::all())
-            ->sortByDesc('id')
-            ->take($limit)
-            ->map(fn (array $courier) => $this->formatCourierForDashboard($courier))
+        return Courier::query()
+            ->with(['city', 'district', 'agency', 'vehicleType'])
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get()
+            ->map(fn (Courier $courier) => $this->formatCourierForDashboard(
+                $this->courierPresenter->toBaseArray($courier),
+                $courier,
+            ))
             ->values()
             ->all();
     }
@@ -63,12 +71,11 @@ class DashboardService
      */
     public function getCourierTypeDistribution(): array
     {
-        $couriers = CourierDummyData::all();
-        $total = count($couriers);
+        $total = Courier::query()->count();
 
-        $items = collect(CourierDummyData::courierTypes())
-            ->map(function (string $label, string $key) use ($couriers, $total) {
-                $count = collect($couriers)->where('courier_type', $key)->count();
+        $items = collect(CourierFormData::courierTypes())
+            ->map(function (string $label, string $key) use ($total) {
+                $count = Courier::query()->where('courier_type', $key)->count();
 
                 return [
                     'key' => $key,
@@ -121,7 +128,7 @@ class DashboardService
      * @param  array<string, mixed>  $courier
      * @return array<string, mixed>
      */
-    private function formatCourierForDashboard(array $courier): array
+    private function formatCourierForDashboard(array $courier, Courier $model): array
     {
         $id = (int) $courier['id'];
 
@@ -133,11 +140,11 @@ class DashboardService
             'photo_url' => $courier['photo_url'] ?? null,
             'courier_type' => $courier['courier_type'],
             'type_label' => $courier['courier_type'] === 'agency'
-                ? ($courier['agency_name'] ?? CourierDummyData::courierTypes()['agency'])
-                : CourierDummyData::courierTypes()['independent'],
+                ? ($courier['agency_name'] ?? CourierFormData::courierTypes()['agency'])
+                : CourierFormData::courierTypes()['independent'],
             'vehicle_type_label' => $courier['vehicle_type_label'],
             'status' => $courier['status'],
-            'created_at_formatted' => now()->subDays(max(1, 90 - ($id * 2)))->format('d.m.Y'),
+            'created_at_formatted' => $model->created_at?->format('d.m.Y') ?? now()->format('d.m.Y'),
             'url' => route('couriers.show', $id),
         ];
     }

@@ -3,6 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Modules\Agency\Models\Agency;
+use Database\Seeders\CitySeeder;
+use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -15,7 +18,11 @@ class AgencyCreateTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(RoleAndPermissionSeeder::class);
+        $this->seed([
+            LookupTableSeeder::class,
+            CitySeeder::class,
+            RoleAndPermissionSeeder::class,
+        ]);
     }
 
     public function test_agency_create_requires_authentication(): void
@@ -45,5 +52,6 @@ class AgencyCreateTest extends TestCase
         $response->assertSee('15 Günlük');
         $response->assertSee('Beklemede');
         $response->assertSee('agency-form');
+        $response->assertSee(route('agencies.store'), false);
     }
 }

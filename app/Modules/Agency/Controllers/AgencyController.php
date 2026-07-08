@@ -8,12 +8,12 @@ use App\Modules\Agency\Data\AgencyContactDummyData;
 use App\Modules\Agency\Data\AgencyContractDummyData;
 use App\Modules\Agency\Data\AgencyCourierDummyData;
 use App\Modules\Agency\Data\AgencyDocumentDummyData;
-use App\Modules\Agency\Data\AgencyDummyData;
 use App\Modules\Agency\Data\AgencyFormData;
 use App\Modules\Agency\Exports\AgencyListExportSheets;
+use App\Modules\Agency\Requests\StoreAgencyRequest;
 use App\Modules\Agency\Requests\UpdateAgencyRequest;
-use App\Modules\Agency\Services\AgencyMediaService;
-use App\Modules\Agency\Services\AgencyProfileStore;
+use App\Modules\Agency\Services\AgencyPresenter;
+use App\Modules\Agency\Services\AgencyService;
 use App\Support\RequestFilter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,6 +23,11 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class AgencyController extends Controller
 {
     use DownloadsListExport;
+
+    public function __construct(
+        private readonly AgencyService $agencies,
+        private readonly AgencyPresenter $presenter,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -36,21 +41,31 @@ class AgencyController extends Controller
         $perPage = 25;
         $page = max(1, (int) $request->query('page', 1));
 
-        $all = AgencyDummyData::filter($filters);
-        $total = count($all);
-        $items = array_slice($all, ($page - 1) * $perPage, $perPage);
+        $all = $this->agencies->filter($filters);
+        $total = $all->count();
+        $items = $all
+            ->slice(($page - 1) * $perPage, $perPage)
+            ->map(fn ($agency) => $this->presenter->indexRow($agency))
+            ->values()
+            ->all();
         $lastPage = max(1, (int) ceil($total / $perPage));
 
         return view('modules.agency.index', [
             'agencies' => $items,
             'agenciesForModal' => collect($items)
-                ->mapWithKeys(fn (array $agency) => [$agency['id'] => AgencyDummyData::detailPayload($agency)])
+                ->mapWithKeys(function (array $agency) {
+                    $model = $this->agencies->find((int) $agency['id']);
+
+                    return $model
+                        ? [$agency['id'] => $this->presenter->detailPayload($model)]
+                        : [];
+                })
                 ->all(),
             'filters' => $filters,
-            'cities' => AgencyDummyData::cities(),
-            'statuses' => AgencyDummyData::statuses(),
-            'courierCountRanges' => AgencyDummyData::courierCountRanges(),
-            'summary' => AgencyDummyData::summary($filters),
+            'cities' => $this->agencies->cities(),
+            'statuses' => AgencyFormData::statuses(),
+            'courierCountRanges' => AgencyFormData::courierCountRanges(),
+            'summary' => $this->agencies->summary($filters),
             'total' => $total,
             'page' => $page,
             'perPage' => $perPage,
@@ -85,16 +100,31 @@ class AgencyController extends Controller
         ]);
     }
 
+    public function store(StoreAgencyRequest $request): RedirectResponse
+    {
+        $data = $request->validated();
+
+        if ($request->hasFile('logo')) {
+            $data['logo'] = $request->file('logo');
+        }
+
+        $agency = $this->agencies->create($data, $request->user());
+
+        return redirect()
+            ->route('agencies.show', $agency->id)
+            ->with('success', 'Acente başarıyla oluşturuldu.');
+    }
+
     public function show(int $id): View
     {
-        $agency = AgencyDummyData::showPayload($id);
+        $agency = $this->agencies->find($id);
 
         if ($agency === null) {
             abort(404);
         }
 
         return view('modules.agency.show', [
-            'agency' => $agency,
+            'agency' => $this->presenter->showPayload($agency),
             'contactTitles' => AgencyContactDummyData::titles(),
             'contractTypes' => AgencyContractDummyData::contractTypes(),
             'documentTypes' => AgencyDocumentDummyData::documentTypes(),
@@ -104,16 +134,15 @@ class AgencyController extends Controller
 
     public function edit(int $id): View
     {
-        $agency = AgencyDummyData::showPayload($id);
-        $formValues = AgencyDummyData::formPayload($id);
+        $agency = $this->agencies->find($id);
 
-        if ($agency === null || $formValues === null) {
+        if ($agency === null) {
             abort(404);
         }
 
         return view('modules.agency.edit', [
-            'agency' => $agency,
-            'formValues' => $formValues,
+            'agency' => $this->presenter->showPayload($agency),
+            'formValues' => $this->presenter->formPayload($agency),
             'cities' => AgencyFormData::cities(),
             'districtsByCity' => AgencyFormData::districtsByCity(),
             'statuses' => AgencyFormData::statuses(),
@@ -122,28 +151,21 @@ class AgencyController extends Controller
         ]);
     }
 
-    public function update(UpdateAgencyRequest $request, int $id, AgencyMediaService $media): RedirectResponse
+    public function update(UpdateAgencyRequest $request, int $id): RedirectResponse
     {
-        if (! AgencyDummyData::exists($id)) {
+        $agency = $this->agencies->find($id);
+
+        if ($agency === null) {
             abort(404);
         }
 
         $data = $request->validated();
-        unset($data['logo']);
 
         if ($request->hasFile('logo')) {
-            $stored = AgencyProfileStore::get($id);
-
-            if (! empty($stored['logo_path'])) {
-                $media->delete($stored['logo_path']);
-            }
-
-            $uploaded = $media->storeLogo($request->file('logo'), $id);
-            $data['logo_path'] = $uploaded['path'];
-            $data['logo_url'] = $uploaded['url'];
+            $data['logo'] = $request->file('logo');
         }
 
-        AgencyProfileStore::put($id, $data);
+        $this->agencies->update($agency, $data, $request->user());
 
         return redirect()
             ->route('agencies.show', $id)

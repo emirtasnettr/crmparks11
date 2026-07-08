@@ -7,8 +7,10 @@ use App\Modules\Agency\Data\AgencyActivityDummyData;
 use App\Modules\Agency\Data\AgencyContactDummyData;
 use App\Modules\Agency\Data\AgencyContractDummyData;
 use App\Modules\Agency\Data\AgencyCourierDummyData;
-use App\Modules\Agency\Data\AgencyDummyData;
 use App\Modules\Agency\Data\AgencyEarningDummyData;
+use App\Modules\Agency\Data\AgencyFormData;
+use App\Modules\Agency\Services\AgencyPresenter;
+use App\Modules\Agency\Services\AgencyService;
 
 final class AgencyListExportSheets
 {
@@ -18,10 +20,16 @@ final class AgencyListExportSheets
      */
     public static function agencies(array $filters): array
     {
-        $statusLabels = AgencyDummyData::statuses();
+        $statusLabels = AgencyFormData::statuses();
+        $service = app(AgencyService::class);
+        $presenter = app(AgencyPresenter::class);
+
+        $rows = $service->filter($filters)
+            ->map(fn ($agency) => $presenter->indexRow($agency))
+            ->all();
 
         return ListExport::sheet(
-            AgencyDummyData::filter($filters),
+            $rows,
             ['Firma Ünvanı', 'Vergi No', 'Yetkili', 'Telefon', 'İl / İlçe', 'Aktif Kurye', 'Aktif İşletme', 'Durum'],
             [
                 fn (array $row) => $row['company_name'],
