@@ -4,8 +4,13 @@ namespace App\Modules\Business\Controllers;
 
 use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
-use App\Modules\Business\Data\BusinessContactDummyData;
+use App\Modules\Business\Data\BusinessContactFormData;
 use App\Modules\Business\Exports\BusinessListExportSheets;
+use App\Modules\Business\Requests\StoreBusinessContactRequest;
+use App\Modules\Business\Requests\UpdateBusinessContactRequest;
+use App\Modules\Business\Services\BusinessContactPresenter;
+use App\Modules\Business\Services\BusinessContactService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -13,6 +18,11 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class BusinessContactController extends Controller
 {
     use DownloadsListExport;
+
+    public function __construct(
+        private readonly BusinessContactService $contacts,
+        private readonly BusinessContactPresenter $presenter,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -26,16 +36,20 @@ class BusinessContactController extends Controller
         $perPage = 25;
         $page = max(1, (int) $request->query('page', 1));
 
-        $all = BusinessContactDummyData::filter($filters);
-        $total = count($all);
-        $items = array_slice($all, ($page - 1) * $perPage, $perPage);
+        $all = $this->contacts->filter($filters);
+        $total = $all->count();
+        $items = $all
+            ->slice(($page - 1) * $perPage, $perPage)
+            ->map(fn ($contact) => $this->presenter->indexRow($contact))
+            ->values()
+            ->all();
         $lastPage = max(1, (int) ceil($total / $perPage));
 
         return view('modules.business.contacts.index', [
             'contacts' => $items,
             'filters' => $filters,
-            'businesses' => BusinessContactDummyData::businesses(),
-            'titles' => BusinessContactDummyData::titles(),
+            'businesses' => $this->contacts->businesses(),
+            'titles' => BusinessContactFormData::titles(),
             'total' => $total,
             'page' => $page,
             'perPage' => $perPage,
@@ -57,5 +71,35 @@ class BusinessContactController extends Controller
             BusinessListExportSheets::contacts($filters),
             'İşletme Yetkilileri',
         );
+    }
+
+    public function store(StoreBusinessContactRequest $request): RedirectResponse
+    {
+        $contact = $this->contacts->create($request->validated());
+
+        if ($request->boolean('redirect_to_business')) {
+            return redirect()
+                ->route('businesses.show', $contact->business_id)
+                ->with('success', 'Yetkili başarıyla eklendi.');
+        }
+
+        return redirect()
+            ->route('businesses.contacts.index', ['business_id' => $contact->business_id])
+            ->with('success', 'Yetkili başarıyla eklendi.');
+    }
+
+    public function update(UpdateBusinessContactRequest $request, int $id): RedirectResponse
+    {
+        $contact = $this->contacts->find($id);
+
+        if ($contact === null) {
+            abort(404);
+        }
+
+        $this->contacts->update($contact, $request->validated());
+
+        return redirect()
+            ->back()
+            ->with('success', 'Yetkili bilgileri güncellendi.');
     }
 }

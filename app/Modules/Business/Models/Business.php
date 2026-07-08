@@ -69,6 +69,11 @@ class Business extends Model
         return $this->hasMany(BusinessCourierAssignment::class);
     }
 
+    public function contacts(): HasMany
+    {
+        return $this->hasMany(BusinessContact::class);
+    }
+
     public function activeCourierCount(): int
     {
         return (int) $this->assignments()

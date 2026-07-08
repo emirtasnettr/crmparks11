@@ -150,6 +150,9 @@
         />
     </x-ui.card>
 
-    @include('modules.business.contacts.partials.modal')
+    @include('modules.business.contacts.partials.modal', [
+        'businesses' => $businesses,
+        'titles' => $titles,
+    ])
 </div>
 @endsection

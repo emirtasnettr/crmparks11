@@ -165,6 +165,8 @@
             @include('modules.business.contacts.partials.modal', [
                 'hideEntitySelector' => true,
                 'presetEntityLabel' => $business['company_name'],
+                'lockedBusinessId' => $business['id'],
+                'redirectToBusiness' => true,
                 'titles' => $contactTitles,
                 'businesses' => [],
             ])

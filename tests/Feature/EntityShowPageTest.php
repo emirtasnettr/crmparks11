@@ -87,6 +87,11 @@ class EntityShowPageTest extends TestCase
       'company_name' => 'Burger House Gıda Ltd. Şti.',
       'brand_name' => 'Burger House',
     ]);
+    \App\Modules\Business\Models\BusinessContact::factory()->create([
+      'business_id' => $business->id,
+      'full_name' => 'Mehmet Yılmaz',
+      'title' => 'İşletme Sahibi',
+    ]);
 
     $response = $this->actingAs($user)->get(route('businesses.show', $business->id));
 

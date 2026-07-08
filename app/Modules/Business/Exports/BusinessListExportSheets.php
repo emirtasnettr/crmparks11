@@ -62,8 +62,15 @@ final class BusinessListExportSheets
      */
     public static function contacts(array $filters): array
     {
+        $service = app(\App\Modules\Business\Services\BusinessContactService::class);
+        $presenter = app(\App\Modules\Business\Services\BusinessContactPresenter::class);
+
+        $rows = $service->filter($filters)
+            ->map(fn ($contact) => $presenter->indexRow($contact))
+            ->all();
+
         return ListExport::sheet(
-            BusinessContactDummyData::filter($filters),
+            $rows,
             ['İşletme', 'Ad Soyad', 'Görevi', 'Telefon', 'E-Posta', 'Varsayılan Yetkili', 'Durum'],
             [
                 fn (array $row) => $row['business_name'],

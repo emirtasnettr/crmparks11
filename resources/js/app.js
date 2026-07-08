@@ -494,8 +494,8 @@ Alpine.data('contactPage', (preset = {}) => {
     return {
     lockedBusinessId,
     openModal: false,
-    modalSaved: false,
     modalErrors: {},
+    submitting: false,
     modal: {
         business_id: lockedBusinessId,
         full_name: '',
@@ -508,8 +508,8 @@ Alpine.data('contactPage', (preset = {}) => {
 
     closeModal() {
         this.openModal = false;
-        this.modalSaved = false;
         this.modalErrors = {};
+        this.submitting = false;
         this.resetModal();
     },
 
@@ -545,14 +545,13 @@ Alpine.data('contactPage', (preset = {}) => {
         return Object.keys(this.modalErrors).length === 0;
     },
 
-    saveContact() {
-        this.modalSaved = false;
-
+    handleSubmit(event) {
         if (!this.validateModal()) {
+            event.preventDefault();
             return;
         }
 
-        this.modalSaved = true;
+        this.submitting = true;
     },
 };
 });

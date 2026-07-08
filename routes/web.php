@@ -65,6 +65,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/', [BusinessController::class, 'store'])->middleware('permission:business.create')->name('store');
         Route::get('/yetkililer', [BusinessContactController::class, 'index'])->name('contacts.index');
         Route::get('/yetkililer/export', [BusinessContactController::class, 'export'])->name('contacts.export');
+        Route::post('/yetkililer', [BusinessContactController::class, 'store'])->middleware('permission:business.update')->name('contacts.store');
+        Route::put('/yetkililer/{id}', [BusinessContactController::class, 'update'])->middleware('permission:business.update')->name('contacts.update');
         Route::get('/sozlesmeler', [BusinessContractController::class, 'index'])->name('contracts.index');
         Route::get('/sozlesmeler/export', [BusinessContractController::class, 'export'])->name('contracts.export');
         Route::get('/sozlesmeler/{id}', [BusinessContractController::class, 'show'])->name('contracts.show');

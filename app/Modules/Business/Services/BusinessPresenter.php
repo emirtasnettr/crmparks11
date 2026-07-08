@@ -9,13 +9,16 @@ use App\Models\PricingModelType;
 use App\Models\User;
 use App\Modules\Business\Data\BusinessActivityDummyData;
 use App\Modules\Business\Data\BusinessAssignmentDummyData;
-use App\Modules\Business\Data\BusinessContactDummyData;
+use App\Modules\Business\Data\BusinessContactFormData;
 use App\Modules\Business\Data\BusinessContractDummyData;
 use App\Modules\Business\Data\BusinessDocumentDummyData;
 use App\Modules\Business\Data\BusinessEarningDummyData;
 use App\Modules\Business\Data\BusinessFormData;
 use App\Modules\Business\Models\Business;
+use App\Modules\Business\Models\BusinessContact;
 use App\Modules\Business\Models\BusinessPricing;
+use App\Modules\Business\Services\BusinessContactPresenter;
+use App\Modules\Business\Services\BusinessContactService;
 use App\Modules\Business\Support\BusinessFeatures;
 use App\Modules\Business\Support\BusinessLogo;
 use Illuminate\Database\Eloquent\Builder;
@@ -26,6 +29,8 @@ class BusinessPresenter
 {
   public function __construct(
     private readonly BusinessMediaService $media,
+    private readonly BusinessContactService $contacts,
+    private readonly BusinessContactPresenter $contactPresenter,
   ) {}
 
   /**
@@ -133,7 +138,11 @@ class BusinessPresenter
       'courier_price' => $this->formatStoredPrice($unitPrices['courier_unit'], $pricingModel),
       'notes' => $base['notes'],
       'created_at_formatted' => $business->created_at?->format('d.m.Y') ?? now()->format('d.m.Y'),
-      'contacts' => BusinessContactDummyData::filter(['business_id' => $business->id]),
+      'contacts' => $this->contacts
+        ->forBusiness($business->id)
+        ->map(fn (BusinessContact $contact) => $this->contactPresenter->showRow($contact))
+        ->values()
+        ->all(),
       'contracts' => BusinessContractDummyData::filter(['business_id' => $business->id]),
       'assignments' => BusinessAssignmentDummyData::filter(['business_id' => $business->id]),
       'documents' => BusinessDocumentDummyData::filter(['business_id' => $business->id]),
