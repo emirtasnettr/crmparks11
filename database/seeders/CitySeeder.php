@@ -23,20 +23,25 @@ class CitySeeder extends Seeder
         $now = now();
 
         foreach ($cities as $cityData) {
-            $cityId = DB::table('cities')->insertGetId([
-                'name' => $cityData['name'],
-                'plate_code' => $cityData['plate_code'],
-                'created_at' => $now,
-                'updated_at' => $now,
-            ]);
-
-            foreach ($cityData['districts'] as $district) {
-                DB::table('districts')->insert([
-                    'city_id' => $cityId,
-                    'name' => $district,
+            DB::table('cities')->updateOrInsert(
+                ['plate_code' => $cityData['plate_code']],
+                [
+                    'name' => $cityData['name'],
                     'created_at' => $now,
                     'updated_at' => $now,
-                ]);
+                ],
+            );
+
+            $cityId = DB::table('cities')->where('plate_code', $cityData['plate_code'])->value('id');
+
+            foreach ($cityData['districts'] as $district) {
+                DB::table('districts')->updateOrInsert(
+                    ['city_id' => $cityId, 'name' => $district],
+                    [
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ],
+                );
             }
         }
     }
