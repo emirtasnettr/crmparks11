@@ -2,7 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Models\City;
+use App\Models\District;
+use App\Models\PricingModelType;
 use App\Models\User;
+use App\Modules\Business\Models\Business;
+use App\Modules\Business\Models\BusinessPricing;
+use Database\Seeders\CitySeeder;
+use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -15,7 +22,11 @@ class BusinessIndexTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(RoleAndPermissionSeeder::class);
+        $this->seed([
+            LookupTableSeeder::class,
+            CitySeeder::class,
+            RoleAndPermissionSeeder::class,
+        ]);
     }
 
     public function test_business_index_requires_authentication(): void
@@ -29,6 +40,11 @@ class BusinessIndexTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $this->createBusiness($user, [
+            'company_name' => 'Burger House Gıda Ltd. Şti.',
+            'brand_name' => 'Burger House',
+            'status' => 'contract_stage',
+        ]);
 
         $response = $this->actingAs($user)->get(route('businesses.index'));
 
@@ -48,8 +64,14 @@ class BusinessIndexTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $business = $this->createBusiness($user, [
+            'company_name' => 'Tatlı Diyarı Pastane ve Unlu Mamulleri',
+            'brand_name' => 'Tatlı Diyarı',
+            'phone' => '0224 666 77 88',
+            'status' => 'active',
+        ]);
 
-        $response = $this->actingAs($user)->put(route('businesses.update', 6), [
+        $response = $this->actingAs($user)->put(route('businesses.update', $business->id), [
             'company_name' => 'Tatlı Diyarı Pastane ve Unlu Mamulleri',
             'brand_name' => 'Tatlı Diyarı',
             'phone' => '0224 666 77 88',
@@ -58,11 +80,12 @@ class BusinessIndexTest extends TestCase
             'pricing_model' => 'daily',
             'earning_period' => 'weekly',
             'status' => 'contract_stage',
+            'tax_number' => $business->tax_number,
         ]);
 
-        $response->assertRedirect(route('businesses.show', 6));
+        $response->assertRedirect(route('businesses.show', $business->id));
 
-        $showResponse = $this->actingAs($user)->get(route('businesses.show', 6));
+        $showResponse = $this->actingAs($user)->get(route('businesses.show', $business->id));
         $showResponse->assertOk();
         $showResponse->assertSee('Sözleşme Aşamasında');
 
@@ -85,5 +108,38 @@ class BusinessIndexTest extends TestCase
         $response->assertSee('Çalışma Modeli');
         $response->assertDontSee('Hakediş Periyodu');
         $response->assertSee('Kaydet');
+        $response->assertSee(route('businesses.store'), false);
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    private function createBusiness(User $user, array $overrides = []): Business
+    {
+        $city = City::query()->where('name', 'İstanbul')->firstOrFail();
+        $district = District::query()
+            ->where('city_id', $city->id)
+            ->where('name', 'Kadıköy')
+            ->firstOrFail();
+
+        $business = Business::factory()->create(array_merge([
+            'city_id' => $city->id,
+            'district_id' => $district->id,
+            'created_by' => $user->id,
+        ], $overrides));
+
+        $pricingModel = PricingModelType::query()->where('code', 'per_package')->firstOrFail();
+        $business->pricings()->delete();
+        BusinessPricing::query()->create([
+            'business_id' => $business->id,
+            'pricing_model_type_id' => $pricingModel->id,
+            'customer_unit_price' => 45,
+            'courier_unit_price' => 32,
+            'effective_from' => now()->toDateString(),
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        return $business;
     }
 }

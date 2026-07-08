@@ -6,9 +6,9 @@ use App\Core\Exports\ListExport;
 use App\Modules\Business\Data\BusinessAssignmentDummyData;
 use App\Modules\Business\Data\BusinessContactDummyData;
 use App\Modules\Business\Data\BusinessContractDummyData;
-use App\Modules\Business\Data\BusinessDummyData;
-use App\Modules\Business\Data\BusinessEarningDummyData;
 use App\Modules\Business\Data\BusinessFormData;
+use App\Modules\Business\Services\BusinessPresenter;
+use App\Modules\Business\Services\BusinessService;
 
 final class BusinessListExportSheets
 {
@@ -20,9 +20,11 @@ final class BusinessListExportSheets
     {
         $pricingLabels = BusinessFormData::pricingModels() + ['fixed' => 'Sabit Ücret'];
         $statusLabels = BusinessFormData::statuses();
+        $service = app(BusinessService::class);
+        $presenter = app(BusinessPresenter::class);
 
-        $items = collect(BusinessDummyData::filter($filters))
-            ->map(fn (array $business) => BusinessDummyData::indexRow($business))
+        $items = $service->filter($filters)
+            ->map(fn ($business) => $presenter->indexRow($business))
             ->all();
 
         return ListExport::sheet(

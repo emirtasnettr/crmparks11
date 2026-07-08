@@ -3,6 +3,8 @@
 namespace App\Modules\Business\Data;
 
 use App\Core\Helpers\MoneyCalculator;
+use App\Modules\Business\Models\Business;
+use App\Modules\Business\Services\BusinessPresenter;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 
@@ -41,13 +43,17 @@ class BusinessOverviewStats
      */
     public static function forBusiness(int $businessId, CarbonInterface $start, CarbonInterface $end): array
     {
-        $business = BusinessDummyData::find($businessId);
+        $business = Business::query()
+            ->with(['activePricing.pricingModelType', 'city', 'district'])
+            ->find($businessId);
 
         if ($business === null) {
             return self::emptyStats();
         }
 
-        $daily = self::dailyPackageRows($businessId, $business, $start, $end);
+        $presenter = app(BusinessPresenter::class);
+        $base = $presenter->toBaseArray($business);
+        $daily = self::dailyPackageRows($businessId, $base, $start, $end, $presenter->unitPrices($business));
         $totalPackages = (int) collect($daily)->sum('package_count');
         $totalRevenue = round(collect($daily)->sum('revenue_total'), 2);
         $totalCourier = round(collect($daily)->sum('courier_total'), 2);
@@ -76,11 +82,16 @@ class BusinessOverviewStats
 
     /**
      * @param  array<string, mixed>  $business
+     * @param  array{revenue_unit: float, courier_unit: float, from_profile: bool}  $unitPrices
      * @return array<int, array<string, float|int|string>>
      */
-    private static function dailyPackageRows(int $businessId, array $business, CarbonInterface $start, CarbonInterface $end): array
-    {
-        $unitPrices = BusinessDummyData::unitPrices($businessId, $business);
+    private static function dailyPackageRows(
+        int $businessId,
+        array $business,
+        CarbonInterface $start,
+        CarbonInterface $end,
+        array $unitPrices,
+    ): array {
         $useExactPrices = $unitPrices['from_profile'];
         $rows = [];
         $cursor = $start->copy();

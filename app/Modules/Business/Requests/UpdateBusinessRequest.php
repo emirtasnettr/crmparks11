@@ -3,6 +3,7 @@
 namespace App\Modules\Business\Requests;
 
 use App\Modules\Business\Data\BusinessFormData;
+use App\Modules\Business\Models\Business;
 use App\Modules\Business\Support\BusinessFeatures;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -19,6 +20,8 @@ class UpdateBusinessRequest extends FormRequest
      */
     public function rules(): array
     {
+        $businessId = (int) $this->route('id');
+
         return [
             'company_name' => ['required', 'string', 'max:255'],
             'brand_name' => ['nullable', 'string', 'max:255'],
@@ -26,7 +29,12 @@ class UpdateBusinessRequest extends FormRequest
             'email' => ['nullable', 'email', 'max:255'],
             'website' => ['nullable', 'url', 'max:255'],
             'tax_office' => ['nullable', 'string', 'max:255'],
-            'tax_number' => ['nullable', 'string', 'max:50'],
+            'tax_number' => [
+                'nullable',
+                'string',
+                'max:50',
+                Rule::unique(Business::class, 'tax_number')->ignore($businessId),
+            ],
             'city' => ['nullable', 'string', 'max:100'],
             'district' => ['nullable', 'string', 'max:100'],
             'address' => ['nullable', 'string', 'max:1000'],

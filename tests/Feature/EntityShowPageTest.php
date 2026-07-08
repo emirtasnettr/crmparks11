@@ -2,10 +2,17 @@
 
 namespace Tests\Feature;
 
+use App\Models\City;
+use App\Models\District;
+use App\Models\PricingModelType;
 use App\Models\User;
 use App\Modules\Agency\Data\AgencyDummyData;
 use App\Modules\Business\Data\BusinessDummyData;
+use App\Modules\Business\Models\Business;
+use App\Modules\Business\Models\BusinessPricing;
 use App\Modules\Courier\Data\CourierDummyData;
+use Database\Seeders\CitySeeder;
+use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -18,16 +25,21 @@ class EntityShowPageTest extends TestCase
   {
     parent::setUp();
 
-    $this->seed(RoleAndPermissionSeeder::class);
+    $this->seed([
+      LookupTableSeeder::class,
+      CitySeeder::class,
+      RoleAndPermissionSeeder::class,
+    ]);
   }
 
   public function test_business_show_accepts_custom_date_range(): void
   {
     $user = User::factory()->create();
     $user->assignRole('super_admin');
+    $business = $this->createBusiness($user);
 
     $response = $this->actingAs($user)->get(route('businesses.show', [
-      'id' => 1,
+      'id' => $business->id,
       'start_date' => '2026-07-01',
       'end_date' => '2026-07-05',
     ]));
@@ -42,9 +54,10 @@ class EntityShowPageTest extends TestCase
   {
     $user = User::factory()->create();
     $user->assignRole('super_admin');
+    $business = $this->createBusiness($user);
 
     $stats = \App\Modules\Business\Data\BusinessOverviewStats::forBusiness(
-      1,
+      $business->id,
       \Carbon\Carbon::parse('2026-07-02'),
       \Carbon\Carbon::parse('2026-07-08'),
     );
@@ -58,7 +71,7 @@ class EntityShowPageTest extends TestCase
     );
     $this->assertStringContainsString('KDV hariç', $stats['received_per_package_formatted']);
 
-    $response = $this->actingAs($user)->get(route('businesses.show', 1));
+    $response = $this->actingAs($user)->get(route('businesses.show', $business->id));
     $response->assertSee(\App\Core\Helpers\MoneyCalculator::formatVatAmount($stats['received_per_package']), false);
     $response->assertSee('KDV hariç');
   }
@@ -67,8 +80,12 @@ class EntityShowPageTest extends TestCase
   {
     $user = User::factory()->create();
     $user->assignRole('super_admin');
+    $business = $this->createBusiness($user, [
+      'company_name' => 'Burger House Gıda Ltd. Şti.',
+      'brand_name' => 'Burger House',
+    ]);
 
-    $response = $this->actingAs($user)->get(route('businesses.show', 1));
+    $response = $this->actingAs($user)->get(route('businesses.show', $business->id));
 
     $response->assertOk();
     $response->assertSee('Burger House Gıda Ltd. Şti.');
@@ -237,8 +254,12 @@ class EntityShowPageTest extends TestCase
   {
     $user = User::factory()->create();
     $user->assignRole('super_admin');
+    $business = $this->createBusiness($user, [
+      'company_name' => 'Burger House Gıda Ltd. Şti.',
+      'brand_name' => 'Burger House',
+    ]);
 
-    $this->actingAs($user)->get(route('businesses.edit', 1))
+    $this->actingAs($user)->get(route('businesses.edit', $business->id))
       ->assertOk()
       ->assertSee('İşletmeyi Düzenle')
       ->assertSee('Burger House Gıda Ltd. Şti.')
@@ -267,5 +288,37 @@ class EntityShowPageTest extends TestCase
     $this->actingAs($user)->get(route('businesses.edit', 999))->assertNotFound();
     $this->actingAs($user)->get(route('couriers.edit', 999))->assertNotFound();
     $this->actingAs($user)->get(route('agencies.edit', 999))->assertNotFound();
+  }
+
+  /**
+   * @param  array<string, mixed>  $overrides
+   */
+  private function createBusiness(User $user, array $overrides = []): Business
+  {
+    $city = City::query()->where('name', 'İstanbul')->firstOrFail();
+    $district = District::query()
+      ->where('city_id', $city->id)
+      ->where('name', 'Kadıköy')
+      ->firstOrFail();
+
+    $business = Business::factory()->create(array_merge([
+      'city_id' => $city->id,
+      'district_id' => $district->id,
+      'created_by' => $user->id,
+    ], $overrides));
+
+    $pricingModel = PricingModelType::query()->where('code', 'per_package')->firstOrFail();
+    $business->pricings()->delete();
+    BusinessPricing::query()->create([
+      'business_id' => $business->id,
+      'pricing_model_type_id' => $pricingModel->id,
+      'customer_unit_price' => 45,
+      'courier_unit_price' => 32,
+      'effective_from' => now()->toDateString(),
+      'is_active' => true,
+      'created_by' => $user->id,
+    ]);
+
+    return $business;
   }
 }

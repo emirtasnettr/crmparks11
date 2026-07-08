@@ -4,6 +4,8 @@ namespace App\Modules\Business\Data;
 
 use App\Support\DemoData;
 
+use App\Modules\Business\Models\Business;
+
 class BusinessContactDummyData
 {
     /**
@@ -148,10 +150,12 @@ return [
      */
     public static function businesses(): array
     {
-        return collect(BusinessDummyData::all())
-            ->map(fn (array $business) => [
-                'id' => $business['id'],
-                'name' => $business['company_name'],
+        return Business::query()
+            ->orderBy('company_name')
+            ->get(['id', 'company_name'])
+            ->map(fn (Business $business) => [
+                'id' => $business->id,
+                'name' => $business->company_name,
             ])
             ->values()
             ->all();

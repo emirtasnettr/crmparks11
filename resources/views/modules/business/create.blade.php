@@ -33,6 +33,10 @@
         </div>
     </div>
 
-    @include('modules.business.partials.form')
+    @include('modules.business.partials.form', [
+        'formAction' => route('businesses.store'),
+        'formMethod' => 'POST',
+        'isEdit' => false,
+    ])
 </div>
 @endsection

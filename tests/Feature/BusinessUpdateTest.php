@@ -2,8 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\City;
+use App\Models\District;
 use App\Models\User;
-use App\Modules\Business\Services\BusinessProfileStore;
+use App\Modules\Business\Models\Business;
+use Database\Seeders\CitySeeder;
+use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -18,14 +22,19 @@ class BusinessUpdateTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(RoleAndPermissionSeeder::class);
+        $this->seed([
+            LookupTableSeeder::class,
+            CitySeeder::class,
+            RoleAndPermissionSeeder::class,
+        ]);
     }
 
     public function test_business_update_requires_permission(): void
     {
         $user = User::factory()->create();
+        $business = $this->createBusiness($user);
 
-        $response = $this->actingAs($user)->put(route('businesses.update', 1), [
+        $response = $this->actingAs($user)->put(route('businesses.update', $business->id), [
             'company_name' => 'Test İşletme',
             'phone' => '0212 000 00 00',
             'pricing_model' => 'per_package',
@@ -42,17 +51,18 @@ class BusinessUpdateTest extends TestCase
 
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
 
         $logo = UploadedFile::fake()->image('logo.png', 200, 200);
 
-        $response = $this->actingAs($user)->put(route('businesses.update', 1), [
+        $response = $this->actingAs($user)->put(route('businesses.update', $business->id), [
             'company_name' => 'Güncel Burger House',
             'brand_name' => 'Burger House',
             'phone' => '0216 555 12 34',
             'email' => 'info@burgerhouse.test',
             'website' => 'https://burgerhouse.test',
             'tax_office' => 'Kadıköy',
-            'tax_number' => '1234567890',
+            'tax_number' => $business->tax_number,
             'city' => 'İstanbul',
             'district' => 'Kadıköy',
             'address' => 'Test adres',
@@ -65,28 +75,26 @@ class BusinessUpdateTest extends TestCase
             'logo' => $logo,
         ]);
 
-        $response->assertRedirect(route('businesses.show', 1));
+        $response->assertRedirect(route('businesses.show', $business->id));
         $response->assertSessionHas('success', 'İşletme bilgileri güncellendi.');
 
-        $stored = BusinessProfileStore::get(1);
+        $business->refresh();
 
-        $this->assertSame('Güncel Burger House', $stored['company_name']);
-        $this->assertSame('Güncellenmiş not', $stored['notes']);
-        $this->assertNotEmpty($stored['logo_path']);
-        $this->assertNotEmpty($stored['logo_url']);
+        $this->assertSame('Güncel Burger House', $business->company_name);
+        $this->assertSame('Güncellenmiş not', $business->notes);
+        $this->assertNotEmpty($business->logo_path);
 
-        Storage::disk('public')->assertExists($stored['logo_path']);
+        Storage::disk('public')->assertExists($business->logo_path);
 
-        $showResponse = $this->actingAs($user)->get(route('businesses.show', 1));
+        $showResponse = $this->actingAs($user)->get(route('businesses.show', $business->id));
 
         $showResponse->assertOk();
         $showResponse->assertSee('Güncel Burger House');
-        $showResponse->assertSee($stored['logo_url'], false);
         $showResponse->assertSee('50,00 ₺', false);
         $showResponse->assertSee('35,00 ₺', false);
 
         $stats = \App\Modules\Business\Data\BusinessOverviewStats::forBusiness(
-            1,
+            $business->id,
             \Carbon\Carbon::parse('2026-07-02'),
             \Carbon\Carbon::parse('2026-07-08'),
         );
@@ -100,8 +108,14 @@ class BusinessUpdateTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $business = $this->createBusiness($user, [
+            'company_name' => 'Tatlı Diyarı Pastane ve Unlu Mamulleri',
+            'brand_name' => 'Tatlı Diyarı',
+            'phone' => '0224 666 77 88',
+            'status' => 'active',
+        ]);
 
-        $response = $this->actingAs($user)->put(route('businesses.update', 6), [
+        $response = $this->actingAs($user)->put(route('businesses.update', $business->id), [
             'company_name' => 'Tatlı Diyarı Pastane ve Unlu Mamulleri',
             'brand_name' => 'Tatlı Diyarı',
             'phone' => '0224 666 77 88',
@@ -110,14 +124,15 @@ class BusinessUpdateTest extends TestCase
             'pricing_model' => 'daily',
             'earning_period' => 'weekly',
             'status' => 'pending',
+            'tax_number' => $business->tax_number,
         ]);
 
-        $response->assertRedirect(route('businesses.show', 6));
+        $response->assertRedirect(route('businesses.show', $business->id));
 
-        $stored = BusinessProfileStore::get(6);
-        $this->assertSame('pending', $stored['status']);
+        $business->refresh();
+        $this->assertSame('pending', $business->status);
 
-        $showResponse = $this->actingAs($user)->get(route('businesses.show', 6));
+        $showResponse = $this->actingAs($user)->get(route('businesses.show', $business->id));
         $showResponse->assertOk();
         $showResponse->assertSee('Beklemede');
 
@@ -141,5 +156,23 @@ class BusinessUpdateTest extends TestCase
         ]);
 
         $response->assertNotFound();
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    private function createBusiness(User $user, array $overrides = []): Business
+    {
+        $city = City::query()->where('name', 'İstanbul')->firstOrFail();
+        $district = District::query()
+            ->where('city_id', $city->id)
+            ->where('name', 'Kadıköy')
+            ->firstOrFail();
+
+        return Business::factory()->create(array_merge([
+            'city_id' => $city->id,
+            'district_id' => $district->id,
+            'created_by' => $user->id,
+        ], $overrides));
     }
 }

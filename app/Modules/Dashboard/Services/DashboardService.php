@@ -3,18 +3,23 @@
 namespace App\Modules\Dashboard\Services;
 
 use App\Modules\Agency\Data\AgencyDummyData;
-use App\Modules\Business\Data\BusinessDummyData;
+use App\Modules\Business\Models\Business;
+use App\Modules\Business\Services\BusinessPresenter;
 use App\Modules\Courier\Data\CourierDummyData;
 
 class DashboardService
 {
+    public function __construct(
+        private readonly BusinessPresenter $businessPresenter,
+    ) {}
+
     public function getStats(): array
     {
         $courierSummary = CourierDummyData::summary([]);
         $agencySummary = AgencyDummyData::summary([]);
 
         return [
-            'total_businesses' => count(BusinessDummyData::all()),
+            'total_businesses' => Business::query()->count(),
             'total_couriers' => $courierSummary['total'],
             'total_agencies' => $agencySummary['total'],
             'active_couriers' => $courierSummary['active'],
@@ -27,11 +32,14 @@ class DashboardService
      */
     public function getLatestBusinesses(int $limit = 5): array
     {
-        return collect(BusinessDummyData::all())
-            ->sortByDesc('id')
-            ->take($limit)
-            ->map(fn (array $business) => $this->formatBusinessForDashboard(
-                BusinessDummyData::find((int) $business['id']) ?? $business
+        return Business::query()
+            ->with(['city', 'district', 'activePricing.pricingModelType'])
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get()
+            ->map(fn (Business $business) => $this->formatBusinessForDashboard(
+                $this->businessPresenter->toBaseArray($business),
+                $business,
             ))
             ->values()
             ->all();
@@ -82,7 +90,7 @@ class DashboardService
      * @param  array<string, mixed>  $business
      * @return array<string, mixed>
      */
-    private function formatBusinessForDashboard(array $business): array
+    private function formatBusinessForDashboard(array $business, Business $model): array
     {
         $id = (int) $business['id'];
 
@@ -101,10 +109,10 @@ class DashboardService
             'logo' => $business['logo'],
             'logo_color' => $business['logo_color'],
             'logo_url' => $business['logo_url'] ?? null,
-            'location' => $business['city'].' / '.$business['district'],
+            'location' => trim($business['city'].' / '.$business['district'], ' /'),
             'pricing_model_label' => $pricingLabels[$business['pricing_model']] ?? $business['pricing_model'],
             'status' => $business['status'],
-            'created_at_formatted' => now()->subMonths(max(0, 12 - min($id, 12)))->format('d.m.Y'),
+            'created_at_formatted' => $model->created_at?->format('d.m.Y') ?? now()->format('d.m.Y'),
             'url' => route('businesses.show', $id),
         ];
     }

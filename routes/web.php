@@ -62,6 +62,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [BusinessController::class, 'index'])->name('index');
         Route::get('/export', [BusinessController::class, 'export'])->name('export');
         Route::get('/yeni', [BusinessController::class, 'create'])->name('create');
+        Route::post('/', [BusinessController::class, 'store'])->middleware('permission:business.create')->name('store');
         Route::get('/yetkililer', [BusinessContactController::class, 'index'])->name('contacts.index');
         Route::get('/yetkililer/export', [BusinessContactController::class, 'export'])->name('contacts.export');
         Route::get('/sozlesmeler', [BusinessContractController::class, 'index'])->name('contracts.index');

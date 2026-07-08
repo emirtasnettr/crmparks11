@@ -4,17 +4,17 @@ namespace App\Modules\Business\Controllers;
 
 use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
-use App\Modules\Business\Data\BusinessOverviewStats;
 use App\Modules\Business\Data\BusinessAssignmentDummyData;
 use App\Modules\Business\Data\BusinessContactDummyData;
 use App\Modules\Business\Data\BusinessContractDummyData;
 use App\Modules\Business\Data\BusinessDocumentDummyData;
-use App\Modules\Business\Data\BusinessDummyData;
 use App\Modules\Business\Data\BusinessFormData;
+use App\Modules\Business\Data\BusinessOverviewStats;
 use App\Modules\Business\Exports\BusinessListExportSheets;
+use App\Modules\Business\Requests\StoreBusinessRequest;
 use App\Modules\Business\Requests\UpdateBusinessRequest;
-use App\Modules\Business\Services\BusinessMediaService;
-use App\Modules\Business\Services\BusinessProfileStore;
+use App\Modules\Business\Services\BusinessPresenter;
+use App\Modules\Business\Services\BusinessService;
 use App\Support\RequestFilter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,6 +24,11 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class BusinessController extends Controller
 {
   use DownloadsListExport;
+
+  public function __construct(
+    private readonly BusinessService $businesses,
+    private readonly BusinessPresenter $presenter,
+  ) {}
 
   public function index(Request $request): View
   {
@@ -37,20 +42,28 @@ class BusinessController extends Controller
     $perPage = 25;
     $page = max(1, (int) $request->query('page', 1));
 
-    $all = BusinessDummyData::filter($filters);
-    $total = count($all);
-    $items = collect(array_slice($all, ($page - 1) * $perPage, $perPage))
-      ->map(fn (array $business) => BusinessDummyData::indexRow($business))
+    $all = $this->businesses->filter($filters);
+    $total = $all->count();
+    $items = $all
+      ->slice(($page - 1) * $perPage, $perPage)
+      ->map(fn ($business) => $this->presenter->indexRow($business))
+      ->values()
       ->all();
     $lastPage = max(1, (int) ceil($total / $perPage));
 
     return view('modules.business.index', [
       'businesses' => $items,
       'businessesForModal' => collect($items)
-        ->mapWithKeys(fn (array $business) => [$business['id'] => BusinessDummyData::detailPayload($business)])
+        ->mapWithKeys(function (array $business) {
+          $model = $this->businesses->find((int) $business['id']);
+
+          return $model
+            ? [$business['id'] => $this->presenter->detailPayload($model)]
+            : [];
+        })
         ->all(),
       'filters' => $filters,
-      'cities' => BusinessDummyData::cities(),
+      'cities' => $this->businesses->cities(),
       'statuses' => BusinessFormData::statuses(),
       'total' => $total,
       'page' => $page,
@@ -87,9 +100,24 @@ class BusinessController extends Controller
     ]);
   }
 
+  public function store(StoreBusinessRequest $request): RedirectResponse
+  {
+    $data = $request->validated();
+
+    if ($request->hasFile('logo')) {
+      $data['logo'] = $request->file('logo');
+    }
+
+    $business = $this->businesses->create($data, $request->user());
+
+    return redirect()
+      ->route('businesses.show', $business->id)
+      ->with('success', 'İşletme başarıyla oluşturuldu.');
+  }
+
   public function show(Request $request, int $id): View
   {
-    $business = BusinessDummyData::showPayload($id);
+    $business = $this->businesses->find($id);
 
     if ($business === null) {
       abort(404);
@@ -107,7 +135,7 @@ class BusinessController extends Controller
     );
 
     return view('modules.business.show', [
-      'business' => $business,
+      'business' => $this->presenter->showPayload($business),
       'overviewStats' => $overviewStats,
       'dateFilters' => [
         'start_date' => $dateRange['start_date'],
@@ -124,16 +152,15 @@ class BusinessController extends Controller
 
   public function edit(int $id): View
   {
-    $business = BusinessDummyData::showPayload($id);
-    $formValues = BusinessDummyData::formPayload($id);
+    $business = $this->businesses->find($id);
 
-    if ($business === null || $formValues === null) {
+    if ($business === null) {
       abort(404);
     }
 
     return view('modules.business.edit', [
-      'business' => $business,
-      'formValues' => $formValues,
+      'business' => $this->presenter->showPayload($business),
+      'formValues' => $this->presenter->formPayload($business),
       'cities' => BusinessFormData::cities(),
       'districtsByCity' => BusinessFormData::districtsByCity(),
       'pricingModels' => BusinessFormData::pricingModels(),
@@ -143,28 +170,21 @@ class BusinessController extends Controller
     ]);
   }
 
-  public function update(UpdateBusinessRequest $request, int $id, BusinessMediaService $media): RedirectResponse
+  public function update(UpdateBusinessRequest $request, int $id): RedirectResponse
   {
-    if (! BusinessDummyData::exists($id)) {
+    $business = $this->businesses->find($id);
+
+    if ($business === null) {
       abort(404);
     }
 
     $data = $request->validated();
-    unset($data['logo']);
 
     if ($request->hasFile('logo')) {
-      $stored = BusinessProfileStore::get($id);
-
-      if (! empty($stored['logo_path'])) {
-        $media->delete($stored['logo_path']);
-      }
-
-      $uploaded = $media->storeLogo($request->file('logo'), $id);
-      $data['logo_path'] = $uploaded['path'];
-      $data['logo_url'] = $uploaded['url'];
+      $data['logo'] = $request->file('logo');
     }
 
-    BusinessProfileStore::put($id, $data);
+    $this->businesses->update($business, $data);
 
     return redirect()
       ->route('businesses.show', $id)
