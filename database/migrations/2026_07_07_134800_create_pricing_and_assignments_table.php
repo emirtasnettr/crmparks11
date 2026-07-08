@@ -43,8 +43,8 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
-            $table->index(['business_id', 'courier_id', 'start_date']);
-            $table->index(['courier_id', 'status']);
+            $table->index(['business_id', 'courier_id', 'start_date'], 'bca_business_courier_start_idx');
+            $table->index(['courier_id', 'status'], 'bca_courier_status_idx');
         });
     }
 
