@@ -2,6 +2,7 @@
 
 namespace App\Modules\User\Data;
 
+use App\Support\DemoData;
 use Carbon\Carbon;
 
 class UserActivityLogDummyData
@@ -255,7 +256,11 @@ class UserActivityLogDummyData
      */
     public static function all(): array
     {
-        return collect(self::records())
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return collect(self::records())
             ->map(fn (array $row) => self::enrich($row))
             ->all();
     }

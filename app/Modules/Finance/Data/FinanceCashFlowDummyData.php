@@ -7,6 +7,7 @@ use App\Core\Helpers\MoneyCalculator;
 use App\Modules\Agency\Data\AgencyDummyData;
 use App\Modules\Business\Data\BusinessDummyData;
 use App\Modules\Courier\Data\CourierDummyData;
+use App\Support\DemoData;
 use Carbon\Carbon;
 
 class FinanceCashFlowDummyData
@@ -113,6 +114,10 @@ class FinanceCashFlowDummyData
      */
     private static function recordsWithBalance(): array
     {
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
         if (self::$recordsCache !== null) {
             return self::$recordsCache;
         }

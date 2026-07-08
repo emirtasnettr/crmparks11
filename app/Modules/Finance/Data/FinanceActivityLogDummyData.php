@@ -2,6 +2,7 @@
 
 namespace App\Modules\Finance\Data;
 
+use App\Support\DemoData;
 use Carbon\Carbon;
 
 class FinanceActivityLogDummyData
@@ -203,7 +204,11 @@ class FinanceActivityLogDummyData
      */
     public static function all(): array
     {
-        return collect(self::records())
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return collect(self::records())
             ->map(fn (array $row) => self::enrich($row))
             ->all();
     }

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Agency\Data;
 
+use App\Support\DemoData;
 use Carbon\Carbon;
 
 class AgencyContractDummyData
@@ -11,7 +12,11 @@ class AgencyContractDummyData
      */
     public static function all(): array
     {
-        return collect(self::raw())
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return collect(self::raw())
             ->map(fn (array $contract) => self::enrich($contract))
             ->sortByDesc('is_current')
             ->values()
@@ -68,7 +73,11 @@ class AgencyContractDummyData
      */
     private static function raw(): array
     {
-        $agencyNames = collect(self::agencies())->keyBy('id');
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+$agencyNames = collect(self::agencies())->keyBy('id');
         $types = self::contractTypes();
 
         $rows = [

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Agency\Data;
 
+use App\Support\DemoData;
 use App\Core\Helpers\MoneyCalculator;
 use Carbon\Carbon;
 
@@ -71,7 +72,11 @@ class AgencyEarningDummyData
      */
     public static function all(bool $withTrashed = false): array
     {
-        return collect(self::raw())
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return collect(self::raw())
             ->filter(fn (array $row) => $withTrashed || $row['deleted_at'] === null)
             ->map(fn (array $row) => self::enrich($row))
             ->sortByDesc(fn ($e) => sprintf('%04d-%02d', $e['period_year'], $e['period_month']))
@@ -84,7 +89,11 @@ class AgencyEarningDummyData
      */
     private static function raw(): array
     {
-        return [
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return [
             ['id' => 1, 'reference' => 'AHK-2026-001', 'agency_id' => 1, 'period_month' => 6, 'period_year' => 2026, 'period_type' => 'monthly', 'period_custom_label' => null, 'courier_count' => 5, 'package_count' => 12400, 'gross_amount' => 62000, 'extra_payment' => 1500, 'deduction' => 800, 'payment_status' => 'paid', 'payment_date' => '2026-07-05', 'paid_amount' => 62700, 'status' => 'paid', 'description' => 'Haziran aylık komisyon hakedişi', 'deleted_at' => null],
             ['id' => 2, 'reference' => 'AHK-2026-002', 'agency_id' => 2, 'period_month' => 6, 'period_year' => 2026, 'period_type' => 'monthly', 'period_custom_label' => null, 'courier_count' => 5, 'package_count' => 9800, 'gross_amount' => 49000, 'extra_payment' => 0, 'deduction' => 500, 'payment_status' => 'paid', 'payment_date' => '2026-07-04', 'paid_amount' => 48500, 'status' => 'paid', 'description' => null, 'deleted_at' => null],
             ['id' => 3, 'reference' => 'AHK-2026-003', 'agency_id' => 3, 'period_month' => 6, 'period_year' => 2026, 'period_type' => 'monthly', 'period_custom_label' => null, 'courier_count' => 4, 'package_count' => 7200, 'gross_amount' => 36000, 'extra_payment' => 2000, 'deduction' => 1200, 'payment_status' => 'pending', 'payment_date' => null, 'paid_amount' => 0, 'status' => 'approved', 'description' => 'Onay bekleyen ödeme', 'deleted_at' => null],

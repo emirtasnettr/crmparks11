@@ -3,6 +3,9 @@
 return [
     'name' => env('APP_NAME', 'CRMLog'),
 
+    // Demo verileri (işletme/kurye/acente listeleri). Production'da false bırakın.
+    'demo_data' => env('CRMLOG_DEMO_DATA'),
+
     'company' => [
         'name' => env('CRMLOG_COMPANY_NAME', 'CRMLog'),
         'email' => env('CRMLOG_COMPANY_EMAIL', 'info@crmlog.com'),

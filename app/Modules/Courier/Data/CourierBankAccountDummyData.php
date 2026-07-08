@@ -2,6 +2,8 @@
 
 namespace App\Modules\Courier\Data;
 
+use App\Support\DemoData;
+
 class CourierBankAccountDummyData
 {
     /**
@@ -39,7 +41,11 @@ class CourierBankAccountDummyData
      */
     public static function couriers(): array
     {
-        return collect(CourierDummyData::all())
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return collect(CourierDummyData::all())
             ->map(fn (array $courier) => [
                 'id' => $courier['id'],
                 'name' => $courier['full_name'],
@@ -53,7 +59,11 @@ class CourierBankAccountDummyData
      */
     public static function all(): array
     {
-        return collect(self::raw())
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return collect(self::raw())
             ->map(fn (array $row) => self::enrich($row))
             ->sortByDesc(fn ($a) => sprintf('%d-%d-%03d', $a['is_default'] ? 1 : 0, $a['status'] === 'active' ? 1 : 0, $a['id']))
             ->values()
@@ -65,7 +75,11 @@ class CourierBankAccountDummyData
      */
     private static function raw(): array
     {
-        return [
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return [
             ['id' => 1, 'courier_id' => 1, 'bank_key' => 'ziraat', 'account_holder' => 'Ahmet Yıldız', 'iban' => 'TR330006100519786457841326', 'branch_code' => '0610', 'account_number' => '51978645784', 'is_default' => true, 'status' => 'active', 'notes' => 'Ödemeler bu hesaba yapılır.'],
             ['id' => 2, 'courier_id' => 1, 'bank_key' => 'isbank', 'account_holder' => 'Ahmet Yıldız', 'iban' => 'TR640001000902863579985295', 'branch_code' => '1234', 'account_number' => '0286357998', 'is_default' => false, 'status' => 'inactive', 'notes' => 'Eski hesap — pasife alındı.'],
             ['id' => 3, 'courier_id' => 2, 'bank_key' => 'garanti', 'account_holder' => 'Murat Kaya', 'iban' => 'TR320006200519000006289951', 'branch_code' => '529', 'account_number' => '6298951', 'is_default' => true, 'status' => 'active', 'notes' => null],

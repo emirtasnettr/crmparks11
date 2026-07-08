@@ -2,6 +2,7 @@
 
 namespace App\Modules\Courier\Data;
 
+use App\Support\DemoData;
 use Carbon\Carbon;
 
 class CourierDocumentDummyData
@@ -57,7 +58,11 @@ class CourierDocumentDummyData
      */
     public static function couriers(): array
     {
-        return collect(CourierDummyData::all())
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return collect(CourierDummyData::all())
             ->map(fn (array $courier) => [
                 'id' => $courier['id'],
                 'name' => $courier['full_name'],
@@ -71,7 +76,11 @@ class CourierDocumentDummyData
      */
     public static function all(): array
     {
-        $raw = [
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+$raw = [
             [1, 'identity', 'KIM-12345678901', '2024-01-15', '2034-01-15', 'ahmet-yildiz-kimlik.pdf'],
             [1, 'driving_license', 'EHL-34-AB-1234', '2025-03-10', '2026-07-25', 'ahmet-yildiz-ehliyet.pdf'],
             [1, 'insurance', 'SIG-2026-001', '2026-01-01', '2026-12-31', 'ahmet-yildiz-sigorta.pdf'],

@@ -2,6 +2,8 @@
 
 namespace App\Modules\Agency\Data;
 
+use App\Support\DemoData;
+
 class AgencyContactDummyData
 {
     /**
@@ -31,7 +33,11 @@ class AgencyContactDummyData
      */
     public static function all(): array
     {
-        return collect(self::raw())
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return collect(self::raw())
             ->map(fn (array $contact) => self::enrich($contact))
             ->values()
             ->all();
@@ -42,7 +48,11 @@ class AgencyContactDummyData
      */
     private static function raw(): array
     {
-        $agencyNames = collect(self::agencies())->keyBy('id');
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+$agencyNames = collect(self::agencies())->keyBy('id');
 
         $records = [
             ['id' => 1, 'agency_id' => 1, 'first_name' => 'Serkan', 'last_name' => 'Yılmaz', 'title' => 'Firma Sahibi', 'phone' => '0532 401 01 01', 'email' => 'serkan@hizlikurye.com', 'is_default' => true, 'status' => 'active', 'notes' => 'Ana iletişim noktası.'],

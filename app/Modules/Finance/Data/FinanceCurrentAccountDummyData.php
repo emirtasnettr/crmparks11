@@ -2,6 +2,7 @@
 
 namespace App\Modules\Finance\Data;
 
+use App\Support\DemoData;
 use App\Core\Helpers\MoneyCalculator;
 
 use App\Modules\Agency\Data\AgencyDummyData;
@@ -72,7 +73,11 @@ class FinanceCurrentAccountDummyData
      */
     public static function all(): array
     {
-        return collect(self::accounts())
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return collect(self::accounts())
             ->map(fn (array $account) => self::enrichAccount($account))
             ->sortBy('code')
             ->values()

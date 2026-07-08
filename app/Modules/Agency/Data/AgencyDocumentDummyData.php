@@ -2,6 +2,7 @@
 
 namespace App\Modules\Agency\Data;
 
+use App\Support\DemoData;
 use Carbon\Carbon;
 
 class AgencyDocumentDummyData
@@ -65,7 +66,11 @@ class AgencyDocumentDummyData
      */
     public static function all(bool $withTrashed = false, bool $includeArchivedVersions = false): array
     {
-        return collect(self::raw())
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return collect(self::raw())
             ->filter(function (array $row) use ($withTrashed, $includeArchivedVersions) {
                 if (! $withTrashed && $row['deleted_at'] !== null) {
                     return false;
@@ -88,7 +93,11 @@ class AgencyDocumentDummyData
      */
     private static function raw(): array
     {
-        $rows = [
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+$rows = [
             [1, 'grp-001', 1, 'tax_plate', 'VL-1234567890', '2025-11-10', '2027-11-10', 'hizli-kurye-vergi-levhasi.pdf', 2, true, null],
             [2, 'grp-002', 1, 'activity_certificate', 'FB-2024-101', '2024-03-01', '2027-03-01', 'hizli-kurye-faaliyet.pdf', 1, true, null],
             [3, 'grp-003', 1, 'signature_circular', 'IS-2025-044', '2025-06-15', '2026-07-20', 'hizli-kurye-imza-sirkuesi.pdf', 1, true, null],

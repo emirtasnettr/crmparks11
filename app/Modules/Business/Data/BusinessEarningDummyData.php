@@ -2,6 +2,7 @@
 
 namespace App\Modules\Business\Data;
 
+use App\Support\DemoData;
 use App\Core\Helpers\MoneyCalculator;
 
 class BusinessEarningDummyData
@@ -50,7 +51,11 @@ class BusinessEarningDummyData
      */
     public static function all(): array
     {
-        $raw = [
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+$raw = [
             ['id' => 1, 'business_id' => 1, 'courier_id' => 1, 'agency_id' => null, 'period_month' => 6, 'period_year' => 2026, 'pricing_model' => 'per_package', 'package_count' => 1250, 'revenue_unit_price' => 45, 'courier_unit_price' => 38, 'extra_income' => 500, 'extra_expense' => 0, 'deduction' => 200, 'status' => 'paid', 'description' => 'Haziran paket hakedişi'],
             ['id' => 2, 'business_id' => 1, 'courier_id' => 3, 'agency_id' => 1, 'period_month' => 6, 'period_year' => 2026, 'pricing_model' => 'per_package', 'package_count' => 980, 'revenue_unit_price' => 45, 'courier_unit_price' => 36, 'extra_income' => 0, 'extra_expense' => 150, 'deduction' => 0, 'status' => 'paid', 'description' => null],
             ['id' => 3, 'business_id' => 2, 'courier_id' => 4, 'agency_id' => 2, 'period_month' => 6, 'period_year' => 2026, 'pricing_model' => 'per_package', 'package_count' => 2100, 'revenue_unit_price' => 42, 'courier_unit_price' => 35, 'extra_income' => 1000, 'extra_expense' => 300, 'deduction' => 500, 'status' => 'approved', 'description' => 'Napoli yoğun dönem'],

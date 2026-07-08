@@ -2,6 +2,7 @@
 
 namespace App\Modules\User\Data;
 
+use App\Support\DemoData;
 use App\Modules\Business\Data\BusinessAssignmentDummyData;
 use App\Modules\Business\Data\BusinessDummyData;
 use App\Modules\Courier\Data\CourierDummyData;
@@ -78,7 +79,11 @@ class UserManagementDummyData
      */
     public static function couriers(): array
     {
-        return collect(CourierDummyData::all())
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return collect(CourierDummyData::all())
             ->map(fn (array $courier) => [
                 'id' => $courier['id'],
                 'name' => $courier['full_name'],
@@ -199,7 +204,11 @@ class UserManagementDummyData
      */
     public static function all(): array
     {
-        if (self::$recordsCache !== null) {
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+if (self::$recordsCache !== null) {
             return self::$recordsCache;
         }
 
@@ -445,7 +454,11 @@ class UserManagementDummyData
      */
     private static function raw(): array
     {
-        $reference = Carbon::parse(self::REFERENCE_DATE);
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+$reference = Carbon::parse(self::REFERENCE_DATE);
         $businesses = self::businesses();
         $couriers = self::couriers();
         $agencies = self::agencies();

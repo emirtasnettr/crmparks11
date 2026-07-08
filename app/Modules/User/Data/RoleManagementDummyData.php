@@ -2,6 +2,7 @@
 
 namespace App\Modules\User\Data;
 
+use App\Support\DemoData;
 use Carbon\Carbon;
 
 class RoleManagementDummyData
@@ -114,7 +115,11 @@ class RoleManagementDummyData
      */
     public static function all(): array
     {
-        if (self::$recordsCache !== null) {
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+if (self::$recordsCache !== null) {
             return self::$recordsCache;
         }
 
@@ -268,7 +273,11 @@ class RoleManagementDummyData
      */
     private static function raw(): array
     {
-        $reference = Carbon::parse(self::REFERENCE_DATE);
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+$reference = Carbon::parse(self::REFERENCE_DATE);
 
         return [
             [

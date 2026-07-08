@@ -2,6 +2,7 @@
 
 namespace App\Modules\Business\Data;
 
+use App\Support\DemoData;
 use Carbon\Carbon;
 
 class BusinessActivityDummyData
@@ -58,7 +59,11 @@ class BusinessActivityDummyData
      */
     public static function all(): array
     {
-        $activities = [
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+$activities = [
             ['id' => 1, 'occurred_at' => '2026-06-28 16:45:12', 'business_id' => 1, 'business_name' => 'Burger House Gıda Ltd. Şti.', 'action' => 'document_uploaded', 'user_id' => 4, 'user_name' => 'Zeynep Arslan', 'ip_address' => '85.105.42.118', 'description' => 'Şube listesi Excel dosyası yüklendi.'],
             ['id' => 2, 'occurred_at' => '2026-06-27 11:20:33', 'business_id' => 8, 'business_name' => 'Taze Manav ve Sebze Meyve Tic. Ltd. Şti.', 'action' => 'earning_updated', 'user_id' => 3, 'user_name' => 'Mehmet Kaya', 'ip_address' => '78.189.55.201', 'description' => 'Haziran 2026 hakedişi onaylandı olarak güncellendi.'],
             ['id' => 3, 'occurred_at' => '2026-06-26 09:15:07', 'business_id' => 4, 'business_name' => 'HızlıAl E-Ticaret ve Lojistik A.Ş.', 'action' => 'courier_assigned', 'user_id' => 3, 'user_name' => 'Mehmet Kaya', 'ip_address' => '192.168.1.45', 'description' => 'Ali Demir kuryesi operasyona atandı.'],

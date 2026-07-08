@@ -2,6 +2,7 @@
 
 namespace App\Modules\Business\Data;
 
+use App\Support\DemoData;
 use Carbon\Carbon;
 
 class BusinessAssignmentDummyData
@@ -19,7 +20,11 @@ class BusinessAssignmentDummyData
      */
     public static function couriers(): array
     {
-        return [
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return [
             ['id' => 1, 'name' => 'Ahmet Yıldız', 'phone' => '0532 100 10 01', 'courier_type' => 'independent', 'agency_id' => null],
             ['id' => 2, 'name' => 'Murat Kaya', 'phone' => '0533 100 10 02', 'courier_type' => 'independent', 'agency_id' => null],
             ['id' => 3, 'name' => 'Emre Demir', 'phone' => '0534 100 10 03', 'courier_type' => 'agency', 'agency_id' => 1],
@@ -38,7 +43,11 @@ class BusinessAssignmentDummyData
      */
     public static function all(): array
     {
-        $assignments = [
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+$assignments = [
             // Ahmet Yıldız — geçmiş: Burger House, sonra Napoli, tekrar Burger House
             ['id' => 1, 'courier_id' => 1, 'business_id' => 1, 'agency_id' => null, 'courier_type' => 'independent', 'start_date' => '2025-01-01', 'end_date' => '2025-03-31', 'status' => 'inactive', 'notes' => 'İlk dönem ataması.'],
             ['id' => 2, 'courier_id' => 1, 'business_id' => 2, 'agency_id' => null, 'courier_type' => 'independent', 'start_date' => '2025-04-01', 'end_date' => '2025-12-31', 'status' => 'inactive', 'notes' => 'Napoli Pizza dönemi.'],

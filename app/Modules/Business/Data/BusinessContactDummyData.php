@@ -2,6 +2,8 @@
 
 namespace App\Modules\Business\Data;
 
+use App\Support\DemoData;
+
 class BusinessContactDummyData
 {
     /**
@@ -9,7 +11,11 @@ class BusinessContactDummyData
      */
     public static function all(): array
     {
-        return [
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return [
             [
                 'id' => 1,
                 'business_id' => 1,

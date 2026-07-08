@@ -2,6 +2,7 @@
 
 namespace App\Modules\Agency\Data;
 
+use App\Support\DemoData;
 use App\Modules\Agency\Support\AgencyFeatures;
 use App\Modules\Courier\Data\CourierDummyData;
 use Carbon\Carbon;
@@ -13,7 +14,11 @@ class AgencyCourierDummyData
      */
     public static function all(): array
     {
-        return collect(self::raw())
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return collect(self::raw())
             ->map(fn (array $record) => self::enrich($record))
             ->sortByDesc('join_date')
             ->values()
@@ -33,7 +38,11 @@ class AgencyCourierDummyData
      */
     public static function couriers(): array
     {
-        return collect(CourierDummyData::raw())
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return collect(CourierDummyData::raw())
             ->map(fn (array $courier) => [
                 'id' => $courier['id'],
                 'name' => trim($courier['first_name'].' '.$courier['last_name']),
@@ -70,7 +79,11 @@ class AgencyCourierDummyData
      */
     private static function raw(): array
     {
-        $agencyNames = collect(self::agencies())->keyBy('id');
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+$agencyNames = collect(self::agencies())->keyBy('id');
 
         $rows = [
             ['id' => 1, 'courier_id' => 3, 'agency_id' => 2, 'join_date' => '2024-03-01', 'end_date' => '2025-01-31', 'status' => 'inactive', 'notes' => 'Metro Lojistik dönemi.'],

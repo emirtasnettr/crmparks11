@@ -2,6 +2,7 @@
 
 namespace App\Modules\Finance\Data;
 
+use App\Support\DemoData;
 use App\Core\Helpers\MoneyCalculator;
 
 use App\Modules\Agency\Data\AgencyDummyData;
@@ -76,7 +77,11 @@ class FinanceExpenseDummyData
      */
     public static function couriers(): array
     {
-        return collect(CourierDummyData::raw())
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return collect(CourierDummyData::raw())
             ->map(fn (array $courier) => [
                 'id' => $courier['id'],
                 'name' => trim($courier['first_name'].' '.$courier['last_name']),
@@ -104,7 +109,11 @@ class FinanceExpenseDummyData
      */
     public static function all(): array
     {
-        return collect(self::records())
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return collect(self::records())
             ->map(fn (array $row) => self::enrich($row))
             ->sortByDesc('expense_date')
             ->values()

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Agency\Data;
 
+use App\Support\DemoData;
 use Carbon\Carbon;
 
 class AgencyActivityDummyData
@@ -79,7 +80,11 @@ class AgencyActivityDummyData
      */
     public static function all(): array
     {
-        return collect(self::raw())
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return collect(self::raw())
             ->map(fn (array $activity) => self::enrich($activity))
             ->sortByDesc('occurred_at')
             ->values()
@@ -91,7 +96,11 @@ class AgencyActivityDummyData
      */
     private static function raw(): array
     {
-        $actions = array_keys(self::actionTypes());
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+$actions = array_keys(self::actionTypes());
         $agencies = AgencyDummyData::all();
         $users = self::users();
         $ips = [

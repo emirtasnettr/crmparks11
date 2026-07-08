@@ -2,6 +2,7 @@
 
 namespace App\Modules\Finance\Data;
 
+use App\Support\DemoData;
 use App\Core\Helpers\MoneyCalculator;
 
 use App\Modules\Agency\Data\AgencyDummyData;
@@ -77,7 +78,11 @@ class FinanceProfitabilityDummyData
      */
     public static function couriers(): array
     {
-        return collect(CourierDummyData::raw())
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return collect(CourierDummyData::raw())
             ->map(fn (array $c) => [
                 'id' => $c['id'],
                 'name' => trim($c['first_name'].' '.$c['last_name']),

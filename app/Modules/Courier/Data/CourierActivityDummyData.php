@@ -2,6 +2,7 @@
 
 namespace App\Modules\Courier\Data;
 
+use App\Support\DemoData;
 use Carbon\Carbon;
 
 class CourierActivityDummyData
@@ -63,7 +64,11 @@ class CourierActivityDummyData
      */
     public static function couriers(): array
     {
-        return collect(CourierDummyData::all())
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return collect(CourierDummyData::all())
             ->map(fn (array $courier) => [
                 'id' => $courier['id'],
                 'name' => $courier['full_name'],
@@ -77,7 +82,11 @@ class CourierActivityDummyData
      */
     public static function all(): array
     {
-        return collect(self::raw())
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return collect(self::raw())
             ->map(fn (array $activity) => self::enrich($activity))
             ->sortByDesc('occurred_at')
             ->values()
@@ -89,7 +98,11 @@ class CourierActivityDummyData
      */
     private static function raw(): array
     {
-        $actions = array_keys(self::actionTypes());
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+$actions = array_keys(self::actionTypes());
         $couriers = CourierDummyData::all();
         $users = self::users();
         $ips = [

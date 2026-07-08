@@ -7,6 +7,7 @@ use App\Core\Profile\StoredProfileMerger;
 use App\Modules\Business\Services\BusinessMediaService;
 use App\Modules\Business\Services\BusinessProfileStore;
 use App\Modules\Business\Support\BusinessFeatures;
+use App\Support\DemoData;
 use App\Support\PublicMediaUrl;
 
 class BusinessDummyData
@@ -16,7 +17,7 @@ class BusinessDummyData
    */
   public static function all(): array
   {
-    return [
+    return DemoData::records([
       [
         'id' => 1,
         'logo' => 'BG',
@@ -121,7 +122,7 @@ class BusinessDummyData
         'active_couriers' => 0,
         'status' => 'inactive',
       ],
-    ];
+    ]);
   }
 
   /**

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Courier\Data;
 
+use App\Support\DemoData;
 use App\Core\Helpers\MoneyCalculator;
 use App\Modules\Business\Data\BusinessAssignmentDummyData;
 use App\Modules\Business\Data\BusinessContactDummyData;
@@ -51,7 +52,11 @@ class CourierEarningDummyData
      */
     public static function all(bool $withTrashed = false): array
     {
-        $raw = [
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+$raw = [
             ['id' => 1, 'courier_id' => 1, 'business_id' => 1, 'agency_id' => null, 'period_month' => 6, 'period_year' => 2026, 'package_count' => 1250, 'unit_price' => 38, 'earning_amount' => 47500, 'extra_payment' => 500, 'deduction' => 200, 'payment_status' => 'paid', 'payment_date' => '2026-07-05', 'paid_amount' => 47800, 'description' => 'Haziran paket hakedişi', 'deleted_at' => null],
             ['id' => 2, 'courier_id' => 3, 'business_id' => 1, 'agency_id' => 1, 'period_month' => 6, 'period_year' => 2026, 'package_count' => 980, 'unit_price' => 36, 'earning_amount' => 35280, 'extra_payment' => 0, 'deduction' => 0, 'payment_status' => 'paid', 'payment_date' => '2026-07-05', 'paid_amount' => 35280, 'description' => null, 'deleted_at' => null],
             ['id' => 3, 'courier_id' => 4, 'business_id' => 2, 'agency_id' => 2, 'period_month' => 6, 'period_year' => 2026, 'package_count' => 2100, 'unit_price' => 35, 'earning_amount' => 73500, 'extra_payment' => 1000, 'deduction' => 500, 'payment_status' => 'pending', 'payment_date' => null, 'paid_amount' => 0, 'description' => 'Napoli yoğun dönem', 'deleted_at' => null],
@@ -161,7 +166,11 @@ class CourierEarningDummyData
      */
     public static function couriers(): array
     {
-        return collect(CourierDummyData::all())
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return collect(CourierDummyData::all())
             ->map(fn (array $c) => ['id' => $c['id'], 'name' => $c['full_name']])
             ->values()
             ->all();

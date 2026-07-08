@@ -2,6 +2,7 @@
 
 namespace App\Modules\Courier\Data;
 
+use App\Support\DemoData;
 use App\Core\Profile\StoredProfileMerger;
 use App\Modules\Business\Data\BusinessAssignmentDummyData;
 use App\Modules\Courier\Services\CourierMediaService;
@@ -64,7 +65,11 @@ class CourierDummyData
      */
     public static function raw(): array
     {
-        return [
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return [
             ['id' => 1, 'first_name' => 'Ahmet', 'last_name' => 'Yıldız', 'phone' => '0532 100 10 01', 'tc_number' => '12345678901', 'courier_type' => 'independent', 'agency_id' => null, 'vehicle_type' => 'motorcycle', 'status' => 'active', 'active_business_name' => 'Burger House Gıda Ltd. Şti.'],
             ['id' => 2, 'first_name' => 'Murat', 'last_name' => 'Kaya', 'phone' => '0533 100 10 02', 'tc_number' => '23456789012', 'courier_type' => 'independent', 'agency_id' => null, 'vehicle_type' => 'motorcycle', 'status' => 'active', 'active_business_name' => 'HızlıAl E-Ticaret ve Lojistik A.Ş.'],
             ['id' => 3, 'first_name' => 'Emre', 'last_name' => 'Demir', 'phone' => '0534 100 10 03', 'tc_number' => '34567890123', 'courier_type' => 'agency', 'agency_id' => 1, 'vehicle_type' => 'motorcycle', 'status' => 'active', 'active_business_name' => 'Burger House Gıda Ltd. Şti.'],
@@ -105,7 +110,11 @@ class CourierDummyData
      */
     public static function all(): array
     {
-        return collect(self::raw())
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return collect(self::raw())
             ->map(fn (array $courier) => self::enrich(self::mergeStoredProfile((int) $courier['id'], $courier)))
             ->all();
     }

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Agency\Data;
 
+use App\Support\DemoData;
 use App\Core\Helpers\MoneyCalculator;
 use App\Core\Profile\StoredProfileMerger;
 use App\Modules\Agency\Data\AgencyFormData;
@@ -73,7 +74,11 @@ class AgencyDummyData
      */
     public static function all(): array
     {
-        return collect(self::raw())
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return collect(self::raw())
             ->map(fn (array $agency) => self::enrich(self::mergeStoredProfile((int) $agency['id'], $agency)))
             ->values()
             ->all();
@@ -84,7 +89,11 @@ class AgencyDummyData
      */
     private static function raw(): array
     {
-        return [
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return [
             ['id' => 1, 'company_name' => 'Hızlı Kurye Acentesi Ltd. Şti.', 'tax_number' => '1234567890', 'phone' => '0216 444 10 01', 'email' => 'info@hizlikurye.com', 'city' => 'İstanbul', 'district' => 'Ümraniye', 'authorized_person' => 'Serkan Yılmaz', 'status' => 'active', 'logo' => 'HK', 'logo_color' => 'bg-blue-600', 'active_couriers' => 5, 'active_businesses' => 4, 'monthly_earning' => 187500.00],
             ['id' => 2, 'company_name' => 'Metro Lojistik Acente A.Ş.', 'tax_number' => '2345678901', 'phone' => '0212 444 20 02', 'email' => 'iletisim@metrologistik.com', 'city' => 'İstanbul', 'district' => 'Bağcılar', 'authorized_person' => 'Ayşe Korkmaz', 'status' => 'active', 'logo' => 'ML', 'logo_color' => 'bg-indigo-600', 'active_couriers' => 5, 'active_businesses' => 3, 'monthly_earning' => 156200.00],
             ['id' => 3, 'company_name' => 'Express Dağıtım Acentesi', 'tax_number' => '3456789012', 'phone' => '0232 444 30 03', 'email' => 'destek@expressdagitim.com', 'city' => 'İzmir', 'district' => 'Bornova', 'authorized_person' => 'Mehmet Arslan', 'status' => 'active', 'logo' => 'ED', 'logo_color' => 'bg-emerald-600', 'active_couriers' => 4, 'active_businesses' => 3, 'monthly_earning' => 124800.00],

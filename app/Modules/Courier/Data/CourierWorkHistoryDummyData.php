@@ -2,6 +2,7 @@
 
 namespace App\Modules\Courier\Data;
 
+use App\Support\DemoData;
 use App\Modules\Business\Data\BusinessAssignmentDummyData;
 use App\Modules\Business\Data\BusinessContactDummyData;
 use App\Modules\Business\Data\BusinessDummyData;
@@ -47,7 +48,11 @@ class CourierWorkHistoryDummyData
      */
     public static function all(): array
     {
-        $raw = [
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+$raw = [
             ['id' => 1, 'courier_id' => 1, 'business_id' => 1, 'agency_id' => null, 'courier_type' => 'independent', 'start_date' => '2025-01-01', 'end_date' => '2025-03-31', 'status' => 'completed', 'notes' => 'İlk dönem ataması.'],
             ['id' => 2, 'courier_id' => 1, 'business_id' => 2, 'agency_id' => null, 'courier_type' => 'independent', 'start_date' => '2025-04-01', 'end_date' => '2025-12-31', 'status' => 'completed', 'notes' => 'Napoli Pizza dönemi.'],
             ['id' => 3, 'courier_id' => 1, 'business_id' => 1, 'agency_id' => null, 'courier_type' => 'independent', 'start_date' => '2026-01-01', 'end_date' => null, 'status' => 'active', 'notes' => 'Burger House\'a geri dönüş.'],

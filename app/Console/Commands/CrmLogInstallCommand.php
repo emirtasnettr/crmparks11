@@ -315,7 +315,8 @@ class CrmLogInstallCommand extends Command
             ->set('SESSION_SAME_SITE', 'lax')
             ->set('CACHE_STORE', 'database')
             ->set('QUEUE_CONNECTION', 'database')
-            ->set('ADMIN_INITIAL_PASSWORD', $config['admin_password']);
+            ->set('ADMIN_INITIAL_PASSWORD', $config['admin_password'])
+            ->set('CRMLOG_DEMO_DATA', 'false');
 
         if ($config['db_connection'] === 'mysql') {
             $env

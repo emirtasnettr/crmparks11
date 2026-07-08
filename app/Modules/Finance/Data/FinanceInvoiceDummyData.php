@@ -2,6 +2,7 @@
 
 namespace App\Modules\Finance\Data;
 
+use App\Support\DemoData;
 use App\Core\Helpers\MoneyCalculator;
 
 use App\Modules\Business\Data\BusinessDummyData;
@@ -108,7 +109,11 @@ class FinanceInvoiceDummyData
      */
     public static function all(): array
     {
-        return collect(self::records())
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return collect(self::records())
             ->map(fn (array $row) => self::enrich($row))
             ->sortByDesc('invoice_date')
             ->values()

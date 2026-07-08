@@ -3,7 +3,7 @@
 namespace App\Modules\Finance\Data;
 
 use App\Core\Helpers\MoneyCalculator;
-
+use App\Support\DemoData;
 use Carbon\Carbon;
 
 class FinanceDashboardDummyData
@@ -51,6 +51,25 @@ class FinanceDashboardDummyData
      */
     public static function kpis(string $period): array
     {
+        if (! DemoData::enabled()) {
+            return [
+                'total_revenue' => 0.0,
+                'total_revenue_formatted' => self::formatMoney(0),
+                'total_expense' => 0.0,
+                'total_expense_formatted' => self::formatMoney(0),
+                'net_profit' => 0.0,
+                'net_profit_formatted' => self::formatMoney(0),
+                'profit_margin' => 0.0,
+                'profit_margin_formatted' => '0,0%',
+                'pending_collection' => 0.0,
+                'pending_collection_formatted' => self::formatMoney(0),
+                'pending_payment' => 0.0,
+                'pending_payment_formatted' => self::formatMoney(0),
+                'monthly_earnings_count' => 0,
+                'active_accounts' => 0,
+            ];
+        }
+
         $scale = match ($period) {
             'today' => 0.034,
             'week' => 0.23,
@@ -86,6 +105,16 @@ class FinanceDashboardDummyData
      */
     public static function charts(): array
     {
+        if (! DemoData::enabled()) {
+            return [
+                'months' => [],
+                'revenue_expense' => ['revenue' => [], 'expense' => []],
+                'profit' => [],
+                'revenue_by_business' => [],
+                'expense_breakdown' => [],
+            ];
+        }
+
         $months = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
         $revenue = [6200000, 6850000, 7100000, 6980000, 7450000, 8120000, 8450000, 0, 0, 0, 0, 0];
         $expense = [4800000, 5100000, 5280000, 5150000, 5420000, 5890000, 6120000, 0, 0, 0, 0, 0];
@@ -126,6 +155,10 @@ class FinanceDashboardDummyData
      */
     public static function recentTransactions(): array
     {
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
         $rows = [
             ['2026-07-07 16:42', 'Tahsilat', 'Burger House Gıda Ltd. Şti.', 125000, 'completed'],
             ['2026-07-07 15:18', 'Kurye Ödemesi', 'Ahmet Yıldız', -47800, 'completed'],
@@ -167,6 +200,10 @@ class FinanceDashboardDummyData
      */
     public static function pendingCollections(): array
     {
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
         return [
             ['business' => 'Yeşil Market Perakende Tic. Ltd. Şti.', 'invoice' => 'FTR-2026-0842', 'due_date' => '2026-06-28', 'amount' => 67800],
             ['business' => 'Kahve Durağı İşletmecilik Ltd. Şti.', 'invoice' => 'FTR-2026-0856', 'due_date' => '2026-07-03', 'amount' => 52300],
@@ -182,6 +219,10 @@ class FinanceDashboardDummyData
      */
     public static function pendingPayments(): array
     {
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
         return [
             ['payee' => 'Metro Lojistik Acente A.Ş.', 'type' => 'Acente', 'reference' => 'AHK-2026-003', 'payment_date' => '2026-07-10', 'amount' => 36800, 'status' => 'pending'],
             ['payee' => 'Ahmet Yıldız', 'type' => 'Kurye', 'reference' => 'HKD-2026-014', 'payment_date' => '2026-07-08', 'amount' => 47800, 'status' => 'pending'],
@@ -197,6 +238,20 @@ class FinanceDashboardDummyData
      */
     public static function todaySummary(): array
     {
+        if (! DemoData::enabled()) {
+            return [
+                'revenue' => 0,
+                'revenue_formatted' => self::formatMoney(0),
+                'expense' => 0,
+                'expense_formatted' => self::formatMoney(0),
+                'profit' => 0,
+                'profit_formatted' => self::formatMoney(0),
+                'new_earnings' => 0,
+                'new_invoices' => 0,
+                'pending_approvals' => 0,
+            ];
+        }
+
         return [
             'revenue' => 460200,
             'revenue_formatted' => self::formatMoney(460200),

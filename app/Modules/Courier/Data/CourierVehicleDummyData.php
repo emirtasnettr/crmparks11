@@ -2,6 +2,7 @@
 
 namespace App\Modules\Courier\Data;
 
+use App\Support\DemoData;
 use Carbon\Carbon;
 
 class CourierVehicleDummyData
@@ -32,7 +33,11 @@ class CourierVehicleDummyData
      */
     public static function couriers(): array
     {
-        return collect(CourierDummyData::all())
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return collect(CourierDummyData::all())
             ->map(fn (array $courier) => [
                 'id' => $courier['id'],
                 'name' => $courier['full_name'],
@@ -60,7 +65,11 @@ class CourierVehicleDummyData
      */
     public static function all(): array
     {
-        return collect(self::raw())
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return collect(self::raw())
             ->map(fn (array $row) => self::enrich($row))
             ->sortByDesc(fn ($v) => sprintf('%d-%03d', $v['status'] === 'active' ? 1 : 0, $v['id']))
             ->values()
@@ -72,7 +81,11 @@ class CourierVehicleDummyData
      */
     private static function raw(): array
     {
-        return [
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+return [
             ['id' => 1, 'courier_id' => 1, 'vehicle_type' => 'motorcycle', 'plate' => '34 AY 1001', 'brand' => 'Honda', 'model' => 'Activa S', 'model_year' => 2022, 'color' => 'Kırmızı', 'license_number' => 'RUH-34-AY-1001', 'insurance_policy_number' => 'SIG-2026-001', 'insurance_expiry_date' => '2026-12-31', 'status' => 'active', 'registered_at' => '2022-03-15', 'notes' => 'Güncel aktif araç.'],
             ['id' => 2, 'courier_id' => 1, 'vehicle_type' => 'motorcycle', 'plate' => '34 AY 4521', 'brand' => 'Yamaha', 'model' => 'NMAX 155', 'model_year' => 2019, 'color' => 'Siyah', 'license_number' => 'RUH-34-AY-4521', 'insurance_policy_number' => 'SIG-2020-118', 'insurance_expiry_date' => '2021-06-30', 'status' => 'inactive', 'registered_at' => '2019-08-01', 'notes' => 'Eski araç — pasife alındı.'],
             ['id' => 3, 'courier_id' => 2, 'vehicle_type' => 'motorcycle', 'plate' => '34 MK 2208', 'brand' => 'Kuba', 'model' => 'Blueberry 125', 'model_year' => 2023, 'color' => 'Mavi', 'license_number' => 'RUH-34-MK-2208', 'insurance_policy_number' => 'SIG-2026-014', 'insurance_expiry_date' => '2026-07-25', 'status' => 'active', 'registered_at' => '2023-05-10', 'notes' => null],

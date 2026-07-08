@@ -2,6 +2,7 @@
 
 namespace App\Modules\Business\Data;
 
+use App\Support\DemoData;
 use Carbon\Carbon;
 
 class BusinessContractDummyData
@@ -11,7 +12,11 @@ class BusinessContractDummyData
      */
     public static function all(): array
     {
-        $contracts = [
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+$contracts = [
             [
                 'id' => 1,
                 'uuid' => 'cnt-001',

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Business\Data;
 
+use App\Support\DemoData;
 use Carbon\Carbon;
 
 class BusinessDocumentDummyData
@@ -53,7 +54,11 @@ class BusinessDocumentDummyData
      */
     public static function all(): array
     {
-        $documents = [
+        if (! DemoData::enabled()) {
+            return [];
+        }
+
+$documents = [
             [
                 'id' => 1,
                 'uuid' => 'doc-001',
