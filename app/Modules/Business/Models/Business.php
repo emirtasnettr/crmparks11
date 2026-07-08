@@ -77,8 +77,9 @@ class Business extends Model
                 $query->whereNull('end_date')
                     ->orWhereDate('end_date', '>=', now());
             })
-            ->distinct('courier_id')
-            ->count('courier_id');
+            ->pluck('courier_id')
+            ->unique()
+            ->count();
     }
 
     protected static function newFactory(): BusinessFactory

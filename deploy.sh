@@ -17,6 +17,9 @@ if ! npm ci --no-audit --no-fund; then
 fi
 npm run build
 
+echo "==> Önbellek temizleniyor..."
+php artisan optimize:clear
+
 echo "==> Migration..."
 php artisan migrate --force
 
@@ -24,5 +27,10 @@ echo "==> Cache yenileniyor..."
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
+
+echo "==> PHP-FPM yeniden yükleniyor (varsa)..."
+if command -v systemctl >/dev/null 2>&1; then
+  sudo systemctl reload php8.3-fpm 2>/dev/null || sudo systemctl reload php8.2-fpm 2>/dev/null || true
+fi
 
 echo "==> Deploy tamamlandı."

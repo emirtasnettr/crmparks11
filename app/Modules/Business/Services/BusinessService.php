@@ -11,6 +11,7 @@ use App\Modules\Business\Models\BusinessPricing;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class BusinessService
 {
@@ -60,22 +61,9 @@ class BusinessService
   public function create(array $data, User $user): Business
   {
     return DB::transaction(function () use ($data, $user): Business {
-      $business = Business::query()->create([
-        'company_name' => $data['company_name'],
-        'brand_name' => $data['brand_name'] ?? null,
-        'tax_office' => $data['tax_office'] ?? '',
-        'tax_number' => $data['tax_number'] ?? $this->generateTaxNumber(),
-        'phone' => $data['phone'],
-        'email' => $data['email'] ?? null,
-        'website' => $data['website'] ?? null,
-        'city_id' => $this->resolveCityId($data['city'] ?? null),
-        'district_id' => $this->resolveDistrictId($data['city'] ?? null, $data['district'] ?? null),
-        'address' => $data['address'] ?? null,
-        'status' => $data['status'],
-        'earning_period' => $data['earning_period'] ?? null,
-        'notes' => $data['notes'] ?? null,
-        'created_by' => $user->id,
-      ]);
+      $business = Business::query()->create(
+        $this->businessAttributes($data, $user),
+      );
 
       $this->syncPricing($business, $data, $user);
       $this->syncLogo($business, $data['logo'] ?? null);
@@ -87,26 +75,14 @@ class BusinessService
   /**
    * @param  array<string, mixed>  $data
    */
-  public function update(Business $business, array $data): Business
+  public function update(Business $business, array $data, User $user): Business
   {
-    return DB::transaction(function () use ($business, $data): Business {
-      $business->update([
-        'company_name' => $data['company_name'],
-        'brand_name' => $data['brand_name'] ?? null,
-        'tax_office' => $data['tax_office'] ?? '',
-        'tax_number' => $data['tax_number'] ?? $business->tax_number,
-        'phone' => $data['phone'],
-        'email' => $data['email'] ?? null,
-        'website' => $data['website'] ?? null,
-        'city_id' => $this->resolveCityId($data['city'] ?? null),
-        'district_id' => $this->resolveDistrictId($data['city'] ?? null, $data['district'] ?? null),
-        'address' => $data['address'] ?? null,
-        'status' => $data['status'],
-        'earning_period' => $data['earning_period'] ?? null,
-        'notes' => $data['notes'] ?? null,
-      ]);
+    return DB::transaction(function () use ($business, $data, $user): Business {
+      $business->update(
+        $this->businessAttributes($data, $user, $business),
+      );
 
-      $this->syncPricing($business, $data, $business->creator);
+      $this->syncPricing($business, $data, $user);
       $this->syncLogo($business, $data['logo'] ?? null, replace: isset($data['logo']));
 
       return $business->fresh(['city', 'district', 'activePricing.pricingModelType']);
@@ -242,5 +218,40 @@ class BusinessService
     } while (Business::query()->where('tax_number', $candidate)->exists());
 
     return $candidate;
+  }
+
+  /**
+   * @param  array<string, mixed>  $data
+   * @return array<string, mixed>
+   */
+  private function businessAttributes(array $data, User $user, ?Business $business = null): array
+  {
+    $attributes = [
+      'company_name' => $data['company_name'],
+      'brand_name' => $data['brand_name'] ?? null,
+      'tax_office' => $data['tax_office'] ?? '',
+      'tax_number' => $data['tax_number'] ?? $business?->tax_number ?? $this->generateTaxNumber(),
+      'phone' => $data['phone'],
+      'email' => $data['email'] ?? null,
+      'city_id' => $this->resolveCityId($data['city'] ?? null),
+      'district_id' => $this->resolveDistrictId($data['city'] ?? null, $data['district'] ?? null),
+      'address' => $data['address'] ?? null,
+      'status' => $data['status'],
+      'notes' => $data['notes'] ?? null,
+    ];
+
+    if (Schema::hasColumn('businesses', 'website')) {
+      $attributes['website'] = $data['website'] ?? null;
+    }
+
+    if (Schema::hasColumn('businesses', 'earning_period')) {
+      $attributes['earning_period'] = $data['earning_period'] ?? null;
+    }
+
+    if ($business === null) {
+      $attributes['created_by'] = $user->id;
+    }
+
+    return $attributes;
   }
 }

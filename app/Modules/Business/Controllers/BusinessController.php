@@ -184,7 +184,7 @@ class BusinessController extends Controller
       $data['logo'] = $request->file('logo');
     }
 
-    $this->businesses->update($business, $data);
+    $this->businesses->update($business, $data, $request->user());
 
     return redirect()
       ->route('businesses.show', $id)
