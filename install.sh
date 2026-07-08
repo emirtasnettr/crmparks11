@@ -9,7 +9,10 @@ composer install --no-dev --optimize-autoloader
 
 if [[ ! -f public/build/manifest.json ]]; then
   echo "==> Frontend derleniyor..."
-  npm ci
+  if ! npm ci --no-audit --no-fund; then
+    echo "==> npm ci uyumsuz, npm install ile devam ediliyor..."
+    npm install --no-audit --no-fund
+  fi
   npm run build
 else
   echo "==> Frontend derlemesi mevcut, atlanıyor."

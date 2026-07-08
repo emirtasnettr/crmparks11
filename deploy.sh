@@ -11,7 +11,10 @@ echo "==> Composer bağımlılıkları..."
 composer install --no-dev --optimize-autoloader
 
 echo "==> Frontend derleniyor..."
-npm ci
+if ! npm ci --no-audit --no-fund; then
+  echo "==> npm ci uyumsuz, npm install ile devam ediliyor..."
+  npm install --no-audit --no-fund
+fi
 npm run build
 
 echo "==> Migration..."
