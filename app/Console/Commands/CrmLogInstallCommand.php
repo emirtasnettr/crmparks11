@@ -81,10 +81,13 @@ class CrmLogInstallCommand extends Command
         try {
             $this->writeEnvironment($config);
             $this->reloadEnvironment();
+            $this->applyRuntimeConfiguration($config);
             $this->ensureApplicationKey();
+            $this->applyRuntimeConfiguration($config);
             $this->verifyDatabaseConnection($config);
-            $this->runMigrationsAndSeeders();
+            $this->runMigrationsAndSeeders($config);
             $this->runStorageLink();
+            $this->applyRuntimeConfiguration($config);
             $this->optimizeApplication();
             InstallLock::write([
                 'app_url' => $config['app_url'],
@@ -339,7 +342,38 @@ class CrmLogInstallCommand extends Command
         }
 
         $dotenv = \Dotenv\Dotenv::createMutable(base_path());
-        $dotenv->safeLoad();
+        $dotenv->load();
+    }
+
+    /**
+     * @param  array{
+     *     db_connection: string,
+     *     db_host: string,
+     *     db_port: string,
+     *     db_database: string,
+     *     db_username: string,
+     *     db_password: string
+     * }  $config
+     */
+    private function applyRuntimeConfiguration(array $config): void
+    {
+        config([
+            'database.default' => $config['db_connection'],
+            'database.connections.mysql.host' => $config['db_host'],
+            'database.connections.mysql.port' => $config['db_port'],
+            'database.connections.mysql.database' => $config['db_database'],
+            'database.connections.mysql.username' => $config['db_username'],
+            'database.connections.mysql.password' => $config['db_password'],
+            'database.connections.sqlite.database' => $config['db_connection'] === 'sqlite'
+                ? $config['db_database']
+                : database_path('database.sqlite'),
+            'cache.stores.database.connection' => null,
+            'queue.connections.database.connection' => null,
+        ]);
+
+        DB::purge('mysql');
+        DB::purge('sqlite');
+        DB::setDefaultConnection($config['db_connection']);
     }
 
     private function ensureApplicationKey(): void
@@ -386,10 +420,14 @@ class CrmLogInstallCommand extends Command
         $this->components->twoColumnDetail('Veritabanı', '<fg=green>BAĞLANDI</>');
     }
 
-    private function runMigrationsAndSeeders(): void
+    private function runMigrationsAndSeeders(array $config): void
     {
+        $this->applyRuntimeConfiguration($config);
+
         $this->callSilent('migrate', ['--force' => true]);
         $this->components->twoColumnDetail('Migration', '<fg=green>TAMAM</>');
+
+        $this->applyRuntimeConfiguration($config);
 
         $this->callSilent('db:seed', ['--force' => true]);
         $this->components->twoColumnDetail('Seed', '<fg=green>TAMAM</>');
