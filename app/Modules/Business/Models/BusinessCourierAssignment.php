@@ -3,13 +3,18 @@
 namespace App\Modules\Business\Models;
 
 use App\Core\Traits\HasUuid;
+use App\Models\User;
+use App\Modules\Courier\Models\Courier;
+use Database\Factories\BusinessCourierAssignmentFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class BusinessCourierAssignment extends Model
 {
-    use HasUuid, SoftDeletes;
+    /** @use HasFactory<BusinessCourierAssignmentFactory> */
+    use HasFactory, HasUuid, SoftDeletes;
 
     protected $fillable = [
         'business_id',
@@ -34,5 +39,20 @@ class BusinessCourierAssignment extends Model
     public function business(): BelongsTo
     {
         return $this->belongsTo(Business::class);
+    }
+
+    public function courier(): BelongsTo
+    {
+        return $this->belongsTo(Courier::class);
+    }
+
+    public function assigner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_by');
+    }
+
+    protected static function newFactory(): BusinessCourierAssignmentFactory
+    {
+        return BusinessCourierAssignmentFactory::new();
     }
 }

@@ -255,6 +255,8 @@
             @include('modules.business.assignments.partials.modal', [
                 'hideEntitySelector' => true,
                 'presetEntityLabel' => $business['company_name'],
+                'lockedBusinessId' => $business['id'],
+                'redirectToBusiness' => true,
                 'couriers' => $assignmentCouriers,
                 'agencies' => $assignmentAgencies,
                 'businesses' => [],

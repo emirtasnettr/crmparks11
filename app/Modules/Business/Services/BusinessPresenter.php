@@ -8,14 +8,13 @@ use App\Models\District;
 use App\Models\PricingModelType;
 use App\Models\User;
 use App\Modules\Business\Data\BusinessActivityDummyData;
-use App\Modules\Business\Data\BusinessAssignmentDummyData;
-use App\Modules\Business\Data\BusinessContactFormData;
 use App\Modules\Business\Data\BusinessContractDummyData;
 use App\Modules\Business\Data\BusinessDocumentDummyData;
 use App\Modules\Business\Data\BusinessEarningDummyData;
 use App\Modules\Business\Data\BusinessFormData;
 use App\Modules\Business\Models\Business;
 use App\Modules\Business\Models\BusinessContact;
+use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\Business\Models\BusinessPricing;
 use App\Modules\Business\Services\BusinessContactPresenter;
 use App\Modules\Business\Services\BusinessContactService;
@@ -31,6 +30,8 @@ class BusinessPresenter
     private readonly BusinessMediaService $media,
     private readonly BusinessContactService $contacts,
     private readonly BusinessContactPresenter $contactPresenter,
+    private readonly BusinessAssignmentService $assignments,
+    private readonly BusinessAssignmentPresenter $assignmentPresenter,
   ) {}
 
   /**
@@ -144,7 +145,11 @@ class BusinessPresenter
         ->values()
         ->all(),
       'contracts' => BusinessContractDummyData::filter(['business_id' => $business->id]),
-      'assignments' => BusinessAssignmentDummyData::filter(['business_id' => $business->id]),
+      'assignments' => $this->assignments
+        ->forBusiness($business->id)
+        ->map(fn (BusinessCourierAssignment $assignment) => $this->assignmentPresenter->showRow($assignment))
+        ->values()
+        ->all(),
       'documents' => BusinessDocumentDummyData::filter(['business_id' => $business->id]),
       'activities' => BusinessActivityDummyData::filter(['business_id' => $business->id]),
     ], BusinessFeatures::earningsEnabled() ? [

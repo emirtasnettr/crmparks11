@@ -3,8 +3,6 @@
 namespace App\Modules\Business\Exports;
 
 use App\Core\Exports\ListExport;
-use App\Modules\Business\Data\BusinessAssignmentDummyData;
-use App\Modules\Business\Data\BusinessContactDummyData;
 use App\Modules\Business\Data\BusinessContractDummyData;
 use App\Modules\Business\Data\BusinessFormData;
 use App\Modules\Business\Services\BusinessPresenter;
@@ -114,11 +112,19 @@ final class BusinessListExportSheets
         $workStatusLabels = [
             'active' => 'Aktif',
             'left' => 'Ayrıldı',
+            'leaving_soon' => 'Yakında Ayrılacak',
             'on_leave' => 'İzinli',
         ];
 
+        $service = app(\App\Modules\Business\Services\BusinessAssignmentService::class);
+        $presenter = app(\App\Modules\Business\Services\BusinessAssignmentPresenter::class);
+
+        $rows = $service->filter($filters)
+            ->map(fn ($assignment) => $presenter->indexRow($assignment))
+            ->all();
+
         return ListExport::sheet(
-            BusinessAssignmentDummyData::filter($filters),
+            $rows,
             ['Kurye', 'Telefon', 'İşletme', 'Acente', 'Kurye Tipi', 'Başlangıç', 'Bitiş', 'Çalışma Durumu'],
             [
                 fn (array $row) => $row['courier_name'],

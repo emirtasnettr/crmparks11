@@ -4,9 +4,12 @@ namespace App\Modules\Business\Controllers;
 
 use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
-use App\Modules\Business\Data\BusinessAssignmentDummyData;
-use App\Modules\Business\Data\BusinessContactDummyData;
 use App\Modules\Business\Exports\BusinessListExportSheets;
+use App\Modules\Business\Requests\StoreBusinessAssignmentRequest;
+use App\Modules\Business\Requests\UpdateBusinessAssignmentRequest;
+use App\Modules\Business\Services\BusinessAssignmentPresenter;
+use App\Modules\Business\Services\BusinessAssignmentService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -14,6 +17,11 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class BusinessAssignmentController extends Controller
 {
     use DownloadsListExport;
+
+    public function __construct(
+        private readonly BusinessAssignmentService $assignments,
+        private readonly BusinessAssignmentPresenter $presenter,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -28,18 +36,22 @@ class BusinessAssignmentController extends Controller
         $perPage = 25;
         $page = max(1, (int) $request->query('page', 1));
 
-        $all = BusinessAssignmentDummyData::filter($filters);
-        $total = count($all);
-        $items = array_slice($all, ($page - 1) * $perPage, $perPage);
+        $all = $this->assignments->filter($filters);
+        $total = $all->count();
+        $items = $all
+            ->slice(($page - 1) * $perPage, $perPage)
+            ->map(fn ($assignment) => $this->presenter->indexRow($assignment))
+            ->values()
+            ->all();
         $lastPage = max(1, (int) ceil($total / $perPage));
 
         return view('modules.business.assignments.index', [
             'assignments' => $items,
             'filters' => $filters,
-            'businesses' => BusinessContactDummyData::businesses(),
-            'agencies' => BusinessAssignmentDummyData::agencies(),
-            'couriers' => BusinessAssignmentDummyData::couriers(),
-            'activeCount' => BusinessAssignmentDummyData::countActive(),
+            'businesses' => $this->assignments->businesses(),
+            'agencies' => $this->assignments->agencies(),
+            'couriers' => $this->assignments->couriers(),
+            'activeCount' => $this->assignments->countActive(),
             'total' => $total,
             'page' => $page,
             'perPage' => $perPage,
@@ -66,12 +78,42 @@ class BusinessAssignmentController extends Controller
 
     public function show(int $id): View
     {
-        $assignment = BusinessAssignmentDummyData::find($id);
+        $assignment = $this->assignments->find($id);
 
         abort_if($assignment === null, 404);
 
         return view('modules.business.assignments.show', [
-            'assignment' => $assignment,
+            'assignment' => $this->presenter->showRow($assignment),
         ]);
+    }
+
+    public function store(StoreBusinessAssignmentRequest $request): RedirectResponse
+    {
+        $assignment = $this->assignments->create($request->validated(), $request->user());
+
+        if ($request->boolean('redirect_to_business')) {
+            return redirect()
+                ->route('businesses.show', $assignment->business_id)
+                ->with('success', 'Kurye ataması başarıyla oluşturuldu.');
+        }
+
+        return redirect()
+            ->route('businesses.assignments.index', ['business_id' => $assignment->business_id])
+            ->with('success', 'Kurye ataması başarıyla oluşturuldu.');
+    }
+
+    public function update(UpdateBusinessAssignmentRequest $request, int $id): RedirectResponse
+    {
+        $assignment = $this->assignments->find($id);
+
+        if ($assignment === null) {
+            abort(404);
+        }
+
+        $this->assignments->update($assignment, $request->validated());
+
+        return redirect()
+            ->back()
+            ->with('success', 'Atama bilgileri güncellendi.');
     }
 }

@@ -72,6 +72,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/sozlesmeler/{id}', [BusinessContractController::class, 'show'])->name('contracts.show');
         Route::get('/atanan-kuryeler', [BusinessAssignmentController::class, 'index'])->name('assignments.index');
         Route::get('/atanan-kuryeler/export', [BusinessAssignmentController::class, 'export'])->name('assignments.export');
+        Route::post('/atanan-kuryeler', [BusinessAssignmentController::class, 'store'])->middleware('permission:business.update')->name('assignments.store');
+        Route::put('/atanan-kuryeler/{id}', [BusinessAssignmentController::class, 'update'])->middleware('permission:business.update')->name('assignments.update');
         Route::get('/atanan-kuryeler/{id}', [BusinessAssignmentController::class, 'show'])->name('assignments.show');
         Route::get('/hakedisler', [BusinessEarningController::class, 'index'])->name('earnings.index');
         Route::get('/hakedisler/export', [BusinessEarningController::class, 'export'])->name('earnings.export');

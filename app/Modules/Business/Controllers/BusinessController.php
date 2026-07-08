@@ -4,7 +4,6 @@ namespace App\Modules\Business\Controllers;
 
 use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
-use App\Modules\Business\Data\BusinessAssignmentDummyData;
 use App\Modules\Business\Data\BusinessContactFormData;
 use App\Modules\Business\Data\BusinessContractDummyData;
 use App\Modules\Business\Data\BusinessDocumentDummyData;
@@ -13,6 +12,7 @@ use App\Modules\Business\Data\BusinessOverviewStats;
 use App\Modules\Business\Exports\BusinessListExportSheets;
 use App\Modules\Business\Requests\StoreBusinessRequest;
 use App\Modules\Business\Requests\UpdateBusinessRequest;
+use App\Modules\Business\Services\BusinessAssignmentService;
 use App\Modules\Business\Services\BusinessPresenter;
 use App\Modules\Business\Services\BusinessService;
 use App\Support\RequestFilter;
@@ -28,6 +28,7 @@ class BusinessController extends Controller
   public function __construct(
     private readonly BusinessService $businesses,
     private readonly BusinessPresenter $presenter,
+    private readonly BusinessAssignmentService $assignments,
   ) {}
 
   public function index(Request $request): View
@@ -145,8 +146,8 @@ class BusinessController extends Controller
       'contactTitles' => BusinessContactFormData::titles(),
       'contractTypes' => BusinessContractDummyData::contractTypes(),
       'documentTypes' => BusinessDocumentDummyData::documentTypes(),
-      'assignmentCouriers' => BusinessAssignmentDummyData::couriers(),
-      'assignmentAgencies' => BusinessAssignmentDummyData::agencies(),
+      'assignmentCouriers' => $this->assignments->couriers(),
+      'assignmentAgencies' => $this->assignments->agencies(),
     ]);
   }
 

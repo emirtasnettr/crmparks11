@@ -1016,8 +1016,8 @@ Alpine.data('assignmentPage', (preset = {}) => {
     return {
     lockedBusinessId,
     openModal: false,
-    modalSaved: false,
     modalErrors: {},
+    submitting: false,
     modal: {
         business_id: lockedBusinessId,
         courier_id: '',
@@ -1031,7 +1031,6 @@ Alpine.data('assignmentPage', (preset = {}) => {
 
     closeModal() {
         this.openModal = false;
-        this.modalSaved = false;
         this.modalErrors = {};
         this.resetModal();
     },
@@ -1079,14 +1078,13 @@ Alpine.data('assignmentPage', (preset = {}) => {
         return Object.keys(this.modalErrors).length === 0;
     },
 
-    saveAssignment() {
-        this.modalSaved = false;
-
+    handleSubmit(event) {
         if (!this.validateModal()) {
+            event.preventDefault();
             return;
         }
 
-        this.modalSaved = true;
+        this.submitting = true;
     },
 };
 });

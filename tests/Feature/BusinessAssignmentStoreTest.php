@@ -14,7 +14,7 @@ use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class BusinessAssignmentTest extends TestCase
+class BusinessAssignmentStoreTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -29,65 +29,81 @@ class BusinessAssignmentTest extends TestCase
         ]);
     }
 
-    public function test_assignments_index_requires_authentication(): void
+    public function test_business_assignment_store_requires_permission(): void
     {
-        $response = $this->get(route('businesses.assignments.index'));
+        $user = User::factory()->create();
+        $business = $this->createBusiness($user);
+        $courier = $this->createCourier($user);
 
-        $response->assertRedirect(route('login'));
+        $response = $this->actingAs($user)->post(route('businesses.assignments.store'), [
+            'business_id' => $business->id,
+            'courier_id' => $courier->id,
+            'start_date' => '2026-01-01',
+            'status' => 'active',
+        ]);
+
+        $response->assertForbidden();
+        $this->assertDatabaseCount('business_courier_assignments', 0);
     }
 
-    public function test_authenticated_user_can_view_assignments_index(): void
+    public function test_business_assignment_can_be_created_from_index(): void
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
-        $business = $this->createBusiness($user);
+        $business = $this->createBusiness($user, [
+            'company_name' => 'Point Kurye Market Ltd. Şti.',
+        ]);
         $courier = $this->createCourier($user, [
             'full_name' => 'Ahmet Yıldız',
             'phone' => '0532 100 10 01',
         ]);
 
-        BusinessCourierAssignment::factory()->create([
+        $response = $this->actingAs($user)->post(route('businesses.assignments.store'), [
             'business_id' => $business->id,
             'courier_id' => $courier->id,
-            'assigned_by' => $user->id,
             'start_date' => '2026-01-01',
+            'notes' => 'Test ataması',
             'status' => 'active',
         ]);
 
-        $response = $this->actingAs($user)->get(route('businesses.assignments.index'));
+        $assignment = BusinessCourierAssignment::query()->first();
 
-        $response->assertOk();
-        $response->assertSee('Atanan Kuryeler');
-        $response->assertSee('Ahmet Yıldız');
-        $response->assertSee('Yeni Kurye Ataması');
-        $response->assertSee('Aktif Atama');
-        $response->assertSee($business->company_name);
+        $this->assertNotNull($assignment);
+        $response->assertRedirect(route('businesses.assignments.index', ['business_id' => $business->id]));
+        $response->assertSessionHas('success', 'Kurye ataması başarıyla oluşturuldu.');
+
+        $this->assertSame($business->id, $assignment->business_id);
+        $this->assertSame($courier->id, $assignment->courier_id);
+        $this->assertSame($user->id, $assignment->assigned_by);
+
+        $indexResponse = $this->actingAs($user)->get(route('businesses.assignments.index'));
+        $indexResponse->assertOk();
+        $indexResponse->assertSee('Ahmet Yıldız');
+        $indexResponse->assertSee('Point Kurye Market Ltd. Şti.');
     }
 
-    public function test_authenticated_user_can_view_assignment_detail(): void
+    public function test_business_assignment_can_be_created_from_business_show(): void
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
         $business = $this->createBusiness($user);
         $courier = $this->createCourier($user, [
-            'full_name' => 'Ahmet Yıldız',
-            'phone' => '0532 100 10 01',
+            'full_name' => 'Murat Kaya',
         ]);
 
-        $assignment = BusinessCourierAssignment::factory()->create([
+        $response = $this->actingAs($user)->post(route('businesses.assignments.store'), [
             'business_id' => $business->id,
             'courier_id' => $courier->id,
-            'assigned_by' => $user->id,
-            'start_date' => '2026-01-01',
+            'start_date' => '2026-02-01',
+            'redirect_to_business' => true,
             'status' => 'active',
         ]);
 
-        $response = $this->actingAs($user)->get(route('businesses.assignments.show', $assignment->id));
+        $response->assertRedirect(route('businesses.show', $business->id));
 
-        $response->assertOk();
-        $response->assertSee('Kurye Bilgileri');
-        $response->assertSee('Atama Tarihleri');
-        $response->assertSee('Ahmet Yıldız');
+        $showResponse = $this->actingAs($user)->get(route('businesses.show', $business->id));
+        $showResponse->assertOk();
+        $showResponse->assertSee('Murat Kaya');
     }
 
     /**
