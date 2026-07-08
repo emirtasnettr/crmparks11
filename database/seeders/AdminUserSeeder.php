@@ -61,11 +61,45 @@ class AdminUserSeeder extends Seeder
         $configuredPassword = env('ADMIN_INITIAL_PASSWORD');
 
         if (! is_string($configuredPassword) || trim($configuredPassword) === '') {
+            $configuredPassword = $this->readAdminPasswordFromEnvFile();
+        }
+
+        if (! is_string($configuredPassword) || trim($configuredPassword) === '') {
             return null;
         }
 
         AdminInitialPasswordPolicy::validate($configuredPassword);
 
         return $configuredPassword;
+    }
+
+    private function readAdminPasswordFromEnvFile(): ?string
+    {
+        $path = base_path('.env');
+
+        if (! is_file($path)) {
+            return null;
+        }
+
+        $contents = file_get_contents($path);
+
+        if ($contents === false || ! preg_match('/^ADMIN_INITIAL_PASSWORD=(.*)$/m', $contents, $matches)) {
+            return null;
+        }
+
+        $value = trim($matches[1]);
+
+        if ($value === '' || $value === '""' || $value === "''") {
+            return null;
+        }
+
+        if (
+            (str_starts_with($value, '"') && str_ends_with($value, '"'))
+            || (str_starts_with($value, "'") && str_ends_with($value, "'"))
+        ) {
+            return substr($value, 1, -1);
+        }
+
+        return $value;
     }
 }
