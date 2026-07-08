@@ -33,20 +33,13 @@ composer dev
 Detaylı kurulum adımları için: **[DEPLOY.md](DEPLOY.md)**
 
 ```bash
-git clone https://github.com/emirtasnettr/crmparks11.git
-cd crmparks11
-composer install --no-dev --optimize-autoloader
-cp .env.example .env
-# .env dosyasını düzenleyin (APP_DEBUG=false, MySQL, ADMIN_INITIAL_PASSWORD)
-php artisan key:generate
-php artisan migrate --force
-php artisan db:seed --force
-npm ci && npm run build
-php artisan storage:link
-php artisan config:cache && php artisan route:cache && php artisan view:cache
+git clone https://github.com/emirtasnettr/crmparks11.git crmlog
+cd crmlog
+chmod +x install.sh
+./install.sh
 ```
 
-Güncellemeler için: `./deploy.sh`
+Sihirbaz sizi APP_URL, veritabanı ve admin şifresi için yönlendirir. Güncellemeler için: `./deploy.sh`
 
 ## Demo Hesaplar (local/testing)
 

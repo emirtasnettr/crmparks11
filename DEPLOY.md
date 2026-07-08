@@ -31,7 +31,45 @@ sudo chown -R $USER:www-data crmlog
 cd crmlog
 ```
 
-## 2. Bağımlılıkları kurun
+## 2. Kurulum sihirbazı (önerilen)
+
+Tek komutla kurulum:
+
+```bash
+chmod +x install.sh
+./install.sh
+```
+
+Sihirbaz şunları yapar:
+
+- PHP sürümü ve gerekli eklentileri kontrol eder
+- `.env` dosyasını production ayarlarıyla oluşturur
+- Veritabanı bağlantısını test eder
+- Migration, seed ve `storage:link` işlemlerini çalıştırır
+- Kurulum kilidi yazar (tekrar çalıştırmayı engeller)
+
+Manuel çalıştırmak isterseniz:
+
+```bash
+composer install --no-dev --optimize-autoloader
+npm ci && npm run build
+php artisan crmlog:install
+```
+
+Etkileşimsiz kurulum (CI veya script):
+
+```bash
+export INSTALL_DB_PASSWORD='guclu-veritabani-sifresi'
+export INSTALL_ADMIN_PASSWORD='guclu-admin-sifresi-12+'
+php artisan crmlog:install --no-interaction \
+  --app-url=https://alanadiniz.com \
+  --db-database=crmlog \
+  --db-username=crmlog
+```
+
+> Şifreler shell geçmişine düşmemesi için ortam değişkeni kullanın; komut satırına yazmayın.
+
+## 3. Manuel kurulum (alternatif)
 
 ```bash
 composer install --no-dev --optimize-autoloader
@@ -39,7 +77,7 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-## 3. `.env` dosyasını yapılandırın
+### `.env` dosyasını yapılandırın
 
 Production için örnek ayarlar:
 

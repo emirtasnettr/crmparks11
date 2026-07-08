@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Core\Enums\Status;
 use App\Core\Enums\UserType;
 use App\Models\User;
+use App\Support\AdminInitialPasswordPolicy;
 use Illuminate\Database\Seeder;
 
 class AdminUserSeeder extends Seeder
@@ -63,13 +64,7 @@ class AdminUserSeeder extends Seeder
             return null;
         }
 
-        if (strlen($configuredPassword) < 12) {
-            throw new \RuntimeException('ADMIN_INITIAL_PASSWORD en az 12 karakter olmalıdır.');
-        }
-
-        if (in_array($configuredPassword, ['password', '12345678', 'admin123456'], true)) {
-            throw new \RuntimeException('ADMIN_INITIAL_PASSWORD zayıf bir değer olamaz.');
-        }
+        AdminInitialPasswordPolicy::validate($configuredPassword);
 
         return $configuredPassword;
     }
