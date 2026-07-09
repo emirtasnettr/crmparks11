@@ -3,7 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Modules\User\Data\UserActivityLogDummyData;
+use App\Modules\ActivityLog\Models\ActivityLog;
+use App\Modules\User\Services\UserActivityLogService;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -31,6 +32,11 @@ class UserActivityLogTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('super_admin');
 
+        ActivityLog::factory()->for($user)->login()->create([
+            'ip_address' => '185.24.10.42',
+        ]);
+        ActivityLog::factory()->for($user)->permissionUpdated()->create();
+
         $response = $this->actingAs($user)->get(route('users.activity-log.index'));
 
         $response->assertOk();
@@ -57,6 +63,8 @@ class UserActivityLogTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('general_manager');
 
+        ActivityLog::factory()->for($user)->login()->create();
+
         $response = $this->actingAs($user)->get(route('users.activity-log.index'));
 
         $response->assertOk();
@@ -73,17 +81,22 @@ class UserActivityLogTest extends TestCase
         $response->assertForbidden();
     }
 
-    public function test_dummy_data_has_at_least_three_hundred_logs(): void
+    public function test_logs_are_loaded_from_database(): void
     {
-        $logs = UserActivityLogDummyData::all();
+        $user = User::factory()->create();
+        ActivityLog::factory()->count(5)->for($user)->create();
 
-        $this->assertGreaterThanOrEqual(300, count($logs));
-        $this->assertCount(320, $logs);
+        $logs = app(UserActivityLogService::class)->exportRows([]);
+
+        $this->assertGreaterThanOrEqual(5, count($logs));
     }
 
     public function test_logs_contain_spatie_compatible_fields(): void
     {
-        $log = UserActivityLogDummyData::all()[0];
+        $user = User::factory()->create();
+        ActivityLog::factory()->for($user)->login()->create();
+
+        $log = app(UserActivityLogService::class)->exportRows([])[0];
 
         $this->assertArrayHasKey('log_name', $log);
         $this->assertArrayHasKey('event', $log);
@@ -101,18 +114,27 @@ class UserActivityLogTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('super_admin');
 
+        ActivityLog::factory()->for($user)->login()->create();
+        ActivityLog::factory()->for($user)->loginFailed()->create([
+            'ip_address' => '10.0.0.99',
+        ]);
+
         $response = $this->actingAs($user)->get(route('users.activity-log.index', ['activity_type' => 'login_failed']));
 
         $response->assertOk();
         $response->assertSee('Başarısız Giriş');
+        $response->assertSee('10.0.0.99');
     }
 
-    public function test_export_payload_is_ready(): void
+    public function test_export_returns_filtered_rows(): void
     {
-        $payload = UserActivityLogDummyData::exportPayload([], 'xlsx');
+        $user = User::factory()->create();
+        ActivityLog::factory()->for($user)->login()->create();
 
-        $this->assertSame('xlsx', $payload['format']);
-        $this->assertStringContainsString('crmlog-aktivite-kayitlari', $payload['filename']);
-        $this->assertNotEmpty($payload['columns']);
+        $rows = app(UserActivityLogService::class)->exportRows([]);
+
+        $this->assertNotEmpty($rows);
+        $this->assertArrayHasKey('user_name', $rows[0]);
+        $this->assertArrayHasKey('activity_type_label', $rows[0]);
     }
 }

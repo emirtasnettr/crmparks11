@@ -4,8 +4,9 @@ namespace App\Modules\User\Controllers;
 
 use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
-use App\Modules\User\Data\UserActivityLogDummyData;
+use App\Modules\User\Data\UserActivityLogFormData;
 use App\Modules\User\Exports\UserListExportSheets;
+use App\Modules\User\Services\UserActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -13,6 +14,10 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class UserActivityLogController extends Controller
 {
     use DownloadsListExport;
+
+    public function __construct(
+        private readonly UserActivityLogService $activityLogService,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -28,26 +33,22 @@ class UserActivityLogController extends Controller
         $perPage = 25;
         $page = max(1, (int) $request->query('page', 1));
 
-        $analysis = UserActivityLogDummyData::analyze($filters);
-        $all = $analysis['logs'];
-        $total = count($all);
-        $items = array_slice($all, ($page - 1) * $perPage, $perPage);
-        $lastPage = max(1, (int) ceil($total / $perPage));
+        $analysis = $this->activityLogService->analyze($filters, $page, $perPage);
 
         return view('modules.user.activity-log.index', [
-            'logs' => $items,
+            'logs' => $analysis['logs'],
             'summary' => $analysis['summary'],
             'logsForModal' => $analysis['logs_for_modal'],
             'filters' => $filters,
-            'modules' => UserActivityLogDummyData::modules(),
-            'activityTypes' => UserActivityLogDummyData::activityTypes(),
-            'roles' => UserActivityLogDummyData::roles(),
-            'users' => UserActivityLogDummyData::users(),
-            'dateRanges' => UserActivityLogDummyData::dateRanges(),
-            'total' => $total,
-            'page' => $page,
-            'perPage' => $perPage,
-            'lastPage' => $lastPage,
+            'modules' => UserActivityLogFormData::modules(),
+            'activityTypes' => UserActivityLogFormData::activityTypes(),
+            'roles' => UserActivityLogFormData::roles(),
+            'users' => $this->activityLogService->users(),
+            'dateRanges' => UserActivityLogFormData::dateRanges(),
+            'total' => $analysis['total'],
+            'page' => $analysis['page'],
+            'perPage' => $analysis['perPage'],
+            'lastPage' => $analysis['lastPage'],
         ]);
     }
 

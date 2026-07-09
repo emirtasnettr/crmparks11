@@ -3,7 +3,7 @@
 namespace App\Modules\User\Exports;
 
 use App\Core\Exports\ListExport;
-use App\Modules\User\Data\UserActivityLogDummyData;
+use App\Modules\User\Services\UserActivityLogService;
 use App\Modules\User\Services\UserManagementService;
 
 final class UserListExportSheets
@@ -36,7 +36,7 @@ final class UserListExportSheets
     public static function activityLog(array $filters): array
     {
         return ListExport::sheet(
-            UserActivityLogDummyData::filter($filters),
+            app(UserActivityLogService::class)->exportRows($filters),
             ['Tarih', 'Saat', 'Kullanıcı', 'Rol', 'Modül', 'Aktivite', 'IP Adresi', 'Tarayıcı', 'Durum'],
             [
                 fn (array $row) => $row['date_formatted'],
