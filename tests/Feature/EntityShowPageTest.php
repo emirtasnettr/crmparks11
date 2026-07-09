@@ -13,6 +13,7 @@ use App\Modules\Agency\Data\AgencyDummyData;
 use App\Modules\Agency\Models\Agency;
 use App\Modules\Business\Data\BusinessDummyData;
 use App\Modules\Business\Models\Business;
+use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\Business\Models\BusinessPricing;
 use App\Modules\Courier\Data\CourierDummyData;
 use App\Modules\Courier\Models\Courier;
@@ -60,6 +61,26 @@ class EntityShowPageTest extends TestCase
     $user = User::factory()->create();
     $user->assignRole('super_admin');
     $business = $this->createBusiness($user);
+    $courier = $this->createCourier($user);
+    $pricingModel = PricingModelType::query()->where('code', 'per_package')->firstOrFail();
+
+    BusinessPricing::query()->create([
+      'business_id' => $business->id,
+      'pricing_model_type_id' => $pricingModel->id,
+      'customer_unit_price' => 48.00,
+      'courier_unit_price' => 36.00,
+      'effective_from' => now()->toDateString(),
+      'is_active' => true,
+      'created_by' => $user->id,
+    ]);
+
+    BusinessCourierAssignment::factory()->create([
+      'business_id' => $business->id,
+      'courier_id' => $courier->id,
+      'start_date' => '2026-07-01',
+      'end_date' => null,
+      'assigned_by' => $user->id,
+    ]);
 
     $stats = \App\Modules\Business\Data\BusinessOverviewStats::forBusiness(
       $business->id,
@@ -67,13 +88,10 @@ class EntityShowPageTest extends TestCase
       \Carbon\Carbon::parse('2026-07-08'),
     );
 
-    $this->assertGreaterThan(0, $stats['received_per_package']);
-    $this->assertGreaterThan(0, $stats['courier_per_package']);
-    $this->assertGreaterThan(0, $stats['active_couriers']);
-    $this->assertSame(
-      round($stats['received_per_package'] - $stats['courier_per_package'], 2),
-      $stats['net_per_package']
-    );
+    $this->assertSame(48.0, $stats['received_per_package']);
+    $this->assertSame(36.0, $stats['courier_per_package']);
+    $this->assertSame(1, $stats['active_couriers']);
+    $this->assertSame(12.0, $stats['net_per_package']);
     $this->assertStringContainsString('KDV hariç', $stats['received_per_package_formatted']);
 
     $response = $this->actingAs($user)->get(route('businesses.show', $business->id));

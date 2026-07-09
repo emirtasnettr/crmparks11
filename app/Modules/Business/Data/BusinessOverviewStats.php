@@ -3,15 +3,19 @@
 namespace App\Modules\Business\Data;
 
 use App\Core\Helpers\MoneyCalculator;
+use App\Models\EarningLine;
 use App\Modules\Business\Models\Business;
+use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\Business\Services\BusinessPresenter;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 class BusinessOverviewStats
 {
     /**
-     * @return array{start_date: string, end_date: string, start_date_formatted: string, end_date_formatted: string}
+     * @return array{start: CarbonInterface, end: CarbonInterface, start_date: string, end_date: string, start_date_formatted: string, end_date_formatted: string, range_label: string}
      */
     public static function resolveDateRange(?string $startDate, ?string $endDate): array
     {
@@ -52,19 +56,22 @@ class BusinessOverviewStats
         }
 
         $presenter = app(BusinessPresenter::class);
-        $base = $presenter->toBaseArray($business);
-        $daily = self::dailyPackageRows($businessId, $base, $start, $end, $presenter->unitPrices($business));
-        $totalPackages = (int) collect($daily)->sum('package_count');
-        $totalRevenue = round(collect($daily)->sum('revenue_total'), 2);
-        $totalCourier = round(collect($daily)->sum('courier_total'), 2);
+        $unitPrices = $presenter->unitPrices($business);
+        $lines = self::earningLinesInPeriod($businessId, $start, $end);
+        $totalPackages = (int) $lines->sum('package_count');
+        $totalRevenue = round((float) $lines->sum('revenue_total'), 2);
+        $totalCourier = round((float) $lines->sum('courier_total'), 2);
 
-        $receivedPerPackage = $totalPackages > 0
-            ? round($totalRevenue / $totalPackages, 2)
-            : 0.0;
-
-        $courierPerPackage = $totalPackages > 0
-            ? round($totalCourier / $totalPackages, 2)
-            : 0.0;
+        if ($totalPackages > 0) {
+            $receivedPerPackage = round($totalRevenue / $totalPackages, 2);
+            $courierPerPackage = round($totalCourier / $totalPackages, 2);
+        } elseif ($unitPrices['from_profile']) {
+            $receivedPerPackage = $unitPrices['revenue_unit'];
+            $courierPerPackage = $unitPrices['courier_unit'];
+        } else {
+            $receivedPerPackage = 0.0;
+            $courierPerPackage = 0.0;
+        }
 
         $netPerPackage = round($receivedPerPackage - $courierPerPackage, 2);
 
@@ -81,65 +88,50 @@ class BusinessOverviewStats
     }
 
     /**
-     * @param  array<string, mixed>  $business
-     * @param  array{revenue_unit: float, courier_unit: float, from_profile: bool}  $unitPrices
-     * @return array<int, array<string, float|int|string>>
+     * @return Collection<int, EarningLine>
      */
-    private static function dailyPackageRows(
-        int $businessId,
-        array $business,
-        CarbonInterface $start,
-        CarbonInterface $end,
-        array $unitPrices,
-    ): array {
-        $useExactPrices = $unitPrices['from_profile'];
-        $rows = [];
-        $cursor = $start->copy();
+    private static function earningLinesInPeriod(int $businessId, CarbonInterface $start, CarbonInterface $end): Collection
+    {
+        $months = [];
+        $cursor = $start->copy()->startOfMonth();
+        $endMonth = $end->copy()->startOfMonth();
 
-        while ($cursor->lte($end)) {
-            $seed = crc32($businessId.'-'.$cursor->toDateString());
-            $weekendFactor = in_array($cursor->dayOfWeekIso, [6, 7], true) ? 1.18 : 1.0;
-            $packageCount = (int) round((90 + ($seed % 95)) * $weekendFactor);
-            $revenueUnit = $useExactPrices
-                ? $unitPrices['revenue_unit']
-                : round($unitPrices['revenue_unit'] + (($seed % 5) - 2) * 0.5, 2);
-            $courierUnit = $useExactPrices
-                ? $unitPrices['courier_unit']
-                : round($unitPrices['courier_unit'] + (($seed % 4) - 1) * 0.5, 2);
-
-            $rows[] = [
-                'date' => $cursor->toDateString(),
-                'package_count' => max(0, $packageCount),
-                'revenue_unit_price' => max(0, $revenueUnit),
-                'courier_unit_price' => max(0, $courierUnit),
-                'revenue_total' => round(max(0, $packageCount) * max(0, $revenueUnit), 2),
-                'courier_total' => round(max(0, $packageCount) * max(0, $courierUnit), 2),
+        while ($cursor->lte($endMonth)) {
+            $months[] = [
+                'year' => (int) $cursor->format('Y'),
+                'month' => (int) $cursor->format('n'),
             ];
-
-            $cursor->addDay();
+            $cursor->addMonth();
         }
 
-        return $rows;
+        if ($months === []) {
+            return collect();
+        }
+
+        return EarningLine::query()
+            ->where('business_id', $businessId)
+            ->where(function (Builder $query) use ($months): void {
+                foreach ($months as $period) {
+                    $query->orWhere(function (Builder $inner) use ($period): void {
+                        $inner->where('period_year', $period['year'])
+                            ->where('period_month', $period['month']);
+                    });
+                }
+            })
+            ->get();
     }
 
     private static function activeCouriersInPeriod(int $businessId, CarbonInterface $start, CarbonInterface $end): int
     {
-        return collect(BusinessAssignmentDummyData::all())
-            ->filter(function (array $assignment) use ($businessId, $start, $end) {
-                if ((int) $assignment['business_id'] !== $businessId) {
-                    return false;
-                }
-
-                $assignmentStart = Carbon::parse($assignment['start_date'])->startOfDay();
-                $assignmentEnd = $assignment['end_date']
-                    ? Carbon::parse($assignment['end_date'])->endOfDay()
-                    : $end->copy()->endOfDay();
-
-                return $assignmentStart->lte($end) && $assignmentEnd->gte($start);
+        return BusinessCourierAssignment::query()
+            ->where('business_id', $businessId)
+            ->whereDate('start_date', '<=', $end->toDateString())
+            ->where(function (Builder $query) use ($start): void {
+                $query->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $start->toDateString());
             })
-            ->pluck('courier_id')
-            ->unique()
-            ->count();
+            ->distinct()
+            ->count('courier_id');
     }
 
     /**

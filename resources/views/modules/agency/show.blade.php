@@ -173,6 +173,8 @@
             @include('modules.agency.couriers.partials.assign-modal', [
                 'hideEntitySelector' => true,
                 'presetEntityLabel' => $agency['company_name'],
+                'lockedAgencyId' => $agency['id'],
+                'redirectToAgency' => true,
                 'couriers' => $assignCouriers,
                 'agencies' => [],
             ])

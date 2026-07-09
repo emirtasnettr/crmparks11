@@ -6,7 +6,9 @@ use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
 use App\Modules\Agency\Data\AgencyCourierFormData;
 use App\Modules\Agency\Exports\AgencyListExportSheets;
+use App\Modules\Agency\Requests\StoreAgencyCourierAssignmentRequest;
 use App\Modules\Agency\Services\AgencyCourierService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -67,5 +69,20 @@ class AgencyCourierController extends Controller
             AgencyListExportSheets::couriers($filters),
             'Acente Kuryeleri',
         );
+    }
+
+    public function store(StoreAgencyCourierAssignmentRequest $request): RedirectResponse
+    {
+        $courier = $this->couriers->assign($request->validated(), $request->user());
+
+        if ($request->boolean('redirect_to_agency')) {
+            return redirect()
+                ->route('agencies.show', $courier->agency_id)
+                ->with('success', 'Kurye acenteye başarıyla atandı.');
+        }
+
+        return redirect()
+            ->route('agencies.couriers.index', ['agency_id' => $courier->agency_id])
+            ->with('success', 'Kurye acenteye başarıyla atandı.');
     }
 }

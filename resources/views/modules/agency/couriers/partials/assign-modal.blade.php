@@ -19,19 +19,32 @@
             </button>
         </div>
 
-        <form @submit.prevent="saveAssignment" class="space-y-4 px-6 py-4">
+        <form
+            method="POST"
+            action="{{ $formAction ?? route('agencies.couriers.store') }}"
+            @submit="handleAssignSubmit($event)"
+            class="space-y-4 px-6 py-4"
+        >
+            @csrf
             @php
                 $hideEntitySelector = $hideEntitySelector ?? false;
                 $presetEntityLabel = $presetEntityLabel ?? null;
+                $redirectToAgency = $redirectToAgency ?? false;
             @endphp
+
+            @if ($redirectToAgency)
+                <input type="hidden" name="redirect_to_agency" value="1">
+            @endif
 
             @if ($hideEntitySelector)
                 <x-entity.locked-field label="Acente" :value="$presetEntityLabel" />
+                <input type="hidden" name="agency_id" value="{{ $lockedAgencyId ?? '' }}" x-bind:value="assignModal.agency_id || '{{ $lockedAgencyId ?? '' }}'">
             @else
                 <div class="space-y-1.5">
                     <label for="assign_agency_id" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Acente *</label>
                     <select
                         id="assign_agency_id"
+                        name="agency_id"
                         x-model="assignModal.agency_id"
                         class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                         :class="assignErrors.agency_id ? 'border-red-300 dark:border-red-500' : ''"
@@ -49,6 +62,7 @@
                 <label for="assign_courier_id" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Kurye *</label>
                 <select
                     id="assign_courier_id"
+                    name="courier_id"
                     x-model="assignModal.courier_id"
                     class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                     :class="assignErrors.courier_id ? 'border-red-300 dark:border-red-500' : ''"
@@ -66,6 +80,7 @@
                     <label for="assign_start_date" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Başlangıç Tarihi *</label>
                     <input
                         id="assign_start_date"
+                        name="start_date"
                         type="date"
                         x-model="assignModal.start_date"
                         class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
@@ -78,6 +93,7 @@
                     <label for="assign_end_date" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Bitiş Tarihi (Opsiyonel)</label>
                     <input
                         id="assign_end_date"
+                        name="end_date"
                         type="date"
                         x-model="assignModal.end_date"
                         class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
@@ -89,6 +105,7 @@
                 <label for="assign_status" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Durum</label>
                 <select
                     id="assign_status"
+                    name="status"
                     x-model="assignModal.status"
                     class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                 >
@@ -100,15 +117,9 @@
 
             <x-ui.textarea name="notes" label="Notlar" rows="3" x-model="assignModal.notes" />
 
-            <div x-show="assignSaved" x-cloak>
-                <x-ui.alert type="success">
-                    Atama bilgileri doğrulandı. Kayıt işlemi backend bağlantısı sonrası aktif olacaktır.
-                </x-ui.alert>
-            </div>
-
             <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
                 <x-ui.button type="button" variant="secondary" @click="closeAssignModal">İptal</x-ui.button>
-                <x-ui.button type="submit">Kaydet</x-ui.button>
+                <x-ui.button type="submit" ::disabled="assignSubmitting">Kaydet</x-ui.button>
             </div>
         </form>
     </div>

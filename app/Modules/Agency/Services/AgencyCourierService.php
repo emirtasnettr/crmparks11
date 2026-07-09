@@ -2,6 +2,8 @@
 
 namespace App\Modules\Agency\Services;
 
+use App\Models\User;
+use App\Modules\ActivityLog\Services\ActivityLogService;
 use App\Modules\Agency\Data\AgencyCourierFormData;
 use App\Modules\Agency\Models\Agency;
 use App\Modules\Business\Models\BusinessCourierAssignment;
@@ -9,11 +11,13 @@ use App\Modules\Courier\Models\Courier;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class AgencyCourierService
 {
     public function __construct(
         private readonly AgencyCourierPresenter $presenter,
+        private readonly ActivityLogService $activityLog,
     ) {}
 
     /**
@@ -95,6 +99,37 @@ class AgencyCourierService
                 'phone' => $courier->phone ?? '—',
             ])
             ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function assign(array $data, User $user): Courier
+    {
+        return DB::transaction(function () use ($data): Courier {
+            $agency = Agency::query()->findOrFail((int) $data['agency_id']);
+            $courier = Courier::query()->lockForUpdate()->findOrFail((int) $data['courier_id']);
+
+            $courier->update([
+                'agency_id' => $agency->id,
+                'courier_type' => 'agency',
+                'start_date' => $data['start_date'],
+                'status' => $data['status'] ?? 'active',
+                'notes' => $data['notes'] ?? $courier->notes,
+            ]);
+
+            $courier = $courier->fresh(['agency', 'vehicleType']);
+
+            $this->activityLog->log(
+                'courier_assigned',
+                $courier,
+                oldValues: ['agency_id' => null],
+                newValues: ['agency_id' => $agency->id],
+                description: "{$courier->full_name} kuryesi {$agency->company_name} acentesine atandı.",
+            );
+
+            return $courier;
+        });
     }
 
     /**

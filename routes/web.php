@@ -214,6 +214,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/yetkililer/{id}', [AgencyContactController::class, 'show'])->name('contacts.show');
         Route::get('/kuryeler', [AgencyCourierController::class, 'index'])->name('couriers.index');
         Route::get('/kuryeler/export', [AgencyCourierController::class, 'export'])->name('couriers.export');
+        Route::post('/kuryeler', [AgencyCourierController::class, 'store'])->middleware('permission:agency.update')->name('couriers.store');
         Route::get('/sozlesmeler', [AgencyContractController::class, 'index'])->name('contracts.index');
         Route::get('/sozlesmeler/export', [AgencyContractController::class, 'export'])->name('contracts.export');
         Route::post('/sozlesmeler', [AgencyContractController::class, 'store'])->middleware('permission:agency.update')->name('contracts.store');

@@ -2,9 +2,11 @@
 
 namespace Tests\Unit;
 
+use App\Models\EarningLine;
 use App\Models\PricingModelType;
 use App\Models\User;
 use App\Modules\Business\Models\Business;
+use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\Business\Models\BusinessPricing;
 use App\Modules\Business\Data\BusinessOverviewStats;
 use App\Modules\Business\Services\BusinessPresenter;
@@ -87,5 +89,74 @@ class BusinessOverviewStatsTest extends TestCase
         $this->assertFalse($unitPrices['from_profile']);
         $this->assertSame(0.0, $unitPrices['revenue_unit']);
         $this->assertSame(0.0, $unitPrices['courier_unit']);
+    }
+
+    public function test_active_couriers_are_counted_from_assignments(): void
+    {
+        $user = User::factory()->create();
+        $business = Business::factory()->create(['created_by' => $user->id]);
+        $firstCourier = \App\Modules\Courier\Models\Courier::factory()->create(['created_by' => $user->id]);
+        $secondCourier = \App\Modules\Courier\Models\Courier::factory()->create(['created_by' => $user->id]);
+
+        BusinessCourierAssignment::factory()->create([
+            'business_id' => $business->id,
+            'courier_id' => $firstCourier->id,
+            'start_date' => '2026-07-01',
+            'end_date' => null,
+            'assigned_by' => $user->id,
+        ]);
+
+        BusinessCourierAssignment::factory()->create([
+            'business_id' => $business->id,
+            'courier_id' => $secondCourier->id,
+            'start_date' => '2026-06-01',
+            'end_date' => '2026-06-30',
+            'assigned_by' => $user->id,
+        ]);
+
+        $stats = BusinessOverviewStats::forBusiness(
+            $business->id,
+            Carbon::parse('2026-07-02'),
+            Carbon::parse('2026-07-08'),
+        );
+
+        $this->assertSame(1, $stats['active_couriers']);
+    }
+
+    public function test_overview_stats_aggregate_earning_lines_in_period(): void
+    {
+        $user = User::factory()->create();
+        $business = Business::factory()->create(['created_by' => $user->id]);
+
+        EarningLine::factory()->create([
+            'business_id' => $business->id,
+            'period_month' => 7,
+            'period_year' => 2026,
+            'package_count' => 100,
+            'revenue_total' => 5000,
+            'courier_total' => 3500,
+            'created_by' => $user->id,
+        ]);
+
+        EarningLine::factory()->create([
+            'business_id' => $business->id,
+            'period_month' => 7,
+            'period_year' => 2026,
+            'package_count' => 50,
+            'revenue_total' => 2500,
+            'courier_total' => 1750,
+            'created_by' => $user->id,
+        ]);
+
+        $stats = BusinessOverviewStats::forBusiness(
+            $business->id,
+            Carbon::parse('2026-07-01'),
+            Carbon::parse('2026-07-15'),
+        );
+
+        $this->assertSame(150, $stats['total_packages']);
+        $this->assertSame(50.0, $stats['received_per_package']);
+        $this->assertSame(35.0, $stats['courier_per_package']);
+        $this->assertSame(15.0, $stats['net_per_package']);
     }
 }

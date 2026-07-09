@@ -639,8 +639,8 @@ Alpine.data('agencyCourierPage', (preset = {}) => {
     lockedAgencyId,
     openAssignModal: false,
     openDetailModal: false,
-    assignSaved: false,
     assignErrors: {},
+    assignSubmitting: false,
     selected: null,
     assignModal: {
         agency_id: lockedAgencyId,
@@ -653,8 +653,8 @@ Alpine.data('agencyCourierPage', (preset = {}) => {
 
     closeAssignModal() {
         this.openAssignModal = false;
-        this.assignSaved = false;
         this.assignErrors = {};
+        this.assignSubmitting = false;
         this.resetAssignModal();
     },
 
@@ -689,14 +689,13 @@ Alpine.data('agencyCourierPage', (preset = {}) => {
         return Object.keys(this.assignErrors).length === 0;
     },
 
-    saveAssignment() {
-        this.assignSaved = false;
-
+    handleAssignSubmit(event) {
         if (!this.validateAssignModal()) {
+            event.preventDefault();
             return;
         }
 
-        this.assignSaved = true;
+        this.assignSubmitting = true;
     },
 
     openDetail(record) {
