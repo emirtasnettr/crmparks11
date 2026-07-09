@@ -137,6 +137,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/odemeler/export', [FinancePaymentController::class, 'export'])->name('payments.export');
         Route::get('/odemeler/{id}', [FinancePaymentController::class, 'show'])->name('payments.show');
         Route::get('/faturalar', [FinanceInvoiceController::class, 'index'])->name('invoices.index');
+        Route::post('/faturalar', [FinanceInvoiceController::class, 'store'])->name('invoices.store');
         Route::get('/faturalar/export', [FinanceInvoiceController::class, 'export'])->name('invoices.export');
         Route::get('/faturalar/{id}', [FinanceInvoiceController::class, 'show'])->name('invoices.show');
         Route::get('/karlilik-analizi', [FinanceProfitabilityController::class, 'index'])->name('profitability.index');

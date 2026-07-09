@@ -7,7 +7,7 @@ use App\Modules\Finance\Data\FinanceActivityLogDummyData;
 use App\Modules\Finance\Services\CollectionService;
 use App\Modules\Finance\Services\CurrentAccountService;
 use App\Modules\Finance\Services\ExpenseService;
-use App\Modules\Finance\Data\FinanceInvoiceDummyData;
+use App\Modules\Finance\Services\InvoiceService;
 use App\Modules\Finance\Services\PaymentService;
 use App\Modules\Finance\Data\FinanceProfitabilityDummyData;
 use App\Modules\Finance\Services\RevenueService;
@@ -146,8 +146,10 @@ final class FinanceListExportSheets
      */
     public static function invoices(array $filters): array
     {
+        $invoices = app(InvoiceService::class)->filter($filters)->all();
+
         return ListExport::sheet(
-            FinanceInvoiceDummyData::filter($filters),
+            $invoices,
             ['Fatura No', 'İşletme', 'Hakediş Dönemi', 'Fatura Tarihi', 'Vade Tarihi', 'Tutar (KDV Hariç)', 'KDV', 'Tahsilat Durumu', 'Fatura Durumu'],
             [
                 fn (array $row) => $row['reference'],

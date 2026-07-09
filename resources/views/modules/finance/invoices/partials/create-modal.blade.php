@@ -18,68 +18,57 @@
             </button>
         </div>
 
-        <form @submit.prevent="saveInvoice()" class="space-y-4 px-6 py-4">
+        <form method="POST" action="{{ route('finance.invoices.store') }}" class="space-y-4 px-6 py-4">
+            @csrf
+
             <div class="space-y-1.5">
-                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">İşletme *</label>
-                <select x-model="form.business_id" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white" :class="errors.business_id ? 'border-red-300' : ''">
+                <label for="invoice_business_id" class="block text-sm font-medium text-gray-700 dark:text-slate-300">İşletme *</label>
+                <select id="invoice_business_id" name="business_id" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
                     <option value="">İşletme seçin</option>
                     @foreach ($businesses as $business)
-                        <option value="{{ $business['id'] }}">{{ $business['name'] }}</option>
+                        <option value="{{ $business['id'] }}" @selected(old('business_id') == $business['id'])>{{ $business['name'] }}</option>
                     @endforeach
                 </select>
-                <p x-show="errors.business_id" x-cloak class="text-sm text-red-600" x-text="errors.business_id"></p>
+                @error('business_id')
+                    <p class="text-sm text-red-600">{{ $message }}</p>
+                @enderror
             </div>
 
             <div class="space-y-1.5">
-                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Hakediş *</label>
-                <select x-model="form.earning_id" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white" :class="errors.earning_id ? 'border-red-300' : ''">
+                <label for="invoice_earning_line_id" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Hakediş</label>
+                <select id="invoice_earning_line_id" name="earning_line_id" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
                     <option value="">Hakediş seçin</option>
                     @foreach ($earningOptions as $earning)
-                        <option value="{{ $earning['id'] }}" data-business="{{ $earning['business_id'] }}">
-                            {{ $earning['reference'] }} — {{ $earning['period_label'] }}
-                        </option>
+                        <option value="{{ $earning['id'] }}" @selected(old('earning_line_id') == $earning['id'])>{{ $earning['reference'] }} — {{ $earning['period_label'] }}</option>
                     @endforeach
                 </select>
-                <p x-show="errors.earning_id" x-cloak class="text-sm text-red-600" x-text="errors.earning_id"></p>
+                @error('earning_line_id')
+                    <p class="text-sm text-red-600">{{ $message }}</p>
+                @enderror
             </div>
 
             <div class="space-y-1.5">
-                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Fatura Türü</label>
-                <select x-model="form.invoice_type" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
+                <label for="invoice_type" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Fatura Türü</label>
+                <select id="invoice_type" name="invoice_type" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
                     @foreach ($invoiceTypes as $key => $label)
-                        <option value="{{ $key }}">{{ $label }}</option>
+                        <option value="{{ $key }}" @selected(old('invoice_type', 'manual') === $key)>{{ $label }}</option>
                     @endforeach
                 </select>
             </div>
 
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <x-ui.input type="date" label="Fatura Tarihi" x-model="form.invoice_date" />
-                <x-ui.input type="date" label="Vade Tarihi" x-model="form.due_date" />
+                <x-ui.input type="date" name="invoice_date" label="Fatura Tarihi *" :value="old('invoice_date', now()->toDateString())" />
+                <x-ui.input type="date" name="due_date" label="Vade Tarihi *" :value="old('due_date', now()->addDays(15)->toDateString())" />
             </div>
 
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <x-ui.input type="number" step="0.01" min="0" label="Ara Toplam (₺, KDV Hariç)" x-model="form.subtotal" @input="calcTotals()" />
-                <x-ui.input type="number" step="1" min="0" max="100" label="KDV %" x-model="form.vat_rate" @input="calcTotals()" />
-            </div>
-
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
-                    <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-slate-400">KDV Tutarı</p>
-                    <p class="mt-1 text-lg font-bold text-gray-900 dark:text-white" x-text="formatMoney(vatAmount)"></p>
-                </div>
-                <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
-                    <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-slate-400">Genel Toplam</p>
-                    <p class="mt-1 text-lg font-bold text-gray-900 dark:text-white" x-text="formatMoney(grandTotal)"></p>
-                </div>
+                <x-ui.input type="number" step="0.01" min="0" name="subtotal" label="Ara Toplam (₺, KDV Hariç) *" :value="old('subtotal')" />
+                <x-ui.input type="number" step="1" min="0" max="100" name="vat_rate" label="KDV %" :value="old('vat_rate', 20)" />
             </div>
 
             <div class="space-y-1.5">
-                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Açıklama</label>
-                <textarea x-model="form.description" rows="3" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white"></textarea>
-            </div>
-
-            <div x-show="saved" x-cloak class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-800/50 dark:bg-emerald-900/20 dark:text-emerald-300">
-                Fatura kaydı oluşturuldu. Gerçek entegrasyonda cari hesaba gelir hareketi ve tahsilat kaydı otomatik oluşturulacaktır.
+                <label for="invoice_description" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Açıklama</label>
+                <textarea id="invoice_description" name="description" rows="3" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">{{ old('description') }}</textarea>
             </div>
 
             <div class="flex justify-end gap-2 border-t border-gray-200 pt-4 dark:border-slate-700">

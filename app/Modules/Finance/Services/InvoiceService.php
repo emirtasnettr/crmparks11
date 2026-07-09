@@ -1,0 +1,318 @@
+<?php
+
+namespace App\Modules\Finance\Services;
+
+use App\Models\EarningLine;
+use App\Models\User;
+use App\Modules\ActivityLog\Services\ActivityLogService;
+use App\Modules\Business\Models\Business;
+use App\Modules\Finance\Models\FinanceCollection;
+use App\Modules\Finance\Models\FinanceInvoice;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+
+class InvoiceService
+{
+    public function __construct(
+        private readonly InvoicePresenter $presenter,
+        private readonly CurrentAccountService $currentAccounts,
+        private readonly ActivityLogService $activityLog,
+    ) {}
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function filter(array $filters): Collection
+    {
+        return $this->baseQuery($filters)
+            ->with(['business.city', 'business.district', 'earningLine', 'currentAccount', 'collection'])
+            ->orderByDesc('invoice_date')
+            ->orderByDesc('id')
+            ->get()
+            ->map(fn (FinanceInvoice $invoice) => $this->presenter->indexRow($invoice));
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return array<string, float|int>
+     */
+    public function summarize(array $filters): array
+    {
+        $items = $this->filter($filters);
+        $today = Carbon::today();
+
+        $active = $items->where('invoice_status', '!=', 'cancelled');
+
+        $thisMonth = $active->filter(
+            fn (array $row) => Carbon::parse($row['invoice_date'])->isSameMonth($today)
+                && $row['invoice_status'] === 'issued'
+        );
+
+        return [
+            'total_invoice' => round($active->sum('subtotal'), 2),
+            'this_month_issued' => round($thisMonth->sum('subtotal'), 2),
+            'collected_amount' => round($active->sum('collected_amount'), 2),
+            'pending_amount' => round($active->whereIn('collection_status', ['pending', 'partial', 'overdue'])->sum('remaining_amount'), 2),
+            'cancelled_count' => $items->where('invoice_status', 'cancelled')->count(),
+        ];
+    }
+
+    public function find(int $id): ?FinanceInvoice
+    {
+        return FinanceInvoice::query()
+            ->with(['business.city', 'business.district', 'earningLine', 'currentAccount', 'collection'])
+            ->find($id);
+    }
+
+    /**
+     * @return array<int, array{id: int, name: string}>
+     */
+    public function businesses(): array
+    {
+        return Business::query()
+            ->orderBy('company_name')
+            ->get(['id', 'company_name'])
+            ->map(fn (Business $business) => [
+                'id' => $business->id,
+                'name' => $business->company_name,
+            ])
+            ->all();
+    }
+
+    /**
+     * @return array<int, array{id: int, reference: string, business_id: int, period_label: string, amount: float}>
+     */
+    public function earningOptions(): array
+    {
+        $usedEarningIds = FinanceInvoice::query()
+            ->whereNotNull('earning_line_id')
+            ->pluck('earning_line_id')
+            ->all();
+
+        $months = \App\Modules\Business\Data\BusinessEarningFormData::months();
+
+        return EarningLine::query()
+            ->whereNotIn('id', $usedEarningIds)
+            ->orderByDesc('period_year')
+            ->orderByDesc('period_month')
+            ->limit(50)
+            ->get(['id', 'business_id', 'period_month', 'period_year', 'revenue_total'])
+            ->map(fn (EarningLine $line) => [
+                'id' => $line->id,
+                'reference' => sprintf('ISH-%06d', $line->id),
+                'business_id' => $line->business_id,
+                'period_label' => ($months[$line->period_month] ?? '').' '.$line->period_year,
+                'amount' => (float) $line->revenue_total,
+            ])
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function create(array $data, User $user): FinanceInvoice
+    {
+        return DB::transaction(function () use ($data, $user): FinanceInvoice {
+            $business = Business::query()->findOrFail((int) $data['business_id']);
+            $account = $this->currentAccounts->ensureForEntity($business);
+            $earningLineId = ! empty($data['earning_line_id']) ? (int) $data['earning_line_id'] : null;
+            $earningLine = $earningLineId ? EarningLine::query()->findOrFail($earningLineId) : null;
+            $invoiceType = $data['invoice_type'] ?? 'manual';
+            $invoiceDate = Carbon::parse($data['invoice_date']);
+            $dueDate = Carbon::parse($data['due_date']);
+            $subtotal = round((float) $data['subtotal'], 2);
+            $vatRate = (int) ($data['vat_rate'] ?? 20);
+            $vatAmount = round($subtotal * ($vatRate / 100), 2);
+            $grandTotal = round($subtotal + $vatAmount, 2);
+            $invoiceStatus = 'issued';
+            $source = $earningLineId ? 'earning' : 'manual';
+            $collectionStatus = $this->resolveCollectionStatus(0, $subtotal, $dueDate, $invoiceStatus);
+
+            $invoice = FinanceInvoice::query()->create([
+                'business_id' => $business->id,
+                'earning_line_id' => $earningLineId,
+                'current_account_id' => $account->id,
+                'invoice_type' => $invoiceType,
+                'invoice_status' => $invoiceStatus,
+                'collection_status' => $collectionStatus,
+                'invoice_date' => $invoiceDate->toDateString(),
+                'due_date' => $dueDate->toDateString(),
+                'subtotal' => $subtotal,
+                'vat_rate' => $vatRate,
+                'vat_amount' => $vatAmount,
+                'grand_total' => $grandTotal,
+                'collected_amount' => 0,
+                'source' => $source,
+                'e_invoice_uuid' => $invoiceType === 'e_invoice'
+                    ? sprintf('E-FATURA-%s-%06d', $invoiceDate->year, 0)
+                    : null,
+                'e_archive_uuid' => $invoiceType === 'e_archive'
+                    ? sprintf('E-ARSIV-%s-%06d', $invoiceDate->year, 0)
+                    : null,
+                'gib_status' => in_array($invoiceType, ['e_invoice', 'e_archive'], true) ? 'sent' : 'not_applicable',
+                'description' => $data['description'] ?? $this->defaultDescription($earningLine, $source),
+                'notes' => $data['notes'] ?? null,
+                'created_by' => $user->id,
+            ]);
+
+            $invoice->update([
+                'reference' => sprintf('FTR-%d-%06d', $invoiceDate->year, $invoice->id),
+                'pdf_filename' => sprintf('FTR-%d-%06d.pdf', $invoiceDate->year, $invoice->id),
+                'e_invoice_uuid' => $invoiceType === 'e_invoice'
+                    ? sprintf('E-FATURA-%s-%06d', $invoiceDate->year, $invoice->id)
+                    : null,
+                'e_archive_uuid' => $invoiceType === 'e_archive'
+                    ? sprintf('E-ARSIV-%s-%06d', $invoiceDate->year, $invoice->id)
+                    : null,
+            ]);
+
+            $collection = $this->createCollectionForInvoice($invoice->fresh(), $user);
+            $invoice->update(['collection_id' => $collection->id]);
+
+            $this->recordCurrentAccountMovement($invoice->fresh(), $user);
+
+            $this->activityLog->log(
+                'invoice_created',
+                $invoice,
+                description: "{$invoice->reference} fatura kaydı oluşturuldu.",
+            );
+
+            return $invoice->fresh(['business.city', 'business.district', 'earningLine', 'currentAccount', 'collection']);
+        });
+    }
+
+    private function createCollectionForInvoice(FinanceInvoice $invoice, User $user): FinanceCollection
+    {
+        $collection = FinanceCollection::query()->create([
+            'business_id' => $invoice->business_id,
+            'current_account_id' => $invoice->current_account_id,
+            'source' => $invoice->source === 'earning' ? 'revenue' : 'manual',
+            'invoice_no' => $invoice->reference,
+            'due_date' => $invoice->due_date->toDateString(),
+            'total_amount' => $invoice->subtotal,
+            'collected_amount' => 0,
+            'status' => $invoice->collection_status,
+            'description' => 'Fatura tahsilat kaydı — '.$invoice->reference,
+            'created_by' => $user->id,
+        ]);
+
+        $collection->update([
+            'reference' => sprintf('TAH-%d-%06d', $invoice->due_date->year, $collection->id),
+        ]);
+
+        return $collection->fresh();
+    }
+
+    private function recordCurrentAccountMovement(FinanceInvoice $invoice, User $user): void
+    {
+        if ($invoice->current_account_id === null || $invoice->invoice_status !== 'issued') {
+            return;
+        }
+
+        $this->currentAccounts->createMovement([
+            'current_account_id' => $invoice->current_account_id,
+            'transaction_date' => $invoice->invoice_date->toDateString(),
+            'type' => 'invoice',
+            'document_no' => $invoice->reference,
+            'amount' => (float) $invoice->subtotal,
+            'description' => 'Fatura: '.$invoice->reference,
+        ], $user);
+    }
+
+    private function resolveCollectionStatus(
+        float $collected,
+        float $subtotal,
+        Carbon $dueDate,
+        string $invoiceStatus,
+    ): string {
+        if (in_array($invoiceStatus, ['draft', 'cancelled'], true)) {
+            return 'pending';
+        }
+
+        $remaining = round($subtotal - $collected, 2);
+
+        if ($remaining <= 0) {
+            return 'collected';
+        }
+
+        if ($collected > 0) {
+            return 'partial';
+        }
+
+        if ($dueDate->lt(Carbon::today())) {
+            return 'overdue';
+        }
+
+        return 'pending';
+    }
+
+    private function defaultDescription(?EarningLine $earningLine, string $source): string
+    {
+        if ($source === 'earning' && $earningLine !== null) {
+            $months = \App\Modules\Business\Data\BusinessEarningFormData::months();
+            $period = ($months[$earningLine->period_month] ?? '').' '.$earningLine->period_year;
+
+            return 'Hakediş dönemi faturası — '.$period;
+        }
+
+        return 'Manuel fatura kaydı';
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     */
+    private function baseQuery(array $filters): Builder
+    {
+        $reference = Carbon::today();
+
+        return FinanceInvoice::query()
+            ->when(
+                ($filters['business_id'] ?? 'all') !== 'all',
+                fn (Builder $query) => $query->where('business_id', (int) $filters['business_id'])
+            )
+            ->when(
+                ($filters['invoice_type'] ?? 'all') !== 'all',
+                fn (Builder $query) => $query->where('invoice_type', $filters['invoice_type'])
+            )
+            ->when(
+                ($filters['invoice_status'] ?? 'all') !== 'all',
+                fn (Builder $query) => $query->where('invoice_status', $filters['invoice_status'])
+            )
+            ->when(
+                ($filters['collection_status'] ?? 'all') !== 'all',
+                fn (Builder $query) => $query->where('collection_status', $filters['collection_status'])
+            )
+            ->when(($filters['date_range'] ?? 'all') !== 'all', function (Builder $query) use ($filters, $reference): void {
+                $range = $filters['date_range'];
+
+                if ($range === 'today') {
+                    $query->whereDate('invoice_date', $reference);
+
+                    return;
+                }
+
+                if ($range === 'week') {
+                    $query->whereBetween('invoice_date', [
+                        $reference->copy()->startOfWeek()->toDateString(),
+                        $reference->copy()->endOfWeek()->toDateString(),
+                    ]);
+
+                    return;
+                }
+
+                if ($range === 'month') {
+                    $query->whereYear('invoice_date', $reference->year)
+                        ->whereMonth('invoice_date', $reference->month);
+
+                    return;
+                }
+
+                if ($range === 'year') {
+                    $query->whereYear('invoice_date', $reference->year);
+                }
+            });
+    }
+}
