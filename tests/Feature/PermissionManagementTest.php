@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Modules\User\Data\PermissionManagementDummyData;
+use App\Modules\User\Services\PermissionManagementService;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -86,7 +86,7 @@ class PermissionManagementTest extends TestCase
 
     public function test_super_admin_role_is_locked_in_payload(): void
     {
-        $payload = PermissionManagementDummyData::rolesPayload();
+        $payload = app(PermissionManagementService::class)->rolesPayload();
 
         $this->assertTrue($payload['super_admin']['is_locked']);
         $this->assertFalse($payload['general_manager']['is_locked']);
@@ -94,7 +94,7 @@ class PermissionManagementTest extends TestCase
 
     public function test_selectable_roles_include_defaults(): void
     {
-        $roles = PermissionManagementDummyData::selectableRoles();
+        $roles = app(PermissionManagementService::class)->selectableRoles();
 
         $this->assertArrayHasKey('super_admin', $roles);
         $this->assertArrayHasKey('general_manager', $roles);
@@ -105,13 +105,17 @@ class PermissionManagementTest extends TestCase
 
     public function test_finance_officer_has_finance_module_permissions(): void
     {
-        $payload = PermissionManagementDummyData::rolesPayload();
+        $payload = app(PermissionManagementService::class)->rolesPayload();
         $matrix = collect($payload['finance_officer']['matrix']);
 
-        $revenues = $matrix->firstWhere('key', 'revenues');
-        $this->assertNotNull($revenues);
-        $this->assertTrue($revenues['actions']['view']['granted']);
-        $this->assertTrue($revenues['actions']['create']['granted']);
+        $financeDashboard = $matrix->firstWhere('key', 'finance_dashboard');
+        $this->assertNotNull($financeDashboard);
+        $this->assertTrue($financeDashboard['actions']['view']['granted']);
+
+        $reports = $matrix->firstWhere('key', 'reports');
+        $this->assertNotNull($reports);
+        $this->assertTrue($reports['actions']['view']['granted']);
+        $this->assertTrue($reports['actions']['export']['granted']);
 
         $users = $matrix->firstWhere('key', 'users');
         $this->assertNotNull($users);
@@ -120,7 +124,7 @@ class PermissionManagementTest extends TestCase
 
     public function test_courier_role_has_limited_view_own_permissions(): void
     {
-        $payload = PermissionManagementDummyData::rolesPayload();
+        $payload = app(PermissionManagementService::class)->rolesPayload();
         $matrix = collect($payload['courier']['matrix']);
 
         $couriers = $matrix->firstWhere('key', 'couriers');
@@ -130,9 +134,20 @@ class PermissionManagementTest extends TestCase
         $this->assertFalse($businesses['actions']['view']['granted']);
     }
 
+    public function test_roles_payload_reflects_database_permissions(): void
+    {
+        $payload = app(PermissionManagementService::class)->rolesPayload();
+
+        $this->assertTrue(
+            collect($payload['super_admin']['matrix'])
+                ->firstWhere('key', 'users')['actions']['view']['granted']
+        );
+        $this->assertContains('user.view', $payload['super_admin']['defaults']);
+    }
+
     public function test_audit_log_payload_structure_is_ready(): void
     {
-        $payload = PermissionManagementDummyData::auditLogPayload(
+        $payload = app(PermissionManagementService::class)->auditLogPayload(
             'general_manager',
             ['dashboard.view'],
             ['dashboard.view', 'report.export']

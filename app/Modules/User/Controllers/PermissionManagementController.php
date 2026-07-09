@@ -3,15 +3,19 @@
 namespace App\Modules\User\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\User\Data\PermissionManagementDummyData;
+use App\Modules\User\Services\PermissionManagementService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class PermissionManagementController extends Controller
 {
+    public function __construct(
+        private readonly PermissionManagementService $permissionService,
+    ) {}
+
     public function index(Request $request): View
     {
-        $roles = PermissionManagementDummyData::selectableRoles();
+        $roles = $this->permissionService->selectableRoles();
         $selectedRole = $request->string('role')->toString();
 
         if (! array_key_exists($selectedRole, $roles)) {
@@ -21,9 +25,9 @@ class PermissionManagementController extends Controller
         return view('modules.user.permissions.index', [
             'roles' => $roles,
             'selectedRole' => $selectedRole,
-            'summary' => PermissionManagementDummyData::summarize($selectedRole),
-            'rolesPayload' => PermissionManagementDummyData::rolesPayload(),
-            'actionLabels' => PermissionManagementDummyData::actionLabels(),
+            'summary' => $this->permissionService->summarize($selectedRole),
+            'rolesPayload' => $this->permissionService->rolesPayload(),
+            'actionLabels' => $this->permissionService->actionLabels(),
         ]);
     }
 }
