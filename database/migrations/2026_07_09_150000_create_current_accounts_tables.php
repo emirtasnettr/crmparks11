@@ -13,7 +13,7 @@ return new class extends Migration
             $table->uuid('uuid')->unique();
             $table->string('code', 20)->nullable()->unique();
             $table->string('account_type', 20);
-            $table->nullableMorphs('accountable');
+            $table->nullableMorphs('accountable', 'ca_accountable_idx');
             $table->string('title');
             $table->string('phone')->nullable();
             $table->string('email')->nullable();
@@ -24,7 +24,7 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
-            $table->index(['account_type', 'status']);
+            $table->index(['account_type', 'status'], 'ca_type_status_idx');
         });
 
         Schema::create('current_account_movements', function (Blueprint $table) {
@@ -41,7 +41,7 @@ return new class extends Migration
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
 
-            $table->index(['current_account_id', 'transaction_date']);
+            $table->index(['current_account_id', 'transaction_date'], 'cam_account_date_idx');
         });
     }
 
