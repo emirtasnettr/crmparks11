@@ -4,8 +4,9 @@ namespace App\Modules\User\Controllers;
 
 use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
-use App\Modules\User\Data\UserManagementDummyData;
+use App\Modules\User\Data\UserManagementFormData;
 use App\Modules\User\Exports\UserListExportSheets;
+use App\Modules\User\Services\UserManagementService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -13,6 +14,10 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class UserManagementController extends Controller
 {
     use DownloadsListExport;
+
+    public function __construct(
+        private readonly UserManagementService $userService,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -26,25 +31,22 @@ class UserManagementController extends Controller
         $perPage = 25;
         $page = max(1, (int) $request->query('page', 1));
 
-        $all = UserManagementDummyData::filter($filters);
-        $total = count($all);
-        $users = array_slice($all, ($page - 1) * $perPage, $perPage);
-        $lastPage = max(1, (int) ceil($total / $perPage));
+        $result = $this->userService->index($filters, $page, $perPage);
 
         return view('modules.user.users.index', [
-            'users' => $users,
+            'users' => $result['users'],
             'filters' => $filters,
-            'roles' => UserManagementDummyData::roles(),
-            'statuses' => UserManagementDummyData::statuses(),
-            'lastLoginFilters' => UserManagementDummyData::lastLoginFilters(),
-            'businesses' => UserManagementDummyData::businesses(),
-            'couriers' => UserManagementDummyData::couriers(),
-            'agencies' => UserManagementDummyData::agencies(),
-            'summary' => UserManagementDummyData::summarize($filters),
-            'total' => $total,
-            'page' => $page,
-            'perPage' => $perPage,
-            'lastPage' => $lastPage,
+            'roles' => $this->userService->roles(),
+            'statuses' => UserManagementFormData::statuses(),
+            'lastLoginFilters' => UserManagementFormData::lastLoginFilters(),
+            'businesses' => $this->userService->businesses(),
+            'couriers' => $this->userService->couriers(),
+            'agencies' => $this->userService->agencies(),
+            'summary' => $result['summary'],
+            'total' => $result['total'],
+            'page' => $result['page'],
+            'perPage' => $result['perPage'],
+            'lastPage' => $result['lastPage'],
         ]);
     }
 
@@ -66,13 +68,13 @@ class UserManagementController extends Controller
 
     public function show(int $id): View
     {
-        $user = UserManagementDummyData::find($id);
+        $user = $this->userService->find($id);
 
         abort_if($user === null, 404);
 
         return view('modules.user.users.show', [
             'user' => $user,
-            'roles' => UserManagementDummyData::roles(),
+            'roles' => $this->userService->roles(),
         ]);
     }
 }

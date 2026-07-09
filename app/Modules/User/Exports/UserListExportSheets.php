@@ -4,7 +4,7 @@ namespace App\Modules\User\Exports;
 
 use App\Core\Exports\ListExport;
 use App\Modules\User\Data\UserActivityLogDummyData;
-use App\Modules\User\Data\UserManagementDummyData;
+use App\Modules\User\Services\UserManagementService;
 
 final class UserListExportSheets
 {
@@ -15,7 +15,7 @@ final class UserListExportSheets
     public static function users(array $filters): array
     {
         return ListExport::sheet(
-            UserManagementDummyData::filter($filters),
+            app(UserManagementService::class)->exportRows($filters),
             ['Ad Soyad', 'E-Posta', 'Telefon', 'Rol', 'Bağlı Birim', 'Son Giriş', 'Durum'],
             [
                 fn (array $row) => $row['full_name'],

@@ -34,4 +34,18 @@ class UserFactory extends Factory
             'email_verified_at' => null,
         ]);
     }
+
+    public function suspended(): static
+    {
+        return $this->state(fn () => [
+            'status' => Status::Suspended,
+        ]);
+    }
+
+    public function withRole(string $role): static
+    {
+        return $this->afterCreating(function (User $user) use ($role): void {
+            $user->assignRole($role);
+        });
+    }
 }
