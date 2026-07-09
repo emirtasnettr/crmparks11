@@ -4,10 +4,10 @@ namespace App\Modules\Courier\Controllers;
 
 use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
-use App\Modules\Courier\Data\CourierBankAccountDummyData;
+use App\Modules\Courier\Data\CourierBankAccountFormData;
 use App\Modules\Courier\Data\CourierDocumentFormData;
 use App\Modules\Courier\Data\CourierFormData;
-use App\Modules\Courier\Data\CourierVehicleDummyData;
+use App\Modules\Courier\Data\CourierVehicleFormData;
 use App\Modules\Courier\Exports\CourierListExportSheets;
 use App\Modules\Courier\Requests\StoreCourierRequest;
 use App\Modules\Courier\Requests\UpdateCourierRequest;
@@ -130,10 +130,10 @@ class CourierController extends Controller
         return view('modules.courier.show', [
             'courier' => $this->presenter->showPayload($courier),
             'documentTypes' => CourierDocumentFormData::documentTypes(),
-            'banks' => CourierBankAccountDummyData::banks(),
-            'bankStatuses' => CourierBankAccountDummyData::statuses(),
-            'vehicleTypes' => CourierVehicleDummyData::vehicleTypes(),
-            'vehicleStatuses' => CourierVehicleDummyData::statuses(),
+            'banks' => CourierBankAccountFormData::banks(),
+            'bankStatuses' => CourierBankAccountFormData::statuses(),
+            'vehicleTypes' => CourierVehicleFormData::vehicleTypes(),
+            'vehicleStatuses' => CourierVehicleFormData::statuses(),
         ]);
     }
 

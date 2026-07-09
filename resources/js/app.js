@@ -1541,8 +1541,8 @@ Alpine.data('courierVehiclePage', (preset = {}) => {
     return {
     lockedCourierId,
     openModal: false,
-    modalSaved: false,
     modalErrors: {},
+    submitting: false,
     modal: {
         courier_id: lockedCourierId,
         vehicle_type: '',
@@ -1564,7 +1564,6 @@ Alpine.data('courierVehiclePage', (preset = {}) => {
 
     closeModal() {
         this.openModal = false;
-        this.modalSaved = false;
         this.modalErrors = {};
         this.resetModal();
     },
@@ -1598,14 +1597,13 @@ Alpine.data('courierVehiclePage', (preset = {}) => {
         return Object.keys(this.modalErrors).length === 0;
     },
 
-    saveVehicle() {
-        this.modalSaved = false;
-
+    handleSubmit(event) {
         if (!this.validateModal()) {
+            event.preventDefault();
             return;
         }
 
-        this.modalSaved = true;
+        this.submitting = true;
     },
 };
 });
@@ -1616,8 +1614,8 @@ Alpine.data('courierBankAccountPage', (preset = {}) => {
     return {
     lockedCourierId,
     openModal: false,
-    modalSaved: false,
     modalErrors: {},
+    submitting: false,
     modal: {
         courier_id: lockedCourierId,
         bank_key: '',
@@ -1632,7 +1630,6 @@ Alpine.data('courierBankAccountPage', (preset = {}) => {
 
     closeModal() {
         this.openModal = false;
-        this.modalSaved = false;
         this.modalErrors = {};
         this.resetModal();
     },
@@ -1704,14 +1701,13 @@ Alpine.data('courierBankAccountPage', (preset = {}) => {
         return Object.keys(this.modalErrors).length === 0;
     },
 
-    saveAccount() {
-        this.modalSaved = false;
-
+    handleSubmit(event) {
         if (!this.validateModal()) {
+            event.preventDefault();
             return;
         }
 
-        this.modalSaved = true;
+        this.submitting = true;
     },
 };
 });

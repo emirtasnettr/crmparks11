@@ -1,17 +1,30 @@
 <x-ui.modal title="Yeni Banka Hesabı">
-    <form @submit.prevent="saveAccount" class="space-y-4">
+    <form
+        method="POST"
+        action="{{ $formAction ?? route('couriers.bank-accounts.store') }}"
+        @submit="handleSubmit($event)"
+        class="space-y-4"
+    >
+        @csrf
         @php
             $hideEntitySelector = $hideEntitySelector ?? false;
             $presetEntityLabel = $presetEntityLabel ?? null;
+            $redirectToCourier = $redirectToCourier ?? false;
         @endphp
+
+        @if ($redirectToCourier)
+            <input type="hidden" name="redirect_to_courier" value="1">
+        @endif
 
         @if ($hideEntitySelector)
             <x-entity.locked-field label="Kurye" :value="$presetEntityLabel" />
+            <input type="hidden" name="courier_id" value="{{ $lockedCourierId ?? '' }}" x-bind:value="modal.courier_id || '{{ $lockedCourierId ?? '' }}'">
         @else
             <div class="space-y-1.5">
                 <label for="modal_courier_id" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Kurye *</label>
                 <select
                     id="modal_courier_id"
+                    name="courier_id"
                     x-model="modal.courier_id"
                     class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                     :class="modalErrors.courier_id ? 'border-red-300 dark:border-red-500' : ''"
@@ -29,6 +42,7 @@
             <label for="modal_bank_key" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Banka Adı *</label>
             <select
                 id="modal_bank_key"
+                name="bank_key"
                 x-model="modal.bank_key"
                 class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                 :class="modalErrors.bank_key ? 'border-red-300 dark:border-red-500' : ''"
@@ -48,6 +62,7 @@
             <input
                 id="modal_iban"
                 type="text"
+                name="iban"
                 x-model="modal.iban"
                 @input="formatIbanInput"
                 placeholder="TR00 0000 0000 0000 0000 0000 00"
@@ -82,10 +97,11 @@
                 ></span>
             </button>
         </div>
+        <input type="hidden" name="is_default" :value="modal.is_default ? 1 : 0">
 
         <div class="space-y-1.5">
             <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Durum</label>
-            <select x-model="modal.status" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
+            <select name="status" x-model="modal.status" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
                 @foreach ($statuses as $value => $label)
                     <option value="{{ $value }}">{{ $label }}</option>
                 @endforeach
@@ -94,15 +110,9 @@
 
         <x-ui.textarea name="notes" label="Notlar" rows="3" x-model="modal.notes" />
 
-        <div x-show="modalSaved" x-cloak>
-            <x-ui.alert type="success">
-                Banka hesabı bilgileri doğrulandı. Kayıt işlemi backend bağlantısı sonrası aktif olacaktır.
-            </x-ui.alert>
-        </div>
-
         <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
             <x-ui.button type="button" variant="secondary" @click="closeModal">İptal</x-ui.button>
-            <x-ui.button type="submit">Kaydet</x-ui.button>
+            <x-ui.button type="submit" ::disabled="submitting">Kaydet</x-ui.button>
         </div>
     </form>
 </x-ui.modal>

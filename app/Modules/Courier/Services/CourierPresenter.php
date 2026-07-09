@@ -4,9 +4,7 @@ namespace App\Modules\Courier\Services;
 
 use App\Models\EarningLine;
 use App\Modules\Courier\Data\CourierActivityDummyData;
-use App\Modules\Courier\Data\CourierBankAccountDummyData;
 use App\Modules\Courier\Data\CourierFormData;
-use App\Modules\Courier\Data\CourierVehicleDummyData;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\Courier\Support\CourierAvatar;
 use App\Modules\Courier\Support\CourierFeatures;
@@ -21,6 +19,10 @@ class CourierPresenter
         private readonly CourierDocumentPresenter $documentPresenter,
         private readonly CourierWorkHistoryService $workHistory,
         private readonly CourierWorkHistoryPresenter $workHistoryPresenter,
+        private readonly CourierVehicleService $vehicles,
+        private readonly CourierVehiclePresenter $vehiclePresenter,
+        private readonly CourierBankAccountService $bankAccounts,
+        private readonly CourierBankAccountPresenter $bankAccountPresenter,
     ) {}
 
     /**
@@ -114,12 +116,16 @@ class CourierPresenter
     {
         $base = $this->toBaseArray($courier);
         $id = $courier->id;
-        $vehicles = CourierVehicleDummyData::filter(['courier_id' => $id]);
+        $vehicles = $this->vehicles->forCourier($id)
+            ->map(fn ($vehicle) => $this->vehiclePresenter->indexRow($vehicle))
+            ->values()
+            ->all();
         $activeVehicle = collect($vehicles)->firstWhere('status', 'active') ?? $vehicles[0] ?? null;
-        $defaultBank = collect(CourierBankAccountDummyData::filter(['courier_id' => $id]))
-            ->firstWhere('is_default', true)
-            ?? CourierBankAccountDummyData::filter(['courier_id' => $id])[0]
-            ?? null;
+        $bankAccountRows = $this->bankAccounts->forCourier($id)
+            ->map(fn ($account) => $this->bankAccountPresenter->indexRow($account))
+            ->values()
+            ->all();
+        $defaultBank = collect($bankAccountRows)->firstWhere('is_default', true) ?? $bankAccountRows[0] ?? null;
 
         return array_merge($this->detailPayload($courier), [
             'status' => $base['status'],
@@ -138,7 +144,7 @@ class CourierPresenter
             'active_vehicle' => $activeVehicle,
             'default_bank' => $defaultBank,
             'vehicles' => $vehicles,
-            'bank_accounts' => CourierBankAccountDummyData::filter(['courier_id' => $id]),
+            'bank_accounts' => $bankAccountRows,
             'documents' => $this->documents->forCourier($id)
                 ->map(fn ($document) => $this->documentPresenter->indexRow($document))
                 ->values()

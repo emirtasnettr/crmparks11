@@ -232,6 +232,8 @@
             @include('modules.courier.bank-accounts.partials.modal', [
                 'hideEntitySelector' => true,
                 'presetEntityLabel' => $courier['full_name'],
+                'lockedCourierId' => $courier['id'],
+                'redirectToCourier' => true,
                 'banks' => $banks,
                 'statuses' => $bankStatuses,
                 'couriers' => [],
@@ -275,6 +277,8 @@
             @include('modules.courier.vehicles.partials.modal', [
                 'hideEntitySelector' => true,
                 'presetEntityLabel' => $courier['full_name'],
+                'lockedCourierId' => $courier['id'],
+                'redirectToCourier' => true,
                 'vehicleTypes' => $vehicleTypes,
                 'statuses' => $vehicleStatuses,
                 'couriers' => [],

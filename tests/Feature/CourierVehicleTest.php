@@ -3,7 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Modules\Courier\Data\CourierVehicleDummyData;
+use App\Modules\Courier\Models\Courier;
+use App\Modules\Courier\Models\CourierVehicle;
+use App\Modules\Courier\Services\CourierVehiclePresenter;
+use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -16,7 +19,10 @@ class CourierVehicleTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(RoleAndPermissionSeeder::class);
+        $this->seed([
+            LookupTableSeeder::class,
+            RoleAndPermissionSeeder::class,
+        ]);
     }
 
     public function test_vehicles_index_requires_authentication(): void
@@ -30,6 +36,16 @@ class CourierVehicleTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $courier = $this->createCourier($user, ['full_name' => 'Ahmet Yıldız']);
+
+        CourierVehicle::factory()->create([
+            'courier_id' => $courier->id,
+            'vehicle_type' => 'motorcycle',
+            'plate' => '34 AY 1001',
+            'brand' => 'Honda',
+            'model' => 'Activa S',
+            'status' => 'active',
+        ]);
 
         $response = $this->actingAs($user)->get(route('couriers.vehicles.index'));
 
@@ -42,14 +58,25 @@ class CourierVehicleTest extends TestCase
         $response->assertSee('Otomobil');
         $response->assertSee('Aktif Araç');
         $response->assertSee('Ahmet Yıldız');
+        $response->assertSee('34 AY 1001');
     }
 
     public function test_authenticated_user_can_view_vehicle_detail(): void
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $courier = $this->createCourier($user, ['full_name' => 'Ahmet Yıldız']);
 
-        $response = $this->actingAs($user)->get(route('couriers.vehicles.show', 1));
+        $vehicle = CourierVehicle::factory()->create([
+            'courier_id' => $courier->id,
+            'vehicle_type' => 'motorcycle',
+            'plate' => '34 AY 1001',
+            'brand' => 'Honda',
+            'model' => 'Activa S',
+            'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($user)->get(route('couriers.vehicles.show', $vehicle->id));
 
         $response->assertOk();
         $response->assertSee('Araç Detayı');
@@ -64,38 +91,71 @@ class CourierVehicleTest extends TestCase
 
     public function test_insurance_status_is_computed_from_expiry_date(): void
     {
-        $valid = CourierVehicleDummyData::find(1);
-        $expiring = CourierVehicleDummyData::find(3);
-        $expired = CourierVehicleDummyData::find(6);
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $courier = $this->createCourier($user);
+        $presenter = app(CourierVehiclePresenter::class);
 
-        $this->assertEquals('valid', $valid['insurance_status']);
-        $this->assertEquals('expiring_soon', $expiring['insurance_status']);
-        $this->assertEquals('expired', $expired['insurance_status']);
+        $valid = CourierVehicle::factory()->create([
+            'courier_id' => $courier->id,
+            'insurance_expiry_date' => now()->addMonths(6)->toDateString(),
+        ]);
+
+        $expiring = CourierVehicle::factory()->create([
+            'courier_id' => $courier->id,
+            'insurance_expiry_date' => now()->addDays(10)->toDateString(),
+        ]);
+
+        $expired = CourierVehicle::factory()->create([
+            'courier_id' => $courier->id,
+            'insurance_expiry_date' => now()->subDay()->toDateString(),
+        ]);
+
+        $this->assertEquals('valid', $presenter->showRow($valid)['insurance_status']);
+        $this->assertEquals('expiring_soon', $presenter->showRow($expiring)['insurance_status']);
+        $this->assertEquals('expired', $presenter->showRow($expired)['insurance_status']);
     }
 
     public function test_pedestrian_vehicle_hides_license_and_insurance_fields(): void
     {
-        $vehicle = CourierVehicleDummyData::find(23);
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $courier = $this->createCourier($user);
 
-        $this->assertNotNull($vehicle);
-        $this->assertEquals('pedestrian', $vehicle['vehicle_type']);
-        $this->assertFalse($vehicle['requires_vehicle_docs']);
-        $this->assertNull($vehicle['license_status']);
-        $this->assertNull($vehicle['insurance_status']);
-    }
+        $vehicle = CourierVehicle::factory()->create([
+            'courier_id' => $courier->id,
+            'vehicle_type' => 'pedestrian',
+            'plate' => null,
+            'license_number' => null,
+            'insurance_policy_number' => null,
+            'insurance_expiry_date' => null,
+        ]);
 
-    public function test_all_vehicle_records_are_preserved(): void
-    {
-        $vehicles = CourierVehicleDummyData::all();
+        $row = app(CourierVehiclePresenter::class)->showRow($vehicle);
 
-        $this->assertCount(35, $vehicles);
-        $this->assertGreaterThanOrEqual(30, count($vehicles));
+        $this->assertEquals('pedestrian', $row['vehicle_type']);
+        $this->assertFalse($row['requires_vehicle_docs']);
+        $this->assertNull($row['license_status']);
+        $this->assertNull($row['insurance_status']);
     }
 
     public function test_vehicles_can_be_filtered_by_status(): void
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $courier = $this->createCourier($user);
+
+        CourierVehicle::factory()->create([
+            'courier_id' => $courier->id,
+            'plate' => '34 AY 1001',
+            'status' => 'active',
+        ]);
+
+        CourierVehicle::factory()->create([
+            'courier_id' => $courier->id,
+            'plate' => '34 AY 4521',
+            'status' => 'inactive',
+        ]);
 
         $response = $this->actingAs($user)->get(route('couriers.vehicles.index', [
             'status' => 'inactive',
@@ -110,6 +170,19 @@ class CourierVehicleTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $courier = $this->createCourier($user);
+
+        CourierVehicle::factory()->create([
+            'courier_id' => $courier->id,
+            'vehicle_type' => 'motorcycle',
+            'plate' => '34 AY 1001',
+        ]);
+
+        CourierVehicle::factory()->create([
+            'courier_id' => $courier->id,
+            'vehicle_type' => 'car',
+            'plate' => '34 SO 7788',
+        ]);
 
         $response = $this->actingAs($user)->get(route('couriers.vehicles.index', [
             'vehicle_type' => 'car',
@@ -118,5 +191,39 @@ class CourierVehicleTest extends TestCase
         $response->assertOk();
         $response->assertSee('34 SO 7788');
         $response->assertDontSee('34 AY 1001');
+    }
+
+    public function test_courier_vehicle_can_be_created(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $courier = $this->createCourier($user);
+
+        $response = $this->actingAs($user)->post(route('couriers.vehicles.store'), [
+            'courier_id' => $courier->id,
+            'vehicle_type' => 'motorcycle',
+            'plate' => '34 NT 1234',
+            'brand' => 'Honda',
+            'model' => 'PCX',
+            'status' => 'active',
+        ]);
+
+        $response->assertRedirect(route('couriers.vehicles.index', ['courier_id' => $courier->id]));
+
+        $this->assertDatabaseHas('courier_vehicles', [
+            'courier_id' => $courier->id,
+            'plate' => '34 NT 1234',
+            'vehicle_type' => 'motorcycle',
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    private function createCourier(User $user, array $overrides = []): Courier
+    {
+        return Courier::factory()->create(array_merge([
+            'created_by' => $user->id,
+        ], $overrides));
     }
 }

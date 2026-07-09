@@ -102,8 +102,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/calisma-gecmisi', [CourierWorkHistoryController::class, 'index'])->name('work-history.index');
         Route::get('/calisma-gecmisi/{id}', [CourierWorkHistoryController::class, 'show'])->name('work-history.show');
         Route::get('/arac-bilgileri', [CourierVehicleController::class, 'index'])->name('vehicles.index');
+        Route::post('/arac-bilgileri', [CourierVehicleController::class, 'store'])->middleware('permission:courier.update')->name('vehicles.store');
         Route::get('/arac-bilgileri/{id}', [CourierVehicleController::class, 'show'])->name('vehicles.show');
         Route::get('/banka-bilgileri', [CourierBankAccountController::class, 'index'])->name('bank-accounts.index');
+        Route::post('/banka-bilgileri', [CourierBankAccountController::class, 'store'])->middleware('permission:courier.update')->name('bank-accounts.store');
         Route::get('/banka-bilgileri/{id}', [CourierBankAccountController::class, 'show'])->name('bank-accounts.show');
         Route::get('/hareket-gecmisi', [CourierActivityController::class, 'index'])->name('activities.index');
         Route::get('/{id}/duzenle', [CourierController::class, 'edit'])->name('edit');
