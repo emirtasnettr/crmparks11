@@ -16,11 +16,12 @@
         </div>
 
         <div class="px-6 py-4">
-            <form @submit.prevent="saveSingleEarning" class="space-y-4">
+            <form method="POST" action="{{ route('businesses.earnings.store') }}" @submit="handleSingleSubmit($event)" class="space-y-4">
+                @csrf
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div class="space-y-1.5">
                         <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">İşletme *</label>
-                        <select x-model="single.business_id" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white" :class="singleErrors.business_id ? 'border-red-300' : ''">
+                        <select name="business_id" x-model="single.business_id" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white" :class="singleErrors.business_id ? 'border-red-300' : ''">
                             <option value="">İşletme seçin</option>
                             @foreach ($businesses as $business)
                                 <option value="{{ $business['id'] }}">{{ $business['name'] }}</option>
@@ -30,7 +31,7 @@
                     </div>
                     <div class="space-y-1.5">
                         <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Kurye *</label>
-                        <select x-model="single.courier_id" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white" :class="singleErrors.courier_id ? 'border-red-300' : ''">
+                        <select name="courier_id" x-model="single.courier_id" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white" :class="singleErrors.courier_id ? 'border-red-300' : ''">
                             <option value="">Kurye seçin</option>
                             @foreach ($couriers as $courier)
                                 <option value="{{ $courier['id'] }}">{{ $courier['name'] }}</option>
@@ -40,7 +41,7 @@
                     </div>
                     <div class="space-y-1.5">
                         <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Ay *</label>
-                        <select x-model="single.period_month" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
+                        <select name="period_month" x-model="single.period_month" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
                             <option value="">Ay seçin</option>
                             @foreach ($months as $num => $name)
                                 <option value="{{ $num }}">{{ $name }}</option>
@@ -50,7 +51,7 @@
                     </div>
                     <div class="space-y-1.5">
                         <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Yıl *</label>
-                        <select x-model="single.period_year" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
+                        <select name="period_year" x-model="single.period_year" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
                             <option value="">Yıl seçin</option>
                             @foreach ([2025, 2026, 2027] as $year)
                                 <option value="{{ $year }}">{{ $year }}</option>
@@ -62,7 +63,7 @@
 
                 <div class="space-y-1.5">
                     <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Çalışma Modeli</label>
-                    <select x-model="single.pricing_model" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
+                    <select name="pricing_model" x-model="single.pricing_model" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
                         @foreach ($pricingModels as $value => $label)
                             <option value="{{ $value }}">{{ $label }}</option>
                         @endforeach
@@ -106,13 +107,9 @@
                     </div>
                 </div>
 
-                <div x-show="singleSaved" x-cloak>
-                    <x-ui.alert type="success">Hakediş doğrulandı. Kayıt backend bağlantısı sonrası aktif olacaktır.</x-ui.alert>
-                </div>
-
                 <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
                     <x-ui.button type="button" variant="secondary" @click="closeModals">İptal</x-ui.button>
-                    <x-ui.button type="submit">Kaydet</x-ui.button>
+                    <x-ui.button type="submit" ::disabled="submitting">Kaydet</x-ui.button>
                 </div>
             </form>
         </div>

@@ -2,10 +2,10 @@
 
 namespace App\Modules\Courier\Services;
 
+use App\Models\EarningLine;
 use App\Modules\Courier\Data\CourierActivityDummyData;
 use App\Modules\Courier\Data\CourierBankAccountDummyData;
 use App\Modules\Courier\Data\CourierDocumentDummyData;
-use App\Modules\Courier\Data\CourierEarningDummyData;
 use App\Modules\Courier\Data\CourierFormData;
 use App\Modules\Courier\Data\CourierVehicleDummyData;
 use App\Modules\Courier\Data\CourierWorkHistoryDummyData;
@@ -17,6 +17,8 @@ class CourierPresenter
 {
     public function __construct(
         private readonly CourierMediaService $media,
+        private readonly CourierEarningService $earnings,
+        private readonly CourierEarningPresenter $earningPresenter,
     ) {}
 
     /**
@@ -141,7 +143,11 @@ class CourierPresenter
             'vehicles_url' => route('couriers.vehicles.index', ['courier_id' => $id]),
             'activities_url' => route('couriers.activities.index', ['courier_id' => $id]),
         ], CourierFeatures::earningsEnabled() ? [
-            'earnings' => CourierEarningDummyData::filter(['courier_id' => $id]),
+            'earnings' => $this->earnings
+                ->forCourier($courier->id)
+                ->map(fn (EarningLine $line) => $this->earningPresenter->showRow($line))
+                ->values()
+                ->all(),
         ] : []);
     }
 

@@ -1087,7 +1087,7 @@ Alpine.data('assignmentPage', (preset = {}) => {
 
 Alpine.data('earningPage', () => ({
     activeModal: null,
-    singleSaved: false,
+    submitting: false,
     bulkSaved: false,
     singleErrors: {},
     single: {
@@ -1109,7 +1109,7 @@ Alpine.data('earningPage', () => ({
 
     closeModals() {
         this.activeModal = null;
-        this.singleSaved = false;
+        this.submitting = false;
         this.bulkSaved = false;
         this.singleErrors = {};
         this.resetSingle();
@@ -1171,10 +1171,13 @@ Alpine.data('earningPage', () => ({
         return Object.keys(this.singleErrors).length === 0;
     },
 
-    saveSingleEarning() {
-        this.singleSaved = false;
-        if (!this.validateSingle()) return;
-        this.singleSaved = true;
+    handleSingleSubmit(event) {
+        if (!this.validateSingle()) {
+            event.preventDefault();
+            return;
+        }
+
+        this.submitting = true;
     },
 
     importBulk() {

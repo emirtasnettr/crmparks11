@@ -116,7 +116,6 @@ class EntityShowPageTest extends TestCase
     $response->assertSee('Yetkililer');
     $response->assertSee('Mehmet Yılmaz');
     $response->assertSee('SZL-2026-001');
-    $response->assertDontSee('Hakedişler');
     $response->assertDontSee('Hakediş Periyodu');
   }
 
@@ -139,7 +138,6 @@ class EntityShowPageTest extends TestCase
     $response->assertSee('Yeni Araç');
     $response->assertSee('Belgeler');
     $response->assertSee('0532 100 10 01');
-    $response->assertDontSee('Hakedişler');
   }
 
   public function test_agency_show_page_displays_profile_card(): void
@@ -159,7 +157,6 @@ class EntityShowPageTest extends TestCase
     $response->assertSee('Yeni Sözleşme');
     $response->assertSee('Kuryeler');
     $response->assertSee('Serkan Yılmaz');
-    $response->assertDontSee('Hakedişler');
     $response->assertDontSee('Aylık Hakediş');
   }
 
@@ -198,7 +195,11 @@ class EntityShowPageTest extends TestCase
       $this->assertSame(1, $history['courier_id']);
     }
 
-    $this->assertArrayNotHasKey('earnings', $courier);
+    $this->assertArrayHasKey('earnings', $courier);
+
+    foreach ($courier['earnings'] as $earning) {
+      $this->assertSame(1, $earning['courier_id']);
+    }
 
     foreach ($courier['bank_accounts'] as $account) {
       $this->assertSame(1, $account['courier_id']);
@@ -236,7 +237,11 @@ class EntityShowPageTest extends TestCase
       $this->assertSame(1, $assignment['business_id']);
     }
 
-    $this->assertArrayNotHasKey('earnings', $business);
+    $this->assertArrayHasKey('earnings', $business);
+
+    foreach ($business['earnings'] as $earning) {
+      $this->assertSame(1, $earning['business_id']);
+    }
 
     foreach ($business['documents'] as $document) {
       $this->assertSame(1, $document['business_id']);
@@ -266,7 +271,11 @@ class EntityShowPageTest extends TestCase
       $this->assertSame(1, $contract['agency_id']);
     }
 
-    $this->assertArrayNotHasKey('earnings', $agency);
+    $this->assertArrayHasKey('earnings', $agency);
+
+    foreach ($agency['earnings'] as $earning) {
+      $this->assertSame(1, $earning['agency_id']);
+    }
 
     foreach ($agency['documents'] as $document) {
       $this->assertSame(1, $document['agency_id']);

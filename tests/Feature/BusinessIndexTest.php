@@ -106,7 +106,7 @@ class BusinessIndexTest extends TestCase
         $response->assertSee('Yeni İşletme');
         $response->assertSee('Genel Bilgiler');
         $response->assertSee('Çalışma Modeli');
-        $response->assertDontSee('Hakediş Periyodu');
+        $response->assertSee('Hakediş Periyodu');
         $response->assertSee('Kaydet');
         $response->assertSee(route('businesses.store'), false);
     }

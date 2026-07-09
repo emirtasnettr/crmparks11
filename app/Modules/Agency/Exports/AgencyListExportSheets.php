@@ -6,7 +6,6 @@ use App\Core\Exports\ListExport;
 use App\Modules\Agency\Data\AgencyActivityDummyData;
 use App\Modules\Agency\Data\AgencyContactDummyData;
 use App\Modules\Agency\Data\AgencyCourierDummyData;
-use App\Modules\Agency\Data\AgencyEarningDummyData;
 use App\Modules\Agency\Data\AgencyFormData;
 use App\Modules\Agency\Services\AgencyPresenter;
 use App\Modules\Agency\Services\AgencyService;
@@ -125,8 +124,12 @@ final class AgencyListExportSheets
      */
     public static function earnings(array $filters): array
     {
+        $service = app(\App\Modules\Agency\Services\AgencyEarningService::class);
+        $paymentLabels = \App\Modules\Agency\Data\AgencyEarningFormData::paymentStatuses();
+        $rows = $service->filter($filters)->values()->all();
+
         return ListExport::sheet(
-            AgencyEarningDummyData::filter($filters),
+            $rows,
             ['Acente', 'Referans', 'Dönem', 'Dönem Tipi', 'Kurye Sayısı', 'Paket', 'Hakediş', 'Kesinti', 'Net Ödeme', 'Ödeme Durumu', 'Ödeme Tarihi'],
             [
                 fn (array $row) => $row['agency_name'],
@@ -138,7 +141,7 @@ final class AgencyListExportSheets
                 fn (array $row) => $row['gross_amount'],
                 fn (array $row) => $row['deduction'],
                 fn (array $row) => $row['net_payment'],
-                fn (array $row) => $row['payment_status_label'] ?? $row['payment_status'],
+                fn (array $row) => $paymentLabels[$row['payment_status']] ?? $row['payment_status'],
                 fn (array $row) => $row['payment_date_formatted'] ?? '—',
             ],
         );

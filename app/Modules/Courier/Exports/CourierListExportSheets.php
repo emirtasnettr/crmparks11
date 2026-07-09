@@ -3,7 +3,6 @@
 namespace App\Modules\Courier\Exports;
 
 use App\Core\Exports\ListExport;
-use App\Modules\Courier\Data\CourierEarningDummyData;
 use App\Modules\Courier\Data\CourierFormData;
 use App\Modules\Courier\Services\CourierPresenter;
 use App\Modules\Courier\Services\CourierService;
@@ -46,8 +45,16 @@ final class CourierListExportSheets
      */
     public static function earnings(array $filters): array
     {
+        $service = app(\App\Modules\Courier\Services\CourierEarningService::class);
+        $presenter = app(\App\Modules\Courier\Services\CourierEarningPresenter::class);
+        $paymentLabels = \App\Modules\Courier\Data\CourierEarningFormData::paymentStatuses();
+
+        $rows = $service->filter($filters)
+            ->map(fn ($line) => $presenter->indexRow($line))
+            ->all();
+
         return ListExport::sheet(
-            CourierEarningDummyData::filter($filters),
+            $rows,
             ['Kurye', 'Kurye Tipi', 'İşletme', 'Dönem', 'Paket', 'Hakediş', 'Kesinti', 'Net Ödeme', 'Ödeme Durumu', 'Ödeme Tarihi'],
             [
                 fn (array $row) => $row['courier_name'],
@@ -58,7 +65,7 @@ final class CourierListExportSheets
                 fn (array $row) => $row['earning_amount'],
                 fn (array $row) => $row['deduction'],
                 fn (array $row) => $row['net_payment'],
-                fn (array $row) => $row['payment_status_label'] ?? $row['payment_status'],
+                fn (array $row) => $paymentLabels[$row['payment_status']] ?? $row['payment_status'],
                 fn (array $row) => $row['payment_date_formatted'] ?? '—',
             ],
         );

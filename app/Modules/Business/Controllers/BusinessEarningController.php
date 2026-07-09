@@ -4,10 +4,11 @@ namespace App\Modules\Business\Controllers;
 
 use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
-use App\Modules\Business\Data\BusinessAssignmentDummyData;
-use App\Modules\Business\Data\BusinessContactDummyData;
-use App\Modules\Business\Data\BusinessEarningDummyData;
+use App\Modules\Business\Data\BusinessEarningFormData;
 use App\Modules\Business\Exports\BusinessListExportSheets;
+use App\Modules\Business\Requests\StoreBusinessEarningRequest;
+use App\Modules\Business\Services\BusinessEarningPresenter;
+use App\Modules\Business\Services\BusinessEarningService;
 use App\Modules\Business\Support\BusinessFeatures;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,6 +18,11 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class BusinessEarningController extends Controller
 {
     use DownloadsListExport;
+
+    public function __construct(
+        private readonly BusinessEarningService $earnings,
+        private readonly BusinessEarningPresenter $presenter,
+    ) {}
 
     public function index(Request $request): View|RedirectResponse
     {
@@ -37,22 +43,26 @@ class BusinessEarningController extends Controller
         $perPage = 25;
         $page = max(1, (int) $request->query('page', 1));
 
-        $all = BusinessEarningDummyData::filter($filters);
-        $summary = BusinessEarningDummyData::summarize($all);
-        $total = count($all);
-        $items = array_slice($all, ($page - 1) * $perPage, $perPage);
+        $all = $this->earnings->filter($filters);
+        $summary = $this->earnings->summarize($all);
+        $total = $all->count();
+        $items = $all
+            ->slice(($page - 1) * $perPage, $perPage)
+            ->map(fn ($line) => $this->presenter->indexRow($line))
+            ->values()
+            ->all();
         $lastPage = max(1, (int) ceil($total / $perPage));
 
         return view('modules.business.earnings.index', [
             'earnings' => $items,
             'filters' => $filters,
             'summary' => $summary,
-            'businesses' => BusinessContactDummyData::businesses(),
-            'couriers' => BusinessAssignmentDummyData::couriers(),
-            'agencies' => BusinessAssignmentDummyData::agencies(),
-            'months' => BusinessEarningDummyData::months(),
-            'statuses' => BusinessEarningDummyData::statuses(),
-            'pricingModels' => BusinessEarningDummyData::pricingModels(),
+            'businesses' => $this->earnings->businesses(),
+            'couriers' => $this->earnings->couriers(),
+            'agencies' => $this->earnings->agencies(),
+            'months' => BusinessEarningFormData::months(),
+            'statuses' => BusinessEarningFormData::statuses(),
+            'pricingModels' => BusinessEarningFormData::pricingModels(),
             'total' => $total,
             'page' => $page,
             'perPage' => $perPage,
@@ -89,12 +99,29 @@ class BusinessEarningController extends Controller
             return redirect()->route('businesses.index');
         }
 
-        $earning = BusinessEarningDummyData::find($id);
+        $earning = $this->earnings->find($id);
 
         abort_if($earning === null, 404);
 
         return view('modules.business.earnings.show', [
-            'earning' => $earning,
+            'earning' => $this->presenter->showRow($earning),
         ]);
+    }
+
+    public function store(StoreBusinessEarningRequest $request): RedirectResponse
+    {
+        if (! BusinessFeatures::earningsEnabled()) {
+            abort(404);
+        }
+
+        $line = $this->earnings->create($request->validated(), $request->user());
+
+        return redirect()
+            ->route('businesses.earnings.index', [
+                'business_id' => $line->business_id,
+                'period_month' => $line->period_month,
+                'period_year' => $line->period_year,
+            ])
+            ->with('success', 'Hakediş başarıyla oluşturuldu.');
     }
 }

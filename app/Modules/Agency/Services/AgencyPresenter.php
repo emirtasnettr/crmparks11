@@ -5,7 +5,6 @@ namespace App\Modules\Agency\Services;
 use App\Modules\Agency\Data\AgencyActivityDummyData;
 use App\Modules\Agency\Data\AgencyContactDummyData;
 use App\Modules\Agency\Data\AgencyCourierDummyData;
-use App\Modules\Agency\Data\AgencyEarningDummyData;
 use App\Modules\Agency\Data\AgencyFormData;
 use App\Modules\Agency\Models\Agency;
 use App\Models\Contract;
@@ -21,6 +20,7 @@ class AgencyPresenter
         private readonly AgencyContractPresenter $contractPresenter,
         private readonly AgencyDocumentService $documents,
         private readonly AgencyDocumentPresenter $documentPresenter,
+        private readonly AgencyEarningService $earnings,
     ) {}
 
     /**
@@ -153,7 +153,10 @@ class AgencyPresenter
             'activities' => AgencyActivityDummyData::filter(['agency_id' => $id]),
         ], AgencyFeatures::earningsEnabled() ? [
             'monthly_earning' => '0,00 ₺',
-            'earnings' => AgencyEarningDummyData::filter(['agency_id' => $id]),
+            'earnings' => $this->earnings
+                ->filter(['agency_id' => $agency->id])
+                ->values()
+                ->all(),
         ] : []);
     }
 

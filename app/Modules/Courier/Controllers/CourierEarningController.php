@@ -4,8 +4,10 @@ namespace App\Modules\Courier\Controllers;
 
 use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
-use App\Modules\Courier\Data\CourierEarningDummyData;
+use App\Modules\Courier\Data\CourierEarningFormData;
 use App\Modules\Courier\Exports\CourierListExportSheets;
+use App\Modules\Courier\Services\CourierEarningPresenter;
+use App\Modules\Courier\Services\CourierEarningService;
 use App\Modules\Courier\Support\CourierFeatures;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,6 +17,11 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class CourierEarningController extends Controller
 {
     use DownloadsListExport;
+
+    public function __construct(
+        private readonly CourierEarningService $earnings,
+        private readonly CourierEarningPresenter $presenter,
+    ) {}
 
     public function index(Request $request): View|RedirectResponse
     {
@@ -36,22 +43,26 @@ class CourierEarningController extends Controller
         $perPage = 25;
         $page = max(1, (int) $request->query('page', 1));
 
-        $all = CourierEarningDummyData::filter($filters);
-        $summary = CourierEarningDummyData::summarize($all);
-        $total = count($all);
-        $items = array_slice($all, ($page - 1) * $perPage, $perPage);
+        $all = $this->earnings->filter($filters);
+        $summary = $this->earnings->summarize($all);
+        $total = $all->count();
+        $items = $all
+            ->slice(($page - 1) * $perPage, $perPage)
+            ->map(fn ($line) => $this->presenter->indexRow($line))
+            ->values()
+            ->all();
         $lastPage = max(1, (int) ceil($total / $perPage));
 
         return view('modules.courier.earnings.index', [
             'earnings' => $items,
             'filters' => $filters,
             'summary' => $summary,
-            'couriers' => CourierEarningDummyData::couriers(),
-            'businesses' => CourierEarningDummyData::businesses(),
-            'agencies' => CourierEarningDummyData::agencies(),
-            'months' => CourierEarningDummyData::months(),
-            'paymentStatuses' => CourierEarningDummyData::paymentStatuses(),
-            'courierTypes' => CourierEarningDummyData::courierTypes(),
+            'couriers' => $this->earnings->couriers(),
+            'businesses' => $this->earnings->businesses(),
+            'agencies' => $this->earnings->agencies(),
+            'months' => CourierEarningFormData::months(),
+            'paymentStatuses' => CourierEarningFormData::paymentStatuses(),
+            'courierTypes' => CourierEarningFormData::courierTypes(),
             'total' => $total,
             'page' => $page,
             'perPage' => $perPage,
@@ -89,12 +100,12 @@ class CourierEarningController extends Controller
             return redirect()->route('couriers.index');
         }
 
-        $earning = CourierEarningDummyData::find($id);
+        $earning = $this->earnings->find($id);
 
         abort_if($earning === null, 404);
 
         return view('modules.courier.earnings.show', [
-            'earning' => $earning,
+            'earning' => $this->presenter->showRow($earning),
         ]);
     }
 }

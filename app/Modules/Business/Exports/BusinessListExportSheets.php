@@ -152,9 +152,15 @@ final class BusinessListExportSheets
     public static function earnings(array $filters): array
     {
         $pricingLabels = BusinessFormData::pricingModels() + ['fixed' => 'Sabit Ücret'];
+        $service = app(\App\Modules\Business\Services\BusinessEarningService::class);
+        $presenter = app(\App\Modules\Business\Services\BusinessEarningPresenter::class);
+
+        $rows = $service->filter($filters)
+            ->map(fn ($line) => $presenter->indexRow($line))
+            ->all();
 
         return ListExport::sheet(
-            BusinessEarningDummyData::filter($filters),
+            $rows,
             ['İşletme', 'Kurye', 'Dönem', 'Çalışma Modeli', 'Paket', 'İşletmeden Gelir', 'Kurye Ödemesi', 'Kâr', 'Durum'],
             [
                 fn (array $row) => $row['business_name'],

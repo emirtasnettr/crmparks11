@@ -2,8 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Models\City;
+use App\Models\District;
+use App\Models\EarningLine;
 use App\Models\User;
-use App\Modules\Courier\Data\CourierEarningDummyData;
+use App\Modules\Business\Models\Business;
+use App\Modules\Courier\Models\Courier;
+use Database\Seeders\CitySeeder;
+use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -16,87 +22,59 @@ class CourierEarningTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(RoleAndPermissionSeeder::class);
+        $this->seed([
+            LookupTableSeeder::class,
+            CitySeeder::class,
+            RoleAndPermissionSeeder::class,
+        ]);
     }
 
-    public function test_earnings_index_requires_authentication(): void
+    public function test_courier_earnings_index_requires_authentication(): void
     {
         $response = $this->get(route('couriers.earnings.index'));
 
         $response->assertRedirect(route('login'));
     }
 
-    public function test_authenticated_user_can_view_earnings_index(): void
+    public function test_authenticated_user_can_view_courier_earnings_index(): void
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $courier = $this->createCourier($user, ['full_name' => 'Ahmet Yıldız']);
+
+        EarningLine::factory()->create([
+            'business_id' => $business->id,
+            'courier_id' => $courier->id,
+            'created_by' => $user->id,
+        ]);
 
         $response = $this->actingAs($user)->get(route('couriers.earnings.index'));
 
-        $response->assertRedirect(route('couriers.index'));
+        $response->assertOk();
+        $response->assertSee('Hakedişler');
+        $response->assertSee('Ahmet Yıldız');
     }
 
-    public function test_authenticated_user_can_view_earning_detail(): void
+    private function createBusiness(User $user): Business
     {
-        $user = User::factory()->create();
-        $user->assignRole('super_admin');
+        $city = City::query()->where('name', 'İstanbul')->firstOrFail();
+        $district = District::query()
+            ->where('city_id', $city->id)
+            ->where('name', 'Kadıköy')
+            ->firstOrFail();
 
-        $response = $this->actingAs($user)->get(route('couriers.earnings.show', 1));
-
-        $response->assertRedirect(route('couriers.index'));
+        return Business::factory()->create([
+            'city_id' => $city->id,
+            'district_id' => $district->id,
+            'created_by' => $user->id,
+        ]);
     }
 
-    public function test_net_payment_is_calculated_correctly(): void
+    private function createCourier(User $user, array $overrides = []): Courier
     {
-        $earning = CourierEarningDummyData::find(1);
-
-        $this->assertNotNull($earning);
-        $this->assertEquals(47800, $earning['net_payment']);
-    }
-
-    public function test_soft_deleted_earnings_are_excluded_from_list(): void
-    {
-        $active = CourierEarningDummyData::all();
-        $withTrashed = CourierEarningDummyData::all(true);
-
-        $this->assertCount(33, $active);
-        $this->assertCount(35, $withTrashed);
-        $this->assertNull(CourierEarningDummyData::find(34));
-        $this->assertNull(CourierEarningDummyData::find(35));
-        $this->assertNotNull(CourierEarningDummyData::find(34, true));
-    }
-
-    public function test_soft_deleted_earning_detail_returns_not_found(): void
-    {
-        $user = User::factory()->create();
-        $user->assignRole('super_admin');
-
-        $response = $this->actingAs($user)->get(route('couriers.earnings.show', 34));
-
-        $response->assertRedirect(route('couriers.index'));
-    }
-
-    public function test_earnings_can_be_filtered_by_payment_status(): void
-    {
-        $user = User::factory()->create();
-        $user->assignRole('super_admin');
-
-        $response = $this->actingAs($user)->get(route('couriers.earnings.index', [
-            'payment_status' => 'cancelled',
-        ]));
-
-        $response->assertRedirect(route('couriers.index'));
-    }
-
-    public function test_earnings_can_be_filtered_by_courier(): void
-    {
-        $user = User::factory()->create();
-        $user->assignRole('super_admin');
-
-        $response = $this->actingAs($user)->get(route('couriers.earnings.index', [
-            'courier_id' => 4,
-        ]));
-
-        $response->assertRedirect(route('couriers.index'));
+        return Courier::factory()->create(array_merge([
+            'created_by' => $user->id,
+        ], $overrides));
     }
 }

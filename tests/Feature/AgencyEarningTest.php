@@ -2,8 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Models\City;
+use App\Models\District;
+use App\Models\EarningLine;
 use App\Models\User;
-use App\Modules\Agency\Data\AgencyEarningDummyData;
+use App\Modules\Agency\Models\Agency;
+use App\Modules\Business\Models\Business;
+use App\Modules\Courier\Models\Courier;
+use Database\Seeders\CitySeeder;
+use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -16,7 +23,11 @@ class AgencyEarningTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(RoleAndPermissionSeeder::class);
+        $this->seed([
+            LookupTableSeeder::class,
+            CitySeeder::class,
+            RoleAndPermissionSeeder::class,
+        ]);
     }
 
     public function test_agency_earnings_index_requires_authentication(): void
@@ -30,69 +41,58 @@ class AgencyEarningTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $agency = $this->createAgency($user, ['company_name' => 'Hızlı Kurye Acentesi Ltd. Şti.']);
+        $business = $this->createBusiness($user);
+        $courier = $this->createCourier($user, ['agency_id' => $agency->id, 'courier_type' => 'agency']);
+
+        EarningLine::factory()->create([
+            'business_id' => $business->id,
+            'courier_id' => $courier->id,
+            'agency_payment' => 1500,
+            'created_by' => $user->id,
+        ]);
 
         $response = $this->actingAs($user)->get(route('agencies.earnings.index'));
 
-        $response->assertRedirect(route('agencies.index'));
+        $response->assertOk();
+        $response->assertSee('Hakedişler');
+        $response->assertSee('Hızlı Kurye Acentesi Ltd. Şti.');
     }
 
-    public function test_agency_earnings_have_at_least_thirty_records(): void
+    private function createAgency(User $user, array $overrides = []): Agency
     {
-        $earnings = AgencyEarningDummyData::all();
+        $city = City::query()->where('name', 'İstanbul')->firstOrFail();
+        $district = District::query()
+            ->where('city_id', $city->id)
+            ->where('name', 'Kadıköy')
+            ->firstOrFail();
 
-        $this->assertCount(31, $earnings);
-        $this->assertGreaterThanOrEqual(30, count($earnings));
+        return Agency::factory()->create(array_merge([
+            'city_id' => $city->id,
+            'district_id' => $district->id,
+            'created_by' => $user->id,
+        ], $overrides));
     }
 
-    public function test_net_payment_is_calculated_correctly(): void
+    private function createBusiness(User $user): Business
     {
-        $earning = AgencyEarningDummyData::find(1);
+        $city = City::query()->where('name', 'İstanbul')->firstOrFail();
+        $district = District::query()
+            ->where('city_id', $city->id)
+            ->where('name', 'Kadıköy')
+            ->firstOrFail();
 
-        $this->assertNotNull($earning);
-        $this->assertEquals(62700.0, $earning['net_payment']);
+        return Business::factory()->create([
+            'city_id' => $city->id,
+            'district_id' => $district->id,
+            'created_by' => $user->id,
+        ]);
     }
 
-    public function test_soft_deleted_earnings_are_excluded_by_default(): void
+    private function createCourier(User $user, array $overrides = []): Courier
     {
-        $all = AgencyEarningDummyData::all();
-        $withTrashed = AgencyEarningDummyData::all(true);
-
-        $this->assertCount(31, $all);
-        $this->assertCount(32, $withTrashed);
-        $this->assertNull(AgencyEarningDummyData::find(32));
-        $this->assertNotNull(AgencyEarningDummyData::find(32, true));
-    }
-
-    public function test_summary_stats_are_calculated(): void
-    {
-        $summary = AgencyEarningDummyData::summarize();
-
-        $this->assertEquals(31, $summary['count']);
-        $this->assertGreaterThan(0, $summary['total_payable']);
-        $this->assertGreaterThan(0, $summary['paid_amount']);
-        $this->assertGreaterThan(0, $summary['pending_count']);
-        $this->assertGreaterThan(0, $summary['this_month_count']);
-    }
-
-    public function test_agency_earnings_can_be_filtered_by_payment_status(): void
-    {
-        $user = User::factory()->create();
-        $user->assignRole('super_admin');
-
-        $response = $this->actingAs($user)->get(route('agencies.earnings.index', [
-            'payment_status' => 'paid',
-        ]));
-
-        $response->assertRedirect(route('agencies.index'));
-    }
-
-    public function test_authenticated_user_can_view_agency_earning_detail(): void
-    {
-        $user = User::factory()->create();
-        $user->assignRole('super_admin');
-
-        $response = $this->actingAs($user)->get(route('agencies.earnings.show', 1));
-
-        $response->assertRedirect(route('agencies.index'));
+        return Courier::factory()->create(array_merge([
+            'created_by' => $user->id,
+        ], $overrides));
     }
 }

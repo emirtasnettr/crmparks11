@@ -6,6 +6,6 @@ final class BusinessFeatures
 {
     public static function earningsEnabled(): bool
     {
-        return false;
+        return true;
     }
 }

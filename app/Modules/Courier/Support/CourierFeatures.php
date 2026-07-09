@@ -6,6 +6,6 @@ final class CourierFeatures
 {
     public static function earningsEnabled(): bool
     {
-        return false;
+        return true;
     }
 }

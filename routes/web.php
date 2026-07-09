@@ -78,6 +78,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/atanan-kuryeler/{id}', [BusinessAssignmentController::class, 'show'])->name('assignments.show');
         Route::get('/hakedisler', [BusinessEarningController::class, 'index'])->name('earnings.index');
         Route::get('/hakedisler/export', [BusinessEarningController::class, 'export'])->name('earnings.export');
+        Route::post('/hakedisler', [BusinessEarningController::class, 'store'])->middleware('permission:earning.create')->name('earnings.store');
         Route::get('/hakedisler/{id}', [BusinessEarningController::class, 'show'])->name('earnings.show');
         Route::get('/evraklar', [BusinessDocumentController::class, 'index'])->name('documents.index');
         Route::post('/evraklar', [BusinessDocumentController::class, 'store'])->middleware('permission:business.update')->name('documents.store');

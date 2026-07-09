@@ -4,8 +4,9 @@ namespace App\Modules\Agency\Controllers;
 
 use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
-use App\Modules\Agency\Data\AgencyEarningDummyData;
+use App\Modules\Agency\Data\AgencyEarningFormData;
 use App\Modules\Agency\Exports\AgencyListExportSheets;
+use App\Modules\Agency\Services\AgencyEarningService;
 use App\Modules\Agency\Support\AgencyFeatures;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,10 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class AgencyEarningController extends Controller
 {
     use DownloadsListExport;
+
+    public function __construct(
+        private readonly AgencyEarningService $earnings,
+    ) {}
 
     public function index(Request $request): View|RedirectResponse
     {
@@ -33,19 +38,19 @@ class AgencyEarningController extends Controller
         $perPage = 25;
         $page = max(1, (int) $request->query('page', 1));
 
-        $all = AgencyEarningDummyData::filter($filters);
-        $total = count($all);
-        $items = array_slice($all, ($page - 1) * $perPage, $perPage);
+        $all = $this->earnings->filter($filters);
+        $total = $all->count();
+        $items = $all->slice(($page - 1) * $perPage, $perPage)->values()->all();
         $lastPage = max(1, (int) ceil($total / $perPage));
 
         return view('modules.agency.earnings.index', [
             'earnings' => $items,
             'filters' => $filters,
-            'agencies' => AgencyEarningDummyData::agencies(),
-            'months' => AgencyEarningDummyData::months(),
-            'earningStatuses' => AgencyEarningDummyData::earningStatuses(),
-            'paymentStatuses' => AgencyEarningDummyData::paymentStatuses(),
-            'summary' => AgencyEarningDummyData::summarize($filters),
+            'agencies' => $this->earnings->agencies(),
+            'months' => AgencyEarningFormData::months(),
+            'earningStatuses' => AgencyEarningFormData::earningStatuses(),
+            'paymentStatuses' => AgencyEarningFormData::paymentStatuses(),
+            'summary' => $this->earnings->summarize($filters),
             'total' => $total,
             'page' => $page,
             'perPage' => $perPage,
@@ -80,7 +85,7 @@ class AgencyEarningController extends Controller
             return redirect()->route('agencies.index');
         }
 
-        $earning = AgencyEarningDummyData::find($id);
+        $earning = $this->earnings->find($id);
 
         abort_if($earning === null, 404);
 

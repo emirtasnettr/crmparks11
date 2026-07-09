@@ -6,6 +6,6 @@ final class AgencyFeatures
 {
     public static function earningsEnabled(): bool
     {
-        return false;
+        return true;
     }
 }

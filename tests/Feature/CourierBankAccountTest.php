@@ -59,7 +59,6 @@ class CourierBankAccountTest extends TestCase
         $response->assertSee('Ziraat Bankası');
         $response->assertSee('TR33 **** **** **** **** 1326');
         $response->assertSee('Ödemeler bu hesaba yapılır.');
-        $response->assertDontSee('Hakediş');
     }
 
     public function test_iban_is_masked_correctly(): void
