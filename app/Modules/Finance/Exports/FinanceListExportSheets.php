@@ -8,7 +8,7 @@ use App\Modules\Finance\Services\CollectionService;
 use App\Modules\Finance\Services\CurrentAccountService;
 use App\Modules\Finance\Services\ExpenseService;
 use App\Modules\Finance\Data\FinanceInvoiceDummyData;
-use App\Modules\Finance\Data\FinancePaymentDummyData;
+use App\Modules\Finance\Services\PaymentService;
 use App\Modules\Finance\Data\FinanceProfitabilityDummyData;
 use App\Modules\Finance\Services\RevenueService;
 
@@ -121,8 +121,10 @@ final class FinanceListExportSheets
      */
     public static function payments(array $filters): array
     {
+        $payments = app(PaymentService::class)->filter($filters)->all();
+
         return ListExport::sheet(
-            FinancePaymentDummyData::filter($filters),
+            $payments,
             ['Ödeme No', 'Alıcı', 'Alıcı Türü', 'Hakediş No', 'Ödeme Tarihi', 'Ödeme Yöntemi', 'Ödenecek Tutar', 'Ödenen Tutar', 'Durum'],
             [
                 fn (array $row) => $row['reference'],

@@ -18,77 +18,75 @@
             </button>
         </div>
 
-        <form @submit.prevent="savePayment()" class="space-y-4 px-6 py-4">
+        <form method="POST" action="{{ route('finance.payments.store') }}" class="space-y-4 px-6 py-4">
+            @csrf
+
             <div class="space-y-1.5">
-                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Alıcı Türü *</label>
-                <select x-model="form.recipient_type" @change="form.recipient_id = ''" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white" :class="errors.recipient_type ? 'border-red-300' : ''">
+                <label for="payment_recipient_type" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Alıcı Türü *</label>
+                <select id="payment_recipient_type" name="recipient_type" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
                     <option value="">Alıcı türü seçin</option>
                     @foreach ($recipientTypes as $key => $label)
-                        <option value="{{ $key }}">{{ $label }}</option>
+                        <option value="{{ $key }}" @selected(old('recipient_type') === $key)>{{ $label }}</option>
                     @endforeach
                 </select>
-                <p x-show="errors.recipient_type" x-cloak class="text-sm text-red-600" x-text="errors.recipient_type"></p>
+                @error('recipient_type')
+                    <p class="text-sm text-red-600">{{ $message }}</p>
+                @enderror
             </div>
 
             <div class="space-y-1.5">
-                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Alıcı *</label>
-                <select x-model="form.recipient_id" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white" :class="errors.recipient_id ? 'border-red-300' : ''" :disabled="!form.recipient_type">
+                <label for="payment_recipient_id" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Alıcı *</label>
+                <select id="payment_recipient_id" name="recipient_id" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
                     <option value="">Alıcı seçin</option>
-                    <template x-for="recipient in availableRecipients" :key="recipient.id">
-                        <option :value="recipient.id" x-text="recipient.name"></option>
-                    </template>
+                    @foreach ($recipientsByType as $type => $recipients)
+                        <optgroup label="{{ $recipientTypes[$type] }}">
+                            @foreach ($recipients as $recipient)
+                                <option value="{{ $recipient['id'] }}" @selected(old('recipient_id') == $recipient['id'] && old('recipient_type') === $type)>{{ $recipient['name'] }}</option>
+                            @endforeach
+                        </optgroup>
+                    @endforeach
                 </select>
-                <p x-show="errors.recipient_id" x-cloak class="text-sm text-red-600" x-text="errors.recipient_id"></p>
+                @error('recipient_id')
+                    <p class="text-sm text-red-600">{{ $message }}</p>
+                @enderror
             </div>
 
             <div class="space-y-1.5">
-                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Hakediş Kaydı</label>
-                <select x-model="form.earning_id" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
+                <label for="payment_earning_line_id" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Hakediş Kaydı</label>
+                <select id="payment_earning_line_id" name="earning_line_id" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
                     <option value="">Hakediş kaydı seçin</option>
                     @foreach ($earningOptions as $earning)
-                        <option value="{{ $earning['id'] }}">{{ $earning['reference'] }}</option>
+                        <option value="{{ $earning['id'] }}" @selected(old('earning_line_id') == $earning['id'])>{{ $earning['reference'] }}</option>
                     @endforeach
                 </select>
             </div>
 
-            <x-ui.input type="date" label="Ödeme Tarihi *" x-model="form.payment_date" />
+            <x-ui.input type="date" name="payment_date" label="Ödeme Tarihi *" :value="old('payment_date', now()->toDateString())" />
 
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <x-ui.input type="number" step="0.01" min="0" label="Toplam Tutar (₺, KDV Hariç) *" x-model="form.total_amount" @input="calcRemaining()" />
-                <x-ui.input type="number" step="0.01" min="0" label="Ödenen Tutar (₺, KDV Hariç) *" x-model="form.paid_amount" @input="calcRemaining()" />
-            </div>
-
-            <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
-                <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-slate-400">Kalan Tutar</p>
-                <p class="mt-1 text-lg font-bold text-gray-900 dark:text-white" x-text="formatMoney(remainingAmount)"></p>
+                <x-ui.input type="number" step="0.01" min="0" name="total_amount" label="Toplam Tutar (₺, KDV Hariç) *" :value="old('total_amount')" />
+                <x-ui.input type="number" step="0.01" min="0" name="paid_amount" label="Ödenen Tutar (₺, KDV Hariç)" :value="old('paid_amount')" />
             </div>
 
             <div class="space-y-1.5">
-                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Ödeme Yöntemi *</label>
-                <select x-model="form.payment_method" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white" :class="errors.payment_method ? 'border-red-300' : ''">
+                <label for="payment_method" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Ödeme Yöntemi</label>
+                <select id="payment_method" name="payment_method" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
                     <option value="">Ödeme yöntemi seçin</option>
                     @foreach ($paymentMethods as $key => $label)
-                        <option value="{{ $key }}">{{ $label }}</option>
+                        <option value="{{ $key }}" @selected(old('payment_method') === $key)>{{ $label }}</option>
                     @endforeach
                 </select>
-                <p x-show="errors.payment_method" x-cloak class="text-sm text-red-600" x-text="errors.payment_method"></p>
+                @error('payment_method')
+                    <p class="text-sm text-red-600">{{ $message }}</p>
+                @enderror
             </div>
 
-            <x-ui.input type="text" label="Banka Hesabı" x-model="form.bank_account" placeholder="Örn. Garanti BBVA — TR..." />
-            <x-ui.input type="text" label="Referans No" x-model="form.payment_reference" />
+            <x-ui.input type="text" name="bank_account" label="Banka Hesabı" :value="old('bank_account')" placeholder="Örn. Garanti BBVA — TR..." />
+            <x-ui.input type="text" name="payment_reference" label="Referans No" :value="old('payment_reference')" />
 
             <div class="space-y-1.5">
-                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Dekont Yükle</label>
-                <input type="file" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-primary-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary-700 dark:text-slate-300 dark:file:bg-primary-600/10 dark:file:text-primary-400" />
-            </div>
-
-            <div class="space-y-1.5">
-                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Açıklama</label>
-                <textarea x-model="form.description" rows="3" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white"></textarea>
-            </div>
-
-            <div x-show="saved" x-cloak class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-800/50 dark:bg-emerald-900/20 dark:text-emerald-300">
-                Ödeme kaydı oluşturuldu. Gerçek entegrasyonda cari hesaba otomatik hareket yansıyacaktır.
+                <label for="payment_description" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Açıklama</label>
+                <textarea id="payment_description" name="description" rows="3" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">{{ old('description') }}</textarea>
             </div>
 
             <div class="flex justify-end gap-2 border-t border-gray-200 pt-4 dark:border-slate-700">

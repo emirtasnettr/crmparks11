@@ -3,7 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Modules\Finance\Data\FinancePaymentDummyData;
+use App\Modules\Agency\Models\Agency;
+use App\Modules\Courier\Models\Courier;
+use App\Modules\Finance\Models\FinancePayment;
+use App\Modules\Finance\Services\PaymentPresenter;
+use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -16,7 +20,10 @@ class FinancePaymentTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(RoleAndPermissionSeeder::class);
+        $this->seed([
+            LookupTableSeeder::class,
+            RoleAndPermissionSeeder::class,
+        ]);
     }
 
     public function test_payments_index_requires_authentication(): void
@@ -30,6 +37,9 @@ class FinancePaymentTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+
+        FinancePayment::factory()->partial()->forCourier()->create();
+        FinancePayment::factory()->forAgency()->create();
 
         $response = $this->actingAs($user)->get(route('finance.payments.index'));
 
@@ -63,43 +73,35 @@ class FinancePaymentTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('super_admin');
 
-        $response = $this->actingAs($user)->get(route('finance.payments.show', 16));
+        $payment = FinancePayment::factory()
+            ->forCourier()
+            ->paid()
+            ->create([
+                'notes' => 'Finans departmanı tarafından onaylandı.',
+            ]);
+
+        $response = $this->actingAs($user)->get(route('finance.payments.show', $payment->id));
 
         $response->assertOk();
         $response->assertSee('Ödeme Detayı');
-        $response->assertSee('ODM-2026-000016');
+        $response->assertSee($payment->reference);
         $response->assertSee('Alıcı Bilgileri');
         $response->assertSee('Hakediş Bilgileri');
         $response->assertSee('Cari Hareketi');
         $response->assertSee('Ödeme Bilgileri');
         $response->assertSee('Dekontlar');
         $response->assertSee('Notlar');
-    }
-
-    public function test_dummy_data_has_seventy_five_payment_records_with_mixed_statuses(): void
-    {
-        $payments = FinancePaymentDummyData::all();
-
-        $this->assertGreaterThanOrEqual(70, count($payments));
-        $this->assertCount(75, $payments);
-        $this->assertGreaterThan(0, collect($payments)->where('status', 'paid')->count());
-        $this->assertGreaterThan(0, collect($payments)->where('status', 'partial')->count());
-        $this->assertGreaterThan(0, collect($payments)->where('status', 'pending')->count());
-        $this->assertGreaterThan(0, collect($payments)->where('status', 'cancelled')->count());
-        $this->assertGreaterThan(0, collect($payments)->where('recipient_type', 'courier')->count());
-        $this->assertGreaterThan(0, collect($payments)->where('recipient_type', 'agency')->count());
-        $this->assertGreaterThan(0, collect($payments)->where('recipient_type', 'personnel')->count());
-        $this->assertGreaterThan(0, collect($payments)->where('source', 'manual')->count());
+        $response->assertSee('Finans departmanı tarafından onaylandı.');
     }
 
     public function test_remaining_amount_is_calculated_correctly(): void
     {
-        $payment = FinancePaymentDummyData::find(16);
+        $payment = FinancePayment::factory()->partial()->forCourier()->create();
+        $presented = app(PaymentPresenter::class)->showRow($payment->fresh(['courier', 'agency', 'earningLine', 'currentAccount', 'lines']));
 
-        $this->assertNotNull($payment);
         $this->assertEquals(
-            round($payment['total_amount'] - $payment['paid_amount'], 2),
-            $payment['remaining_amount']
+            round((float) $payment->total_amount - (float) $payment->paid_amount, 2),
+            $presented['remaining_amount']
         );
     }
 
@@ -107,6 +109,9 @@ class FinancePaymentTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+
+        FinancePayment::factory()->partial()->forCourier()->create();
+        FinancePayment::factory()->paid()->forCourier()->create();
 
         $response = $this->actingAs($user)->get(route('finance.payments.index', [
             'payment_status' => 'partial',
@@ -119,18 +124,19 @@ class FinancePaymentTest extends TestCase
 
     public function test_partial_payment_has_payment_history(): void
     {
-        $payment = FinancePaymentDummyData::find(23);
+        $payment = FinancePayment::factory()->partial()->forCourier()->create()->fresh(['lines']);
+        $presented = app(PaymentPresenter::class)->showRow($payment);
 
-        $this->assertEquals('partial', $payment['status']);
-        $this->assertGreaterThanOrEqual(2, count($payment['payment_history']));
+        $this->assertEquals('partial', $payment->status);
+        $this->assertGreaterThanOrEqual(2, count($presented['payment_history']));
     }
 
     public function test_cancelled_payment_is_marked_inactive(): void
     {
-        $payment = FinancePaymentDummyData::find(66);
+        $payment = FinancePayment::factory()->cancelled()->forCourier()->create();
 
-        $this->assertEquals('cancelled', $payment['status']);
-        $this->assertFalse($payment['is_active']);
+        $this->assertEquals('cancelled', $payment->status);
+        $this->assertFalse($payment->is_active);
     }
 
     public function test_payment_show_returns_404_for_missing_record(): void
@@ -141,5 +147,77 @@ class FinancePaymentTest extends TestCase
         $response = $this->actingAs($user)->get(route('finance.payments.show', 9999));
 
         $response->assertNotFound();
+    }
+
+    public function test_user_can_create_courier_payment_with_current_account_movement(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $courier = Courier::factory()->create(['full_name' => 'Test Kurye']);
+
+        $response = $this->actingAs($user)->post(route('finance.payments.store'), [
+            'recipient_type' => 'courier',
+            'recipient_id' => $courier->id,
+            'payment_date' => '2026-07-09',
+            'total_amount' => 15000,
+            'paid_amount' => 15000,
+            'payment_method' => 'bank_transfer',
+            'payment_reference' => 'PAY-2026-00099',
+            'bank_account' => 'Garanti BBVA — TR1000000000000001',
+            'description' => 'Kurye hakediş ödemesi',
+        ]);
+
+        $response->assertRedirect(route('finance.payments.index'));
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseHas('finance_payments', [
+            'recipient_type' => 'courier',
+            'courier_id' => $courier->id,
+            'total_amount' => 15000,
+            'paid_amount' => 15000,
+            'status' => 'paid',
+        ]);
+
+        $this->assertDatabaseHas('finance_payment_lines', [
+            'amount' => 15000,
+            'payment_method' => 'bank_transfer',
+        ]);
+
+        $this->assertDatabaseHas('current_accounts', [
+            'accountable_type' => Courier::class,
+            'accountable_id' => $courier->id,
+        ]);
+
+        $this->assertDatabaseHas('current_account_movements', [
+            'type' => 'payment',
+            'debit' => 15000,
+        ]);
+    }
+
+    public function test_user_can_create_pending_agency_payment(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $agency = Agency::factory()->create(['company_name' => 'Test Acente Ltd.']);
+
+        $response = $this->actingAs($user)->post(route('finance.payments.store'), [
+            'recipient_type' => 'agency',
+            'recipient_id' => $agency->id,
+            'payment_date' => '2026-07-15',
+            'total_amount' => 9500,
+            'paid_amount' => 0,
+        ]);
+
+        $response->assertRedirect(route('finance.payments.index'));
+
+        $this->assertDatabaseHas('finance_payments', [
+            'recipient_type' => 'agency',
+            'agency_id' => $agency->id,
+            'total_amount' => 9500,
+            'paid_amount' => 0,
+            'status' => 'pending',
+        ]);
     }
 }

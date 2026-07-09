@@ -133,6 +133,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/tahsilatlar/export', [FinanceCollectionController::class, 'export'])->name('collections.export');
         Route::get('/tahsilatlar/{id}', [FinanceCollectionController::class, 'show'])->name('collections.show');
         Route::get('/odemeler', [FinancePaymentController::class, 'index'])->name('payments.index');
+        Route::post('/odemeler', [FinancePaymentController::class, 'store'])->name('payments.store');
         Route::get('/odemeler/export', [FinancePaymentController::class, 'export'])->name('payments.export');
         Route::get('/odemeler/{id}', [FinancePaymentController::class, 'show'])->name('payments.show');
         Route::get('/faturalar', [FinanceInvoiceController::class, 'index'])->name('invoices.index');
