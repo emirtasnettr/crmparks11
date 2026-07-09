@@ -71,6 +71,16 @@ class Agency extends Model
         return $this->hasMany(Courier::class);
     }
 
+    public function contracts(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    {
+        return $this->morphMany(\App\Models\Contract::class, 'contractable');
+    }
+
+    public function documents(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    {
+        return $this->morphMany(\App\Models\Document::class, 'documentable');
+    }
+
     public function activeCourierCount(): int
     {
         return (int) $this->couriers()

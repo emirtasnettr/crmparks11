@@ -5,9 +5,9 @@ namespace App\Modules\Agency\Controllers;
 use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
 use App\Modules\Agency\Data\AgencyContactDummyData;
-use App\Modules\Agency\Data\AgencyContractDummyData;
+use App\Modules\Agency\Data\AgencyContractFormData;
 use App\Modules\Agency\Data\AgencyCourierDummyData;
-use App\Modules\Agency\Data\AgencyDocumentDummyData;
+use App\Modules\Agency\Data\AgencyDocumentFormData;
 use App\Modules\Agency\Data\AgencyFormData;
 use App\Modules\Agency\Exports\AgencyListExportSheets;
 use App\Modules\Agency\Requests\StoreAgencyRequest;
@@ -126,8 +126,8 @@ class AgencyController extends Controller
         return view('modules.agency.show', [
             'agency' => $this->presenter->showPayload($agency),
             'contactTitles' => AgencyContactDummyData::titles(),
-            'contractTypes' => AgencyContractDummyData::contractTypes(),
-            'documentTypes' => AgencyDocumentDummyData::documentTypes(),
+            'contractTypes' => AgencyContractFormData::contractTypes(),
+            'documentTypes' => AgencyDocumentFormData::documentTypes(),
             'assignCouriers' => AgencyCourierDummyData::couriers(),
         ]);
     }

@@ -8,14 +8,14 @@ use App\Models\District;
 use App\Models\PricingModelType;
 use App\Models\User;
 use App\Modules\Business\Data\BusinessActivityDummyData;
-use App\Modules\Business\Data\BusinessContractDummyData;
-use App\Modules\Business\Data\BusinessDocumentDummyData;
 use App\Modules\Business\Data\BusinessEarningDummyData;
 use App\Modules\Business\Data\BusinessFormData;
 use App\Modules\Business\Models\Business;
 use App\Modules\Business\Models\BusinessContact;
 use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\Business\Models\BusinessPricing;
+use App\Models\Contract;
+use App\Models\Document;
 use App\Modules\Business\Services\BusinessContactPresenter;
 use App\Modules\Business\Services\BusinessContactService;
 use App\Modules\Business\Support\BusinessFeatures;
@@ -32,6 +32,10 @@ class BusinessPresenter
     private readonly BusinessContactPresenter $contactPresenter,
     private readonly BusinessAssignmentService $assignments,
     private readonly BusinessAssignmentPresenter $assignmentPresenter,
+    private readonly BusinessContractService $contracts,
+    private readonly BusinessContractPresenter $contractPresenter,
+    private readonly BusinessDocumentService $documents,
+    private readonly BusinessDocumentPresenter $documentPresenter,
   ) {}
 
   /**
@@ -144,13 +148,21 @@ class BusinessPresenter
         ->map(fn (BusinessContact $contact) => $this->contactPresenter->showRow($contact))
         ->values()
         ->all(),
-      'contracts' => BusinessContractDummyData::filter(['business_id' => $business->id]),
+      'contracts' => $this->contracts
+        ->forBusiness($business->id)
+        ->map(fn (Contract $contract) => $this->contractPresenter->showRow($contract))
+        ->values()
+        ->all(),
       'assignments' => $this->assignments
         ->forBusiness($business->id)
         ->map(fn (BusinessCourierAssignment $assignment) => $this->assignmentPresenter->showRow($assignment))
         ->values()
         ->all(),
-      'documents' => BusinessDocumentDummyData::filter(['business_id' => $business->id]),
+      'documents' => $this->documents
+        ->forBusiness($business->id)
+        ->map(fn (Document $document) => $this->documentPresenter->indexRow($document))
+        ->values()
+        ->all(),
       'activities' => BusinessActivityDummyData::filter(['business_id' => $business->id]),
     ], BusinessFeatures::earningsEnabled() ? [
       'earning_period_label' => $earningPeriods[$base['earning_period'] ?? ''] ?? '—',

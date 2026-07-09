@@ -64,4 +64,26 @@ final class SecureUploadValidator
             ],
         ];
     }
+
+    /**
+     * @return array{extensions: array<int, string>, mimeTypes: array<int, string>}
+     */
+    public static function entityDocumentProfile(): array
+    {
+        return [
+            'extensions' => ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'webp', 'zip'],
+            'mimeTypes' => [
+                'application/pdf',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'image/jpeg',
+                'image/png',
+                'image/webp',
+                'application/zip',
+                'application/x-zip-compressed',
+            ],
+        ];
+    }
 }

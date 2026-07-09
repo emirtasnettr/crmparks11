@@ -2,8 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Models\City;
+use App\Models\Contract;
+use App\Models\ContractType;
+use App\Models\District;
 use App\Models\User;
-use App\Modules\Agency\Data\AgencyContractDummyData;
+use App\Modules\Agency\Models\Agency;
+use Database\Seeders\CitySeeder;
+use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -16,7 +22,11 @@ class AgencyContractTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(RoleAndPermissionSeeder::class);
+        $this->seed([
+            LookupTableSeeder::class,
+            CitySeeder::class,
+            RoleAndPermissionSeeder::class,
+        ]);
     }
 
     public function test_agency_contracts_index_requires_authentication(): void
@@ -30,80 +40,62 @@ class AgencyContractTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $agency = $this->createAgency($user);
+
+        Contract::factory()->create([
+            'contractable_type' => Agency::class,
+            'contractable_id' => $agency->id,
+            'contract_type_id' => ContractType::query()->where('code', 'service')->value('id'),
+            'contract_number' => 'ACS-2026-001',
+            'created_by' => $user->id,
+        ]);
 
         $response = $this->actingAs($user)->get(route('agencies.contracts.index'));
 
         $response->assertOk();
         $response->assertSee('Sözleşmeler');
-        $response->assertSee('Acenteler ile yapılan tüm sözleşmeleri buradan yönetin.');
         $response->assertSee('Yeni Sözleşme');
-        $response->assertSee('Toplam Sözleşme');
-        $response->assertSee('Yakında Bitecek');
         $response->assertSee('ACS-2026-001');
-        $response->assertSee('Güncel Sözleşme');
-        $response->assertSee('30 Gün İçinde Bitecek');
-    }
-
-    public function test_agency_contracts_have_at_least_twenty_five_records(): void
-    {
-        $contracts = AgencyContractDummyData::all();
-
-        $this->assertCount(28, $contracts);
-        $this->assertGreaterThanOrEqual(25, count($contracts));
-    }
-
-    public function test_each_agency_has_at_most_one_current_contract(): void
-    {
-        $currentByAgency = collect(AgencyContractDummyData::all())
-            ->where('is_current', true)
-            ->groupBy('agency_id')
-            ->map->count();
-
-        foreach ($currentByAgency as $agencyId => $count) {
-            $this->assertEquals(1, $count, "Agency {$agencyId} should have exactly one current contract.");
-        }
-    }
-
-    public function test_summary_stats_are_calculated(): void
-    {
-        $summary = AgencyContractDummyData::summarize();
-
-        $this->assertEquals(28, $summary['total']);
-        $this->assertGreaterThan(0, $summary['active']);
-        $this->assertGreaterThan(0, $summary['expiring_soon']);
-        $this->assertGreaterThan(0, $summary['expired']);
-    }
-
-    public function test_agency_contracts_can_be_filtered_by_status(): void
-    {
-        $user = User::factory()->create();
-        $user->assignRole('super_admin');
-
-        $count = count(AgencyContractDummyData::filter(['status' => 'expiring_soon']));
-
-        $response = $this->actingAs($user)->get(route('agencies.contracts.index', [
-            'status' => 'expiring_soon',
-        ]));
-
-        $response->assertOk();
-        $response->assertSee('1–'.$count.' / '.$count);
-        $response->assertSee('ACS-2026-014');
+        $response->assertSee($agency->company_name);
     }
 
     public function test_authenticated_user_can_view_agency_contract_detail(): void
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $agency = $this->createAgency($user, [
+            'company_name' => 'Metro Lojistik Acente A.Ş.',
+        ]);
 
-        $response = $this->actingAs($user)->get(route('agencies.contracts.show', 3));
+        $contract = Contract::factory()->create([
+            'contractable_type' => Agency::class,
+            'contractable_id' => $agency->id,
+            'contract_type_id' => ContractType::query()->where('code', 'framework')->value('id'),
+            'created_by' => $user->id,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('agencies.contracts.show', $contract->id));
 
         $response->assertOk();
         $response->assertSee('Sözleşme Bilgileri');
-        $response->assertSee('Acente Bilgileri');
-        $response->assertSee('PDF Önizleme');
-        $response->assertSee('Ek Belgeler');
-        $response->assertSee('İşlem Geçmişi');
         $response->assertSee('Metro Lojistik Acente A.Ş.');
-        $response->assertSee('13 gün içinde bitiyor.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    private function createAgency(User $user, array $overrides = []): Agency
+    {
+        $city = City::query()->where('name', 'İstanbul')->firstOrFail();
+        $district = District::query()
+            ->where('city_id', $city->id)
+            ->where('name', 'Kadıköy')
+            ->firstOrFail();
+
+        return Agency::factory()->create(array_merge([
+            'city_id' => $city->id,
+            'district_id' => $district->id,
+            'created_by' => $user->id,
+        ], $overrides));
     }
 }

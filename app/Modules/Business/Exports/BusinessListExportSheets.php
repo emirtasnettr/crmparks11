@@ -3,7 +3,6 @@
 namespace App\Modules\Business\Exports;
 
 use App\Core\Exports\ListExport;
-use App\Modules\Business\Data\BusinessContractDummyData;
 use App\Modules\Business\Data\BusinessFormData;
 use App\Modules\Business\Services\BusinessPresenter;
 use App\Modules\Business\Services\BusinessService;
@@ -88,8 +87,15 @@ final class BusinessListExportSheets
      */
     public static function contracts(array $filters): array
     {
+        $service = app(\App\Modules\Business\Services\BusinessContractService::class);
+        $presenter = app(\App\Modules\Business\Services\BusinessContractPresenter::class);
+
+        $rows = $service->filter($filters)
+            ->map(fn ($contract) => $presenter->indexRow($contract))
+            ->all();
+
         return ListExport::sheet(
-            BusinessContractDummyData::filter($filters),
+            $rows,
             ['İşletme', 'Sözleşme No', 'Sözleşme Türü', 'Başlangıç Tarihi', 'Bitiş Tarihi', 'Kalan Gün', 'Durum'],
             [
                 fn (array $row) => $row['business_name'],

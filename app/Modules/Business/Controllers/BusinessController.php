@@ -5,8 +5,8 @@ namespace App\Modules\Business\Controllers;
 use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
 use App\Modules\Business\Data\BusinessContactFormData;
-use App\Modules\Business\Data\BusinessContractDummyData;
-use App\Modules\Business\Data\BusinessDocumentDummyData;
+use App\Modules\Business\Data\BusinessContractFormData;
+use App\Modules\Business\Data\BusinessDocumentFormData;
 use App\Modules\Business\Data\BusinessFormData;
 use App\Modules\Business\Data\BusinessOverviewStats;
 use App\Modules\Business\Exports\BusinessListExportSheets;
@@ -144,8 +144,8 @@ class BusinessController extends Controller
         'range_label' => $dateRange['range_label'],
       ],
       'contactTitles' => BusinessContactFormData::titles(),
-      'contractTypes' => BusinessContractDummyData::contractTypes(),
-      'documentTypes' => BusinessDocumentDummyData::documentTypes(),
+      'contractTypes' => BusinessContractFormData::contractTypes(),
+      'documentTypes' => BusinessDocumentFormData::documentTypes(),
       'assignmentCouriers' => $this->assignments->couriers(),
       'assignmentAgencies' => $this->assignments->agencies(),
     ]);

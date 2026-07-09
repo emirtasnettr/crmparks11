@@ -211,6 +211,8 @@
             @include('modules.agency.contracts.partials.modal', [
                 'hideEntitySelector' => true,
                 'presetEntityLabel' => $agency['company_name'],
+                'lockedAgencyId' => $agency['id'],
+                'redirectToAgency' => true,
                 'contractTypes' => $contractTypes,
                 'agencies' => [],
             ])
@@ -251,6 +253,8 @@
             @include('modules.agency.documents.partials.modal', [
                 'hideEntitySelector' => true,
                 'presetEntityLabel' => $agency['company_name'],
+                'lockedAgencyId' => $agency['id'],
+                'redirectToAgency' => true,
                 'documentTypes' => $documentTypes,
                 'agencies' => [],
             ])

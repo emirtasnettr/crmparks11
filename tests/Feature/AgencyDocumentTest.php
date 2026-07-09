@@ -2,10 +2,18 @@
 
 namespace Tests\Feature;
 
+use App\Models\City;
+use App\Models\Document;
+use App\Models\DocumentCategory;
+use App\Models\District;
 use App\Models\User;
-use App\Modules\Agency\Data\AgencyDocumentDummyData;
+use App\Modules\Agency\Models\Agency;
+use Database\Seeders\CitySeeder;
+use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class AgencyDocumentTest extends TestCase
@@ -16,7 +24,11 @@ class AgencyDocumentTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(RoleAndPermissionSeeder::class);
+        $this->seed([
+            LookupTableSeeder::class,
+            CitySeeder::class,
+            RoleAndPermissionSeeder::class,
+        ]);
     }
 
     public function test_agency_documents_index_requires_authentication(): void
@@ -30,95 +42,64 @@ class AgencyDocumentTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $agency = $this->createAgency($user);
+
+        Document::factory()->create([
+            'documentable_type' => Agency::class,
+            'documentable_id' => $agency->id,
+            'document_category_id' => DocumentCategory::query()->where('code', 'tax_plate')->value('id'),
+            'original_name' => 'VL-1234567890.pdf',
+            'uploaded_by' => $user->id,
+        ]);
 
         $response = $this->actingAs($user)->get(route('agencies.documents.index'));
 
         $response->assertOk();
         $response->assertSee('Evraklar');
-        $response->assertSee('Acentelere ait tüm evrakları buradan yönetin.');
         $response->assertSee('Evrak Yükle');
-        $response->assertSee('Toplam Evrak');
-        $response->assertSee('Süresi Yaklaşan');
         $response->assertSee('VL-1234567890');
-        $response->assertSee('Hızlı Kurye Acentesi Ltd. Şti.');
+        $response->assertSee($agency->company_name);
     }
 
-    public function test_agency_documents_have_at_least_forty_records(): void
+    public function test_agency_document_can_be_uploaded(): void
     {
-        $documents = AgencyDocumentDummyData::all();
+        Storage::fake('public');
 
-        $this->assertCount(46, $documents);
-        $this->assertGreaterThanOrEqual(40, count($documents));
-    }
-
-    public function test_document_status_is_computed_from_expiry_date(): void
-    {
-        $documents = AgencyDocumentDummyData::all();
-
-        $expiring = collect($documents)->firstWhere('status', 'expiring_soon');
-        $expired = collect($documents)->firstWhere('status', 'expired');
-        $valid = collect($documents)->firstWhere('status', 'valid');
-
-        $this->assertNotNull($expiring);
-        $this->assertNotNull($expired);
-        $this->assertNotNull($valid);
-        $this->assertLessThanOrEqual(30, $expiring['days_remaining']);
-        $this->assertLessThan(0, $expired['days_remaining']);
-        $this->assertGreaterThan(30, $valid['days_remaining']);
-    }
-
-    public function test_soft_deleted_documents_are_excluded_by_default(): void
-    {
-        $all = AgencyDocumentDummyData::all();
-        $withTrashed = AgencyDocumentDummyData::all(true);
-
-        $this->assertCount(46, $all);
-        $this->assertCount(47, $withTrashed);
-        $this->assertNull(AgencyDocumentDummyData::find(51));
-        $this->assertNotNull(AgencyDocumentDummyData::find(51, true));
-    }
-
-    public function test_version_history_is_available_on_detail(): void
-    {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $agency = $this->createAgency($user);
 
-        $response = $this->actingAs($user)->get(route('agencies.documents.show', 5));
+        $response = $this->actingAs($user)->post(route('agencies.documents.store'), [
+            'agency_id' => $agency->id,
+            'document_type' => 'tax_plate',
+            'file' => UploadedFile::fake()->create('vergi-levhasi.pdf', 100, 'application/pdf'),
+            'expires_at' => now()->addYear()->toDateString(),
+        ]);
 
-        $response->assertOk();
-        $response->assertSee('Versiyon Geçmişi');
-        $response->assertSee('metro-lojistik-ticaret-sicil-v1.pdf');
-        $response->assertSee('Güncel');
+        $response->assertRedirect(route('agencies.documents.index', ['agency_id' => $agency->id]));
+
+        $this->assertDatabaseHas('documents', [
+            'documentable_type' => Agency::class,
+            'documentable_id' => $agency->id,
+            'original_name' => 'vergi-levhasi.pdf',
+        ]);
     }
 
-    public function test_agency_documents_can_be_filtered_by_status(): void
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    private function createAgency(User $user, array $overrides = []): Agency
     {
-        $user = User::factory()->create();
-        $user->assignRole('super_admin');
+        $city = City::query()->where('name', 'İstanbul')->firstOrFail();
+        $district = District::query()
+            ->where('city_id', $city->id)
+            ->where('name', 'Kadıköy')
+            ->firstOrFail();
 
-        $count = count(AgencyDocumentDummyData::filter(['status' => 'expired']));
-
-        $response = $this->actingAs($user)->get(route('agencies.documents.index', [
-            'status' => 'expired',
-        ]));
-
-        $response->assertOk();
-        $response->assertSee('1–'.$count.' / '.$count);
-        $response->assertSee('Süresi Dolmuş');
-    }
-
-    public function test_authenticated_user_can_view_agency_document_detail(): void
-    {
-        $user = User::factory()->create();
-        $user->assignRole('super_admin');
-
-        $response = $this->actingAs($user)->get(route('agencies.documents.show', 1));
-
-        $response->assertOk();
-        $response->assertSee('Acente Bilgileri');
-        $response->assertSee('Belge Bilgileri');
-        $response->assertSee('Dosya Önizleme');
-        $response->assertSee('Hızlı Kurye Acentesi Ltd. Şti.');
-        $response->assertSee('VL-1234567890');
+        return Agency::factory()->create(array_merge([
+            'city_id' => $city->id,
+            'district_id' => $district->id,
+            'created_by' => $user->id,
+        ], $overrides));
     }
 }

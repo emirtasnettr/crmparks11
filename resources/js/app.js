@@ -718,8 +718,8 @@ Alpine.data('contractPage', (preset = {}) => {
     return {
     lockedBusinessId,
     openModal: false,
-    modalSaved: false,
     modalErrors: {},
+    submitting: false,
     modal: {
         business_id: lockedBusinessId,
         contract_number: '',
@@ -732,7 +732,6 @@ Alpine.data('contractPage', (preset = {}) => {
 
     closeModal() {
         this.openModal = false;
-        this.modalSaved = false;
         this.modalErrors = {};
         this.resetModal();
     },
@@ -754,6 +753,10 @@ Alpine.data('contractPage', (preset = {}) => {
 
         requireEntityId(this.modalErrors, 'business_id', this.lockedBusinessId, this.modal.business_id, 'İşletme seçilmelidir.');
 
+        if (!this.modal.contract_type) {
+            this.modalErrors.contract_type = 'Sözleşme türü seçilmelidir.';
+        }
+
         if (!this.modal.start_date) {
             this.modalErrors.start_date = 'Başlangıç tarihi zorunludur.';
         }
@@ -769,14 +772,13 @@ Alpine.data('contractPage', (preset = {}) => {
         return Object.keys(this.modalErrors).length === 0;
     },
 
-    saveContract() {
-        this.modalSaved = false;
-
+    handleSubmit(event) {
         if (!this.validateModal()) {
+            event.preventDefault();
             return;
         }
 
-        this.modalSaved = true;
+        this.submitting = true;
     },
 };
 });
@@ -787,8 +789,8 @@ Alpine.data('agencyContractPage', (preset = {}) => {
     return {
     lockedAgencyId,
     openModal: false,
-    modalSaved: false,
     modalErrors: {},
+    submitting: false,
     modal: {
         agency_id: lockedAgencyId,
         contract_number: '',
@@ -802,7 +804,6 @@ Alpine.data('agencyContractPage', (preset = {}) => {
 
     closeModal() {
         this.openModal = false;
-        this.modalSaved = false;
         this.modalErrors = {};
         this.resetModal();
     },
@@ -825,6 +826,10 @@ Alpine.data('agencyContractPage', (preset = {}) => {
 
         requireEntityId(this.modalErrors, 'agency_id', this.lockedAgencyId, this.modal.agency_id, 'Acente seçilmelidir.');
 
+        if (!this.modal.contract_type) {
+            this.modalErrors.contract_type = 'Sözleşme türü seçilmelidir.';
+        }
+
         if (!this.modal.start_date) {
             this.modalErrors.start_date = 'Başlangıç tarihi zorunludur.';
         }
@@ -840,14 +845,13 @@ Alpine.data('agencyContractPage', (preset = {}) => {
         return Object.keys(this.modalErrors).length === 0;
     },
 
-    saveContract() {
-        this.modalSaved = false;
-
+    handleSubmit(event) {
         if (!this.validateModal()) {
+            event.preventDefault();
             return;
         }
 
-        this.modalSaved = true;
+        this.submitting = true;
     },
 };
 });
@@ -945,21 +949,17 @@ Alpine.data('agencyDocumentPage', (preset = {}) => {
     return {
     lockedAgencyId,
     openModal: false,
-    modalSaved: false,
     modalErrors: {},
+    submitting: false,
     selectedFileName: '',
     modal: {
         agency_id: lockedAgencyId,
         document_type: '',
-        document_number: '',
-        uploaded_at: '',
-        expiry_date: '',
-        description: '',
+        expires_at: '',
     },
 
     closeModal() {
         this.openModal = false;
-        this.modalSaved = false;
         this.modalErrors = {};
         this.selectedFileName = '';
         this.resetModal();
@@ -969,10 +969,7 @@ Alpine.data('agencyDocumentPage', (preset = {}) => {
         this.modal = {
             agency_id: this.lockedAgencyId,
             document_type: '',
-            document_number: '',
-            uploaded_at: '',
-            expiry_date: '',
-            description: '',
+            expires_at: '',
         };
     },
 
@@ -998,14 +995,13 @@ Alpine.data('agencyDocumentPage', (preset = {}) => {
         return Object.keys(this.modalErrors).length === 0;
     },
 
-    saveDocument() {
-        this.modalSaved = false;
-
+    handleSubmit(event) {
         if (!this.validateModal()) {
+            event.preventDefault();
             return;
         }
 
-        this.modalSaved = true;
+        this.submitting = true;
     },
 };
 });
@@ -1294,18 +1290,16 @@ Alpine.data('documentPage', (preset = {}) => {
     return {
     lockedBusinessId,
     openModal: false,
-    modalSaved: false,
     modalErrors: {},
+    submitting: false,
     selectedFileName: '',
     modal: {
         business_id: lockedBusinessId,
         document_type: '',
-        description: '',
     },
 
     closeModal() {
         this.openModal = false;
-        this.modalSaved = false;
         this.modalErrors = {};
         this.selectedFileName = '';
         this.resetModal();
@@ -1315,7 +1309,6 @@ Alpine.data('documentPage', (preset = {}) => {
         this.modal = {
             business_id: this.lockedBusinessId,
             document_type: '',
-            description: '',
         };
     },
 
@@ -1341,14 +1334,13 @@ Alpine.data('documentPage', (preset = {}) => {
         return Object.keys(this.modalErrors).length === 0;
     },
 
-    saveDocument() {
-        this.modalSaved = false;
-
+    handleSubmit(event) {
         if (!this.validateModal()) {
+            event.preventDefault();
             return;
         }
 
-        this.modalSaved = true;
+        this.submitting = true;
     },
 };
 });

@@ -69,6 +69,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/yetkililer/{id}', [BusinessContactController::class, 'update'])->middleware('permission:business.update')->name('contacts.update');
         Route::get('/sozlesmeler', [BusinessContractController::class, 'index'])->name('contracts.index');
         Route::get('/sozlesmeler/export', [BusinessContractController::class, 'export'])->name('contracts.export');
+        Route::post('/sozlesmeler', [BusinessContractController::class, 'store'])->middleware('permission:business.update')->name('contracts.store');
         Route::get('/sozlesmeler/{id}', [BusinessContractController::class, 'show'])->name('contracts.show');
         Route::get('/atanan-kuryeler', [BusinessAssignmentController::class, 'index'])->name('assignments.index');
         Route::get('/atanan-kuryeler/export', [BusinessAssignmentController::class, 'export'])->name('assignments.export');
@@ -79,6 +80,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/hakedisler/export', [BusinessEarningController::class, 'export'])->name('earnings.export');
         Route::get('/hakedisler/{id}', [BusinessEarningController::class, 'show'])->name('earnings.show');
         Route::get('/evraklar', [BusinessDocumentController::class, 'index'])->name('documents.index');
+        Route::post('/evraklar', [BusinessDocumentController::class, 'store'])->middleware('permission:business.update')->name('documents.store');
         Route::get('/hareket-gecmisi', [BusinessActivityController::class, 'index'])->name('activities.index');
         Route::get('/{id}/duzenle', [BusinessController::class, 'edit'])->name('edit');
         Route::put('/{id}', [BusinessController::class, 'update'])->middleware('permission:business.update')->name('update');
@@ -202,11 +204,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/kuryeler/export', [AgencyCourierController::class, 'export'])->name('couriers.export');
         Route::get('/sozlesmeler', [AgencyContractController::class, 'index'])->name('contracts.index');
         Route::get('/sozlesmeler/export', [AgencyContractController::class, 'export'])->name('contracts.export');
+        Route::post('/sozlesmeler', [AgencyContractController::class, 'store'])->middleware('permission:agency.update')->name('contracts.store');
         Route::get('/sozlesmeler/{id}', [AgencyContractController::class, 'show'])->name('contracts.show');
         Route::get('/hakedisler', [AgencyEarningController::class, 'index'])->name('earnings.index');
         Route::get('/hakedisler/export', [AgencyEarningController::class, 'export'])->name('earnings.export');
         Route::get('/hakedisler/{id}', [AgencyEarningController::class, 'show'])->name('earnings.show');
         Route::get('/evraklar', [AgencyDocumentController::class, 'index'])->name('documents.index');
+        Route::post('/evraklar', [AgencyDocumentController::class, 'store'])->middleware('permission:agency.update')->name('documents.store');
         Route::get('/evraklar/{id}', [AgencyDocumentController::class, 'show'])->name('documents.show');
         Route::get('/hareket-gecmisi', [AgencyActivityController::class, 'index'])->name('activities.index');
         Route::get('/hareket-gecmisi/export', [AgencyActivityController::class, 'export'])->name('activities.export');

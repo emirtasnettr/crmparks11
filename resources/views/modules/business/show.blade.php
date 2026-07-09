@@ -211,6 +211,8 @@
             @include('modules.business.contracts.partials.modal', [
                 'hideEntitySelector' => true,
                 'presetEntityLabel' => $business['company_name'],
+                'lockedBusinessId' => $business['id'],
+                'redirectToBusiness' => true,
                 'contractTypes' => $contractTypes,
                 'businesses' => [],
             ])
@@ -298,6 +300,8 @@
             @include('modules.business.documents.partials.modal', [
                 'hideEntitySelector' => true,
                 'presetEntityLabel' => $business['company_name'],
+                'lockedBusinessId' => $business['id'],
+                'redirectToBusiness' => true,
                 'documentTypes' => $documentTypes,
                 'businesses' => [],
             ])

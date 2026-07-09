@@ -5,7 +5,6 @@ namespace App\Modules\Agency\Exports;
 use App\Core\Exports\ListExport;
 use App\Modules\Agency\Data\AgencyActivityDummyData;
 use App\Modules\Agency\Data\AgencyContactDummyData;
-use App\Modules\Agency\Data\AgencyContractDummyData;
 use App\Modules\Agency\Data\AgencyCourierDummyData;
 use App\Modules\Agency\Data\AgencyEarningDummyData;
 use App\Modules\Agency\Data\AgencyFormData;
@@ -71,8 +70,15 @@ final class AgencyListExportSheets
      */
     public static function contracts(array $filters): array
     {
+        $service = app(\App\Modules\Agency\Services\AgencyContractService::class);
+        $presenter = app(\App\Modules\Agency\Services\AgencyContractPresenter::class);
+
+        $rows = $service->filter($filters)
+            ->map(fn ($contract) => $presenter->indexRow($contract))
+            ->all();
+
         return ListExport::sheet(
-            AgencyContractDummyData::filter($filters),
+            $rows,
             ['Acente', 'Sözleşme No', 'Sözleşme Türü', 'Başlangıç', 'Bitiş', 'Kalan Gün', 'Durum'],
             [
                 fn (array $row) => $row['agency_name'],

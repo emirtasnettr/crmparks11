@@ -153,6 +153,9 @@
         />
     </x-ui.card>
 
-    @include('modules.agency.documents.partials.modal')
+    @include('modules.agency.documents.partials.modal', [
+        'agencies' => $agencies,
+        'documentTypes' => $documentTypes,
+    ])
 </div>
 @endsection

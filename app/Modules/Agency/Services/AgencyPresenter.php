@@ -4,12 +4,12 @@ namespace App\Modules\Agency\Services;
 
 use App\Modules\Agency\Data\AgencyActivityDummyData;
 use App\Modules\Agency\Data\AgencyContactDummyData;
-use App\Modules\Agency\Data\AgencyContractDummyData;
 use App\Modules\Agency\Data\AgencyCourierDummyData;
-use App\Modules\Agency\Data\AgencyDocumentDummyData;
 use App\Modules\Agency\Data\AgencyEarningDummyData;
 use App\Modules\Agency\Data\AgencyFormData;
 use App\Modules\Agency\Models\Agency;
+use App\Models\Contract;
+use App\Models\Document;
 use App\Modules\Agency\Support\AgencyFeatures;
 use App\Modules\Agency\Support\AgencyLogo;
 
@@ -17,6 +17,10 @@ class AgencyPresenter
 {
     public function __construct(
         private readonly AgencyMediaService $media,
+        private readonly AgencyContractService $contracts,
+        private readonly AgencyContractPresenter $contractPresenter,
+        private readonly AgencyDocumentService $documents,
+        private readonly AgencyDocumentPresenter $documentPresenter,
     ) {}
 
     /**
@@ -136,8 +140,16 @@ class AgencyPresenter
             'created_at_formatted' => $agency->created_at?->format('d.m.Y') ?? now()->format('d.m.Y'),
             'contacts' => AgencyContactDummyData::filter(['agency_id' => $id]),
             'couriers' => AgencyCourierDummyData::filter(['agency_id' => $id]),
-            'contracts' => AgencyContractDummyData::filter(['agency_id' => $id]),
-            'documents' => AgencyDocumentDummyData::filter(['agency_id' => $id]),
+            'contracts' => $this->contracts
+                ->forAgency($id)
+                ->map(fn (Contract $contract) => $this->contractPresenter->showRow($contract))
+                ->values()
+                ->all(),
+            'documents' => $this->documents
+                ->forAgency($id)
+                ->map(fn (Document $document) => $this->documentPresenter->indexRow($document))
+                ->values()
+                ->all(),
             'activities' => AgencyActivityDummyData::filter(['agency_id' => $id]),
         ], AgencyFeatures::earningsEnabled() ? [
             'monthly_earning' => '0,00 ₺',

@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\City;
+use App\Models\Contract;
+use App\Models\ContractType;
 use App\Models\District;
 use App\Models\PricingModelType;
 use App\Models\User;
@@ -91,6 +93,13 @@ class EntityShowPageTest extends TestCase
       'business_id' => $business->id,
       'full_name' => 'Mehmet Yılmaz',
       'title' => 'İşletme Sahibi',
+    ]);
+    Contract::factory()->create([
+      'contractable_type' => Business::class,
+      'contractable_id' => $business->id,
+      'contract_type_id' => ContractType::query()->where('code', 'service')->value('id'),
+      'contract_number' => 'SZL-2026-001',
+      'created_by' => $user->id,
     ]);
 
     $response = $this->actingAs($user)->get(route('businesses.show', $business->id));

@@ -1,17 +1,31 @@
 <x-ui.modal title="Evrak Yükle">
-    <form @submit.prevent="saveDocument" class="space-y-4">
+    <form
+        method="POST"
+        action="{{ $formAction ?? route('agencies.documents.store') }}"
+        enctype="multipart/form-data"
+        @submit="handleSubmit($event)"
+        class="space-y-4"
+    >
+        @csrf
         @php
             $hideEntitySelector = $hideEntitySelector ?? false;
             $presetEntityLabel = $presetEntityLabel ?? null;
+            $redirectToAgency = $redirectToAgency ?? false;
         @endphp
+
+        @if ($redirectToAgency)
+            <input type="hidden" name="redirect_to_agency" value="1">
+        @endif
 
         @if ($hideEntitySelector)
             <x-entity.locked-field label="Acente" :value="$presetEntityLabel" />
+            <input type="hidden" name="agency_id" value="{{ $lockedAgencyId ?? '' }}" x-bind:value="modal.agency_id || '{{ $lockedAgencyId ?? '' }}'">
         @else
             <div class="space-y-1.5">
                 <label for="modal_agency_id" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Acente *</label>
                 <select
                     id="modal_agency_id"
+                    name="agency_id"
                     x-model="modal.agency_id"
                     class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                     :class="modalErrors.agency_id ? 'border-red-300 dark:border-red-500' : ''"
@@ -29,6 +43,7 @@
             <label for="modal_document_type" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Evrak Türü *</label>
             <select
                 id="modal_document_type"
+                name="document_type"
                 x-model="modal.document_type"
                 class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                 :class="modalErrors.document_type ? 'border-red-300 dark:border-red-500' : ''"
@@ -40,8 +55,6 @@
             </select>
             <p x-show="modalErrors.document_type" x-cloak class="text-sm text-red-600 dark:text-red-400" x-text="modalErrors.document_type"></p>
         </div>
-
-        <x-ui.input name="document_number" label="Belge No" placeholder="VL-1234567890" x-model="modal.document_number" />
 
         <div class="space-y-1.5">
             <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Dosya Yükle *</label>
@@ -55,6 +68,7 @@
                 <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">PDF, Word veya Resim (maks. 25MB)</p>
                 <input
                     type="file"
+                    name="file"
                     class="sr-only"
                     accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,application/pdf,image/*"
                     @change="onFileSelect($event)"
@@ -63,43 +77,20 @@
             <p x-show="modalErrors.file" x-cloak class="text-sm text-red-600 dark:text-red-400" x-text="modalErrors.file"></p>
         </div>
 
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div class="space-y-1.5">
-                <label for="modal_uploaded_at" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Yüklenme Tarihi</label>
-                <input
-                    id="modal_uploaded_at"
-                    type="date"
-                    x-model="modal.uploaded_at"
-                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
-                />
-            </div>
-
-            <div class="space-y-1.5">
-                <label for="modal_expiry_date" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Geçerlilik Tarihi</label>
-                <input
-                    id="modal_expiry_date"
-                    type="date"
-                    x-model="modal.expiry_date"
-                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
-                />
-            </div>
-        </div>
-
-        <x-ui.textarea name="description" label="Açıklama" rows="3" x-model="modal.description" />
-
-        <div x-show="modalSaved" x-cloak>
-            <x-ui.alert type="success">
-                Evrak bilgileri doğrulandı. Yükleme işlemi backend bağlantısı sonrası aktif olacaktır.
-            </x-ui.alert>
+        <div class="space-y-1.5">
+            <label for="modal_expiry_date" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Geçerlilik Tarihi</label>
+            <input
+                id="modal_expiry_date"
+                name="expires_at"
+                type="date"
+                x-model="modal.expires_at"
+                class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+            />
         </div>
 
         <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-            <x-ui.button type="button" variant="secondary" @click="closeModal">
-                İptal
-            </x-ui.button>
-            <x-ui.button type="submit">
-                Kaydet
-            </x-ui.button>
+            <x-ui.button type="button" variant="secondary" @click="closeModal">İptal</x-ui.button>
+            <x-ui.button type="submit" ::disabled="submitting">Yükle</x-ui.button>
         </div>
     </form>
 </x-ui.modal>
