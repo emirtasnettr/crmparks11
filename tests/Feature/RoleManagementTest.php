@@ -3,9 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Modules\User\Data\RoleManagementDummyData;
+use App\Modules\User\Services\RoleManagementService;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class RoleManagementTest extends TestCase
@@ -65,7 +66,7 @@ class RoleManagementTest extends TestCase
 
     public function test_default_system_roles_exist(): void
     {
-        $roles = RoleManagementDummyData::all();
+        $roles = app(RoleManagementService::class)->index([])['roles'];
 
         $this->assertGreaterThanOrEqual(8, count($roles));
 
@@ -78,7 +79,7 @@ class RoleManagementTest extends TestCase
 
     public function test_custom_role_is_deletable(): void
     {
-        $role = RoleManagementDummyData::find(9);
+        $role = app(RoleManagementService::class)->findByName('regional_coordinator');
 
         $this->assertNotNull($role);
         $this->assertTrue($role['is_deletable']);
@@ -101,7 +102,9 @@ class RoleManagementTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('super_admin');
 
-        $response = $this->actingAs($user)->get(route('roles.show', 1));
+        $superAdminRole = Role::query()->where('name', 'super_admin')->firstOrFail();
+
+        $response = $this->actingAs($user)->get(route('roles.show', $superAdminRole->id));
 
         $response->assertOk();
         $response->assertSee('Süper Admin');

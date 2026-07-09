@@ -38,7 +38,10 @@ class RoleAndPermissionSeeder extends Seeder
 
         $rolePermissions = [
             'super_admin' => $permissions,
-            'general_manager' => array_filter($permissions, fn ($p) => ! str_starts_with($p, 'user.') && ! str_starts_with($p, 'setting.')),
+            'general_manager' => array_values(array_filter(
+                $permissions,
+                fn (string $permission) => ! str_starts_with($permission, 'user.') && ! str_starts_with($permission, 'setting.')
+            )),
             'operations_manager' => [
                 'dashboard.view',
                 'business.view', 'business.create', 'business.update',
@@ -48,11 +51,13 @@ class RoleAndPermissionSeeder extends Seeder
                 'contract.view', 'contract.create', 'contract.update',
                 'earning.view', 'earning.create', 'earning.update',
             ],
-            'courier' => [
+            'finance_officer' => [
+                'dashboard.view', 'dashboard.financial',
+                'earning.view', 'earning.approve', 'report.view', 'report.export',
+            ],
+            'operations_staff' => [
                 'dashboard.view',
-                'courier.view_own',
-                'earning.view_own',
-                'contract.view_own',
+                'business.view', 'courier.view', 'agency.view', 'assignment.view',
             ],
             'business' => [
                 'dashboard.view',
@@ -60,12 +65,25 @@ class RoleAndPermissionSeeder extends Seeder
                 'contract.view_own',
                 'earning.view_own',
             ],
+            'courier' => [
+                'dashboard.view',
+                'courier.view_own',
+                'earning.view_own',
+                'contract.view_own',
+            ],
             'agency' => [
                 'dashboard.view',
                 'agency.view_own',
                 'courier.view',
                 'earning.view_own',
                 'contract.view_own',
+            ],
+            'regional_coordinator' => [
+                'dashboard.view',
+                'business.view', 'courier.view', 'agency.view', 'assignment.view', 'report.view',
+            ],
+            'reporting_analyst' => [
+                'dashboard.view', 'dashboard.financial', 'report.view', 'report.export', 'earning.view',
             ],
         ];
 
