@@ -10,7 +10,7 @@ use App\Modules\Finance\Data\FinanceExpenseDummyData;
 use App\Modules\Finance\Data\FinanceInvoiceDummyData;
 use App\Modules\Finance\Data\FinancePaymentDummyData;
 use App\Modules\Finance\Data\FinanceProfitabilityDummyData;
-use App\Modules\Finance\Data\FinanceRevenueDummyData;
+use App\Modules\Finance\Services\RevenueService;
 
 final class FinanceListExportSheets
 {
@@ -46,8 +46,10 @@ final class FinanceListExportSheets
      */
     public static function revenues(array $filters): array
     {
+        $revenues = app(RevenueService::class)->filter($filters)->all();
+
         return ListExport::sheet(
-            FinanceRevenueDummyData::filter($filters),
+            $revenues,
             ['Gelir No', 'İşletme', 'Gelir Türü', 'Hakediş Dönemi', 'Fatura No', 'Tutar', 'Tahsil Durumu', 'Tahsil Tarihi', 'Oluşturulma Tarihi'],
             [
                 fn (array $row) => $row['reference'],

@@ -121,6 +121,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/cari-hesaplar/hareketler', [FinanceCurrentAccountController::class, 'storeMovement'])->name('current-accounts.movements.store');
         Route::get('/cari-hesaplar/export', [FinanceCurrentAccountController::class, 'export'])->name('current-accounts.export');
         Route::get('/gelirler', [FinanceRevenueController::class, 'index'])->name('revenues.index');
+        Route::post('/gelirler', [FinanceRevenueController::class, 'store'])->name('revenues.store');
         Route::get('/gelirler/export', [FinanceRevenueController::class, 'export'])->name('revenues.export');
         Route::get('/gelirler/{id}', [FinanceRevenueController::class, 'show'])->name('revenues.show');
         Route::get('/giderler', [FinanceExpenseController::class, 'index'])->name('expenses.index');

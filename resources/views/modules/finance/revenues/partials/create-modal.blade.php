@@ -18,54 +18,56 @@
             </button>
         </div>
 
-        <form @submit.prevent="saveRevenue()" class="space-y-4 px-6 py-4">
+        <form method="POST" action="{{ route('finance.revenues.store') }}" class="space-y-4 px-6 py-4">
+            @csrf
+
             <div class="space-y-1.5">
-                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">İşletme *</label>
-                <select x-model="form.business_id" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white" :class="errors.business_id ? 'border-red-300' : ''">
+                <label for="revenue_business_id" class="block text-sm font-medium text-gray-700 dark:text-slate-300">İşletme *</label>
+                <select id="revenue_business_id" name="business_id" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
                     <option value="">İşletme seçin</option>
                     @foreach ($businesses as $business)
-                        <option value="{{ $business['id'] }}">{{ $business['name'] }}</option>
+                        <option value="{{ $business['id'] }}" @selected(old('business_id') == $business['id'])>{{ $business['name'] }}</option>
                     @endforeach
                 </select>
-                <p x-show="errors.business_id" x-cloak class="text-sm text-red-600" x-text="errors.business_id"></p>
+                @error('business_id')
+                    <p class="text-sm text-red-600">{{ $message }}</p>
+                @enderror
             </div>
 
             <div class="space-y-1.5">
-                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Gelir Türü *</label>
-                <select x-model="form.revenue_type" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white" :class="errors.revenue_type ? 'border-red-300' : ''">
+                <label for="revenue_type" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Gelir Türü *</label>
+                <select id="revenue_type" name="revenue_type" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
                     <option value="">Gelir türü seçin</option>
                     @foreach ($revenueTypes as $key => $label)
-                        <option value="{{ $key }}">{{ $label }}</option>
+                        <option value="{{ $key }}" @selected(old('revenue_type') === $key)>{{ $label }}</option>
                     @endforeach
                 </select>
-                <p x-show="errors.revenue_type" x-cloak class="text-sm text-red-600" x-text="errors.revenue_type"></p>
+                @error('revenue_type')
+                    <p class="text-sm text-red-600">{{ $message }}</p>
+                @enderror
             </div>
 
-            <x-ui.input type="text" label="Hakediş Dönemi" x-model="form.period_label" placeholder="Örn. Haziran 2026" />
-            <x-ui.input type="text" label="Fatura No" x-model="form.invoice_no" placeholder="FTR-2026-0001" />
-            <x-ui.input type="date" label="Gelir Tarihi" x-model="form.revenue_date" />
+            <x-ui.input type="text" name="period_label" label="Hakediş Dönemi" :value="old('period_label')" placeholder="Örn. Haziran 2026" />
+            <x-ui.input type="text" name="invoice_no" label="Fatura No" :value="old('invoice_no')" placeholder="FTR-2026-0001" />
+            <x-ui.input type="date" name="revenue_date" label="Gelir Tarihi" :value="old('revenue_date', now()->toDateString())" />
 
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <x-ui.input type="number" step="0.01" min="0" label="Tutar (₺, KDV Hariç) *" x-model="form.amount" />
-                <x-ui.input type="number" step="1" min="0" max="100" label="KDV Oranı (%)" x-model="form.vat_rate" />
+                <x-ui.input type="number" step="0.01" min="0" name="amount" label="Tutar (₺, KDV Hariç) *" :value="old('amount')" />
+                <x-ui.input type="number" step="1" min="0" max="100" name="vat_rate" label="KDV Oranı (%)" :value="old('vat_rate', 20)" />
             </div>
 
             <div class="space-y-1.5">
-                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Açıklama</label>
-                <textarea x-model="form.description" rows="3" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white" placeholder="Gelir açıklaması"></textarea>
+                <label for="revenue_description" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Açıklama</label>
+                <textarea id="revenue_description" name="description" rows="3" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white" placeholder="Gelir açıklaması">{{ old('description') }}</textarea>
             </div>
 
             <div class="space-y-1.5">
-                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Tahsil Durumu</label>
-                <select x-model="form.collection_status" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
+                <label for="collection_status" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Tahsil Durumu</label>
+                <select id="collection_status" name="collection_status" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
                     @foreach ($collectionStatuses as $key => $label)
-                        <option value="{{ $key }}">{{ $label }}</option>
+                        <option value="{{ $key }}" @selected(old('collection_status', 'pending') === $key)>{{ $label }}</option>
                     @endforeach
                 </select>
-            </div>
-
-            <div x-show="saved" x-cloak class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-800/50 dark:bg-emerald-900/20 dark:text-emerald-300">
-                Gelir kaydı oluşturuldu. Gerçek entegrasyonda cari hesaba otomatik hareket yansıyacaktır.
             </div>
 
             <div class="flex justify-end gap-2 border-t border-gray-200 pt-4 dark:border-slate-700">
