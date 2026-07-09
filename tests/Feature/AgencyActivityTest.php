@@ -3,7 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Modules\Agency\Data\AgencyActivityDummyData;
+use App\Modules\ActivityLog\Models\ActivityLog;
+use App\Modules\Agency\Models\Agency;
+use App\Modules\Agency\Services\AgencyActivityService;
+use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -16,7 +19,10 @@ class AgencyActivityTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(RoleAndPermissionSeeder::class);
+        $this->seed([
+            LookupTableSeeder::class,
+            RoleAndPermissionSeeder::class,
+        ]);
     }
 
     public function test_agency_activities_index_requires_authentication(): void
@@ -30,6 +36,31 @@ class AgencyActivityTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $agency = $this->createAgency($user, ['company_name' => 'Hızlı Kurye Acentesi Ltd. Şti.']);
+
+        ActivityLog::factory()->create([
+            'user_id' => $user->id,
+            'action' => 'agency_created',
+            'subject_type' => Agency::class,
+            'subject_id' => $agency->id,
+            'description' => 'Hızlı Kurye Acentesi Ltd. Şti. acentesi sisteme kaydedildi.',
+        ]);
+
+        ActivityLog::factory()->create([
+            'user_id' => $user->id,
+            'action' => 'contract_renewed',
+            'subject_type' => Agency::class,
+            'subject_id' => $agency->id,
+            'description' => 'Sözleşme yenilendi.',
+        ]);
+
+        ActivityLog::factory()->create([
+            'user_id' => $user->id,
+            'action' => 'earning_created',
+            'subject_type' => Agency::class,
+            'subject_id' => $agency->id,
+            'description' => 'Hakediş kaydı oluşturuldu.',
+        ]);
 
         $response = $this->actingAs($user)->get(route('agencies.activities.index'));
 
@@ -46,20 +77,31 @@ class AgencyActivityTest extends TestCase
         $response->assertSee('Hızlı Kurye Acentesi Ltd. Şti.');
     }
 
-    public function test_agency_activity_logs_have_at_least_one_hundred_twenty_records(): void
-    {
-        $activities = AgencyActivityDummyData::all();
-
-        $this->assertCount(125, $activities);
-        $this->assertGreaterThanOrEqual(120, count($activities));
-    }
-
     public function test_summary_stats_are_calculated(): void
     {
-        $summary = AgencyActivityDummyData::summarize(AgencyActivityDummyData::all());
+        $user = User::factory()->create();
+        $agency = $this->createAgency($user);
 
-        $this->assertEquals(125, $summary['count']);
-        $this->assertGreaterThanOrEqual(0, $summary['today']);
+        ActivityLog::factory()->create([
+            'user_id' => $user->id,
+            'action' => 'agency_created',
+            'subject_type' => Agency::class,
+            'subject_id' => $agency->id,
+            'created_at' => now(),
+        ]);
+
+        ActivityLog::factory()->create([
+            'user_id' => $user->id,
+            'action' => 'agency_updated',
+            'subject_type' => Agency::class,
+            'subject_id' => $agency->id,
+            'created_at' => now()->subDays(10),
+        ]);
+
+        $summary = app(AgencyActivityService::class)->summary();
+
+        $this->assertEquals(2, $summary['count']);
+        $this->assertGreaterThanOrEqual(1, $summary['today']);
         $this->assertGreaterThanOrEqual($summary['today'], $summary['this_week']);
         $this->assertGreaterThanOrEqual($summary['this_week'], $summary['this_month']);
     }
@@ -68,26 +110,74 @@ class AgencyActivityTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $agency = $this->createAgency($user, ['company_name' => 'Hızlı Kurye Acentesi Ltd. Şti.']);
+
+        ActivityLog::factory()->create([
+            'user_id' => $user->id,
+            'action' => 'agency_created',
+            'subject_type' => Agency::class,
+            'subject_id' => $agency->id,
+            'description' => 'Hızlı Kurye Acentesi Ltd. Şti. acentesi sisteme kaydedildi.',
+        ]);
+
+        ActivityLog::factory()->create([
+            'user_id' => $user->id,
+            'action' => 'agency_updated',
+            'subject_type' => Agency::class,
+            'subject_id' => $agency->id,
+            'description' => 'Acente bilgileri güncellendi.',
+        ]);
 
         $response = $this->actingAs($user)->get(route('agencies.activities.index', [
-            'agency_id' => 1,
+            'agency_id' => $agency->id,
             'action' => 'agency_created',
         ]));
 
         $response->assertOk();
         $response->assertSee('Hızlı Kurye Acentesi Ltd. Şti. acentesi sisteme kaydedildi.');
+        $response->assertDontSee('Acente bilgileri güncellendi.');
     }
 
     public function test_agency_activities_can_be_filtered_by_user(): void
     {
-        $user = User::factory()->create();
-        $user->assignRole('super_admin');
+        $actor = User::factory()->create(['name' => 'Elif Demir']);
+        $actor->assignRole('super_admin');
+        $otherUser = User::factory()->create(['name' => 'Mehmet Kaya']);
+        $agency = $this->createAgency($actor);
 
-        $response = $this->actingAs($user)->get(route('agencies.activities.index', [
-            'user_id' => 2,
+        ActivityLog::factory()->create([
+            'user_id' => $actor->id,
+            'action' => 'agency_updated',
+            'subject_type' => Agency::class,
+            'subject_id' => $agency->id,
+            'description' => 'Elif tarafından güncellendi.',
+        ]);
+
+        ActivityLog::factory()->create([
+            'user_id' => $otherUser->id,
+            'action' => 'agency_updated',
+            'subject_type' => Agency::class,
+            'subject_id' => $agency->id,
+            'description' => 'Mehmet tarafından güncellendi.',
+        ]);
+
+        $response = $this->actingAs($actor)->get(route('agencies.activities.index', [
+            'user_id' => $actor->id,
         ]));
 
         $response->assertOk();
         $response->assertSee('Elif Demir');
+        $response->assertSee('Elif tarafından güncellendi.');
+        $response->assertDontSee('Mehmet tarafından güncellendi.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    private function createAgency(User $user, array $overrides = []): Agency
+    {
+        return Agency::factory()->create(array_merge([
+            'created_by' => $user->id,
+        ], $overrides));
     }
 }

@@ -3,7 +3,7 @@
 namespace App\Modules\Agency\Exports;
 
 use App\Core\Exports\ListExport;
-use App\Modules\Agency\Data\AgencyActivityDummyData;
+use App\Modules\Agency\Services\AgencyActivityService;
 use App\Modules\Agency\Data\AgencyCourierFormData;
 use App\Modules\Agency\Data\AgencyFormData;
 use App\Modules\Agency\Services\AgencyContactPresenter;
@@ -159,7 +159,7 @@ final class AgencyListExportSheets
     public static function activities(array $filters): array
     {
         return ListExport::sheet(
-            AgencyActivityDummyData::filter($filters),
+            app(AgencyActivityService::class)->exportRows($filters),
             ['Tarih', 'Saat', 'Acente', 'İşlem Türü', 'İşlemi Yapan', 'IP Adresi', 'Açıklama'],
             [
                 fn (array $row) => $row['occurred_at_date'],

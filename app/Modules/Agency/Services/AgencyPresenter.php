@@ -2,8 +2,8 @@
 
 namespace App\Modules\Agency\Services;
 
-use App\Modules\Agency\Data\AgencyActivityDummyData;
 use App\Modules\Agency\Data\AgencyFormData;
+use App\Modules\ActivityLog\Models\ActivityLog;
 use App\Modules\Agency\Models\Agency;
 use App\Modules\Agency\Models\AgencyContact;
 use App\Models\Contract;
@@ -24,6 +24,8 @@ class AgencyPresenter
         private readonly AgencyContactPresenter $contactPresenter,
         private readonly AgencyCourierService $couriers,
         private readonly AgencyCourierPresenter $courierPresenter,
+        private readonly AgencyActivityService $activities,
+        private readonly AgencyActivityPresenter $activityPresenter,
     ) {}
 
     /**
@@ -160,7 +162,11 @@ class AgencyPresenter
                 ->map(fn (Document $document) => $this->documentPresenter->indexRow($document))
                 ->values()
                 ->all(),
-            'activities' => AgencyActivityDummyData::filter(['agency_id' => $id]),
+            'activities' => $this->activities
+                ->forAgency($id)
+                ->map(fn (ActivityLog $log) => $this->activityPresenter->indexRow($log))
+                ->values()
+                ->all(),
         ], AgencyFeatures::earningsEnabled() ? [
             'monthly_earning' => '0,00 ₺',
             'earnings' => $this->earnings
