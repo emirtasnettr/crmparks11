@@ -8,7 +8,6 @@ use App\Models\District;
 use App\Models\PricingModelType;
 use App\Models\User;
 use App\Models\EarningLine;
-use App\Modules\Business\Data\BusinessActivityDummyData;
 use App\Modules\Business\Data\BusinessFormData;
 use App\Modules\Business\Models\Business;
 use App\Modules\Business\Models\BusinessContact;
@@ -38,6 +37,8 @@ class BusinessPresenter
     private readonly BusinessDocumentPresenter $documentPresenter,
     private readonly BusinessEarningService $earnings,
     private readonly BusinessEarningPresenter $earningPresenter,
+    private readonly BusinessActivityService $activities,
+    private readonly BusinessActivityPresenter $activityPresenter,
   ) {}
 
   /**
@@ -165,7 +166,11 @@ class BusinessPresenter
         ->map(fn (Document $document) => $this->documentPresenter->indexRow($document))
         ->values()
         ->all(),
-      'activities' => BusinessActivityDummyData::filter(['business_id' => $business->id]),
+      'activities' => $this->activities
+        ->forBusiness($business->id)
+        ->map(fn ($log) => $this->activityPresenter->indexRow($log))
+        ->values()
+        ->all(),
     ], BusinessFeatures::earningsEnabled() ? [
       'earning_period_label' => $earningPeriods[$base['earning_period'] ?? ''] ?? '—',
       'earnings' => $this->earnings
