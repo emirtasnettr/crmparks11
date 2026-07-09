@@ -6,7 +6,7 @@ use App\Core\Exports\ListExport;
 use App\Modules\Finance\Data\FinanceActivityLogDummyData;
 use App\Modules\Finance\Data\FinanceCollectionDummyData;
 use App\Modules\Finance\Services\CurrentAccountService;
-use App\Modules\Finance\Data\FinanceExpenseDummyData;
+use App\Modules\Finance\Services\ExpenseService;
 use App\Modules\Finance\Data\FinanceInvoiceDummyData;
 use App\Modules\Finance\Data\FinancePaymentDummyData;
 use App\Modules\Finance\Data\FinanceProfitabilityDummyData;
@@ -71,8 +71,10 @@ final class FinanceListExportSheets
      */
     public static function expenses(array $filters): array
     {
+        $expenses = app(ExpenseService::class)->filter($filters)->all();
+
         return ListExport::sheet(
-            FinanceExpenseDummyData::filter($filters),
+            $expenses,
             ['Gider No', 'Gider Türü', 'Kurye / Acente', 'Açıklama', 'Tutar', 'Ödeme Durumu', 'Ödeme Tarihi', 'Oluşturulma Tarihi'],
             [
                 fn (array $row) => $row['reference'],

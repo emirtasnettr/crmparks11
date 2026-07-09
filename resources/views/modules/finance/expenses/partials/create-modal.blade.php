@@ -18,64 +18,64 @@
             </button>
         </div>
 
-        <form @submit.prevent="saveExpense()" class="space-y-4 px-6 py-4">
+        <form method="POST" action="{{ route('finance.expenses.store') }}" class="space-y-4 px-6 py-4">
+            @csrf
+
             <div class="space-y-1.5">
-                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Gider Türü *</label>
-                <select x-model="form.expense_type" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white" :class="errors.expense_type ? 'border-red-300' : ''">
+                <label for="expense_type" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Gider Türü *</label>
+                <select id="expense_type" name="expense_type" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
                     <option value="">Gider türü seçin</option>
                     @foreach ($expenseTypes as $key => $label)
-                        <option value="{{ $key }}">{{ $label }}</option>
+                        <option value="{{ $key }}" @selected(old('expense_type') === $key)>{{ $label }}</option>
                     @endforeach
                 </select>
-                <p x-show="errors.expense_type" x-cloak class="text-sm text-red-600" x-text="errors.expense_type"></p>
+                @error('expense_type')
+                    <p class="text-sm text-red-600">{{ $message }}</p>
+                @enderror
             </div>
 
             <div class="space-y-1.5">
-                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Kurye (Opsiyonel)</label>
-                <select x-model="form.courier_id" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
+                <label for="expense_courier_id" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Kurye (Opsiyonel)</label>
+                <select id="expense_courier_id" name="courier_id" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
                     <option value="">Kurye seçin</option>
                     @foreach ($couriers as $courier)
-                        <option value="{{ $courier['id'] }}">{{ $courier['name'] }}</option>
+                        <option value="{{ $courier['id'] }}" @selected(old('courier_id') == $courier['id'])>{{ $courier['name'] }}</option>
                     @endforeach
                 </select>
             </div>
 
             <div class="space-y-1.5">
-                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Acente (Opsiyonel)</label>
-                <select x-model="form.agency_id" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
+                <label for="expense_agency_id" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Acente (Opsiyonel)</label>
+                <select id="expense_agency_id" name="agency_id" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
                     <option value="">Acente seçin</option>
                     @foreach ($agencies as $agency)
-                        <option value="{{ $agency['id'] }}">{{ $agency['name'] }}</option>
+                        <option value="{{ $agency['id'] }}" @selected(old('agency_id') == $agency['id'])>{{ $agency['name'] }}</option>
                     @endforeach
                 </select>
             </div>
 
-            <x-ui.input type="date" label="Gider Tarihi *" x-model="form.expense_date" />
+            <x-ui.input type="date" name="expense_date" label="Gider Tarihi *" :value="old('expense_date', now()->toDateString())" />
 
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <x-ui.input type="number" step="0.01" min="0" label="Tutar (₺, KDV Hariç) *" x-model="form.amount" />
-                <x-ui.input type="number" step="1" min="0" max="100" label="KDV (%)" x-model="form.vat_rate" />
+                <x-ui.input type="number" step="0.01" min="0" name="amount" label="Tutar (₺, KDV Hariç) *" :value="old('amount')" />
+                <x-ui.input type="number" step="1" min="0" max="100" name="vat_rate" label="KDV (%)" :value="old('vat_rate', 20)" />
             </div>
 
             <div class="space-y-1.5">
-                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Açıklama</label>
-                <textarea x-model="form.description" rows="3" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white" placeholder="Gider açıklaması"></textarea>
+                <label for="expense_description" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Açıklama</label>
+                <textarea id="expense_description" name="description" rows="3" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white" placeholder="Gider açıklaması">{{ old('description') }}</textarea>
             </div>
 
             <div class="space-y-1.5">
-                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Ödeme Durumu</label>
-                <select x-model="form.payment_status" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
+                <label for="payment_status" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Ödeme Durumu</label>
+                <select id="payment_status" name="payment_status" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
                     @foreach ($paymentStatuses as $key => $label)
-                        <option value="{{ $key }}">{{ $label }}</option>
+                        <option value="{{ $key }}" @selected(old('payment_status', 'pending') === $key)>{{ $label }}</option>
                     @endforeach
                 </select>
             </div>
 
-            <x-ui.input type="text" label="Belge No" x-model="form.document_no" placeholder="BLG-2026-0001" />
-
-            <div x-show="saved" x-cloak class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-800/50 dark:bg-emerald-900/20 dark:text-emerald-300">
-                Gider kaydı oluşturuldu. Gerçek entegrasyonda cari hesaba otomatik hareket yansıyacaktır.
-            </div>
+            <x-ui.input type="text" name="document_no" label="Belge No" :value="old('document_no')" placeholder="BLG-2026-0001" />
 
             <div class="flex justify-end gap-2 border-t border-gray-200 pt-4 dark:border-slate-700">
                 <x-ui.button type="button" variant="secondary" @click="closeModals()">İptal</x-ui.button>

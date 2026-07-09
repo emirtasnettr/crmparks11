@@ -4,8 +4,12 @@ namespace App\Modules\Finance\Controllers;
 
 use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
-use App\Modules\Finance\Data\FinanceExpenseDummyData;
+use App\Modules\Finance\Data\ExpenseFormData;
 use App\Modules\Finance\Exports\FinanceListExportSheets;
+use App\Modules\Finance\Requests\StoreExpenseRequest;
+use App\Modules\Finance\Services\ExpensePresenter;
+use App\Modules\Finance\Services\ExpenseService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -13,6 +17,12 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class FinanceExpenseController extends Controller
 {
     use DownloadsListExport;
+
+    public function __construct(
+        private readonly ExpenseService $service,
+        private readonly ExpensePresenter $presenter,
+    ) {}
+
     public function index(Request $request): View
     {
         $filters = [
@@ -26,7 +36,7 @@ class FinanceExpenseController extends Controller
         $perPage = 25;
         $page = max(1, (int) $request->query('page', 1));
 
-        $all = FinanceExpenseDummyData::filter($filters);
+        $all = $this->service->filter($filters)->all();
         $total = count($all);
         $items = array_slice($all, ($page - 1) * $perPage, $perPage);
         $lastPage = max(1, (int) ceil($total / $perPage));
@@ -34,17 +44,26 @@ class FinanceExpenseController extends Controller
         return view('modules.finance.expenses.index', [
             'expenses' => $items,
             'filters' => $filters,
-            'expenseTypes' => FinanceExpenseDummyData::expenseTypes(),
-            'paymentStatuses' => FinanceExpenseDummyData::paymentStatuses(),
-            'dateRanges' => FinanceExpenseDummyData::dateRanges(),
-            'couriers' => FinanceExpenseDummyData::couriers(),
-            'agencies' => FinanceExpenseDummyData::agencies(),
-            'summary' => FinanceExpenseDummyData::summarize($filters),
+            'expenseTypes' => ExpenseFormData::expenseTypes(),
+            'paymentStatuses' => ExpenseFormData::paymentStatuses(),
+            'dateRanges' => ExpenseFormData::dateRanges(),
+            'couriers' => $this->service->couriers(),
+            'agencies' => $this->service->agencies(),
+            'summary' => $this->service->summarize($filters),
             'total' => $total,
             'page' => $page,
             'perPage' => $perPage,
             'lastPage' => $lastPage,
         ]);
+    }
+
+    public function store(StoreExpenseRequest $request): RedirectResponse
+    {
+        $this->service->create($request->validated(), $request->user());
+
+        return redirect()
+            ->route('finance.expenses.index')
+            ->with('success', 'Gider kaydı başarıyla oluşturuldu.');
     }
 
     public function export(Request $request): BinaryFileResponse
@@ -66,12 +85,12 @@ class FinanceExpenseController extends Controller
 
     public function show(int $id): View
     {
-        $expense = FinanceExpenseDummyData::find($id);
+        $expense = $this->service->find($id);
 
         abort_if($expense === null, 404);
 
         return view('modules.finance.expenses.show', [
-            'expense' => $expense,
+            'expense' => $this->presenter->showRow($expense),
         ]);
     }
 }

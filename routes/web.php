@@ -125,6 +125,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/gelirler/export', [FinanceRevenueController::class, 'export'])->name('revenues.export');
         Route::get('/gelirler/{id}', [FinanceRevenueController::class, 'show'])->name('revenues.show');
         Route::get('/giderler', [FinanceExpenseController::class, 'index'])->name('expenses.index');
+        Route::post('/giderler', [FinanceExpenseController::class, 'store'])->name('expenses.store');
         Route::get('/giderler/export', [FinanceExpenseController::class, 'export'])->name('expenses.export');
         Route::get('/giderler/{id}', [FinanceExpenseController::class, 'show'])->name('expenses.show');
         Route::get('/tahsilatlar', [FinanceCollectionController::class, 'index'])->name('collections.index');

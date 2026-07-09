@@ -3,7 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Modules\Finance\Data\FinanceExpenseDummyData;
+use App\Modules\Agency\Models\Agency;
+use App\Modules\Courier\Models\Courier;
+use App\Modules\Finance\Models\FinanceExpense;
+use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -16,7 +19,10 @@ class FinanceExpenseTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(RoleAndPermissionSeeder::class);
+        $this->seed([
+            LookupTableSeeder::class,
+            RoleAndPermissionSeeder::class,
+        ]);
     }
 
     public function test_expenses_index_requires_authentication(): void
@@ -31,6 +37,21 @@ class FinanceExpenseTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('super_admin');
 
+        $courier = Courier::factory()->create(['full_name' => 'Ahmet Yıldız']);
+        $expense = FinanceExpense::factory()
+            ->courierEarning()
+            ->for($courier)
+            ->create([
+                'amount' => 15000,
+                'description' => 'Kurye hakediş ödemesi',
+            ]);
+
+        FinanceExpense::factory()->create([
+            'expense_type' => 'personnel',
+            'source' => 'manual',
+            'description' => 'Personel maaş ödemesi',
+        ]);
+
         $response = $this->actingAs($user)->get(route('finance.expenses.index'));
 
         $response->assertOk();
@@ -44,9 +65,10 @@ class FinanceExpenseTest extends TestCase
         $response->assertSee('Bekleyen Ödeme');
         $response->assertSee('Kurye Gideri');
         $response->assertSee('Acente Gideri');
-        $response->assertSee('GDR-2026-000070');
+        $response->assertSee($expense->reference);
         $response->assertSee('Kaynak: Manuel');
         $response->assertSee('Personel');
+        $response->assertSee('Ahmet Yıldız');
     }
 
     public function test_user_without_financial_permission_cannot_view_expenses(): void
@@ -64,11 +86,20 @@ class FinanceExpenseTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('super_admin');
 
-        $response = $this->actingAs($user)->get(route('finance.expenses.show', 1));
+        $courier = Courier::factory()->create();
+        $expense = FinanceExpense::factory()
+            ->courierEarning()
+            ->for($courier)
+            ->paid()
+            ->create([
+                'notes' => 'Muhasebe onayı tamamlandı.',
+            ]);
+
+        $response = $this->actingAs($user)->get(route('finance.expenses.show', $expense->id));
 
         $response->assertOk();
         $response->assertSee('Gider Detayı');
-        $response->assertSee('GDR-2026-000001');
+        $response->assertSee($expense->reference);
         $response->assertSee('Gider Bilgileri');
         $response->assertSee('Kurye / Acente Bilgileri');
         $response->assertSee('Cari Hareketi');
@@ -76,28 +107,7 @@ class FinanceExpenseTest extends TestCase
         $response->assertSee('Belgeler');
         $response->assertSee('Notlar');
         $response->assertSee('Kaynak: Hakediş');
-    }
-
-    public function test_dummy_data_has_seventy_expense_records_with_expected_distribution(): void
-    {
-        $expenses = FinanceExpenseDummyData::all();
-
-        $this->assertCount(70, $expenses);
-        $this->assertEquals(25, collect($expenses)->where('expense_type', 'courier_earning')->count());
-        $this->assertEquals(15, collect($expenses)->where('expense_type', 'agency_earning')->count());
-        $this->assertEquals(10, collect($expenses)->where('expense_type', 'personnel')->count());
-        $this->assertEquals(5, collect($expenses)->where('expense_type', 'fuel')->count());
-        $this->assertEquals(5, collect($expenses)->where('expense_type', 'software')->count());
-        $this->assertEquals(5, collect($expenses)->where('expense_type', 'advertising')->count());
-    }
-
-    public function test_expenses_have_mixed_payment_statuses(): void
-    {
-        $expenses = FinanceExpenseDummyData::all();
-
-        $this->assertGreaterThan(0, collect($expenses)->where('payment_status', 'paid')->count());
-        $this->assertGreaterThan(0, collect($expenses)->where('payment_status', 'pending')->count());
-        $this->assertGreaterThan(0, collect($expenses)->where('payment_status', 'overdue')->count());
+        $response->assertSee('Muhasebe onayı tamamlandı.');
     }
 
     public function test_expenses_can_be_filtered_by_courier(): void
@@ -105,8 +115,12 @@ class FinanceExpenseTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('super_admin');
 
+        $courier = Courier::factory()->create(['full_name' => 'Ahmet Yıldız']);
+        FinanceExpense::factory()->courierEarning()->for($courier)->create();
+        FinanceExpense::factory()->agencyEarning()->create();
+
         $response = $this->actingAs($user)->get(route('finance.expenses.index', [
-            'courier_id' => 1,
+            'courier_id' => $courier->id,
         ]));
 
         $response->assertOk();
@@ -118,6 +132,9 @@ class FinanceExpenseTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+
+        FinanceExpense::factory()->agencyEarning()->create();
+        FinanceExpense::factory()->create(['expense_type' => 'personnel']);
 
         $response = $this->actingAs($user)->get(route('finance.expenses.index', [
             'expense_type' => 'agency_earning',
@@ -136,5 +153,104 @@ class FinanceExpenseTest extends TestCase
         $response = $this->actingAs($user)->get(route('finance.expenses.show', 9999));
 
         $response->assertNotFound();
+    }
+
+    public function test_user_can_create_manual_expense(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $response = $this->actingAs($user)->post(route('finance.expenses.store'), [
+            'expense_type' => 'personnel',
+            'expense_date' => '2026-07-09',
+            'amount' => 8500,
+            'vat_rate' => 20,
+            'description' => 'Personel maaş ödemesi',
+            'payment_status' => 'pending',
+            'document_no' => 'BLG-2026-0001',
+        ]);
+
+        $response->assertRedirect(route('finance.expenses.index'));
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseHas('finance_expenses', [
+            'expense_type' => 'personnel',
+            'source' => 'manual',
+            'amount' => 8500,
+            'payment_status' => 'pending',
+            'document_no' => 'BLG-2026-0001',
+        ]);
+    }
+
+    public function test_user_can_create_courier_expense_with_current_account_movement(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $courier = Courier::factory()->create([
+            'full_name' => 'Test Kurye',
+        ]);
+
+        $response = $this->actingAs($user)->post(route('finance.expenses.store'), [
+            'expense_type' => 'courier_earning',
+            'courier_id' => $courier->id,
+            'expense_date' => '2026-07-09',
+            'amount' => 12000,
+            'vat_rate' => 20,
+            'description' => 'Kurye hakediş ödemesi',
+            'payment_status' => 'paid',
+        ]);
+
+        $response->assertRedirect(route('finance.expenses.index'));
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseHas('finance_expenses', [
+            'expense_type' => 'courier_earning',
+            'source' => 'earning',
+            'courier_id' => $courier->id,
+            'amount' => 12000,
+            'payment_status' => 'paid',
+        ]);
+
+        $this->assertDatabaseHas('current_accounts', [
+            'accountable_type' => Courier::class,
+            'accountable_id' => $courier->id,
+        ]);
+
+        $this->assertDatabaseHas('current_account_movements', [
+            'type' => 'payment',
+            'debit' => 12000,
+        ]);
+    }
+
+    public function test_user_can_create_agency_expense_with_debit_note_when_pending(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $agency = Agency::factory()->create([
+            'company_name' => 'Test Acente Ltd.',
+        ]);
+
+        $response = $this->actingAs($user)->post(route('finance.expenses.store'), [
+            'expense_type' => 'agency_earning',
+            'agency_id' => $agency->id,
+            'expense_date' => '2026-07-09',
+            'amount' => 9500,
+            'payment_status' => 'pending',
+        ]);
+
+        $response->assertRedirect(route('finance.expenses.index'));
+
+        $this->assertDatabaseHas('finance_expenses', [
+            'expense_type' => 'agency_earning',
+            'agency_id' => $agency->id,
+            'payment_status' => 'pending',
+        ]);
+
+        $this->assertDatabaseHas('current_account_movements', [
+            'type' => 'debit_note',
+            'debit' => 9500,
+        ]);
     }
 }
