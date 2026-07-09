@@ -5,10 +5,8 @@ namespace App\Modules\Courier\Services;
 use App\Models\EarningLine;
 use App\Modules\Courier\Data\CourierActivityDummyData;
 use App\Modules\Courier\Data\CourierBankAccountDummyData;
-use App\Modules\Courier\Data\CourierDocumentDummyData;
 use App\Modules\Courier\Data\CourierFormData;
 use App\Modules\Courier\Data\CourierVehicleDummyData;
-use App\Modules\Courier\Data\CourierWorkHistoryDummyData;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\Courier\Support\CourierAvatar;
 use App\Modules\Courier\Support\CourierFeatures;
@@ -19,6 +17,10 @@ class CourierPresenter
         private readonly CourierMediaService $media,
         private readonly CourierEarningService $earnings,
         private readonly CourierEarningPresenter $earningPresenter,
+        private readonly CourierDocumentService $documents,
+        private readonly CourierDocumentPresenter $documentPresenter,
+        private readonly CourierWorkHistoryService $workHistory,
+        private readonly CourierWorkHistoryPresenter $workHistoryPresenter,
     ) {}
 
     /**
@@ -137,8 +139,14 @@ class CourierPresenter
             'default_bank' => $defaultBank,
             'vehicles' => $vehicles,
             'bank_accounts' => CourierBankAccountDummyData::filter(['courier_id' => $id]),
-            'documents' => CourierDocumentDummyData::filter(['courier_id' => $id]),
-            'work_history' => CourierWorkHistoryDummyData::filter(['courier_id' => $id]),
+            'documents' => $this->documents->forCourier($id)
+                ->map(fn ($document) => $this->documentPresenter->indexRow($document))
+                ->values()
+                ->all(),
+            'work_history' => $this->workHistory->filter(['courier_id' => $id])
+                ->map(fn ($assignment) => $this->workHistoryPresenter->indexRow($assignment))
+                ->values()
+                ->all(),
             'activities' => CourierActivityDummyData::filter(['courier_id' => $id]),
             'vehicles_url' => route('couriers.vehicles.index', ['courier_id' => $id]),
             'activities_url' => route('couriers.activities.index', ['courier_id' => $id]),

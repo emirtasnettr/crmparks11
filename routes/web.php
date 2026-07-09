@@ -94,6 +94,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/yeni', [CourierController::class, 'create'])->name('create');
         Route::post('/', [CourierController::class, 'store'])->middleware('permission:courier.create')->name('store');
         Route::get('/belgeler', [CourierDocumentController::class, 'index'])->name('documents.index');
+        Route::post('/belgeler', [CourierDocumentController::class, 'store'])->middleware('permission:courier.update')->name('documents.store');
         Route::get('/belgeler/{id}', [CourierDocumentController::class, 'show'])->name('documents.show');
         Route::get('/hakedisler', [CourierEarningController::class, 'index'])->name('earnings.index');
         Route::get('/hakedisler/export', [CourierEarningController::class, 'export'])->name('earnings.export');

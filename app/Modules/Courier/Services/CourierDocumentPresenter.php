@@ -1,0 +1,99 @@
+<?php
+
+namespace App\Modules\Courier\Services;
+
+use App\Models\Document;
+use App\Modules\Courier\Data\CourierDocumentFormData;
+use App\Modules\Courier\Models\Courier;
+use App\Support\DocumentPresentation;
+use Carbon\Carbon;
+
+class CourierDocumentPresenter
+{
+    public const EXPIRY_WARNING_DAYS = 30;
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function indexRow(Document $document): array
+    {
+        return $this->enrich($document);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function showRow(Document $document): array
+    {
+        return array_merge($this->enrich($document), [
+            'description' => null,
+            'version_history' => [],
+        ]);
+    }
+
+    public function displayStatus(Document $document): string
+    {
+        return $this->resolveStatus($document);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function enrich(Document $document): array
+    {
+        $document->loadMissing(['documentable', 'category', 'uploader']);
+
+        /** @var Courier|null $courier */
+        $courier = $document->documentable;
+        $extension = DocumentPresentation::extensionFromName($document->original_name);
+        $uploadedAt = $document->created_at ?? now();
+        $expiryDate = $document->expires_at;
+        $status = $this->resolveStatus($document);
+        $daysRemaining = $expiryDate
+            ? (int) Carbon::today()->diffInDays($expiryDate->startOfDay(), false)
+            : null;
+
+        return [
+            'id' => $document->id,
+            'uuid' => $document->uuid,
+            'courier_id' => $courier?->id,
+            'courier_name' => $courier?->full_name ?? '—',
+            'courier_phone' => $courier?->phone ?? '—',
+            'courier_type' => $courier?->courier_type ?? 'independent',
+            'document_type' => $document->category?->code ?? 'other',
+            'document_type_label' => $document->category?->label ?? 'Diğer',
+            'document_number' => pathinfo($document->original_name, PATHINFO_FILENAME),
+            'file_name' => $document->original_name,
+            'file_extension' => $extension,
+            'uploaded_at' => $uploadedAt->toDateString(),
+            'uploaded_at_formatted' => $uploadedAt->format('d.m.Y'),
+            'expiry_date' => $expiryDate?->toDateString(),
+            'expiry_date_formatted' => $expiryDate?->format('d.m.Y') ?? '—',
+            'status' => $status,
+            'status_label' => CourierDocumentFormData::statuses()[$status] ?? $status,
+            'days_remaining' => $daysRemaining,
+            'version' => 1,
+            'is_current' => true,
+        ];
+    }
+
+    private function resolveStatus(Document $document): string
+    {
+        if ($document->expires_at === null) {
+            return 'valid';
+        }
+
+        $today = Carbon::today();
+        $expiry = $document->expires_at->startOfDay();
+
+        if ($expiry->lt($today)) {
+            return 'expired';
+        }
+
+        if ($today->diffInDays($expiry, false) <= self::EXPIRY_WARNING_DAYS) {
+            return 'expiring_soon';
+        }
+
+        return 'valid';
+    }
+}

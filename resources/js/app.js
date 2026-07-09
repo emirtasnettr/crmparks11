@@ -1474,21 +1474,19 @@ Alpine.data('courierDocumentPage', (preset = {}) => {
     return {
     lockedCourierId,
     openModal: false,
-    modalSaved: false,
     modalErrors: {},
+    submitting: false,
     selectedFileName: '',
     modal: {
         courier_id: lockedCourierId,
         document_type: '',
         document_number: '',
-        uploaded_at: '',
         expiry_date: '',
         description: '',
     },
 
     closeModal() {
         this.openModal = false;
-        this.modalSaved = false;
         this.modalErrors = {};
         this.selectedFileName = '';
         this.resetModal();
@@ -1499,7 +1497,6 @@ Alpine.data('courierDocumentPage', (preset = {}) => {
             courier_id: this.lockedCourierId,
             document_type: '',
             document_number: '',
-            uploaded_at: '',
             expiry_date: '',
             description: '',
         };
@@ -1527,14 +1524,13 @@ Alpine.data('courierDocumentPage', (preset = {}) => {
         return Object.keys(this.modalErrors).length === 0;
     },
 
-    saveDocument() {
-        this.modalSaved = false;
-
+    handleSubmit(event) {
         if (!this.validateModal()) {
+            event.preventDefault();
             return;
         }
 
-        this.modalSaved = true;
+        this.submitting = true;
     },
 };
 });

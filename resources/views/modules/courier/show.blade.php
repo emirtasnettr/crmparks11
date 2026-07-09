@@ -188,6 +188,8 @@
             @include('modules.courier.documents.partials.modal', [
                 'hideEntitySelector' => true,
                 'presetEntityLabel' => $courier['full_name'],
+                'lockedCourierId' => $courier['id'],
+                'redirectToCourier' => true,
                 'documentTypes' => $documentTypes,
                 'couriers' => [],
             ])
