@@ -160,6 +160,33 @@ class EntityShowPageTest extends TestCase
     $response->assertDontSee('Aylık Hakediş');
   }
 
+  public function test_agency_show_lists_unassigned_couriers_in_assign_modal(): void
+  {
+    $user = User::factory()->create();
+    $user->assignRole('super_admin');
+    $agency = $this->createAgency($user);
+
+    $this->createCourier($user, [
+      'full_name' => 'Atanabilir Kurye',
+      'phone' => '0532 999 88 77',
+      'agency_id' => null,
+      'courier_type' => 'independent',
+    ]);
+
+    $this->createCourier($user, [
+      'full_name' => 'Başka Acentede Kurye',
+      'phone' => '0533 111 22 33',
+      'agency_id' => $agency->id,
+      'courier_type' => 'agency',
+    ]);
+
+    $response = $this->actingAs($user)->get(route('agencies.show', $agency->id));
+
+    $response->assertOk();
+    $response->assertSee('Atanabilir Kurye — 0532 999 88 77');
+    $response->assertDontSee('Başka Acentede Kurye — 0533 111 22 33');
+  }
+
   public function test_submodule_routes_still_work_after_show_route(): void
   {
     $user = User::factory()->create();

@@ -6,12 +6,12 @@ use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
 use App\Modules\Agency\Data\AgencyContactFormData;
 use App\Modules\Agency\Data\AgencyContractFormData;
-use App\Modules\Agency\Data\AgencyCourierDummyData;
 use App\Modules\Agency\Data\AgencyDocumentFormData;
 use App\Modules\Agency\Data\AgencyFormData;
 use App\Modules\Agency\Exports\AgencyListExportSheets;
 use App\Modules\Agency\Requests\StoreAgencyRequest;
 use App\Modules\Agency\Requests\UpdateAgencyRequest;
+use App\Modules\Agency\Services\AgencyCourierService;
 use App\Modules\Agency\Services\AgencyPresenter;
 use App\Modules\Agency\Services\AgencyService;
 use App\Support\RequestFilter;
@@ -27,6 +27,7 @@ class AgencyController extends Controller
     public function __construct(
         private readonly AgencyService $agencies,
         private readonly AgencyPresenter $presenter,
+        private readonly AgencyCourierService $couriers,
     ) {}
 
     public function index(Request $request): View
@@ -128,7 +129,7 @@ class AgencyController extends Controller
             'contactTitles' => AgencyContactFormData::titles(),
             'contractTypes' => AgencyContractFormData::contractTypes(),
             'documentTypes' => AgencyDocumentFormData::documentTypes(),
-            'assignCouriers' => AgencyCourierDummyData::couriers(),
+            'assignCouriers' => $this->couriers->couriers(),
         ]);
     }
 
