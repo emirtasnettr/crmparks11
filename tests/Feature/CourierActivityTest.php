@@ -3,7 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Modules\Courier\Data\CourierActivityDummyData;
+use App\Modules\ActivityLog\Models\ActivityLog;
+use App\Modules\Courier\Models\Courier;
+use App\Modules\Courier\Services\CourierActivityService;
+use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -16,7 +19,10 @@ class CourierActivityTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(RoleAndPermissionSeeder::class);
+        $this->seed([
+            LookupTableSeeder::class,
+            RoleAndPermissionSeeder::class,
+        ]);
     }
 
     public function test_activities_index_requires_authentication(): void
@@ -30,6 +36,31 @@ class CourierActivityTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $courier = $this->createCourier($user, ['full_name' => 'Ahmet Yıldız']);
+
+        ActivityLog::factory()->create([
+            'user_id' => $user->id,
+            'action' => 'courier_created',
+            'subject_type' => Courier::class,
+            'subject_id' => $courier->id,
+            'description' => 'Ahmet Yıldız kuryesi sisteme kaydedildi.',
+        ]);
+
+        ActivityLog::factory()->create([
+            'user_id' => $user->id,
+            'action' => 'earning_created',
+            'subject_type' => Courier::class,
+            'subject_id' => $courier->id,
+            'description' => 'Ahmet Yıldız için hakediş kaydı oluşturuldu.',
+        ]);
+
+        ActivityLog::factory()->create([
+            'user_id' => $user->id,
+            'action' => 'bank_account_added',
+            'subject_type' => Courier::class,
+            'subject_id' => $courier->id,
+            'description' => 'Ahmet Yıldız için banka hesabı eklendi.',
+        ]);
 
         $response = $this->actingAs($user)->get(route('couriers.activities.index'));
 
@@ -45,20 +76,31 @@ class CourierActivityTest extends TestCase
         $response->assertSee('Banka Hesabı Eklendi');
     }
 
-    public function test_activity_logs_have_at_least_one_hundred_records(): void
-    {
-        $activities = CourierActivityDummyData::all();
-
-        $this->assertCount(110, $activities);
-        $this->assertGreaterThanOrEqual(100, count($activities));
-    }
-
     public function test_summary_stats_are_calculated(): void
     {
-        $summary = CourierActivityDummyData::summarize(CourierActivityDummyData::all());
+        $user = User::factory()->create();
+        $courier = $this->createCourier($user);
 
-        $this->assertEquals(110, $summary['count']);
-        $this->assertGreaterThanOrEqual(0, $summary['today']);
+        ActivityLog::factory()->create([
+            'user_id' => $user->id,
+            'action' => 'courier_created',
+            'subject_type' => Courier::class,
+            'subject_id' => $courier->id,
+            'created_at' => now(),
+        ]);
+
+        ActivityLog::factory()->create([
+            'user_id' => $user->id,
+            'action' => 'courier_updated',
+            'subject_type' => Courier::class,
+            'subject_id' => $courier->id,
+            'created_at' => now()->subDays(10),
+        ]);
+
+        $summary = app(CourierActivityService::class)->summary();
+
+        $this->assertEquals(2, $summary['count']);
+        $this->assertGreaterThanOrEqual(1, $summary['today']);
         $this->assertGreaterThanOrEqual($summary['today'], $summary['this_week']);
         $this->assertGreaterThanOrEqual($summary['this_week'], $summary['this_month']);
     }
@@ -67,9 +109,27 @@ class CourierActivityTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $firstCourier = $this->createCourier($user, ['full_name' => 'Ahmet Yıldız']);
+        $secondCourier = $this->createCourier($user, ['full_name' => 'Murat Kaya']);
+
+        ActivityLog::factory()->create([
+            'user_id' => $user->id,
+            'action' => 'courier_created',
+            'subject_type' => Courier::class,
+            'subject_id' => $firstCourier->id,
+            'description' => 'Ahmet Yıldız kuryesi sisteme kaydedildi.',
+        ]);
+
+        ActivityLog::factory()->create([
+            'user_id' => $user->id,
+            'action' => 'courier_created',
+            'subject_type' => Courier::class,
+            'subject_id' => $secondCourier->id,
+            'description' => 'Murat Kaya kuryesi sisteme kaydedildi.',
+        ]);
 
         $response = $this->actingAs($user)->get(route('couriers.activities.index', [
-            'courier_id' => 1,
+            'courier_id' => $firstCourier->id,
             'action' => 'courier_created',
         ]));
 
@@ -80,16 +140,43 @@ class CourierActivityTest extends TestCase
 
     public function test_activities_can_be_filtered_by_user(): void
     {
-        $user = User::factory()->create();
-        $user->assignRole('super_admin');
+        $actor = User::factory()->create(['name' => 'Elif Demir']);
+        $actor->assignRole('super_admin');
+        $otherUser = User::factory()->create(['name' => 'Mehmet Kaya']);
+        $courier = $this->createCourier($actor);
 
-        $targetUserId = 2;
+        ActivityLog::factory()->create([
+            'user_id' => $actor->id,
+            'action' => 'courier_updated',
+            'subject_type' => Courier::class,
+            'subject_id' => $courier->id,
+            'description' => 'Profil güncellendi.',
+        ]);
 
-        $response = $this->actingAs($user)->get(route('couriers.activities.index', [
-            'user_id' => $targetUserId,
+        ActivityLog::factory()->create([
+            'user_id' => $otherUser->id,
+            'action' => 'courier_updated',
+            'subject_type' => Courier::class,
+            'subject_id' => $courier->id,
+            'description' => 'Başka kullanıcı güncelledi.',
+        ]);
+
+        $response = $this->actingAs($actor)->get(route('couriers.activities.index', [
+            'user_id' => $actor->id,
         ]));
 
         $response->assertOk();
         $response->assertSee('Elif Demir');
+        $response->assertDontSee('Başka kullanıcı güncelledi.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    private function createCourier(User $user, array $overrides = []): Courier
+    {
+        return Courier::factory()->create(array_merge([
+            'created_by' => $user->id,
+        ], $overrides));
     }
 }

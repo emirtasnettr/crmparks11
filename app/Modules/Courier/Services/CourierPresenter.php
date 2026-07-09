@@ -3,7 +3,6 @@
 namespace App\Modules\Courier\Services;
 
 use App\Models\EarningLine;
-use App\Modules\Courier\Data\CourierActivityDummyData;
 use App\Modules\Courier\Data\CourierFormData;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\Courier\Support\CourierAvatar;
@@ -23,6 +22,8 @@ class CourierPresenter
         private readonly CourierVehiclePresenter $vehiclePresenter,
         private readonly CourierBankAccountService $bankAccounts,
         private readonly CourierBankAccountPresenter $bankAccountPresenter,
+        private readonly CourierActivityService $activities,
+        private readonly CourierActivityPresenter $activityPresenter,
     ) {}
 
     /**
@@ -153,7 +154,10 @@ class CourierPresenter
                 ->map(fn ($assignment) => $this->workHistoryPresenter->indexRow($assignment))
                 ->values()
                 ->all(),
-            'activities' => CourierActivityDummyData::filter(['courier_id' => $id]),
+            'activities' => $this->activities->forCourier($id)
+                ->map(fn ($log) => $this->activityPresenter->indexRow($log))
+                ->values()
+                ->all(),
             'vehicles_url' => route('couriers.vehicles.index', ['courier_id' => $id]),
             'activities_url' => route('couriers.activities.index', ['courier_id' => $id]),
         ], CourierFeatures::earningsEnabled() ? [

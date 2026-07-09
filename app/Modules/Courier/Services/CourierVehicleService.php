@@ -2,6 +2,7 @@
 
 namespace App\Modules\Courier\Services;
 
+use App\Modules\ActivityLog\Services\ActivityLogService;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\Courier\Models\CourierVehicle;
 use Illuminate\Database\Eloquent\Builder;
@@ -12,6 +13,7 @@ class CourierVehicleService
 {
     public function __construct(
         private readonly CourierVehiclePresenter $presenter,
+        private readonly ActivityLogService $activityLog,
     ) {}
 
     /**
@@ -103,7 +105,9 @@ class CourierVehicleService
     public function create(array $data): CourierVehicle
     {
         return DB::transaction(function () use ($data): CourierVehicle {
-            return CourierVehicle::query()->create([
+            $courier = Courier::query()->findOrFail((int) $data['courier_id']);
+
+            $vehicle = CourierVehicle::query()->create([
                 'courier_id' => (int) $data['courier_id'],
                 'vehicle_type' => $data['vehicle_type'],
                 'plate' => $data['plate'] ?? null,
@@ -118,6 +122,14 @@ class CourierVehicleService
                 'registered_at' => $data['registered_at'] ?? now()->toDateString(),
                 'notes' => $data['notes'] ?? null,
             ]);
+
+            $this->activityLog->log(
+                'vehicle_added',
+                $vehicle,
+                description: "{$courier->full_name} için yeni araç kaydı oluşturuldu.",
+            );
+
+            return $vehicle;
         });
     }
 

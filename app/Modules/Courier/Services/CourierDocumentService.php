@@ -3,6 +3,7 @@
 namespace App\Modules\Courier\Services;
 
 use App\Core\Services\EntityDocumentStorageService;
+use App\Modules\ActivityLog\Services\ActivityLogService;
 use App\Models\Document;
 use App\Models\DocumentCategory;
 use App\Models\User;
@@ -18,6 +19,7 @@ class CourierDocumentService
     public function __construct(
         private readonly CourierDocumentPresenter $presenter,
         private readonly EntityDocumentStorageService $storage,
+        private readonly ActivityLogService $activityLog,
     ) {}
 
     /**
@@ -101,7 +103,7 @@ class CourierDocumentService
             $stored = $this->storage->store($file, 'courier', $courier->id);
             $originalName = $this->resolveOriginalName($data, $stored['original_name']);
 
-            return Document::query()->create([
+            $document = Document::query()->create([
                 'documentable_type' => Courier::class,
                 'documentable_id' => $courier->id,
                 'document_category_id' => $category->id,
@@ -114,6 +116,14 @@ class CourierDocumentService
                 'uploaded_by' => $user->id,
                 'expires_at' => $data['expires_at'] ?? null,
             ]);
+
+            $this->activityLog->log(
+                'document_uploaded',
+                $document,
+                description: "{$courier->full_name} için yeni belge yüklendi.",
+            );
+
+            return $document;
         });
     }
 

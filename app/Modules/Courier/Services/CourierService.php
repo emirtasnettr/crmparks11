@@ -2,6 +2,7 @@
 
 namespace App\Modules\Courier\Services;
 
+use App\Modules\ActivityLog\Services\ActivityLogService;
 use App\Models\City;
 use App\Models\District;
 use App\Models\User;
@@ -16,6 +17,7 @@ class CourierService
 {
     public function __construct(
         private readonly CourierMediaService $media,
+        private readonly ActivityLogService $activityLog,
     ) {}
 
     /**
@@ -85,6 +87,12 @@ class CourierService
 
             $this->syncPhoto($courier, $data['profile_photo'] ?? null);
 
+            $this->activityLog->log(
+                'courier_created',
+                $courier,
+                description: "{$courier->full_name} kuryesi sisteme kaydedildi.",
+            );
+
             return $courier->fresh(['city', 'district', 'agency', 'vehicleType']);
         });
     }
@@ -95,13 +103,41 @@ class CourierService
     public function update(Courier $courier, array $data, User $user): Courier
     {
         return DB::transaction(function () use ($courier, $data): Courier {
+            $previousStatus = $courier->status;
+
             $courier->update(
                 $this->courierAttributes($data, null, $courier),
             );
 
             $this->syncPhoto($courier, $data['profile_photo'] ?? null, replace: isset($data['profile_photo']));
 
-            return $courier->fresh(['city', 'district', 'agency', 'vehicleType']);
+            $courier = $courier->fresh(['city', 'district', 'agency', 'vehicleType']);
+
+            if ($previousStatus !== $courier->status && $courier->status === 'inactive') {
+                $this->activityLog->log(
+                    'courier_deactivated',
+                    $courier,
+                    ['status' => $previousStatus],
+                    ['status' => $courier->status],
+                    "{$courier->full_name} pasif duruma alındı.",
+                );
+            } elseif ($previousStatus === 'inactive' && $courier->status === 'active') {
+                $this->activityLog->log(
+                    'courier_activated',
+                    $courier,
+                    ['status' => $previousStatus],
+                    ['status' => $courier->status],
+                    "{$courier->full_name} tekrar aktifleştirildi.",
+                );
+            } else {
+                $this->activityLog->log(
+                    'courier_updated',
+                    $courier,
+                    description: "{$courier->full_name} profil bilgileri güncellendi.",
+                );
+            }
+
+            return $courier;
         });
     }
 

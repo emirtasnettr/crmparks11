@@ -2,6 +2,7 @@
 
 namespace App\Modules\Courier\Services;
 
+use App\Modules\ActivityLog\Services\ActivityLogService;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\Courier\Models\CourierBankAccount;
 use Illuminate\Database\Eloquent\Builder;
@@ -12,6 +13,7 @@ class CourierBankAccountService
 {
     public function __construct(
         private readonly CourierBankAccountPresenter $presenter,
+        private readonly ActivityLogService $activityLog,
     ) {}
 
     /**
@@ -107,13 +109,14 @@ class CourierBankAccountService
     {
         return DB::transaction(function () use ($data): CourierBankAccount {
             $courierId = (int) $data['courier_id'];
+            $courier = Courier::query()->findOrFail($courierId);
             $isDefault = ! empty($data['is_default']);
 
             if ($isDefault) {
                 $this->clearDefaultForCourier($courierId);
             }
 
-            return CourierBankAccount::query()->create([
+            $account = CourierBankAccount::query()->create([
                 'courier_id' => $courierId,
                 'bank_key' => $data['bank_key'],
                 'account_holder' => $data['account_holder'],
@@ -124,6 +127,14 @@ class CourierBankAccountService
                 'status' => $data['status'] ?? 'active',
                 'notes' => $data['notes'] ?? null,
             ]);
+
+            $this->activityLog->log(
+                'bank_account_added',
+                $account,
+                description: "{$courier->full_name} için banka hesabı eklendi.",
+            );
+
+            return $account;
         });
     }
 
