@@ -2,8 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\EarningLine;
 use App\Models\User;
-use App\Modules\Finance\Data\FinanceProfitabilityDummyData;
+use App\Modules\Business\Models\Business;
+use App\Modules\Finance\Services\ProfitabilityService;
+use Carbon\Carbon;
+use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -16,7 +20,10 @@ class FinanceProfitabilityTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(RoleAndPermissionSeeder::class);
+        $this->seed([
+            LookupTableSeeder::class,
+            RoleAndPermissionSeeder::class,
+        ]);
     }
 
     public function test_profitability_index_requires_authentication(): void
@@ -30,6 +37,8 @@ class FinanceProfitabilityTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+
+        EarningLine::factory()->create();
 
         $response = $this->actingAs($user)->get(route('finance.profitability.index'));
 
@@ -69,15 +78,41 @@ class FinanceProfitabilityTest extends TestCase
 
     public function test_net_profit_calculation_is_correct(): void
     {
-        $analysis = FinanceProfitabilityDummyData::analyze(['date_range' => 'month']);
+        Carbon::setTestNow(Carbon::parse('2026-07-15 10:00:00'));
+
+        EarningLine::factory()->create([
+            'period_month' => 7,
+            'period_year' => 2026,
+            'revenue_total' => 100_000,
+            'courier_total' => 60_000,
+            'agency_payment' => 10_000,
+            'extra_expense' => 5_000,
+            'package_count' => 1000,
+        ]);
+
+        $analysis = app(ProfitabilityService::class)->analyze(['date_range' => 'month']);
 
         $businessTotal = collect($analysis['business_table'])->sum('net_profit');
         $this->assertEquals(round($businessTotal, 2), $analysis['kpis']['net_profit']);
+
+        Carbon::setTestNow();
     }
 
     public function test_profit_margin_formula_is_applied(): void
     {
-        $analysis = FinanceProfitabilityDummyData::analyze(['date_range' => 'month']);
+        Carbon::setTestNow(Carbon::parse('2026-07-15 10:00:00'));
+
+        EarningLine::factory()->create([
+            'period_month' => 7,
+            'period_year' => 2026,
+            'revenue_total' => 100_000,
+            'courier_total' => 70_000,
+            'agency_payment' => 0,
+            'extra_expense' => 0,
+            'package_count' => 500,
+        ]);
+
+        $analysis = app(ProfitabilityService::class)->analyze(['date_range' => 'month']);
         $row = $analysis['business_table'][0];
 
         $expectedMargin = $row['revenue'] > 0
@@ -85,6 +120,8 @@ class FinanceProfitabilityTest extends TestCase
             : 0;
 
         $this->assertEquals($expectedMargin, $row['profit_margin']);
+
+        Carbon::setTestNow();
     }
 
     public function test_profitability_can_be_filtered_by_business(): void
@@ -92,8 +129,14 @@ class FinanceProfitabilityTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('super_admin');
 
+        $business = Business::factory()->create(['company_name' => 'Burger House Gıda Ltd. Şti.']);
+        EarningLine::factory()->for($business)->create([
+            'period_month' => 7,
+            'period_year' => 2026,
+        ]);
+
         $response = $this->actingAs($user)->get(route('finance.profitability.index', [
-            'business_id' => 1,
+            'business_id' => $business->id,
         ]));
 
         $response->assertOk();
@@ -102,7 +145,14 @@ class FinanceProfitabilityTest extends TestCase
 
     public function test_charts_data_contains_trend_and_distributions(): void
     {
-        $analysis = FinanceProfitabilityDummyData::analyze(['date_range' => 'month']);
+        Carbon::setTestNow(Carbon::parse('2026-07-15 10:00:00'));
+
+        EarningLine::factory()->count(2)->create([
+            'period_month' => 7,
+            'period_year' => 2026,
+        ]);
+
+        $analysis = app(ProfitabilityService::class)->analyze(['date_range' => 'month']);
 
         $this->assertArrayHasKey('trend', $analysis['charts']);
         $this->assertArrayHasKey('revenue', $analysis['charts']['trend']);
@@ -110,5 +160,7 @@ class FinanceProfitabilityTest extends TestCase
         $this->assertArrayHasKey('profit', $analysis['charts']['trend']);
         $this->assertNotEmpty($analysis['charts']['business_profitability']);
         $this->assertNotEmpty($analysis['charts']['revenue_distribution']);
+
+        Carbon::setTestNow();
     }
 }

@@ -4,8 +4,9 @@ namespace App\Modules\Finance\Controllers;
 
 use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
-use App\Modules\Finance\Data\FinanceProfitabilityDummyData;
+use App\Modules\Finance\Data\ProfitabilityFormData;
 use App\Modules\Finance\Exports\FinanceListExportSheets;
+use App\Modules\Finance\Services\ProfitabilityService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -13,6 +14,10 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class FinanceProfitabilityController extends Controller
 {
     use DownloadsListExport;
+
+    public function __construct(
+        private readonly ProfitabilityService $profitabilityService,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -26,17 +31,17 @@ class FinanceProfitabilityController extends Controller
             'profit_margin' => $request->string('profit_margin')->toString() ?: 'all',
         ];
 
-        $analysis = FinanceProfitabilityDummyData::analyze($filters);
+        $analysis = $this->profitabilityService->analyze($filters);
 
         return view('modules.finance.profitability.index', array_merge($analysis, [
             'filters' => $filters,
-            'dateRanges' => FinanceProfitabilityDummyData::dateRanges(),
-            'businesses' => FinanceProfitabilityDummyData::businesses(),
-            'couriers' => FinanceProfitabilityDummyData::couriers(),
-            'agencies' => FinanceProfitabilityDummyData::agencies(),
-            'cities' => FinanceProfitabilityDummyData::cities(),
-            'pricingModels' => FinanceProfitabilityDummyData::pricingModels(),
-            'profitMarginFilters' => FinanceProfitabilityDummyData::profitMarginFilters(),
+            'dateRanges' => ProfitabilityFormData::dateRanges(),
+            'businesses' => $this->profitabilityService->businesses(),
+            'couriers' => $this->profitabilityService->couriers(),
+            'agencies' => $this->profitabilityService->agencies(),
+            'cities' => $this->profitabilityService->cities(),
+            'pricingModels' => ProfitabilityFormData::pricingModels(),
+            'profitMarginFilters' => ProfitabilityFormData::profitMarginFilters(),
         ]));
     }
 

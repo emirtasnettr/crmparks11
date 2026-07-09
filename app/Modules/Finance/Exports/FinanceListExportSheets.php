@@ -9,7 +9,7 @@ use App\Modules\Finance\Services\CurrentAccountService;
 use App\Modules\Finance\Services\ExpenseService;
 use App\Modules\Finance\Services\InvoiceService;
 use App\Modules\Finance\Services\PaymentService;
-use App\Modules\Finance\Data\FinanceProfitabilityDummyData;
+use App\Modules\Finance\Services\ProfitabilityService;
 use App\Modules\Finance\Services\RevenueService;
 
 final class FinanceListExportSheets
@@ -171,7 +171,7 @@ final class FinanceListExportSheets
      */
     public static function profitability(array $filters): array
     {
-        $analysis = FinanceProfitabilityDummyData::analyze($filters);
+        $analysis = app(ProfitabilityService::class)->analyze($filters);
 
         $businessSheet = ListExport::sheet(
             $analysis['business_table'],

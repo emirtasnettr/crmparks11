@@ -3,7 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Modules\Finance\Data\FinanceCashFlowDummyData;
+use App\Modules\Finance\Models\FinanceCollection;
+use App\Modules\Finance\Models\FinanceExpense;
+use App\Modules\Finance\Models\FinancePayment;
+use App\Modules\Finance\Models\FinanceRevenue;
+use App\Modules\Finance\Services\CashFlowService;
+use Carbon\Carbon;
+use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -16,7 +22,10 @@ class FinanceCashFlowTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(RoleAndPermissionSeeder::class);
+        $this->seed([
+            LookupTableSeeder::class,
+            RoleAndPermissionSeeder::class,
+        ]);
     }
 
     public function test_cash_flow_index_requires_authentication(): void
@@ -30,6 +39,11 @@ class FinanceCashFlowTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+
+        FinanceCollection::factory()->collected()->create();
+        FinancePayment::factory()->paid()->create();
+        FinanceRevenue::factory()->create();
+        FinanceExpense::factory()->create();
 
         $response = $this->actingAs($user)->get(route('finance.cash-flow.index'));
 
@@ -64,41 +78,78 @@ class FinanceCashFlowTest extends TestCase
         $response->assertForbidden();
     }
 
-    public function test_dummy_data_has_at_least_one_hundred_fifty_transactions(): void
+    public function test_cash_flow_lists_all_transaction_sources(): void
     {
-        $analysis = FinanceCashFlowDummyData::analyze(['period' => 'year']);
+        Carbon::setTestNow(Carbon::parse('2026-07-09 12:00:00'));
 
-        $this->assertGreaterThanOrEqual(150, $analysis['total']);
+        FinanceCollection::factory()->collected()->create();
+        FinancePayment::factory()->paid()->create();
+        FinanceRevenue::factory()->create(['revenue_date' => '2026-07-09']);
+        FinanceExpense::factory()->create(['expense_date' => '2026-07-09']);
+
+        $analysis = app(CashFlowService::class)->analyze(['period' => 'month']);
+
+        $this->assertGreaterThanOrEqual(4, $analysis['total']);
+
+        Carbon::setTestNow();
     }
 
     public function test_running_balance_is_calculated_chronologically(): void
     {
-        $analysis = FinanceCashFlowDummyData::analyze(['period' => 'year', 'page' => 1]);
+        Carbon::setTestNow(Carbon::parse('2026-07-09 12:00:00'));
+
+        FinanceRevenue::factory()->create([
+            'amount' => 50_000,
+            'revenue_date' => '2026-07-01',
+        ]);
+
+        FinanceExpense::factory()->create([
+            'amount' => 20_000,
+            'expense_date' => '2026-07-05',
+        ]);
+
+        $analysis = app(CashFlowService::class)->analyze(['period' => 'month', 'page' => 1]);
         $chronological = collect($analysis['transactions'])->sortBy('occurred_at')->values();
 
-        if ($chronological->count() < 2) {
-            $this->markTestSkipped('Not enough transactions in default page.');
-        }
+        $this->assertGreaterThanOrEqual(2, $chronological->count());
 
         $first = $chronological->first();
         $this->assertArrayHasKey('balance', $first);
-        $this->assertGreaterThan(0, $first['balance']);
+        $this->assertEquals(50_000.0, $first['balance']);
+
+        Carbon::setTestNow();
     }
 
     public function test_net_cash_equals_in_minus_out(): void
     {
-        $analysis = FinanceCashFlowDummyData::analyze(['period' => 'month']);
+        Carbon::setTestNow(Carbon::parse('2026-07-09 12:00:00'));
+
+        FinanceRevenue::factory()->create([
+            'amount' => 100_000,
+            'revenue_date' => '2026-07-09',
+        ]);
+
+        FinanceExpense::factory()->create([
+            'amount' => 35_000,
+            'expense_date' => '2026-07-09',
+        ]);
+
+        $analysis = app(CashFlowService::class)->analyze(['period' => 'month']);
 
         $this->assertEquals(
             round($analysis['kpis']['cash_in'] - $analysis['kpis']['cash_out'], 2),
             $analysis['kpis']['net_cash']
         );
+
+        Carbon::setTestNow();
     }
 
     public function test_cash_flow_can_be_filtered_by_custom_period(): void
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+
+        FinanceRevenue::factory()->create(['revenue_date' => '2026-06-15']);
 
         $response = $this->actingAs($user)->get(route('finance.cash-flow.index', [
             'period' => 'custom',
@@ -112,11 +163,18 @@ class FinanceCashFlowTest extends TestCase
 
     public function test_charts_contain_cash_flow_series(): void
     {
-        $analysis = FinanceCashFlowDummyData::analyze(['period' => 'month']);
+        Carbon::setTestNow(Carbon::parse('2026-07-09 12:00:00'));
+
+        FinanceRevenue::factory()->create(['revenue_date' => '2026-07-09']);
+        FinanceExpense::factory()->create(['expense_date' => '2026-07-09']);
+
+        $analysis = app(CashFlowService::class)->analyze(['period' => 'month']);
 
         $this->assertArrayHasKey('cash_flow', $analysis['charts']);
         $this->assertArrayHasKey('balance', $analysis['charts']['cash_flow']);
         $this->assertArrayHasKey('daily_movement', $analysis['charts']);
         $this->assertArrayHasKey('pending_comparison', $analysis['charts']);
+
+        Carbon::setTestNow();
     }
 }
