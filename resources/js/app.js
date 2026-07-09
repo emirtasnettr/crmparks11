@@ -562,8 +562,8 @@ Alpine.data('agencyContactPage', (preset = {}) => {
     return {
     lockedAgencyId,
     openModal: false,
-    modalSaved: false,
     modalErrors: {},
+    submitting: false,
     modal: {
         agency_id: lockedAgencyId,
         first_name: '',
@@ -578,8 +578,8 @@ Alpine.data('agencyContactPage', (preset = {}) => {
 
     closeModal() {
         this.openModal = false;
-        this.modalSaved = false;
         this.modalErrors = {};
+        this.submitting = false;
         this.resetModal();
     },
 
@@ -621,14 +621,13 @@ Alpine.data('agencyContactPage', (preset = {}) => {
         return Object.keys(this.modalErrors).length === 0;
     },
 
-    saveContact() {
-        this.modalSaved = false;
-
+    handleSubmit(event) {
         if (!this.validateModal()) {
+            event.preventDefault();
             return;
         }
 
-        this.modalSaved = true;
+        this.submitting = true;
     },
 };
 });

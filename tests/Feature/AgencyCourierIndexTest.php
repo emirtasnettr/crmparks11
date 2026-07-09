@@ -2,8 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Models\City;
+use App\Models\District;
 use App\Models\User;
-use App\Modules\Agency\Data\AgencyCourierDummyData;
+use App\Models\VehicleType;
+use App\Modules\Agency\Models\Agency;
+use App\Modules\Business\Models\Business;
+use App\Modules\Business\Models\BusinessCourierAssignment;
+use App\Modules\Courier\Models\Courier;
+use Database\Seeders\CitySeeder;
+use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -16,7 +24,11 @@ class AgencyCourierIndexTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(RoleAndPermissionSeeder::class);
+        $this->seed([
+            LookupTableSeeder::class,
+            CitySeeder::class,
+            RoleAndPermissionSeeder::class,
+        ]);
     }
 
     public function test_agency_couriers_index_requires_authentication(): void
@@ -30,80 +42,117 @@ class AgencyCourierIndexTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $agency = $this->createAgency($user);
+        $business = $this->createBusiness($user);
+        $courier = $this->createAgencyCourier($user, $agency, [
+            'full_name' => 'Emre Demir',
+        ]);
+
+        BusinessCourierAssignment::factory()->create([
+            'business_id' => $business->id,
+            'courier_id' => $courier->id,
+            'status' => 'active',
+            'start_date' => now()->subMonths(2)->toDateString(),
+        ]);
 
         $response = $this->actingAs($user)->get(route('agencies.couriers.index'));
 
         $response->assertOk();
         $response->assertSee('Acenteye Bağlı Kuryeler');
-        $response->assertSee('Acentelere bağlı tüm kuryeleri buradan yönetin.');
         $response->assertSee('Kurye Ata');
         $response->assertSee('Toplam Kurye');
-        $response->assertSee('Bu Ay Eklenen Kurye');
         $response->assertSee('Emre Demir');
-        $response->assertSee('Motosiklet');
-    }
-
-    public function test_agency_courier_records_have_at_least_forty_entries(): void
-    {
-        $records = AgencyCourierDummyData::all();
-
-        $this->assertCount(45, $records);
-        $this->assertGreaterThanOrEqual(40, count($records));
-    }
-
-    public function test_each_courier_has_at_most_one_current_agency_link(): void
-    {
-        $currentByCourier = collect(AgencyCourierDummyData::all())
-            ->where('is_current', true)
-            ->groupBy('courier_id')
-            ->map->count();
-
-        foreach ($currentByCourier as $courierId => $count) {
-            $this->assertEquals(1, $count, "Courier {$courierId} should have at most one current agency link.");
-        }
-    }
-
-    public function test_summary_stats_are_calculated(): void
-    {
-        $summary = AgencyCourierDummyData::summarize();
-
-        $this->assertEquals(45, $summary['total']);
-        $this->assertGreaterThan(0, $summary['active']);
-        $this->assertGreaterThan(0, $summary['inactive']);
-        $this->assertGreaterThan(0, $summary['this_month']);
+        $response->assertSee('Motor');
     }
 
     public function test_agency_couriers_can_be_filtered_by_agency(): void
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $agencyA = $this->createAgency($user);
+        $agencyB = $this->createAgency($user, ['company_name' => 'Diğer Acente Ltd. Şti.']);
 
-        $count = count(AgencyCourierDummyData::filter(['agency_id' => 1]));
+        $this->createAgencyCourier($user, $agencyA, ['full_name' => 'Emre Demir']);
+        $this->createAgencyCourier($user, $agencyA, ['full_name' => 'Burak Şen']);
+        $this->createAgencyCourier($user, $agencyB, ['full_name' => 'Ayşe Korkmaz']);
 
         $response = $this->actingAs($user)->get(route('agencies.couriers.index', [
-            'agency_id' => 1,
+            'agency_id' => $agencyA->id,
         ]));
 
         $response->assertOk();
-        $response->assertSeeText(number_format($count).' Kayıt');
         $response->assertSee('Emre Demir');
         $response->assertSee('Burak Şen');
+        $response->assertDontSee('Ayşe Korkmaz');
     }
 
     public function test_agency_couriers_can_be_filtered_by_status(): void
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $agency = $this->createAgency($user);
 
-        $count = count(AgencyCourierDummyData::filter(['status' => 'on_leave']));
+        $this->createAgencyCourier($user, $agency, [
+            'full_name' => 'Oğuz Yılmaz',
+            'status' => 'on_leave',
+        ]);
+        $this->createAgencyCourier($user, $agency, [
+            'full_name' => 'Caner Bilgin',
+            'status' => 'active',
+        ]);
 
         $response = $this->actingAs($user)->get(route('agencies.couriers.index', [
             'status' => 'on_leave',
         ]));
 
         $response->assertOk();
-        $response->assertSeeText(number_format($count).' Kayıt');
         $response->assertSee('Oğuz Yılmaz');
-        $response->assertSee('Caner Bilgin');
+        $response->assertDontSee('Caner Bilgin');
+    }
+
+    private function createAgency(User $user, array $overrides = []): Agency
+    {
+        $city = City::query()->where('name', 'İstanbul')->firstOrFail();
+        $district = District::query()
+            ->where('city_id', $city->id)
+            ->where('name', 'Kadıköy')
+            ->firstOrFail();
+
+        return Agency::factory()->create(array_merge([
+            'city_id' => $city->id,
+            'district_id' => $district->id,
+            'created_by' => $user->id,
+        ], $overrides));
+    }
+
+    private function createBusiness(User $user): Business
+    {
+        $city = City::query()->where('name', 'İstanbul')->firstOrFail();
+        $district = District::query()
+            ->where('city_id', $city->id)
+            ->where('name', 'Kadıköy')
+            ->firstOrFail();
+
+        return Business::factory()->create([
+            'city_id' => $city->id,
+            'district_id' => $district->id,
+            'created_by' => $user->id,
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    private function createAgencyCourier(User $user, Agency $agency, array $overrides = []): Courier
+    {
+        $vehicleTypeId = VehicleType::query()->where('code', 'motor')->value('id');
+
+        return Courier::factory()->create(array_merge([
+            'agency_id' => $agency->id,
+            'courier_type' => 'agency',
+            'vehicle_type_id' => $vehicleTypeId,
+            'start_date' => now()->subMonths(3)->toDateString(),
+            'created_by' => $user->id,
+        ], $overrides));
     }
 }

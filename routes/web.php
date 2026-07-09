@@ -200,6 +200,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/', [AgencyController::class, 'store'])->middleware('permission:agency.create')->name('store');
         Route::get('/yetkililer', [AgencyContactController::class, 'index'])->name('contacts.index');
         Route::get('/yetkililer/export', [AgencyContactController::class, 'export'])->name('contacts.export');
+        Route::post('/yetkililer', [AgencyContactController::class, 'store'])->middleware('permission:agency.update')->name('contacts.store');
         Route::get('/yetkililer/{id}', [AgencyContactController::class, 'show'])->name('contacts.show');
         Route::get('/kuryeler', [AgencyCourierController::class, 'index'])->name('couriers.index');
         Route::get('/kuryeler/export', [AgencyCourierController::class, 'export'])->name('couriers.export');

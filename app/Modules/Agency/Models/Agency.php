@@ -7,6 +7,7 @@ use App\Models\City;
 use App\Models\District;
 use App\Models\User;
 use App\Modules\Courier\Models\Courier;
+use App\Modules\Agency\Models\AgencyContact;
 use Database\Factories\AgencyFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -64,6 +65,11 @@ class Agency extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function contacts(): HasMany
+    {
+        return $this->hasMany(AgencyContact::class);
     }
 
     public function couriers(): HasMany

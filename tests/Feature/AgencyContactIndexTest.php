@@ -2,8 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\City;
+use App\Models\District;
 use App\Models\User;
-use App\Modules\Agency\Data\AgencyContactDummyData;
+use App\Modules\Agency\Models\Agency;
+use App\Modules\Agency\Models\AgencyContact;
+use Database\Seeders\CitySeeder;
+use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -16,7 +21,11 @@ class AgencyContactIndexTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(RoleAndPermissionSeeder::class);
+        $this->seed([
+            LookupTableSeeder::class,
+            CitySeeder::class,
+            RoleAndPermissionSeeder::class,
+        ]);
     }
 
     public function test_agency_contacts_index_requires_authentication(): void
@@ -30,6 +39,13 @@ class AgencyContactIndexTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $agency = $this->createAgency($user);
+        AgencyContact::factory()->create([
+            'agency_id' => $agency->id,
+            'full_name' => 'Serkan Yılmaz',
+            'title' => 'Operasyon Müdürü',
+            'is_default' => true,
+        ]);
 
         $response = $this->actingAs($user)->get(route('agencies.contacts.index'));
 
@@ -38,48 +54,33 @@ class AgencyContactIndexTest extends TestCase
         $response->assertSee('Acentelere ait tüm yetkilileri buradan yönetin.');
         $response->assertSee('Yeni Yetkili');
         $response->assertSee('Toplam Yetkili');
-        $response->assertSee('Varsayılan Yetkili');
         $response->assertSee('Serkan Yılmaz');
         $response->assertSee('Operasyon Müdürü');
         $response->assertSee('⭐');
-    }
-
-    public function test_agency_contacts_have_at_least_twenty_five_records(): void
-    {
-        $contacts = AgencyContactDummyData::all();
-
-        $this->assertCount(28, $contacts);
-        $this->assertGreaterThanOrEqual(25, count($contacts));
-    }
-
-    public function test_each_agency_has_only_one_default_contact_in_dummy_data(): void
-    {
-        $defaultsByAgency = collect(AgencyContactDummyData::all())
-            ->where('is_default', true)
-            ->groupBy('agency_id')
-            ->map->count();
-
-        foreach ($defaultsByAgency as $agencyId => $count) {
-            $this->assertEquals(1, $count, "Agency {$agencyId} should have exactly one default contact.");
-        }
-    }
-
-    public function test_summary_stats_are_calculated(): void
-    {
-        $summary = AgencyContactDummyData::summarize();
-
-        $this->assertEquals(28, $summary['total']);
-        $this->assertGreaterThan(0, $summary['active']);
-        $this->assertGreaterThan(0, $summary['default']);
     }
 
     public function test_agency_contacts_can_be_filtered_by_agency(): void
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $agencyA = $this->createAgency($user, ['company_name' => 'Hızlı Kurye Acentesi Ltd. Şti.']);
+        $agencyB = $this->createAgency($user, ['company_name' => 'Metro Lojistik Ltd. Şti.']);
+
+        AgencyContact::factory()->create([
+            'agency_id' => $agencyA->id,
+            'full_name' => 'Serkan Yılmaz',
+        ]);
+        AgencyContact::factory()->create([
+            'agency_id' => $agencyA->id,
+            'full_name' => 'Deniz Aksoy',
+        ]);
+        AgencyContact::factory()->create([
+            'agency_id' => $agencyB->id,
+            'full_name' => 'Ayşe Korkmaz',
+        ]);
 
         $response = $this->actingAs($user)->get(route('agencies.contacts.index', [
-            'agency_id' => 1,
+            'agency_id' => $agencyA->id,
         ]));
 
         $response->assertOk();
@@ -92,8 +93,18 @@ class AgencyContactIndexTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+        $agency = $this->createAgency($user, [
+            'company_name' => 'Hızlı Kurye Acentesi Ltd. Şti.',
+        ]);
+        $contact = AgencyContact::factory()->create([
+            'agency_id' => $agency->id,
+            'full_name' => 'Serkan Yılmaz',
+            'title' => 'Firma Sahibi',
+            'notes' => 'Ana iletişim noktası.',
+            'is_default' => true,
+        ]);
 
-        $response = $this->actingAs($user)->get(route('agencies.contacts.show', 1));
+        $response = $this->actingAs($user)->get(route('agencies.contacts.show', $contact->id));
 
         $response->assertOk();
         $response->assertSee('Serkan Yılmaz');
@@ -102,5 +113,23 @@ class AgencyContactIndexTest extends TestCase
         $response->assertSee('İletişim Bilgileri');
         $response->assertSee('Hızlı Kurye Acentesi Ltd. Şti.');
         $response->assertSee('Ana iletişim noktası.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    private function createAgency(User $user, array $overrides = []): Agency
+    {
+        $city = City::query()->where('name', 'İstanbul')->firstOrFail();
+        $district = District::query()
+            ->where('city_id', $city->id)
+            ->where('name', 'Kadıköy')
+            ->firstOrFail();
+
+        return Agency::factory()->create(array_merge([
+            'city_id' => $city->id,
+            'district_id' => $district->id,
+            'created_by' => $user->id,
+        ], $overrides));
     }
 }

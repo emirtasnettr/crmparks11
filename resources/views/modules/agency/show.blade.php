@@ -131,6 +131,8 @@
             @include('modules.agency.contacts.partials.modal', [
                 'hideEntitySelector' => true,
                 'presetEntityLabel' => $agency['company_name'],
+                'lockedAgencyId' => $agency['id'],
+                'redirectToAgency' => true,
                 'titles' => $contactTitles,
                 'agencies' => [],
             ])

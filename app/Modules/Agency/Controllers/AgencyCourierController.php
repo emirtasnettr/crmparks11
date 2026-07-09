@@ -4,8 +4,9 @@ namespace App\Modules\Agency\Controllers;
 
 use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
-use App\Modules\Agency\Data\AgencyCourierDummyData;
+use App\Modules\Agency\Data\AgencyCourierFormData;
 use App\Modules\Agency\Exports\AgencyListExportSheets;
+use App\Modules\Agency\Services\AgencyCourierService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -13,6 +14,10 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class AgencyCourierController extends Controller
 {
     use DownloadsListExport;
+
+    public function __construct(
+        private readonly AgencyCourierService $couriers,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -27,19 +32,19 @@ class AgencyCourierController extends Controller
         $perPage = 25;
         $page = max(1, (int) $request->query('page', 1));
 
-        $all = AgencyCourierDummyData::filter($filters);
-        $total = count($all);
-        $items = array_slice($all, ($page - 1) * $perPage, $perPage);
+        $all = $this->couriers->filter($filters);
+        $total = $all->count();
+        $items = $all->slice(($page - 1) * $perPage, $perPage)->values()->all();
         $lastPage = max(1, (int) ceil($total / $perPage));
 
         return view('modules.agency.couriers.index', [
             'records' => $items,
             'filters' => $filters,
-            'agencies' => AgencyCourierDummyData::agencies(),
-            'couriers' => AgencyCourierDummyData::couriers(),
-            'vehicleTypes' => AgencyCourierDummyData::vehicleTypes(),
-            'businesses' => AgencyCourierDummyData::businesses(),
-            'summary' => AgencyCourierDummyData::summarize($filters),
+            'agencies' => $this->couriers->agencies(),
+            'couriers' => $this->couriers->couriers(),
+            'vehicleTypes' => AgencyCourierFormData::vehicleTypes(),
+            'businesses' => $this->couriers->activeBusinesses(),
+            'summary' => $this->couriers->summarize($filters),
             'total' => $total,
             'page' => $page,
             'perPage' => $perPage,

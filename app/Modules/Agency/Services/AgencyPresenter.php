@@ -3,10 +3,9 @@
 namespace App\Modules\Agency\Services;
 
 use App\Modules\Agency\Data\AgencyActivityDummyData;
-use App\Modules\Agency\Data\AgencyContactDummyData;
-use App\Modules\Agency\Data\AgencyCourierDummyData;
 use App\Modules\Agency\Data\AgencyFormData;
 use App\Modules\Agency\Models\Agency;
+use App\Modules\Agency\Models\AgencyContact;
 use App\Models\Contract;
 use App\Models\Document;
 use App\Modules\Agency\Support\AgencyFeatures;
@@ -21,6 +20,10 @@ class AgencyPresenter
         private readonly AgencyDocumentService $documents,
         private readonly AgencyDocumentPresenter $documentPresenter,
         private readonly AgencyEarningService $earnings,
+        private readonly AgencyContactService $contacts,
+        private readonly AgencyContactPresenter $contactPresenter,
+        private readonly AgencyCourierService $couriers,
+        private readonly AgencyCourierPresenter $courierPresenter,
     ) {}
 
     /**
@@ -138,8 +141,15 @@ class AgencyPresenter
             'iban' => $base['iban'],
             'notes' => $base['notes'],
             'created_at_formatted' => $agency->created_at?->format('d.m.Y') ?? now()->format('d.m.Y'),
-            'contacts' => AgencyContactDummyData::filter(['agency_id' => $id]),
-            'couriers' => AgencyCourierDummyData::filter(['agency_id' => $id]),
+            'contacts' => $this->contacts
+                ->forAgency($id)
+                ->map(fn (AgencyContact $contact) => $this->contactPresenter->showRow($contact))
+                ->values()
+                ->all(),
+            'couriers' => $this->couriers
+                ->filter(['agency_id' => (string) $id])
+                ->values()
+                ->all(),
             'contracts' => $this->contracts
                 ->forAgency($id)
                 ->map(fn (Contract $contract) => $this->contractPresenter->showRow($contract))

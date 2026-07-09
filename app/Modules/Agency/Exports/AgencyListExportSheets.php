@@ -4,9 +4,11 @@ namespace App\Modules\Agency\Exports;
 
 use App\Core\Exports\ListExport;
 use App\Modules\Agency\Data\AgencyActivityDummyData;
-use App\Modules\Agency\Data\AgencyContactDummyData;
-use App\Modules\Agency\Data\AgencyCourierDummyData;
+use App\Modules\Agency\Data\AgencyCourierFormData;
 use App\Modules\Agency\Data\AgencyFormData;
+use App\Modules\Agency\Services\AgencyContactPresenter;
+use App\Modules\Agency\Services\AgencyContactService;
+use App\Modules\Agency\Services\AgencyCourierService;
 use App\Modules\Agency\Services\AgencyPresenter;
 use App\Modules\Agency\Services\AgencyService;
 
@@ -48,8 +50,14 @@ final class AgencyListExportSheets
      */
     public static function contacts(array $filters): array
     {
+        $service = app(AgencyContactService::class);
+        $presenter = app(AgencyContactPresenter::class);
+
         return ListExport::sheet(
-            AgencyContactDummyData::filter($filters),
+            $service->filter($filters)
+                ->map(fn ($contact) => $presenter->indexRow($contact))
+                ->values()
+                ->all(),
             ['Acente', 'Ad Soyad', 'Görevi', 'Telefon', 'E-Posta', 'Varsayılan', 'Durum'],
             [
                 fn (array $row) => $row['agency_name'],
@@ -97,14 +105,11 @@ final class AgencyListExportSheets
      */
     public static function couriers(array $filters): array
     {
-        $statusLabels = [
-            'active' => 'Aktif',
-            'inactive' => 'Pasif',
-            'on_leave' => 'İzinli',
-        ];
+        $service = app(AgencyCourierService::class);
+        $statusLabels = AgencyCourierFormData::statuses();
 
         return ListExport::sheet(
-            AgencyCourierDummyData::filter($filters),
+            $service->filter($filters)->values()->all(),
             ['Kurye', 'Acente', 'Telefon', 'Araç Tipi', 'Aktif İşletme', 'Katılış Tarihi', 'Durum'],
             [
                 fn (array $row) => $row['courier_name'],
