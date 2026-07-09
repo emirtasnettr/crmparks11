@@ -5,7 +5,7 @@ namespace App\Modules\Finance\Exports;
 use App\Core\Exports\ListExport;
 use App\Modules\Finance\Data\FinanceActivityLogDummyData;
 use App\Modules\Finance\Data\FinanceCollectionDummyData;
-use App\Modules\Finance\Data\FinanceCurrentAccountDummyData;
+use App\Modules\Finance\Services\CurrentAccountService;
 use App\Modules\Finance\Data\FinanceExpenseDummyData;
 use App\Modules\Finance\Data\FinanceInvoiceDummyData;
 use App\Modules\Finance\Data\FinancePaymentDummyData;
@@ -20,8 +20,10 @@ final class FinanceListExportSheets
      */
     public static function currentAccounts(array $filters): array
     {
+        $accounts = app(CurrentAccountService::class)->filter($filters)->all();
+
         return ListExport::sheet(
-            FinanceCurrentAccountDummyData::filter($filters),
+            $accounts,
             ['Cari Kodu', 'Cari Ünvanı', 'Cari Tipi', 'Telefon', 'Borç', 'Alacak', 'Bakiye', 'Son Hareket', 'Son Hareket Türü', 'Durum'],
             [
                 fn (array $row) => $row['code'],

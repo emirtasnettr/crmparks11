@@ -6,6 +6,7 @@ use App\Models\City;
 use App\Models\District;
 use App\Models\User;
 use App\Modules\Agency\Models\Agency;
+use App\Modules\Finance\Services\CurrentAccountService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +16,7 @@ class AgencyService
 {
     public function __construct(
         private readonly AgencyMediaService $media,
+        private readonly CurrentAccountService $currentAccounts,
     ) {}
 
     /**
@@ -94,6 +96,7 @@ class AgencyService
             );
 
             $this->syncLogo($agency, $data['logo'] ?? null);
+            $this->currentAccounts->ensureForEntity($agency);
 
             return $agency->fresh(['city', 'district']);
         });

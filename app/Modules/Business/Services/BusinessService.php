@@ -12,12 +12,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use App\Modules\Finance\Services\CurrentAccountService;
 
 class BusinessService
 {
   public function __construct(
     private readonly BusinessPresenter $presenter,
     private readonly BusinessMediaService $media,
+    private readonly CurrentAccountService $currentAccounts,
   ) {}
 
   /**
@@ -67,6 +69,7 @@ class BusinessService
 
       $this->syncPricing($business, $data, $user);
       $this->syncLogo($business, $data['logo'] ?? null);
+      $this->currentAccounts->ensureForEntity($business);
 
       return $business->fresh(['city', 'district', 'activePricing.pricingModelType']);
     });

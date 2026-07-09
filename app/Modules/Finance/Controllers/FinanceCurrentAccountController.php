@@ -4,8 +4,13 @@ namespace App\Modules\Finance\Controllers;
 
 use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
-use App\Modules\Finance\Data\FinanceCurrentAccountDummyData;
+use App\Modules\Finance\Data\CurrentAccountFormData;
 use App\Modules\Finance\Exports\FinanceListExportSheets;
+use App\Modules\Finance\Requests\StoreCurrentAccountMovementRequest;
+use App\Modules\Finance\Requests\StoreCurrentAccountRequest;
+use App\Modules\Finance\Services\CurrentAccountPresenter;
+use App\Modules\Finance\Services\CurrentAccountService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -14,8 +19,15 @@ class FinanceCurrentAccountController extends Controller
 {
     use DownloadsListExport;
 
+    public function __construct(
+        private readonly CurrentAccountService $service,
+        private readonly CurrentAccountPresenter $presenter,
+    ) {}
+
     public function index(Request $request): View
     {
+        $this->service->syncMissingEntityAccounts();
+
         $filters = [
             'search' => $request->string('search')->toString() ?: '',
             'type' => $request->string('type')->toString() ?: 'all',
@@ -26,54 +38,54 @@ class FinanceCurrentAccountController extends Controller
         $perPage = 25;
         $page = max(1, (int) $request->query('page', 1));
 
-        $all = FinanceCurrentAccountDummyData::filter($filters);
+        $all = $this->service->filter($filters)->all();
         $total = count($all);
         $items = array_slice($all, ($page - 1) * $perPage, $perPage);
         $lastPage = max(1, (int) ceil($total / $perPage));
 
-        $accountDetails = collect($items)
-            ->keyBy('id')
-            ->map(fn (array $account) => [
-                'id' => $account['id'],
-                'code' => $account['code'],
-                'type' => $account['type'],
-                'type_label' => $account['type_label'],
-                'title' => $account['title'],
-                'phone' => $account['phone'],
-                'email' => $account['email'],
-                'city' => $account['city'],
-                'tax_number' => $account['tax_number'],
-                'status' => $account['status'],
-                'status_label' => $account['status_label'],
-                'total_debit' => $account['total_debit'],
-                'total_credit' => $account['total_credit'],
-                'total_debit_formatted' => $account['total_debit_formatted'],
-                'total_credit_formatted' => $account['total_credit_formatted'],
-                'balance' => $account['balance'],
-                'balance_formatted' => $account['balance_formatted'],
-                'balance_tone' => $account['balance_tone'],
-                'last_invoice' => $account['last_invoice'],
-                'last_earning' => $account['last_earning'],
-                'recent_movements' => $account['recent_movements'],
-                'movements' => $account['movements'],
-            ])
-            ->all();
+        $accountDetails = [];
+
+        foreach ($items as $account) {
+            $model = $this->service->find($account['id']);
+
+            if ($model !== null) {
+                $accountDetails[$account['id']] = $this->presenter->detailRow($model);
+            }
+        }
 
         return view('modules.finance.current-accounts.index', [
             'accounts' => $items,
             'accountDetails' => $accountDetails,
-            'accountOptions' => FinanceCurrentAccountDummyData::options(),
+            'accountOptions' => $this->service->options(),
             'filters' => $filters,
-            'accountTypes' => FinanceCurrentAccountDummyData::accountTypes(),
-            'statuses' => FinanceCurrentAccountDummyData::statuses(),
-            'balanceStatuses' => FinanceCurrentAccountDummyData::balanceStatuses(),
-            'transactionTypes' => FinanceCurrentAccountDummyData::transactionTypes(),
-            'summary' => FinanceCurrentAccountDummyData::summarize($filters),
+            'accountTypes' => CurrentAccountFormData::accountTypes(),
+            'statuses' => CurrentAccountFormData::statuses(),
+            'balanceStatuses' => CurrentAccountFormData::balanceStatuses(),
+            'transactionTypes' => CurrentAccountFormData::transactionTypes(),
+            'summary' => $this->service->summarize($filters),
             'total' => $total,
             'page' => $page,
             'perPage' => $perPage,
             'lastPage' => $lastPage,
         ]);
+    }
+
+    public function store(StoreCurrentAccountRequest $request): RedirectResponse
+    {
+        $this->service->create($request->validated(), $request->user());
+
+        return redirect()
+            ->route('finance.current-accounts.index')
+            ->with('success', 'Cari hesap başarıyla oluşturuldu.');
+    }
+
+    public function storeMovement(StoreCurrentAccountMovementRequest $request): RedirectResponse
+    {
+        $this->service->createMovement($request->validated(), $request->user());
+
+        return redirect()
+            ->route('finance.current-accounts.index')
+            ->with('success', 'Cari hareket başarıyla kaydedildi.');
     }
 
     public function export(Request $request): BinaryFileResponse

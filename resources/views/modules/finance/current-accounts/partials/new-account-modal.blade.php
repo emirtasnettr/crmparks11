@@ -15,28 +15,29 @@
             </button>
         </div>
 
-        <form @submit.prevent="saveNewAccount()" class="space-y-4 px-6 py-4">
+        <form method="POST" action="{{ route('finance.current-accounts.store') }}" class="space-y-4 px-6 py-4">
+            @csrf
+
             <div class="rounded-lg border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-700 dark:border-primary-800/50 dark:bg-primary-900/20 dark:text-primary-300">
                 Cari kodu otomatik oluşturulacaktır. Örnek: <span class="font-mono">CAR-000051</span>
             </div>
 
             <div class="space-y-1.5">
-                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Cari Tipi *</label>
-                <select x-model="newAccount.type" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
+                <label for="new_account_type" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Cari Tipi *</label>
+                <select id="new_account_type" name="type" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
                     @foreach ($accountTypes as $key => $label)
-                        <option value="{{ $key }}">{{ $label }}</option>
+                        <option value="{{ $key }}" @selected(old('type') === $key)>{{ $label }}</option>
                     @endforeach
                 </select>
+                @error('type')
+                    <p class="text-sm text-red-600">{{ $message }}</p>
+                @enderror
             </div>
 
-            <x-ui.input type="text" label="Cari Ünvanı *" x-model="newAccount.title" />
-            <x-ui.input type="text" label="Telefon *" x-model="newAccount.phone" />
-            <x-ui.input type="email" label="E-posta" x-model="newAccount.email" />
-            <x-ui.input type="text" label="Vergi No / TCKN" x-model="newAccount.tax_number" />
-
-            <div x-show="newAccountSaved" x-cloak class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-800/50 dark:bg-emerald-900/20 dark:text-emerald-300">
-                Cari hesap kaydı oluşturuldu. Gerçek entegrasyonda ilgili işletme/kurye/acente ile eşleştirilecektir.
-            </div>
+            <x-ui.input type="text" name="title" label="Cari Ünvanı *" :value="old('title')" />
+            <x-ui.input type="text" name="phone" label="Telefon *" :value="old('phone')" />
+            <x-ui.input type="email" name="email" label="E-posta" :value="old('email')" />
+            <x-ui.input type="text" name="tax_number" label="Vergi No / TCKN" :value="old('tax_number')" />
 
             <div class="flex justify-end gap-2 border-t border-gray-200 pt-4 dark:border-slate-700">
                 <x-ui.button type="button" variant="secondary" @click="closeModals()">İptal</x-ui.button>

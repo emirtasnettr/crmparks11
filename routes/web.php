@@ -117,6 +117,8 @@ Route::middleware('auth')->group(function () {
         Route::redirect('/', '/finans/dashboard');
         Route::get('/dashboard', [FinanceDashboardController::class, 'index'])->name('dashboard.index');
         Route::get('/cari-hesaplar', [FinanceCurrentAccountController::class, 'index'])->name('current-accounts.index');
+        Route::post('/cari-hesaplar', [FinanceCurrentAccountController::class, 'store'])->name('current-accounts.store');
+        Route::post('/cari-hesaplar/hareketler', [FinanceCurrentAccountController::class, 'storeMovement'])->name('current-accounts.movements.store');
         Route::get('/cari-hesaplar/export', [FinanceCurrentAccountController::class, 'export'])->name('current-accounts.export');
         Route::get('/gelirler', [FinanceRevenueController::class, 'index'])->name('revenues.index');
         Route::get('/gelirler/export', [FinanceRevenueController::class, 'export'])->name('revenues.export');

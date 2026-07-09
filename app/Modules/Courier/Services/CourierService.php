@@ -8,6 +8,7 @@ use App\Models\District;
 use App\Models\User;
 use App\Models\VehicleType;
 use App\Modules\Courier\Models\Courier;
+use App\Modules\Finance\Services\CurrentAccountService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,7 @@ class CourierService
     public function __construct(
         private readonly CourierMediaService $media,
         private readonly ActivityLogService $activityLog,
+        private readonly CurrentAccountService $currentAccounts,
     ) {}
 
     /**
@@ -92,6 +94,8 @@ class CourierService
                 $courier,
                 description: "{$courier->full_name} kuryesi sisteme kaydedildi.",
             );
+
+            $this->currentAccounts->ensureForEntity($courier);
 
             return $courier->fresh(['city', 'district', 'agency', 'vehicleType']);
         });
