@@ -4,8 +4,9 @@ namespace App\Modules\Finance\Controllers;
 
 use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
-use App\Modules\Finance\Data\FinanceActivityLogDummyData;
+use App\Modules\Finance\Data\FinanceActivityLogFormData;
 use App\Modules\Finance\Exports\FinanceListExportSheets;
+use App\Modules\Finance\Services\FinanceActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -13,6 +14,10 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class FinanceActivityLogController extends Controller
 {
     use DownloadsListExport;
+
+    public function __construct(
+        private readonly FinanceActivityLogService $activityLogService,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -28,26 +33,22 @@ class FinanceActivityLogController extends Controller
         $perPage = 25;
         $page = max(1, (int) $request->query('page', 1));
 
-        $analysis = FinanceActivityLogDummyData::analyze($filters);
-        $all = $analysis['logs'];
-        $total = count($all);
-        $items = array_slice($all, ($page - 1) * $perPage, $perPage);
-        $lastPage = max(1, (int) ceil($total / $perPage));
+        $analysis = $this->activityLogService->analyze($filters, $page, $perPage);
 
         return view('modules.finance.activity-log.index', [
-            'logs' => $items,
+            'logs' => $analysis['logs'],
             'summary' => $analysis['summary'],
             'logsForModal' => $analysis['logs_for_modal'],
             'filters' => $filters,
-            'modules' => FinanceActivityLogDummyData::modules(),
-            'actionTypes' => FinanceActivityLogDummyData::actionTypes(),
-            'users' => FinanceActivityLogDummyData::users(),
-            'dateRanges' => FinanceActivityLogDummyData::dateRanges(),
-            'currentAccounts' => FinanceActivityLogDummyData::currentAccounts(),
-            'total' => $total,
-            'page' => $page,
-            'perPage' => $perPage,
-            'lastPage' => $lastPage,
+            'modules' => FinanceActivityLogFormData::modules(),
+            'actionTypes' => FinanceActivityLogFormData::actionTypes(),
+            'users' => $this->activityLogService->users(),
+            'dateRanges' => FinanceActivityLogFormData::dateRanges(),
+            'currentAccounts' => $this->activityLogService->currentAccounts(),
+            'total' => $analysis['total'],
+            'page' => $analysis['page'],
+            'perPage' => $analysis['perPage'],
+            'lastPage' => $analysis['lastPage'],
         ]);
     }
 

@@ -3,7 +3,7 @@
 namespace App\Modules\Finance\Exports;
 
 use App\Core\Exports\ListExport;
-use App\Modules\Finance\Data\FinanceActivityLogDummyData;
+use App\Modules\Finance\Services\FinanceActivityLogService;
 use App\Modules\Finance\Services\CollectionService;
 use App\Modules\Finance\Services\CurrentAccountService;
 use App\Modules\Finance\Services\ExpenseService;
@@ -229,7 +229,7 @@ final class FinanceListExportSheets
     public static function activityLog(array $filters): array
     {
         return ListExport::sheet(
-            FinanceActivityLogDummyData::filter($filters),
+            app(FinanceActivityLogService::class)->filter($filters),
             ['Tarih', 'Saat', 'Modül', 'İşlem Türü', 'İşlem No', 'Cari', 'İşlemi Yapan', 'IP Adresi', 'Durum'],
             [
                 fn (array $row) => $row['date_formatted'],

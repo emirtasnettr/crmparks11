@@ -3,7 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Modules\Finance\Data\FinanceActivityLogDummyData;
+use App\Modules\ActivityLog\Models\ActivityLog;
+use App\Modules\Finance\Models\FinanceCollection;
+use App\Modules\Finance\Models\FinanceRevenue;
+use App\Modules\Finance\Services\FinanceActivityLogService;
+use Carbon\Carbon;
+use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -16,7 +21,10 @@ class FinanceActivityLogTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(RoleAndPermissionSeeder::class);
+        $this->seed([
+            LookupTableSeeder::class,
+            RoleAndPermissionSeeder::class,
+        ]);
     }
 
     public function test_activity_log_requires_authentication(): void
@@ -30,6 +38,27 @@ class FinanceActivityLogTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
+
+        $revenue = FinanceRevenue::factory()->create();
+        $collection = FinanceCollection::factory()->create();
+
+        ActivityLog::factory()->create([
+            'user_id' => $user->id,
+            'action' => 'revenue_created',
+            'subject_type' => FinanceRevenue::class,
+            'subject_id' => $revenue->id,
+            'description' => "{$revenue->reference} gelir kaydı oluşturuldu.",
+            'new_values' => ['reference' => $revenue->reference],
+        ]);
+
+        ActivityLog::factory()->create([
+            'user_id' => $user->id,
+            'action' => 'collection_created',
+            'subject_type' => FinanceCollection::class,
+            'subject_id' => $collection->id,
+            'description' => "{$collection->reference} tahsilat kaydı oluşturuldu.",
+            'new_values' => ['reference' => $collection->reference],
+        ]);
 
         $response = $this->actingAs($user)->get(route('finance.activity-log.index'));
 
@@ -66,17 +95,38 @@ class FinanceActivityLogTest extends TestCase
         $response->assertForbidden();
     }
 
-    public function test_dummy_data_has_at_least_two_hundred_logs(): void
+    public function test_finance_activity_logs_are_loaded_from_database(): void
     {
-        $logs = FinanceActivityLogDummyData::all();
+        $user = User::factory()->create();
+        $revenue = FinanceRevenue::factory()->create();
 
-        $this->assertGreaterThanOrEqual(200, count($logs));
-        $this->assertCount(210, $logs);
+        ActivityLog::factory()->count(3)->create([
+            'user_id' => $user->id,
+            'action' => 'revenue_created',
+            'subject_type' => FinanceRevenue::class,
+            'subject_id' => $revenue->id,
+        ]);
+
+        $logs = app(FinanceActivityLogService::class)->filter(['date_range' => 'all']);
+
+        $this->assertCount(3, $logs);
     }
 
     public function test_logs_contain_spatie_compatible_fields(): void
     {
-        $log = FinanceActivityLogDummyData::all()[0];
+        $user = User::factory()->create();
+        $revenue = FinanceRevenue::factory()->create();
+
+        ActivityLog::factory()->create([
+            'user_id' => $user->id,
+            'action' => 'revenue_created',
+            'subject_type' => FinanceRevenue::class,
+            'subject_id' => $revenue->id,
+            'old_values' => ['status' => 'draft'],
+            'new_values' => ['status' => 'active', 'reference' => $revenue->reference],
+        ]);
+
+        $log = app(FinanceActivityLogService::class)->filter(['date_range' => 'all'])[0];
 
         $this->assertArrayHasKey('log_name', $log);
         $this->assertArrayHasKey('subject_type', $log);
@@ -91,6 +141,17 @@ class FinanceActivityLogTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('super_admin');
 
+        $collection = FinanceCollection::factory()->create();
+
+        ActivityLog::factory()->create([
+            'user_id' => $user->id,
+            'action' => 'collection_created',
+            'subject_type' => FinanceCollection::class,
+            'subject_id' => $collection->id,
+            'description' => "{$collection->reference} tahsilat kaydı oluşturuldu.",
+            'new_values' => ['reference' => $collection->reference],
+        ]);
+
         $response = $this->actingAs($user)->get(route('finance.activity-log.index', [
             'module' => 'collections',
         ]));
@@ -102,7 +163,18 @@ class FinanceActivityLogTest extends TestCase
 
     public function test_critical_actions_are_tracked(): void
     {
-        $analysis = FinanceActivityLogDummyData::analyze(['date_range' => 'all']);
+        $user = User::factory()->create();
+        $revenue = FinanceRevenue::factory()->create();
+
+        ActivityLog::factory()->create([
+            'user_id' => $user->id,
+            'action' => 'revenue_created',
+            'subject_type' => FinanceRevenue::class,
+            'subject_id' => $revenue->id,
+            'new_values' => ['status' => 'cancelled', 'reference' => $revenue->reference],
+        ]);
+
+        $analysis = app(FinanceActivityLogService::class)->analyze(['date_range' => 'all']);
 
         $this->assertGreaterThan(0, $analysis['summary']['critical']);
     }
