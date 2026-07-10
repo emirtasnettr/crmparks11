@@ -315,51 +315,33 @@ https://crm.alanadiniz.com/login
 
 ## Adım 12 — Queue worker (önerilir)
 
-Arka plan işleri için systemd servisi:
+Arka plan işleri için systemd servisi. Hazır birim: `deploy/crmlog-queue.service`
+
+Tek komutla kurulum + doğrulama:
 
 ```bash
-sudo nano /etc/systemd/system/crmlog-queue.service
+cd /var/www/crmlog
+sudo bash deploy/install-ops.sh
 ```
 
-İçerik:
-
-```ini
-[Unit]
-Description=CRMLog Queue Worker
-After=network.target
-
-[Service]
-User=www-data
-Group=www-data
-Restart=always
-ExecStart=/usr/bin/php /var/www/crmlog/artisan queue:work --sleep=3 --tries=3 --max-time=3600
-WorkingDirectory=/var/www/crmlog
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Başlatın:
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable --now crmlog-queue
-sudo systemctl status crmlog-queue
-```
-
-Hazır birim dosyası repoda: `deploy/crmlog-queue.service`
+Manuel kurulum:
 
 ```bash
 sudo cp /var/www/crmlog/deploy/crmlog-queue.service /etc/systemd/system/crmlog-queue.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now crmlog-queue
+sudo systemctl status crmlog-queue
 ```
+
+`.env` içinde `QUEUE_CONNECTION=database` olmalı (`sync` değil).
 
 ---
 
 ## Adım 13 — Scheduler cron (önerilir)
 
 Hatırlatma komutları (`crmlog:reminders:*`) Laravel scheduler ile çalışır. Cron olmadan tetiklenmezler.
+
+`install-ops.sh` cron dosyasını da kurar. Manuel:
 
 ```bash
 sudo cp /var/www/crmlog/deploy/crmlog-scheduler.cron /etc/cron.d/crmlog-scheduler
@@ -376,8 +358,15 @@ Doğrulama:
 
 ```bash
 cd /var/www/crmlog
+bash deploy/verify-ops.sh
 php artisan schedule:list
 ```
+
+Beklenen çıktıda şunlar görünmeli:
+
+- `crmlog-queue` **active** + **enabled**
+- `/etc/cron.d/crmlog-scheduler` mevcut
+- `crmlog:reminders:contracts|documents|collections|payments` schedule listesinde
 
 ---
 
@@ -390,7 +379,13 @@ cd /var/www/crmlog
 ./deploy.sh
 ```
 
-`deploy.sh` şunları yapar: `git pull`, composer, npm build, migration, cache yenileme.
+`deploy.sh` şunları yapar: `git pull`, composer, npm build, migration, cache yenileme, `queue:restart`.
+
+İlk kez queue/cron kurulacaksa ardından:
+
+```bash
+sudo bash deploy/install-ops.sh
+```
 
 ---
 

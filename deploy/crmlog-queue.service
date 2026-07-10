@@ -1,13 +1,17 @@
 [Unit]
 Description=CRMLog Queue Worker
-After=network.target
+After=network.target mysql.service mariadb.service
+Wants=network-online.target
 
 [Service]
+Type=simple
 User=www-data
 Group=www-data
 Restart=always
-ExecStart=/usr/bin/php /var/www/crmlog/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+RestartSec=5
 WorkingDirectory=/var/www/crmlog
+ExecStart=/usr/bin/php /var/www/crmlog/artisan queue:work database --sleep=3 --tries=3 --max-time=3600
+Nice=10
 
 [Install]
 WantedBy=multi-user.target

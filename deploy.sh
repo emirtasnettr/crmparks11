@@ -38,7 +38,7 @@ fi
 
 echo "==> Deploy tamamlandı."
 echo ""
-echo "Hatırlatma: bildirim/hatırlatma job'ları için queue worker + scheduler gerekir."
-echo "  sudo cp deploy/crmlog-queue.service /etc/systemd/system/ && sudo systemctl enable --now crmlog-queue"
-echo "  sudo cp deploy/crmlog-scheduler.cron /etc/cron.d/crmlog-scheduler"
+echo "Ops (queue + scheduler):"
+echo "  sudo bash deploy/install-ops.sh   # ilk kurulum / güncelleme"
+echo "  bash deploy/verify-ops.sh         # durum kontrolü"
 echo "Detay: DEPLOY.md Adım 12–13"
