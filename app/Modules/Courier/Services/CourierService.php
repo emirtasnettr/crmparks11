@@ -145,6 +145,25 @@ class CourierService
         });
     }
 
+    public function deactivate(Courier $courier): Courier
+    {
+        $previousStatus = $courier->status;
+        $courier->update(['status' => 'inactive']);
+        $courier = $courier->fresh(['city', 'district', 'agency', 'vehicleType']);
+
+        if ($previousStatus !== 'inactive') {
+            $this->activityLog->log(
+                'courier_deactivated',
+                $courier,
+                ['status' => $previousStatus],
+                ['status' => $courier->status],
+                "{$courier->full_name} pasif duruma alındı.",
+            );
+        }
+
+        return $courier;
+    }
+
     /**
      * @param  array<string, mixed>  $filters
      */

@@ -32,6 +32,20 @@ class ReportCatalog
                 'icon' => 'report',
                 'route' => 'reports.operations',
             ],
+            [
+                'key' => 'courier_performance',
+                'title' => 'Kurye Performansı',
+                'description' => 'Kurye bazlı paket, hakediş ve kâr özeti.',
+                'icon' => 'courier',
+                'route' => 'reports.courier-performance',
+            ],
+            [
+                'key' => 'agency_share',
+                'title' => 'Acente Payı',
+                'description' => 'Acente bazlı komisyon ve ödeme özeti.',
+                'icon' => 'agency',
+                'route' => 'reports.agency-share',
+            ],
         ];
     }
 

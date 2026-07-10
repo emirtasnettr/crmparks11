@@ -79,6 +79,14 @@ Route::middleware('auth')->group(function () {
             ->middleware('permission:report.export')
             ->name('collections.export');
         Route::get('/operasyon-ozeti', [ReportController::class, 'operations'])->name('operations');
+        Route::get('/kurye-performansi', [ReportController::class, 'courierPerformance'])->name('courier-performance');
+        Route::get('/kurye-performansi/export', [ReportController::class, 'courierPerformanceExport'])
+            ->middleware('permission:report.export')
+            ->name('courier-performance.export');
+        Route::get('/acente-payi', [ReportController::class, 'agencyShare'])->name('agency-share');
+        Route::get('/acente-payi/export', [ReportController::class, 'agencyShareExport'])
+            ->middleware('permission:report.export')
+            ->name('agency-share.export');
     });
 
     Route::prefix('isletmeler')->name('businesses.')->middleware('permission:business.view')->group(function () {
@@ -117,6 +125,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/hareket-gecmisi', [BusinessActivityController::class, 'index'])->name('activities.index');
         Route::get('/{id}/duzenle', [BusinessController::class, 'edit'])->name('edit');
         Route::put('/{id}', [BusinessController::class, 'update'])->middleware('permission:business.update')->name('update');
+        Route::post('/{id}/pasife-al', [BusinessController::class, 'deactivate'])->middleware('permission:business.update')->name('deactivate');
         Route::get('/{id}', [BusinessController::class, 'show'])->name('show');
     });
 
@@ -149,6 +158,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/hareket-gecmisi', [CourierActivityController::class, 'index'])->name('activities.index');
         Route::get('/{id}/duzenle', [CourierController::class, 'edit'])->name('edit');
         Route::put('/{id}', [CourierController::class, 'update'])->middleware('permission:courier.update')->name('update');
+        Route::post('/{id}/pasife-al', [CourierController::class, 'deactivate'])->middleware('permission:courier.update')->name('deactivate');
         Route::get('/{id}', [CourierController::class, 'show'])->name('show');
     });
 
@@ -223,6 +233,12 @@ Route::middleware('auth')->group(function () {
             Route::post('/kullanicilar/{id}/sifre-sifirla', [UserManagementController::class, 'resetPassword'])
                 ->middleware('permission:user.update')
                 ->name('reset-password');
+            Route::post('/kullanicilar/{id}/askiya-al', [UserManagementController::class, 'suspend'])
+                ->middleware('permission:user.update')
+                ->name('suspend');
+            Route::post('/kullanicilar/{id}/pasife-al', [UserManagementController::class, 'deactivate'])
+                ->middleware('permission:user.delete')
+                ->name('deactivate');
             Route::delete('/kullanicilar/{id}', [UserManagementController::class, 'destroy'])
                 ->middleware('permission:user.delete')
                 ->name('destroy');
@@ -333,6 +349,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/hareket-gecmisi/export', [AgencyActivityController::class, 'export'])->name('activities.export');
         Route::get('/{id}/duzenle', [AgencyController::class, 'edit'])->name('edit');
         Route::put('/{id}', [AgencyController::class, 'update'])->middleware('permission:agency.update')->name('update');
+        Route::post('/{id}/pasife-al', [AgencyController::class, 'deactivate'])->middleware('permission:agency.update')->name('deactivate');
         Route::get('/{id}', [AgencyController::class, 'show'])->name('show');
     });
 });

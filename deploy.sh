@@ -37,3 +37,8 @@ if command -v systemctl >/dev/null 2>&1; then
 fi
 
 echo "==> Deploy tamamlandı."
+echo ""
+echo "Hatırlatma: bildirim/hatırlatma job'ları için queue worker + scheduler gerekir."
+echo "  sudo cp deploy/crmlog-queue.service /etc/systemd/system/ && sudo systemctl enable --now crmlog-queue"
+echo "  sudo cp deploy/crmlog-scheduler.cron /etc/cron.d/crmlog-scheduler"
+echo "Detay: DEPLOY.md Adım 12–13"

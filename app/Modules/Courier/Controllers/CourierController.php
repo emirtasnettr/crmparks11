@@ -178,4 +178,21 @@ class CourierController extends Controller
             ->route('couriers.show', $id)
             ->with('success', 'Kurye bilgileri güncellendi.');
     }
+
+    public function deactivate(Request $request, int $id): RedirectResponse
+    {
+        abort_unless($request->user()?->can('courier.update'), 403);
+
+        $courier = $this->couriers->find($id);
+
+        if ($courier === null) {
+            abort(404);
+        }
+
+        $this->couriers->deactivate($courier);
+
+        return redirect()
+            ->route('couriers.index')
+            ->with('success', 'Kurye pasife alındı.');
+    }
 }

@@ -112,4 +112,75 @@ class ApiResourceTest extends TestCase
 
         $this->getJson('/api/v1/businesses')->assertForbidden();
     }
+
+    public function test_super_admin_can_create_and_update_business_via_api(): void
+    {
+        $this->seed(\Database\Seeders\CitySeeder::class);
+
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        Sanctum::actingAs($user);
+
+        $create = $this->postJson('/api/v1/businesses', [
+            'company_name' => 'API Yazma İşletme Ltd. Şti.',
+            'phone' => '0212 111 22 33',
+            'pricing_model' => 'per_package',
+            'earning_period' => 'weekly',
+            'status' => 'active',
+            'city' => 'İstanbul',
+            'district' => 'Kadıköy',
+        ]);
+
+        $create->assertCreated()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.company_name', 'API Yazma İşletme Ltd. Şti.');
+
+        $id = $create->json('data.id');
+
+        $this->putJson('/api/v1/businesses/'.$id, [
+            'company_name' => 'API Güncel İşletme Ltd. Şti.',
+            'phone' => '0212 111 22 33',
+            'pricing_model' => 'per_package',
+            'earning_period' => 'weekly',
+            'status' => 'active',
+            'city' => 'İstanbul',
+            'district' => 'Kadıköy',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.company_name', 'API Güncel İşletme Ltd. Şti.');
+    }
+
+    public function test_super_admin_can_create_and_approve_earning_via_api(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = Business::factory()->create(['created_by' => $user->id]);
+        $courier = Courier::factory()->create(['created_by' => $user->id]);
+
+        app(\App\Modules\Setting\Services\SettingsManager::class)->group('earnings')->save([
+            'default_period' => 'monthly',
+            'approval_process' => 'single',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $create = $this->postJson('/api/v1/earnings', [
+            'business_id' => $business->id,
+            'courier_id' => $courier->id,
+            'period_month' => 7,
+            'period_year' => 2026,
+            'pricing_model' => 'per_package',
+            'package_count' => 50,
+            'revenue_unit_price' => 45,
+            'courier_unit_price' => 38,
+            'status' => 'pending',
+        ]);
+
+        $create->assertCreated();
+        $id = $create->json('data.id');
+
+        $this->postJson('/api/v1/earnings/'.$id.'/approve')
+            ->assertOk()
+            ->assertJsonPath('data.status', 'approved');
+    }
 }

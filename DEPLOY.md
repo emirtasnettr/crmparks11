@@ -347,6 +347,38 @@ sudo systemctl enable --now crmlog-queue
 sudo systemctl status crmlog-queue
 ```
 
+Hazır birim dosyası repoda: `deploy/crmlog-queue.service`
+
+```bash
+sudo cp /var/www/crmlog/deploy/crmlog-queue.service /etc/systemd/system/crmlog-queue.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now crmlog-queue
+```
+
+---
+
+## Adım 13 — Scheduler cron (önerilir)
+
+Hatırlatma komutları (`crmlog:reminders:*`) Laravel scheduler ile çalışır. Cron olmadan tetiklenmezler.
+
+```bash
+sudo cp /var/www/crmlog/deploy/crmlog-scheduler.cron /etc/cron.d/crmlog-scheduler
+sudo chmod 644 /etc/cron.d/crmlog-scheduler
+```
+
+Veya root crontab:
+
+```bash
+* * * * * cd /var/www/crmlog && php artisan schedule:run >> /dev/null 2>&1
+```
+
+Doğrulama:
+
+```bash
+cd /var/www/crmlog
+php artisan schedule:list
+```
+
 ---
 
 ## Güncelleme (deploy)

@@ -48,4 +48,22 @@ class NotificationController extends ApiController
             'items' => $preview['items'],
         ]);
     }
+
+    public function markRead(Request $request, string $id): JsonResponse
+    {
+        abort_unless($request->user()?->can('notification.view'), 403);
+
+        $this->notifications->markAsRead($request->user(), $id);
+
+        return ApiResponse::success(null, 'Bildirim okundu olarak işaretlendi');
+    }
+
+    public function markAllRead(Request $request): JsonResponse
+    {
+        abort_unless($request->user()?->can('notification.view'), 403);
+
+        $count = $this->notifications->markAllAsRead($request->user());
+
+        return ApiResponse::success(['count' => $count], 'Tüm bildirimler okundu');
+    }
 }

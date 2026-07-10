@@ -250,6 +250,42 @@ class UserManagementService
         });
     }
 
+    public function setStatus(int $id, Status $status, User $actor): User
+    {
+        return DB::transaction(function () use ($id, $status, $actor): User {
+            $user = User::query()->find($id);
+
+            if ($user === null) {
+                abort(404);
+            }
+
+            if (! $this->canUpdate($user, $actor)) {
+                throw ValidationException::withMessages([
+                    'user' => 'Bu kullanıcının durumu güncellenemez.',
+                ]);
+            }
+
+            if ($status === Status::Inactive && ! $this->canDelete($user, $actor)) {
+                throw ValidationException::withMessages([
+                    'user' => 'Bu kullanıcı pasife alınamaz.',
+                ]);
+            }
+
+            $oldStatus = $user->status;
+            $user->update(['status' => $status]);
+
+            $this->activityLog->log(
+                'user_updated',
+                $user,
+                oldValues: ['status' => $oldStatus?->value ?? (string) $oldStatus],
+                newValues: ['status' => $status->value],
+                description: "{$user->name} durumu {$status->label()} olarak güncellendi.",
+            );
+
+            return $user->fresh(['roles', 'profileable']);
+        });
+    }
+
     public function canUpdate(User $user, User $actor): bool
     {
         return $actor->can('user.update');

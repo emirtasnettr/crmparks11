@@ -12,6 +12,7 @@ use App\Modules\Finance\Models\FinanceCollection;
 use App\Modules\Report\Data\ReportCatalog;
 use App\Support\EarningStatusMapper;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 
 class ReportService
 {
@@ -207,6 +208,177 @@ class ReportService
                     ->where('period_month', now()->month)
                     ->count(),
             ],
+        ];
+    }
+
+    /**
+     * @param  array<string, string>  $filters
+     * @return array<string, mixed>
+     */
+    public function courierPerformanceSummary(array $filters): array
+    {
+        $year = (int) ($filters['year'] ?: now()->year);
+        $month = ($filters['month'] ?? 'all') === 'all' ? null : (int) $filters['month'];
+
+        $lines = EarningLine::query()
+            ->with(['courier', 'status'])
+            ->where('period_year', $year)
+            ->when($month !== null, fn ($q) => $q->where('period_month', $month))
+            ->get();
+
+        $rows = $lines
+            ->groupBy('courier_id')
+            ->map(function (Collection $group) use ($year, $month): array {
+                /** @var EarningLine $first */
+                $first = $group->first();
+                $courier = $first->courier;
+                $revenue = round($group->sum(fn (EarningLine $line) => (float) $line->revenue_total), 2);
+                $courierPay = round($group->sum(fn (EarningLine $line) => (float) $line->net_courier_payment), 2);
+                $profit = round($group->sum(fn (EarningLine $line) => (float) $line->profit), 2);
+                $packages = (int) $group->sum('package_count');
+
+                return [
+                    'courier_id' => $first->courier_id,
+                    'courier' => $courier?->full_name ?? '—',
+                    'packages' => $packages,
+                    'lines' => $group->count(),
+                    'revenue' => $revenue,
+                    'courier_payment' => $courierPay,
+                    'profit' => $profit,
+                    'revenue_formatted' => MoneyCalculator::format($revenue),
+                    'courier_payment_formatted' => MoneyCalculator::format($courierPay),
+                    'profit_formatted' => MoneyCalculator::format($profit),
+                    'url' => route('couriers.earnings.index', [
+                        'courier_id' => $first->courier_id,
+                        'period_year' => $year,
+                        'period_month' => $month ?? 'all',
+                    ]),
+                ];
+            })
+            ->sortByDesc('revenue')
+            ->values();
+
+        return [
+            'filters' => [
+                'year' => $year,
+                'month' => $filters['month'] ?? 'all',
+            ],
+            'summary' => [
+                'count' => $rows->count(),
+                'packages' => (int) $rows->sum('packages'),
+                'revenue' => round($rows->sum('revenue'), 2),
+                'courier_payment' => round($rows->sum('courier_payment'), 2),
+                'profit' => round($rows->sum('profit'), 2),
+                'revenue_formatted' => MoneyCalculator::format((float) $rows->sum('revenue')),
+                'courier_payment_formatted' => MoneyCalculator::format((float) $rows->sum('courier_payment')),
+                'profit_formatted' => MoneyCalculator::format((float) $rows->sum('profit')),
+            ],
+            'rows' => $rows->all(),
+        ];
+    }
+
+    /**
+     * @return array{headings: array<int, string>, rows: array<int, array<int, mixed>>}
+     */
+    public function courierPerformanceExportRows(array $filters): array
+    {
+        $data = $this->courierPerformanceSummary($filters);
+
+        return [
+            'headings' => ['Kurye', 'Paket', 'Kayıt', 'Gelir', 'Kurye Ödemesi', 'Kâr'],
+            'rows' => collect($data['rows'])->map(fn (array $row) => [
+                $row['courier'],
+                $row['packages'],
+                $row['lines'],
+                $row['revenue'],
+                $row['courier_payment'],
+                $row['profit'],
+            ])->all(),
+        ];
+    }
+
+    /**
+     * @param  array<string, string>  $filters
+     * @return array<string, mixed>
+     */
+    public function agencyShareSummary(array $filters): array
+    {
+        $year = (int) ($filters['year'] ?: now()->year);
+        $month = ($filters['month'] ?? 'all') === 'all' ? null : (int) $filters['month'];
+
+        $lines = EarningLine::query()
+            ->with(['courier.agency', 'status'])
+            ->where('period_year', $year)
+            ->when($month !== null, fn ($q) => $q->where('period_month', $month))
+            ->whereHas('courier', fn ($q) => $q->whereNotNull('agency_id'))
+            ->get();
+
+        $rows = $lines
+            ->groupBy(fn (EarningLine $line) => $line->courier?->agency_id)
+            ->filter(fn ($group, $agencyId) => $agencyId !== null)
+            ->map(function (Collection $group) use ($year, $month): array {
+                /** @var EarningLine $first */
+                $first = $group->first();
+                $agency = $first->courier?->agency;
+                $agencyPayment = round($group->sum(fn (EarningLine $line) => (float) $line->agency_payment), 2);
+                $revenue = round($group->sum(fn (EarningLine $line) => (float) $line->revenue_total), 2);
+                $packages = (int) $group->sum('package_count');
+                $agencyId = $first->courier?->agency_id;
+
+                return [
+                    'agency_id' => $agencyId,
+                    'agency' => $agency?->company_name ?? '—',
+                    'couriers' => $group->pluck('courier_id')->unique()->count(),
+                    'packages' => $packages,
+                    'lines' => $group->count(),
+                    'revenue' => $revenue,
+                    'agency_payment' => $agencyPayment,
+                    'revenue_formatted' => MoneyCalculator::format($revenue),
+                    'agency_payment_formatted' => MoneyCalculator::format($agencyPayment),
+                    'url' => route('agencies.earnings.index', [
+                        'agency_id' => $agencyId,
+                        'period_year' => $year,
+                        'period_month' => $month ?? 'all',
+                    ]),
+                ];
+            })
+            ->sortByDesc('agency_payment')
+            ->values();
+
+        return [
+            'filters' => [
+                'year' => $year,
+                'month' => $filters['month'] ?? 'all',
+            ],
+            'summary' => [
+                'count' => $rows->count(),
+                'packages' => (int) $rows->sum('packages'),
+                'revenue' => round($rows->sum('revenue'), 2),
+                'agency_payment' => round($rows->sum('agency_payment'), 2),
+                'revenue_formatted' => MoneyCalculator::format((float) $rows->sum('revenue')),
+                'agency_payment_formatted' => MoneyCalculator::format((float) $rows->sum('agency_payment')),
+            ],
+            'rows' => $rows->all(),
+        ];
+    }
+
+    /**
+     * @return array{headings: array<int, string>, rows: array<int, array<int, mixed>>}
+     */
+    public function agencyShareExportRows(array $filters): array
+    {
+        $data = $this->agencyShareSummary($filters);
+
+        return [
+            'headings' => ['Acente', 'Kurye', 'Paket', 'Kayıt', 'Gelir', 'Acente Payı'],
+            'rows' => collect($data['rows'])->map(fn (array $row) => [
+                $row['agency'],
+                $row['couriers'],
+                $row['packages'],
+                $row['lines'],
+                $row['revenue'],
+                $row['agency_payment'],
+            ])->all(),
         ];
     }
 }

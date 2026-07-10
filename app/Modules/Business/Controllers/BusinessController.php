@@ -191,4 +191,21 @@ class BusinessController extends Controller
       ->route('businesses.show', $id)
       ->with('success', 'İşletme bilgileri güncellendi.');
   }
+
+  public function deactivate(Request $request, int $id): RedirectResponse
+  {
+    abort_unless($request->user()?->can('business.update'), 403);
+
+    $business = $this->businesses->find($id);
+
+    if ($business === null) {
+      abort(404);
+    }
+
+    $this->businesses->deactivate($business);
+
+    return redirect()
+      ->route('businesses.index')
+      ->with('success', 'İşletme pasife alındı.');
+  }
 }

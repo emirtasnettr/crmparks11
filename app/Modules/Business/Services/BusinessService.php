@@ -92,6 +92,13 @@ class BusinessService
     });
   }
 
+  public function deactivate(Business $business): Business
+  {
+    $business->update(['status' => 'inactive']);
+
+    return $business->fresh(['city', 'district', 'activePricing.pricingModelType']);
+  }
+
   /**
    * @param  array<string, mixed>  $filters
    */

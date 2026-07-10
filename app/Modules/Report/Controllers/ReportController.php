@@ -90,6 +90,74 @@ class ReportController extends Controller
         ]);
     }
 
+    public function courierPerformance(Request $request): View
+    {
+        $filters = [
+            'year' => $request->string('year')->toString() ?: (string) now()->year,
+            'month' => $request->string('month')->toString() ?: 'all',
+        ];
+
+        $data = $this->reports->courierPerformanceSummary($filters);
+
+        return view('modules.report.courier-performance', [
+            'filters' => $data['filters'],
+            'summary' => $data['summary'],
+            'rows' => $data['rows'],
+            'months' => array_merge(['all' => 'Tümü'], BusinessEarningFormData::months()),
+            'years' => $this->yearOptions(),
+        ]);
+    }
+
+    public function courierPerformanceExport(Request $request): BinaryFileResponse
+    {
+        abort_unless($request->user()?->can('report.export'), 403);
+
+        $filters = [
+            'year' => $request->string('year')->toString() ?: (string) now()->year,
+            'month' => $request->string('month')->toString() ?: 'all',
+        ];
+
+        return $this->downloadExportSheet(
+            'kurye-performansi',
+            $this->reports->courierPerformanceExportRows($filters),
+            'Kurye Performansı',
+        );
+    }
+
+    public function agencyShare(Request $request): View
+    {
+        $filters = [
+            'year' => $request->string('year')->toString() ?: (string) now()->year,
+            'month' => $request->string('month')->toString() ?: 'all',
+        ];
+
+        $data = $this->reports->agencyShareSummary($filters);
+
+        return view('modules.report.agency-share', [
+            'filters' => $data['filters'],
+            'summary' => $data['summary'],
+            'rows' => $data['rows'],
+            'months' => array_merge(['all' => 'Tümü'], BusinessEarningFormData::months()),
+            'years' => $this->yearOptions(),
+        ]);
+    }
+
+    public function agencyShareExport(Request $request): BinaryFileResponse
+    {
+        abort_unless($request->user()?->can('report.export'), 403);
+
+        $filters = [
+            'year' => $request->string('year')->toString() ?: (string) now()->year,
+            'month' => $request->string('month')->toString() ?: 'all',
+        ];
+
+        return $this->downloadExportSheet(
+            'acente-payi',
+            $this->reports->agencyShareExportRows($filters),
+            'Acente Payı',
+        );
+    }
+
     /**
      * @return array<string, string>
      */

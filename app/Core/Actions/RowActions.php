@@ -36,6 +36,8 @@ class RowActions
         string $tone = 'default',
         mixed $id = null,
         ?string $modal = null,
+        ?string $url = null,
+        string $method = 'POST',
     ): array {
         return array_filter([
             'type' => 'action',
@@ -46,6 +48,8 @@ class RowActions
             'tone' => $tone,
             'id' => $id,
             'modal' => $modal,
+            'url' => $url,
+            'method' => $url ? strtoupper($method) : null,
         ], static fn ($value) => $value !== null);
     }
 

@@ -56,7 +56,9 @@ class ReportModuleTest extends TestCase
             ->assertSee('Raporlar')
             ->assertSee('Hakediş Özeti')
             ->assertSee('Tahsilat Yaşlandırma')
-            ->assertSee('Operasyon Özeti');
+            ->assertSee('Operasyon Özeti')
+            ->assertSee('Kurye Performansı')
+            ->assertSee('Acente Payı');
 
         $this->actingAs($user)->get(route('reports.earnings'))
             ->assertOk()
@@ -66,6 +68,11 @@ class ReportModuleTest extends TestCase
         $this->actingAs($user)->get(route('reports.operations'))
             ->assertOk()
             ->assertSee('Operasyon Özeti');
+
+        $this->actingAs($user)->get(route('reports.courier-performance'))
+            ->assertOk()
+            ->assertSee('Kurye Performansı')
+            ->assertSee($courier->full_name);
     }
 
     public function test_collections_report_and_export(): void
@@ -89,6 +96,36 @@ class ReportModuleTest extends TestCase
             ->assertSee($business->company_name);
 
         $this->actingAs($user)->get(route('reports.collections.export'))
+            ->assertOk();
+    }
+
+    public function test_agency_share_report(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $agency = \App\Modules\Agency\Models\Agency::factory()->create(['created_by' => $user->id]);
+        $business = Business::factory()->create(['created_by' => $user->id]);
+        $courier = Courier::factory()->create([
+            'created_by' => $user->id,
+            'agency_id' => $agency->id,
+        ]);
+
+        EarningLine::factory()->create([
+            'business_id' => $business->id,
+            'courier_id' => $courier->id,
+            'period_year' => now()->year,
+            'period_month' => now()->month,
+            'agency_payment' => 1500,
+            'status_id' => EarningStatus::query()->where('code', 'approved')->value('id'),
+            'created_by' => $user->id,
+        ]);
+
+        $this->actingAs($user)->get(route('reports.agency-share'))
+            ->assertOk()
+            ->assertSee('Acente Payı')
+            ->assertSee($agency->company_name);
+
+        $this->actingAs($user)->get(route('reports.agency-share.export'))
             ->assertOk();
     }
 

@@ -72,6 +72,8 @@
                             'confirm' => $item['confirm'] ?? null,
                             'id' => $item['id'] ?? null,
                             'modal' => $item['modal'] ?? null,
+                            'url' => $item['url'] ?? null,
+                            'method' => $item['method'] ?? 'POST',
                         ]) }})"
                         class="flex w-full px-4 py-2 text-left text-sm {{ $tone }}"
                     >

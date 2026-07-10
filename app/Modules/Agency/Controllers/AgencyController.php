@@ -172,4 +172,21 @@ class AgencyController extends Controller
             ->route('agencies.show', $id)
             ->with('success', 'Acente bilgileri güncellendi.');
     }
+
+    public function deactivate(Request $request, int $id): RedirectResponse
+    {
+        abort_unless($request->user()?->can('agency.update'), 403);
+
+        $agency = $this->agencies->find($id);
+
+        if ($agency === null) {
+            abort(404);
+        }
+
+        $this->agencies->deactivate($agency);
+
+        return redirect()
+            ->route('agencies.index')
+            ->with('success', 'Acente pasife alındı.');
+    }
 }

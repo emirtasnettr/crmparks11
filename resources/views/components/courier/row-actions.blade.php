@@ -20,9 +20,20 @@
 
     $items = array_merge($items, [
         RowActions::link('Banka Bilgileri', route('couriers.bank-accounts.index', ['courier_id' => $id])),
-        RowActions::divider(),
-        RowActions::run('Pasife Al', 'deactivate', confirm: "{$name} pasife alınsın mı?", message: 'Kurye pasife alındı.', tone: 'danger', id: $id),
     ]);
+
+    if (($courier['status'] ?? '') === 'active') {
+        $items[] = RowActions::divider();
+        $items[] = RowActions::run(
+            'Pasife Al',
+            'deactivate',
+            confirm: "{$name} pasife alınsın mı?",
+            message: 'Kurye pasife alındı.',
+            tone: 'danger',
+            id: $id,
+            url: route('couriers.deactivate', $id),
+        );
+    }
 @endphp
 
 <x-ui.action-menu :items="$items" width="w-52" />

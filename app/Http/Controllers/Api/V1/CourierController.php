@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Responses\ApiResponse;
+use App\Modules\Courier\Requests\StoreCourierRequest;
+use App\Modules\Courier\Requests\UpdateCourierRequest;
 use App\Modules\Courier\Services\CourierPresenter;
 use App\Modules\Courier\Services\CourierService;
 use Illuminate\Http\JsonResponse;
@@ -47,6 +49,45 @@ class CourierController extends ApiController
         return ApiResponse::success(
             $this->presenter->detailPayload($courier),
             'Kurye detayı',
+        );
+    }
+
+    public function store(StoreCourierRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+
+        if ($request->hasFile('profile_photo')) {
+            $data['profile_photo'] = $request->file('profile_photo');
+        }
+
+        $courier = $this->couriers->create($data, $request->user());
+
+        return ApiResponse::success(
+            $this->presenter->detailPayload($courier),
+            'Kurye oluşturuldu',
+            201,
+        );
+    }
+
+    public function update(UpdateCourierRequest $request, int $id): JsonResponse
+    {
+        $courier = $this->couriers->find($id);
+
+        if ($courier === null) {
+            return ApiResponse::error('Kurye bulunamadı.', 404);
+        }
+
+        $data = $request->validated();
+
+        if ($request->hasFile('profile_photo')) {
+            $data['profile_photo'] = $request->file('profile_photo');
+        }
+
+        $courier = $this->couriers->update($courier, $data, $request->user());
+
+        return ApiResponse::success(
+            $this->presenter->detailPayload($courier),
+            'Kurye güncellendi',
         );
     }
 }

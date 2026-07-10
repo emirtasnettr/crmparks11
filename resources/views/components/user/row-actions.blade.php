@@ -21,10 +21,29 @@
 
     $items[] = RowActions::link('Rolleri Yönet', route('permissions.index'));
     $items[] = RowActions::divider();
-    $items[] = RowActions::run('Hesabı Askıya Al', 'suspend', confirm: "{$name} askıya alınsın mı?", message: 'Hesap askıya alındı.', tone: 'warning', id: $id);
+
+    if (($user['status'] ?? '') === 'active') {
+        $items[] = RowActions::run(
+            'Hesabı Askıya Al',
+            'suspend',
+            confirm: "{$name} askıya alınsın mı?",
+            message: 'Hesap askıya alındı.',
+            tone: 'warning',
+            id: $id,
+            url: route('users.suspend', $id),
+        );
+    }
 
     if ($user['can_delete'] ?? false) {
-        $items[] = RowActions::run('Hesabı Pasife Al', 'deactivate', confirm: "{$name} pasife alınsın mı?", message: 'Hesap pasife alındı.', tone: 'danger', id: $id);
+        $items[] = RowActions::run(
+            'Hesabı Pasife Al',
+            'deactivate',
+            confirm: "{$name} pasife alınsın mı?",
+            message: 'Hesap pasife alındı.',
+            tone: 'danger',
+            id: $id,
+            url: route('users.deactivate', $id),
+        );
     }
 @endphp
 

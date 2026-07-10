@@ -118,6 +118,13 @@ class AgencyService
         });
     }
 
+    public function deactivate(Agency $agency): Agency
+    {
+        $agency->update(['status' => 'inactive']);
+
+        return $agency->fresh(['city', 'district']);
+    }
+
     /**
      * @param  array<string, mixed>  $filters
      */

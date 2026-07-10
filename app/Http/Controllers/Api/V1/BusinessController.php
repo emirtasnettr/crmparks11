@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Responses\ApiResponse;
+use App\Modules\Business\Requests\StoreBusinessRequest;
+use App\Modules\Business\Requests\UpdateBusinessRequest;
 use App\Modules\Business\Services\BusinessPresenter;
 use App\Modules\Business\Services\BusinessService;
 use Illuminate\Http\JsonResponse;
@@ -47,6 +49,45 @@ class BusinessController extends ApiController
         return ApiResponse::success(
             $this->presenter->detailPayload($business),
             'İşletme detayı',
+        );
+    }
+
+    public function store(StoreBusinessRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+
+        if ($request->hasFile('logo')) {
+            $data['logo'] = $request->file('logo');
+        }
+
+        $business = $this->businesses->create($data, $request->user());
+
+        return ApiResponse::success(
+            $this->presenter->detailPayload($business),
+            'İşletme oluşturuldu',
+            201,
+        );
+    }
+
+    public function update(UpdateBusinessRequest $request, int $id): JsonResponse
+    {
+        $business = $this->businesses->find($id);
+
+        if ($business === null) {
+            return ApiResponse::error('İşletme bulunamadı.', 404);
+        }
+
+        $data = $request->validated();
+
+        if ($request->hasFile('logo')) {
+            $data['logo'] = $request->file('logo');
+        }
+
+        $business = $this->businesses->update($business, $data, $request->user());
+
+        return ApiResponse::success(
+            $this->presenter->detailPayload($business),
+            'İşletme güncellendi',
         );
     }
 }

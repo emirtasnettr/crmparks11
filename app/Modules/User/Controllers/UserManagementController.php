@@ -2,6 +2,7 @@
 
 namespace App\Modules\User\Controllers;
 
+use App\Core\Enums\Status;
 use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
 use App\Modules\User\Data\UserManagementFormData;
@@ -80,6 +81,28 @@ class UserManagementController extends Controller
         return redirect()
             ->route('users.index')
             ->with('success', 'Kullanıcı pasife alındı.');
+    }
+
+    public function suspend(Request $request, int $id): RedirectResponse
+    {
+        abort_unless($request->user()?->can('user.update'), 403);
+
+        $this->userService->setStatus($id, Status::Suspended, $request->user());
+
+        return redirect()
+            ->route('users.index')
+            ->with('success', 'Hesap askıya alındı.');
+    }
+
+    public function deactivate(Request $request, int $id): RedirectResponse
+    {
+        abort_unless($request->user()?->can('user.delete'), 403);
+
+        $this->userService->setStatus($id, Status::Inactive, $request->user());
+
+        return redirect()
+            ->route('users.index')
+            ->with('success', 'Hesap pasife alındı.');
     }
 
     public function resetPassword(Request $request, int $id): RedirectResponse

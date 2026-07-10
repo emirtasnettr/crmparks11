@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Responses\ApiResponse;
+use App\Modules\Business\Requests\ApproveBusinessEarningRequest;
+use App\Modules\Business\Requests\StoreBusinessEarningRequest;
 use App\Modules\Business\Services\BusinessEarningPresenter;
 use App\Modules\Business\Services\BusinessEarningService;
 use Illuminate\Http\JsonResponse;
@@ -50,6 +52,31 @@ class EarningController extends ApiController
         return ApiResponse::success(
             $this->presenter->showRow($line),
             'Hakediş detayı',
+        );
+    }
+
+    public function store(StoreBusinessEarningRequest $request): JsonResponse
+    {
+        $line = $this->earnings->create($request->validated(), $request->user());
+
+        return ApiResponse::success(
+            $this->presenter->showRow($line),
+            'Hakediş oluşturuldu',
+            201,
+        );
+    }
+
+    public function approve(ApproveBusinessEarningRequest $request, int $id): JsonResponse
+    {
+        $line = $this->earnings->approve($id, $request->user());
+
+        $message = $line->status?->code === 'approved'
+            ? 'Hakediş onaylandı'
+            : 'Hakediş ilk onayı alındı';
+
+        return ApiResponse::success(
+            $this->presenter->showRow($line),
+            $message,
         );
     }
 }

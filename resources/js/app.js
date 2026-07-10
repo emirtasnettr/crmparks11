@@ -63,6 +63,32 @@ Alpine.data('sidebar', (initialExpanded = {}) => ({
             return;
         }
 
+        if (detail?.url) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = detail.url;
+            form.style.display = 'none';
+
+            const csrf = document.createElement('input');
+            csrf.type = 'hidden';
+            csrf.name = '_token';
+            csrf.value = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            form.appendChild(csrf);
+
+            const method = String(detail.method || 'POST').toUpperCase();
+            if (method !== 'POST') {
+                const spoof = document.createElement('input');
+                spoof.type = 'hidden';
+                spoof.name = '_method';
+                spoof.value = method;
+                form.appendChild(spoof);
+            }
+
+            document.body.appendChild(form);
+            form.submit();
+            return;
+        }
+
         this.toast = detail?.message || `${detail?.label ?? 'İşlem'} tamamlandı.`;
 
         window.setTimeout(() => {

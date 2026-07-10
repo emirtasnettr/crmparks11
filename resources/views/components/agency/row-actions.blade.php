@@ -15,9 +15,20 @@
         RowActions::link('Hakedişler', route('agencies.earnings.index', ['agency_id' => $id])),
         RowActions::link('Evraklar', route('agencies.documents.index', ['agency_id' => $id])),
         RowActions::link('Hareket Geçmişi', route('agencies.activities.index', ['agency_id' => $id])),
-        RowActions::divider(),
-        RowActions::run('Pasife Al', 'deactivate', confirm: "{$name} pasife alınsın mı?", message: 'Acente pasife alındı.', tone: 'danger', id: $id),
     ];
+
+    if (($agency['status'] ?? '') === 'active') {
+        $items[] = RowActions::divider();
+        $items[] = RowActions::run(
+            'Pasife Al',
+            'deactivate',
+            confirm: "{$name} pasife alınsın mı?",
+            message: 'Acente pasife alındı.',
+            tone: 'danger',
+            id: $id,
+            url: route('agencies.deactivate', $id),
+        );
+    }
 @endphp
 
 <x-ui.action-menu :items="$items" width="w-52" />

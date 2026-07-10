@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Responses\ApiResponse;
+use App\Modules\Agency\Requests\StoreAgencyRequest;
+use App\Modules\Agency\Requests\UpdateAgencyRequest;
 use App\Modules\Agency\Services\AgencyPresenter;
 use App\Modules\Agency\Services\AgencyService;
 use Illuminate\Http\JsonResponse;
@@ -46,6 +48,45 @@ class AgencyController extends ApiController
         return ApiResponse::success(
             $this->presenter->detailPayload($agency),
             'Acente detayı',
+        );
+    }
+
+    public function store(StoreAgencyRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+
+        if ($request->hasFile('logo')) {
+            $data['logo'] = $request->file('logo');
+        }
+
+        $agency = $this->agencies->create($data, $request->user());
+
+        return ApiResponse::success(
+            $this->presenter->detailPayload($agency),
+            'Acente oluşturuldu',
+            201,
+        );
+    }
+
+    public function update(UpdateAgencyRequest $request, int $id): JsonResponse
+    {
+        $agency = $this->agencies->find($id);
+
+        if ($agency === null) {
+            return ApiResponse::error('Acente bulunamadı.', 404);
+        }
+
+        $data = $request->validated();
+
+        if ($request->hasFile('logo')) {
+            $data['logo'] = $request->file('logo');
+        }
+
+        $agency = $this->agencies->update($agency, $data, $request->user());
+
+        return ApiResponse::success(
+            $this->presenter->detailPayload($agency),
+            'Acente güncellendi',
         );
     }
 }

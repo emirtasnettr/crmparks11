@@ -65,6 +65,8 @@ class CourierEarningPresenter
             'description' => $line->description,
             'earning_amount_formatted' => MoneyCalculator::format($earningAmount),
             'net_payment_formatted' => MoneyCalculator::format($netPayment),
+            'can_approve' => in_array($statusCode, ['draft', 'pending'], true),
+            'can_delete' => ! in_array($statusCode, ['paid', 'cancelled'], true),
         ];
     }
 

@@ -62,8 +62,27 @@ Sihirbaz sizi APP_URL, veritabanı ve admin şifresi için yönlendirir. Güncel
 ## API
 
 ```
-GET /api/v1/health
+GET  /api/v1/health
+POST /api/v1/auth/login
+GET  /api/v1/auth/me
+POST /api/v1/auth/logout
+
+GET|POST       /api/v1/businesses
+GET|PUT        /api/v1/businesses/{id}
+GET|POST       /api/v1/couriers
+GET|PUT        /api/v1/couriers/{id}
+GET|POST       /api/v1/agencies
+GET|PUT        /api/v1/agencies/{id}
+GET|POST       /api/v1/earnings
+POST           /api/v1/earnings/{id}/approve
+GET            /api/v1/notifications
+GET            /api/v1/notifications/unread
+PATCH          /api/v1/notifications/{id}/read
+POST           /api/v1/notifications/read-all
+GET            /api/v1/dashboard
 ```
+
+Sanctum token ile kimlik doğrulama gerekir (login hariç).
 
 ## Testler
 
