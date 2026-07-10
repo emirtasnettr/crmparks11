@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Finance\Data\PaymentFormData;
 use App\Modules\Finance\Exports\FinanceListExportSheets;
 use App\Modules\Finance\Requests\StorePaymentRequest;
+use App\Modules\Finance\Requests\UpdatePaymentRequest;
 use App\Modules\Finance\Services\PaymentPresenter;
 use App\Modules\Finance\Services\PaymentService;
 use Illuminate\Http\RedirectResponse;
@@ -77,6 +78,15 @@ class FinancePaymentController extends Controller
             ->with('success', 'Ödeme kaydı başarıyla oluşturuldu.');
     }
 
+    public function update(UpdatePaymentRequest $request, int $id): RedirectResponse
+    {
+        $payment = $this->service->update($id, $request->validated(), $request->user());
+
+        return redirect()
+            ->route('finance.payments.show', $payment->id)
+            ->with('success', 'Ödeme kaydı başarıyla güncellendi.');
+    }
+
     public function export(Request $request): BinaryFileResponse
     {
         $filters = [
@@ -102,6 +112,8 @@ class FinancePaymentController extends Controller
 
         return view('modules.finance.payments.show', [
             'payment' => $this->presenter->showRow($payment),
+            'recipientTypes' => PaymentFormData::recipientTypes(),
+            'recipientsByType' => $this->service->recipientsByType(),
         ]);
     }
 }

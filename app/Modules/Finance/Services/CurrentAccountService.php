@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class CurrentAccountService
 {
@@ -117,6 +118,64 @@ class CurrentAccountService
 
             return $account->fresh('movements');
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function update(int $id, array $data, User $user): CurrentAccount
+    {
+        return DB::transaction(function () use ($id, $data, $user): CurrentAccount {
+            $account = $this->find($id);
+
+            if ($account === null) {
+                abort(404);
+            }
+
+            if (! $this->canUpdate($account)) {
+                throw ValidationException::withMessages([
+                    'current_account' => 'Bu cari hesap güncellenemez.',
+                ]);
+            }
+
+            $oldValues = $account->only([
+                'title', 'phone', 'email', 'tax_number', 'city', 'address', 'status',
+            ]);
+
+            $updates = [
+                'title' => $data['title'],
+                'phone' => $data['phone'] ?? $account->phone,
+                'email' => $data['email'] ?? $account->email,
+                'tax_number' => $data['tax_number'] ?? $account->tax_number,
+                'city' => $data['city'] ?? $account->city,
+                'address' => $data['address'] ?? $account->address,
+            ];
+
+            if ($account->accountable_type === null) {
+                $updates['account_type'] = $data['type'] ?? $account->account_type;
+            }
+
+            if (isset($data['status'])) {
+                $updates['status'] = $data['status'];
+            }
+
+            $account->update($updates);
+
+            $this->activityLog->log(
+                'current_account_updated',
+                $account,
+                description: "{$account->code} cari hesabı güncellendi.",
+                oldValues: $oldValues,
+                newValues: $account->fresh()->only(array_keys($oldValues)),
+            );
+
+            return $account->fresh('movements');
+        });
+    }
+
+    public function canUpdate(CurrentAccount $account): bool
+    {
+        return true;
     }
 
     /**

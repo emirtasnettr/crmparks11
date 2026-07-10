@@ -13,8 +13,8 @@
         $items[] = RowActions::run('İndir', 'download', message: 'Fatura indiriliyor.');
     }
 
-    if (($invoice['invoice_status'] ?? '') !== 'cancelled') {
-        $items[] = RowActions::modal('Düzenle', 'finance-row-action', 'create', $id);
+    if ($invoice['can_update'] ?? false) {
+        $items[] = RowActions::link('Düzenle', route('finance.invoices.show', $id).'#edit');
         $items[] = RowActions::run('İptal Et', 'cancel', confirm: 'Fatura iptal edilsin mi?', message: 'Fatura iptal edildi.', tone: 'danger', id: $id);
     }
 

@@ -14,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PaymentService
 {
@@ -199,6 +200,83 @@ class PaymentService
 
             return $payment->fresh(['courier', 'agency', 'earningLine', 'currentAccount', 'lines']);
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function update(int $id, array $data, User $user): FinancePayment
+    {
+        return DB::transaction(function () use ($id, $data, $user): FinancePayment {
+            $payment = $this->find($id);
+
+            if ($payment === null) {
+                abort(404);
+            }
+
+            if (! $this->canUpdate($payment)) {
+                throw ValidationException::withMessages([
+                    'payment' => 'Bu ödeme kaydı güncellenemez.',
+                ]);
+            }
+
+            $paymentDate = Carbon::parse($data['payment_date']);
+            $totalAmount = round((float) $data['total_amount'], 2);
+            $paidAmount = round((float) $payment->paid_amount, 2);
+
+            if ($totalAmount < $paidAmount) {
+                throw ValidationException::withMessages([
+                    'total_amount' => 'Toplam tutar ödenen tutardan küçük olamaz.',
+                ]);
+            }
+
+            $recipientType = $payment->earning_line_id
+                ? $payment->recipient_type
+                : $data['recipient_type'];
+            $recipientId = $payment->earning_line_id
+                ? (int) $payment->recipient_id
+                : (int) $data['recipient_id'];
+
+            [$courierId, $agencyId, $recipientName, $currentAccountId] = $this->resolveRecipient(
+                $recipientType,
+                $recipientId,
+            );
+
+            $oldValues = $payment->only([
+                'recipient_type', 'recipient_id', 'scheduled_date', 'total_amount',
+                'description', 'notes',
+            ]);
+
+            $payment->update([
+                'recipient_type' => $recipientType,
+                'courier_id' => $courierId,
+                'agency_id' => $agencyId,
+                'recipient_id' => $recipientId,
+                'recipient_name' => $recipientName,
+                'current_account_id' => $currentAccountId,
+                'scheduled_date' => $paymentDate->toDateString(),
+                'total_amount' => $totalAmount,
+                'description' => $data['description'] ?? $payment->description,
+                'notes' => $data['notes'] ?? $payment->notes,
+            ]);
+
+            $this->syncStatus($payment->fresh(['lines']));
+
+            $this->activityLog->log(
+                'payment_updated',
+                $payment,
+                description: "{$payment->reference} ödeme kaydı güncellendi.",
+                oldValues: $oldValues,
+                newValues: $payment->fresh()->only(array_keys($oldValues)),
+            );
+
+            return $payment->fresh(['courier', 'agency', 'earningLine', 'currentAccount', 'lines']);
+        });
+    }
+
+    public function canUpdate(FinancePayment $payment): bool
+    {
+        return $payment->is_active && $payment->status !== 'paid';
     }
 
     /**

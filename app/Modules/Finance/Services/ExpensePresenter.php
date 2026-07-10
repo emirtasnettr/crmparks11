@@ -56,6 +56,7 @@ class ExpensePresenter
             'document_no' => $expense->document_no,
             'description' => $expense->description,
             'notes' => $expense->notes,
+            'can_update' => true,
             'expense_type_label' => ExpenseFormData::expenseTypes()[$expense->expense_type] ?? $expense->expense_type,
             'payment_status_label' => ExpenseFormData::paymentStatuses()[$expense->payment_status] ?? $expense->payment_status,
             'source_label' => ExpenseFormData::sources()[$expense->source] ?? $expense->source,

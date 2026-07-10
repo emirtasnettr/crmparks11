@@ -32,8 +32,8 @@
                 <x-ui.button variant="secondary">PDF Görüntüle</x-ui.button>
                 <x-ui.button variant="secondary">İndir</x-ui.button>
             @endif
-            @if ($invoice['invoice_status'] !== 'cancelled')
-                <x-ui.button variant="secondary">Düzenle</x-ui.button>
+            @if ($invoice['can_update'] ?? false)
+                <x-ui.button href="#edit">Düzenle</x-ui.button>
             @endif
             @if ($invoice['collection_id'])
                 <x-ui.button href="{{ route('finance.collections.show', $invoice['collection_id']) }}" variant="secondary">
@@ -219,5 +219,7 @@
             @endif
         </x-ui.card>
     </div>
+
+    @include('modules.finance.invoices.partials.edit-form')
 </div>
 @endsection

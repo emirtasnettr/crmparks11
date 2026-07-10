@@ -68,6 +68,7 @@ class InvoicePresenter
             'pdf_filename' => $invoice->pdf_filename,
             'description' => $invoice->description,
             'notes' => $invoice->notes,
+            'can_update' => $invoice->invoice_status !== 'cancelled',
             'created_at' => $invoice->created_at?->toDateString(),
             'business_name' => $business?->company_name ?? '—',
             'business_brand' => $business?->brand_name ?? '—',

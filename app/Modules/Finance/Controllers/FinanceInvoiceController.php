@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Finance\Data\InvoiceFormData;
 use App\Modules\Finance\Exports\FinanceListExportSheets;
 use App\Modules\Finance\Requests\StoreInvoiceRequest;
+use App\Modules\Finance\Requests\UpdateInvoiceRequest;
 use App\Modules\Finance\Services\InvoicePresenter;
 use App\Modules\Finance\Services\InvoiceService;
 use Illuminate\Http\RedirectResponse;
@@ -67,6 +68,15 @@ class FinanceInvoiceController extends Controller
             ->with('success', 'Fatura kaydı başarıyla oluşturuldu.');
     }
 
+    public function update(UpdateInvoiceRequest $request, int $id): RedirectResponse
+    {
+        $invoice = $this->service->update($id, $request->validated(), $request->user());
+
+        return redirect()
+            ->route('finance.invoices.show', $invoice->id)
+            ->with('success', 'Fatura kaydı başarıyla güncellendi.');
+    }
+
     public function export(Request $request): BinaryFileResponse
     {
         $filters = [
@@ -92,6 +102,8 @@ class FinanceInvoiceController extends Controller
 
         return view('modules.finance.invoices.show', [
             'invoice' => $this->presenter->showRow($invoice),
+            'businesses' => $this->service->businesses(),
+            'invoiceTypes' => InvoiceFormData::invoiceTypes(),
         ]);
     }
 }

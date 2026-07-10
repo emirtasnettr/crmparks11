@@ -29,7 +29,9 @@
             </p>
         </div>
         <div class="flex shrink-0 flex-wrap gap-2">
-            <x-ui.button variant="secondary">Düzenle</x-ui.button>
+            @if ($expense['can_update'] ?? false)
+                <x-ui.button href="#edit">Düzenle</x-ui.button>
+            @endif
             <x-ui.button variant="secondary">Ödeme Yap</x-ui.button>
             <x-ui.button variant="secondary">PDF Oluştur</x-ui.button>
         </div>
@@ -185,5 +187,7 @@
             </p>
         </x-ui.card>
     </div>
+
+    @include('modules.finance.expenses.partials.edit-form')
 </div>
 @endsection

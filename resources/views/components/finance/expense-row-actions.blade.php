@@ -10,12 +10,18 @@
 
     $items = [
         RowActions::link('Görüntüle', route('finance.expenses.show', $id)),
-        RowActions::modal('Düzenle', 'finance-row-action', 'create', $id),
+    ];
+
+    if ($expense['can_update'] ?? false) {
+        $items[] = RowActions::link('Düzenle', route('finance.expenses.show', $id).'#edit');
+    }
+
+    $items = array_merge($items, [
         RowActions::link('Ödeme Gir', route('finance.payments.index')),
         RowActions::link('Cari Kartına Git', $cariLink),
         RowActions::divider(),
         RowActions::run('Sil', 'delete', confirm: 'Gider kaydı silinsin mi?', message: 'Gider kaydı silindi.', tone: 'danger', id: $id),
-    ];
+    ]);
 @endphp
 
 <x-ui.action-menu :items="$items" width="w-52" />

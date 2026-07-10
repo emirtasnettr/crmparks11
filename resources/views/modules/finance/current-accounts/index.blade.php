@@ -12,7 +12,10 @@
 
 @section('content')
 <div
-    x-data="financeCurrentAccountPage(@js($accountDetails))"
+    x-data="financeCurrentAccountPage(@js([
+        'accountDetails' => $accountDetails,
+        'routes' => ['update' => url('/finans/cari-hesaplar')],
+    ]))"
     @current-account-card.window="openCard($event.detail)"
     @current-account-statement.window="openStatement($event.detail)"
     @current-account-movement.window="openMovement($event.detail)"
@@ -156,5 +159,6 @@
     @include('modules.finance.current-accounts.partials.statement-modal')
     @include('modules.finance.current-accounts.partials.movement-modal')
     @include('modules.finance.current-accounts.partials.new-account-modal')
+    @include('modules.finance.current-accounts.partials.edit-account-modal')
 </div>
 @endsection

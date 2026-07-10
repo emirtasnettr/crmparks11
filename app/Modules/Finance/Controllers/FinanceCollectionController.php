@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Finance\Data\CollectionFormData;
 use App\Modules\Finance\Exports\FinanceListExportSheets;
 use App\Modules\Finance\Requests\StoreCollectionRequest;
+use App\Modules\Finance\Requests\UpdateCollectionRequest;
 use App\Modules\Finance\Services\CollectionPresenter;
 use App\Modules\Finance\Services\CollectionService;
 use Illuminate\Http\RedirectResponse;
@@ -67,6 +68,15 @@ class FinanceCollectionController extends Controller
             ->with('success', 'Tahsilat kaydı başarıyla oluşturuldu.');
     }
 
+    public function update(UpdateCollectionRequest $request, int $id): RedirectResponse
+    {
+        $collection = $this->service->update($id, $request->validated(), $request->user());
+
+        return redirect()
+            ->route('finance.collections.show', $collection->id)
+            ->with('success', 'Tahsilat kaydı başarıyla güncellendi.');
+    }
+
     public function export(Request $request): BinaryFileResponse
     {
         $filters = [
@@ -92,6 +102,8 @@ class FinanceCollectionController extends Controller
 
         return view('modules.finance.collections.show', [
             'collection' => $this->presenter->showRow($collection),
+            'businesses' => $this->service->businesses(),
+            'revenueOptions' => $this->service->revenueOptions(),
         ]);
     }
 }

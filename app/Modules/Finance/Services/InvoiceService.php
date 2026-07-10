@@ -12,6 +12,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class InvoiceService
 {
@@ -182,6 +183,91 @@ class InvoiceService
 
             return $invoice->fresh(['business.city', 'business.district', 'earningLine', 'currentAccount', 'collection']);
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function update(int $id, array $data, User $user): FinanceInvoice
+    {
+        return DB::transaction(function () use ($id, $data, $user): FinanceInvoice {
+            $invoice = $this->find($id);
+
+            if ($invoice === null) {
+                abort(404);
+            }
+
+            if (! $this->canUpdate($invoice)) {
+                throw ValidationException::withMessages([
+                    'invoice' => 'Bu fatura kaydı güncellenemez.',
+                ]);
+            }
+
+            $business = Business::query()->findOrFail((int) $data['business_id']);
+            $account = $this->currentAccounts->ensureForEntity($business);
+            $invoiceDate = Carbon::parse($data['invoice_date']);
+            $dueDate = Carbon::parse($data['due_date']);
+            $subtotal = round((float) $data['subtotal'], 2);
+            $vatRate = (int) ($data['vat_rate'] ?? 20);
+            $vatAmount = round($subtotal * ($vatRate / 100), 2);
+            $grandTotal = round($subtotal + $vatAmount, 2);
+            $collectedAmount = round((float) $invoice->collected_amount, 2);
+
+            if ($subtotal < $collectedAmount) {
+                throw ValidationException::withMessages([
+                    'subtotal' => 'Ara toplam tahsil edilen tutardan küçük olamaz.',
+                ]);
+            }
+
+            $oldValues = $invoice->only([
+                'business_id', 'invoice_type', 'invoice_date', 'due_date',
+                'subtotal', 'vat_rate', 'description', 'notes',
+            ]);
+
+            $invoice->update([
+                'business_id' => $business->id,
+                'current_account_id' => $account->id,
+                'invoice_type' => $data['invoice_type'] ?? $invoice->invoice_type,
+                'invoice_date' => $invoiceDate->toDateString(),
+                'due_date' => $dueDate->toDateString(),
+                'subtotal' => $subtotal,
+                'vat_rate' => $vatRate,
+                'vat_amount' => $vatAmount,
+                'grand_total' => $grandTotal,
+                'collection_status' => $this->resolveCollectionStatus(
+                    $collectedAmount,
+                    $subtotal,
+                    $dueDate,
+                    $invoice->invoice_status,
+                ),
+                'description' => $data['description'] ?? $invoice->description,
+                'notes' => $data['notes'] ?? $invoice->notes,
+            ]);
+
+            if ($invoice->collection_id !== null) {
+                FinanceCollection::query()
+                    ->whereKey($invoice->collection_id)
+                    ->update([
+                        'due_date' => $dueDate->toDateString(),
+                        'total_amount' => $subtotal,
+                    ]);
+            }
+
+            $this->activityLog->log(
+                'invoice_updated',
+                $invoice,
+                description: "{$invoice->reference} fatura kaydı güncellendi.",
+                oldValues: $oldValues,
+                newValues: $invoice->fresh()->only(array_keys($oldValues)),
+            );
+
+            return $invoice->fresh(['business.city', 'business.district', 'earningLine', 'currentAccount', 'collection']);
+        });
+    }
+
+    public function canUpdate(FinanceInvoice $invoice): bool
+    {
+        return $invoice->invoice_status !== 'cancelled';
     }
 
     private function createCollectionForInvoice(FinanceInvoice $invoice, User $user): FinanceCollection

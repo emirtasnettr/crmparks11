@@ -11,6 +11,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class RevenueService
 {
@@ -133,6 +134,73 @@ class RevenueService
 
             return $revenue->fresh(['business.city', 'business.district', 'currentAccount', 'earningLine']);
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function update(int $id, array $data, User $user): FinanceRevenue
+    {
+        return DB::transaction(function () use ($id, $data, $user): FinanceRevenue {
+            $revenue = $this->find($id);
+
+            if ($revenue === null) {
+                abort(404);
+            }
+
+            if (! $this->canUpdate($revenue)) {
+                throw ValidationException::withMessages([
+                    'revenue' => 'Bu gelir kaydı güncellenemez.',
+                ]);
+            }
+
+            $business = Business::query()->findOrFail((int) $data['business_id']);
+            $account = $this->currentAccounts->ensureForEntity($business);
+            [$periodMonth, $periodYear] = $this->parsePeriodLabel($data['period_label'] ?? null);
+            $invoiceNo = trim((string) ($data['invoice_no'] ?? '')) ?: null;
+            $collectionStatus = $data['collection_status'] ?? $revenue->collection_status;
+            $revenueDate = Carbon::parse($data['revenue_date'] ?? $revenue->revenue_date->toDateString());
+
+            $oldValues = $revenue->only([
+                'business_id', 'revenue_type', 'period_label', 'invoice_no', 'amount',
+                'vat_rate', 'collection_status', 'revenue_date', 'description', 'notes',
+            ]);
+
+            $revenue->update([
+                'business_id' => $business->id,
+                'current_account_id' => $account->id,
+                'revenue_type' => $data['revenue_type'],
+                'period_month' => $periodMonth,
+                'period_year' => $periodYear,
+                'period_label' => $data['period_label'] ?? null,
+                'invoice_no' => $invoiceNo,
+                'invoice_status' => $invoiceNo ? 'issued' : 'none',
+                'amount' => round((float) $data['amount'], 2),
+                'vat_rate' => (int) ($data['vat_rate'] ?? 20),
+                'collection_status' => $collectionStatus,
+                'collection_date' => $collectionStatus === 'collected'
+                    ? ($data['collection_date'] ?? $revenue->collection_date?->toDateString() ?? $revenueDate->toDateString())
+                    : null,
+                'revenue_date' => $revenueDate->toDateString(),
+                'description' => $data['description'] ?? $revenue->description,
+                'notes' => $data['notes'] ?? $revenue->notes,
+            ]);
+
+            $this->activityLog->log(
+                'revenue_updated',
+                $revenue,
+                description: "{$revenue->reference} gelir kaydı güncellendi.",
+                oldValues: $oldValues,
+                newValues: $revenue->fresh()->only(array_keys($oldValues)),
+            );
+
+            return $revenue->fresh(['business.city', 'business.district', 'currentAccount', 'earningLine']);
+        });
+    }
+
+    public function canUpdate(FinanceRevenue $revenue): bool
+    {
+        return true;
     }
 
     /**

@@ -11,6 +11,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ExpenseService
 {
@@ -142,6 +143,70 @@ class ExpenseService
 
             return $expense->fresh(['courier', 'agency', 'currentAccount', 'earningLine']);
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function update(int $id, array $data, User $user): FinanceExpense
+    {
+        return DB::transaction(function () use ($id, $data, $user): FinanceExpense {
+            $expense = $this->find($id);
+
+            if ($expense === null) {
+                abort(404);
+            }
+
+            if (! $this->canUpdate($expense)) {
+                throw ValidationException::withMessages([
+                    'expense' => 'Bu gider kaydı güncellenemez.',
+                ]);
+            }
+
+            $expenseType = $data['expense_type'];
+            $courierId = ! empty($data['courier_id']) ? (int) $data['courier_id'] : null;
+            $agencyId = ! empty($data['agency_id']) ? (int) $data['agency_id'] : null;
+            $paymentStatus = $data['payment_status'] ?? $expense->payment_status;
+            $expenseDate = Carbon::parse($data['expense_date'] ?? $expense->expense_date->toDateString());
+            $currentAccountId = $this->resolveCurrentAccountId($courierId, $agencyId);
+
+            $oldValues = $expense->only([
+                'expense_type', 'courier_id', 'agency_id', 'amount', 'vat_rate',
+                'expense_date', 'payment_status', 'document_no', 'description', 'notes',
+            ]);
+
+            $expense->update([
+                'expense_type' => $expenseType,
+                'courier_id' => $courierId,
+                'agency_id' => $agencyId,
+                'current_account_id' => $currentAccountId,
+                'amount' => round((float) $data['amount'], 2),
+                'vat_rate' => (int) ($data['vat_rate'] ?? 20),
+                'expense_date' => $expenseDate->toDateString(),
+                'payment_status' => $paymentStatus,
+                'payment_date' => $paymentStatus === 'paid'
+                    ? ($data['payment_date'] ?? $expense->payment_date?->toDateString() ?? $expenseDate->toDateString())
+                    : null,
+                'document_no' => $data['document_no'] ?? $expense->document_no,
+                'description' => $data['description'] ?? $expense->description,
+                'notes' => $data['notes'] ?? $expense->notes,
+            ]);
+
+            $this->activityLog->log(
+                'expense_updated',
+                $expense,
+                description: "{$expense->reference} gider kaydı güncellendi.",
+                oldValues: $oldValues,
+                newValues: $expense->fresh()->only(array_keys($oldValues)),
+            );
+
+            return $expense->fresh(['courier', 'agency', 'currentAccount', 'earningLine']);
+        });
+    }
+
+    public function canUpdate(FinanceExpense $expense): bool
+    {
+        return true;
     }
 
     /**

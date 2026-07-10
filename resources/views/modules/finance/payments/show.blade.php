@@ -30,11 +30,11 @@
             </p>
         </div>
         <div class="flex shrink-0 flex-wrap gap-2">
-            @if ($payment['status'] !== 'cancelled')
-                <x-ui.button variant="secondary">Düzenle</x-ui.button>
-                @if ($payment['remaining_amount'] > 0)
-                    <x-ui.button variant="secondary">Ödeme Yap</x-ui.button>
-                @endif
+            @if ($payment['can_update'] ?? false)
+                <x-ui.button href="#edit">Düzenle</x-ui.button>
+            @endif
+            @if ($payment['status'] !== 'cancelled' && ($payment['remaining_amount'] ?? 0) > 0)
+                <x-ui.button variant="secondary">Ödeme Yap</x-ui.button>
             @endif
             @if (count($payment['receipts']) > 0)
                 <x-ui.button variant="secondary">Dekont Görüntüle</x-ui.button>
@@ -214,5 +214,7 @@
             @endif
         </x-ui.card>
     </div>
+
+    @include('modules.finance.payments.partials.edit-form')
 </div>
 @endsection

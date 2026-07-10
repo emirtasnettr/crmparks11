@@ -26,11 +26,17 @@ class FinanceActivityLogFormData
     {
         return [
             'revenue_created' => 'Kayıt Oluşturuldu',
+            'revenue_updated' => 'Kayıt Güncellendi',
             'expense_created' => 'Kayıt Oluşturuldu',
+            'expense_updated' => 'Kayıt Güncellendi',
             'collection_created' => 'Tahsilat Yapıldı',
+            'collection_updated' => 'Kayıt Güncellendi',
             'payment_created' => 'Ödeme Yapıldı',
+            'payment_updated' => 'Kayıt Güncellendi',
             'invoice_created' => 'Fatura Kesildi',
+            'invoice_updated' => 'Kayıt Güncellendi',
             'current_account_created' => 'Kayıt Oluşturuldu',
+            'current_account_updated' => 'Kayıt Güncellendi',
             'current_account_movement_created' => 'Cari Hareketi Oluşturuldu',
         ];
     }

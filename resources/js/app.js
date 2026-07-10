@@ -2058,10 +2058,23 @@ Alpine.data('financeDashboardPage', () => ({
     },
 }));
 
-Alpine.data('financeCurrentAccountPage', (accountDetails = {}) => ({
-    accountDetails,
+Alpine.data('financeCurrentAccountPage', (preset = {}) => ({
+    accountDetails: preset.accountDetails ?? preset,
+    routes: preset.routes ?? {},
     activeModal: null,
     selected: null,
+    editAccountId: null,
+    editAccount: {
+        type: 'business',
+        title: '',
+        phone: '',
+        email: '',
+        tax_number: '',
+        city: '',
+        address: '',
+        status: 'active',
+        entity_id: null,
+    },
     movementSaved: false,
     newAccountSaved: false,
     movementErrors: {},
@@ -2119,9 +2132,32 @@ Alpine.data('financeCurrentAccountPage', (accountDetails = {}) => ({
         this.activeModal = 'new-account';
     },
 
+    openEditAccount(id) {
+        const account = this.accountDetails[id] ?? this.accountDetails[String(id)];
+
+        if (!account) {
+            return;
+        }
+
+        this.editAccountId = id;
+        this.editAccount = {
+            type: account.type ?? account.entity_type ?? 'business',
+            title: account.title === '—' ? '' : (account.title ?? ''),
+            phone: account.phone === '—' ? '' : (account.phone ?? ''),
+            email: account.email ?? '',
+            tax_number: account.tax_number ?? '',
+            city: account.city === '—' ? '' : (account.city ?? ''),
+            address: account.address ?? '',
+            status: account.status ?? 'active',
+            entity_id: account.entity_id ?? null,
+        };
+        this.activeModal = 'edit-account';
+    },
+
     closeModals() {
         this.activeModal = null;
         this.selected = null;
+        this.editAccountId = null;
         this.movementSaved = false;
         this.newAccountSaved = false;
         this.movementErrors = {};
@@ -2175,6 +2211,12 @@ Alpine.data('financeCurrentAccountPage', (accountDetails = {}) => ({
     },
 
     handleRowAction(detail) {
+        if (detail?.action === 'edit' && detail?.id) {
+            this.openEditAccount(detail.id);
+
+            return;
+        }
+
         if (detail?.modal) {
             this.activeModal = detail.modal;
             this.saved = false;

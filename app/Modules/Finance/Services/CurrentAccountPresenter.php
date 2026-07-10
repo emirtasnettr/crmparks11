@@ -68,6 +68,7 @@ class CurrentAccountPresenter
             'city' => $account->city ?? '—',
             'tax_number' => $account->tax_number,
             'status' => $account->status,
+            'can_update' => true,
             'address' => $account->address,
             'type_label' => CurrentAccountFormData::accountTypes()[$account->account_type] ?? '—',
             'status_label' => CurrentAccountFormData::statuses()[$account->status] ?? '—',

@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Finance\Data\ExpenseFormData;
 use App\Modules\Finance\Exports\FinanceListExportSheets;
 use App\Modules\Finance\Requests\StoreExpenseRequest;
+use App\Modules\Finance\Requests\UpdateExpenseRequest;
 use App\Modules\Finance\Services\ExpensePresenter;
 use App\Modules\Finance\Services\ExpenseService;
 use Illuminate\Http\RedirectResponse;
@@ -66,6 +67,15 @@ class FinanceExpenseController extends Controller
             ->with('success', 'Gider kaydı başarıyla oluşturuldu.');
     }
 
+    public function update(UpdateExpenseRequest $request, int $id): RedirectResponse
+    {
+        $expense = $this->service->update($id, $request->validated(), $request->user());
+
+        return redirect()
+            ->route('finance.expenses.show', $expense->id)
+            ->with('success', 'Gider kaydı başarıyla güncellendi.');
+    }
+
     public function export(Request $request): BinaryFileResponse
     {
         $filters = [
@@ -91,6 +101,10 @@ class FinanceExpenseController extends Controller
 
         return view('modules.finance.expenses.show', [
             'expense' => $this->presenter->showRow($expense),
+            'expenseTypes' => ExpenseFormData::expenseTypes(),
+            'paymentStatuses' => ExpenseFormData::paymentStatuses(),
+            'couriers' => $this->service->couriers(),
+            'agencies' => $this->service->agencies(),
         ]);
     }
 }

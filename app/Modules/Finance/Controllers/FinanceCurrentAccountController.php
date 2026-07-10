@@ -8,6 +8,7 @@ use App\Modules\Finance\Data\CurrentAccountFormData;
 use App\Modules\Finance\Exports\FinanceListExportSheets;
 use App\Modules\Finance\Requests\StoreCurrentAccountMovementRequest;
 use App\Modules\Finance\Requests\StoreCurrentAccountRequest;
+use App\Modules\Finance\Requests\UpdateCurrentAccountRequest;
 use App\Modules\Finance\Services\CurrentAccountPresenter;
 use App\Modules\Finance\Services\CurrentAccountService;
 use Illuminate\Http\RedirectResponse;
@@ -77,6 +78,15 @@ class FinanceCurrentAccountController extends Controller
         return redirect()
             ->route('finance.current-accounts.index')
             ->with('success', 'Cari hesap başarıyla oluşturuldu.');
+    }
+
+    public function update(UpdateCurrentAccountRequest $request, int $id): RedirectResponse
+    {
+        $this->service->update($id, $request->validated(), $request->user());
+
+        return redirect()
+            ->route('finance.current-accounts.index')
+            ->with('success', 'Cari hesap başarıyla güncellendi.');
     }
 
     public function storeMovement(StoreCurrentAccountMovementRequest $request): RedirectResponse

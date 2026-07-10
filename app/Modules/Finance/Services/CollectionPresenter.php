@@ -61,6 +61,7 @@ class CollectionPresenter
             'created_at' => $collection->created_at?->toDateString(),
             'description' => $collection->description,
             'notes' => $collection->notes,
+            'can_update' => $collection->status !== 'collected',
             'business_name' => $business?->company_name ?? '—',
             'business_brand' => $business?->brand_name ?? '—',
             'business_phone' => $business?->phone ?? '—',

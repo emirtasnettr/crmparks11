@@ -63,6 +63,7 @@ class RevenuePresenter
             'current_account_id' => $revenue->current_account_id,
             'current_account_code' => $revenue->currentAccount?->code,
             'notes' => $revenue->notes,
+            'can_update' => true,
             'business_name' => $business?->company_name ?? '—',
             'business_brand' => $business?->brand_name ?? '—',
             'business_phone' => $business?->phone ?? '—',

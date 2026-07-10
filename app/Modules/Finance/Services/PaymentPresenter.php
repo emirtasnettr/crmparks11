@@ -61,6 +61,7 @@ class PaymentPresenter
             'created_at' => $payment->created_at?->toDateString(),
             'description' => $payment->description,
             'notes' => $payment->notes,
+            'can_update' => $payment->is_active && $payment->status !== 'paid',
             'recipient_type_label' => PaymentFormData::recipientTypes()[$payment->recipient_type] ?? $payment->recipient_type,
             'status_label' => PaymentFormData::paymentStatuses()[$payment->status] ?? $payment->status,
             'payment_method_label' => $latestLine?->payment_method

@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Finance\Data\RevenueFormData;
 use App\Modules\Finance\Exports\FinanceListExportSheets;
 use App\Modules\Finance\Requests\StoreRevenueRequest;
+use App\Modules\Finance\Requests\UpdateRevenueRequest;
 use App\Modules\Finance\Services\RevenuePresenter;
 use App\Modules\Finance\Services\RevenueService;
 use Illuminate\Http\RedirectResponse;
@@ -66,6 +67,15 @@ class FinanceRevenueController extends Controller
             ->with('success', 'Gelir kaydı başarıyla oluşturuldu.');
     }
 
+    public function update(UpdateRevenueRequest $request, int $id): RedirectResponse
+    {
+        $revenue = $this->service->update($id, $request->validated(), $request->user());
+
+        return redirect()
+            ->route('finance.revenues.show', $revenue->id)
+            ->with('success', 'Gelir kaydı başarıyla güncellendi.');
+    }
+
     public function export(Request $request): BinaryFileResponse
     {
         $filters = [
@@ -91,6 +101,9 @@ class FinanceRevenueController extends Controller
 
         return view('modules.finance.revenues.show', [
             'revenue' => $this->presenter->showRow($revenue),
+            'businesses' => $this->service->businesses(),
+            'revenueTypes' => RevenueFormData::revenueTypes(),
+            'collectionStatuses' => RevenueFormData::collectionStatuses(),
         ]);
     }
 }

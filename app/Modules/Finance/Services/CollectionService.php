@@ -12,6 +12,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class CollectionService
 {
@@ -163,6 +164,75 @@ class CollectionService
 
             return $collection->fresh(['business.city', 'revenue', 'currentAccount', 'payments']);
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function update(int $id, array $data, User $user): FinanceCollection
+    {
+        return DB::transaction(function () use ($id, $data, $user): FinanceCollection {
+            $collection = $this->find($id);
+
+            if ($collection === null) {
+                abort(404);
+            }
+
+            if (! $this->canUpdate($collection)) {
+                throw ValidationException::withMessages([
+                    'collection' => 'Bu tahsilat kaydı güncellenemez.',
+                ]);
+            }
+
+            $business = Business::query()->findOrFail((int) $data['business_id']);
+            $account = $this->currentAccounts->ensureForEntity($business);
+            $revenueId = ! empty($data['revenue_id']) ? (int) $data['revenue_id'] : null;
+            $revenue = $revenueId ? FinanceRevenue::query()->findOrFail($revenueId) : null;
+            $dueDate = Carbon::parse($data['due_date']);
+            $totalAmount = round((float) $data['total_amount'], 2);
+            $collectedAmount = round((float) $collection->collected_amount, 2);
+
+            if ($totalAmount < $collectedAmount) {
+                throw ValidationException::withMessages([
+                    'total_amount' => 'Toplam tutar tahsil edilen tutardan küçük olamaz.',
+                ]);
+            }
+
+            $invoiceNo = trim((string) ($data['invoice_no'] ?? '')) ?: $revenue?->invoice_no;
+
+            $oldValues = $collection->only([
+                'business_id', 'revenue_id', 'invoice_no', 'due_date',
+                'total_amount', 'description', 'notes',
+            ]);
+
+            $collection->update([
+                'business_id' => $business->id,
+                'revenue_id' => $revenueId,
+                'current_account_id' => $account->id,
+                'invoice_no' => $invoiceNo,
+                'due_date' => $dueDate->toDateString(),
+                'total_amount' => $totalAmount,
+                'description' => $data['description'] ?? $collection->description,
+                'notes' => $data['notes'] ?? $collection->notes,
+            ]);
+
+            $this->syncStatus($collection->fresh(['payments']));
+
+            $this->activityLog->log(
+                'collection_updated',
+                $collection,
+                description: "{$collection->reference} tahsilat kaydı güncellendi.",
+                oldValues: $oldValues,
+                newValues: $collection->fresh()->only(array_keys($oldValues)),
+            );
+
+            return $collection->fresh(['business.city', 'revenue', 'currentAccount', 'payments']);
+        });
+    }
+
+    public function canUpdate(FinanceCollection $collection): bool
+    {
+        return $collection->status !== 'collected';
     }
 
     /**
