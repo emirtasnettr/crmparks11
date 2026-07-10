@@ -2,13 +2,6 @@
 
 @section('title', 'Hakediş Detayı')
 
-@section('breadcrumb')
-    <a href="{{ route('couriers.index') }}" class="hover:text-gray-900 dark:hover:text-white">Kuryeler</a>
-    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-    <a href="{{ route('couriers.earnings.index') }}" class="hover:text-gray-900 dark:hover:text-white">Hakedişler</a>
-    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-    <span class="font-medium text-gray-900 dark:text-white">{{ $earning['period_label'] }}</span>
-@endsection
 
 @section('content')
 <div class="max-w-5xl">

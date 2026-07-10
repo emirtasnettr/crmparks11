@@ -2,13 +2,6 @@
 
 @section('title', 'Faturalar')
 
-@section('breadcrumb')
-    <span class="text-gray-500 dark:text-slate-400">Finans</span>
-    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-    </svg>
-    <span class="font-medium text-gray-900 dark:text-white">Faturalar</span>
-@endsection
 
 @section('content')
 <div x-data="financeInvoicePage()" @finance-row-action.window="handleRowAction($event.detail)">
@@ -36,10 +29,10 @@
     </div>
 
     <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
-        <x-ui.finance-stat-card title="Toplam Fatura (KDV Hariç)" :value="money_excl_vat($summary['total_invoice'])" icon="chart" accent="primary" />
-        <x-ui.finance-stat-card title="Bu Ay Kesilen (KDV Hariç)" :value="money_excl_vat($summary['this_month_issued'])" icon="earning" accent="success" />
-        <x-ui.finance-stat-card title="Tahsil Edilen (KDV Hariç)" :value="money_excl_vat($summary['collected_amount'])" icon="earning" accent="blue" />
-        <x-ui.finance-stat-card title="Bekleyen (KDV Hariç)" :value="money_excl_vat($summary['pending_amount'])" icon="chart" accent="warning" />
+        <x-ui.finance-stat-card title="Toplam Fatura" :value="money_excl_vat($summary['total_invoice'])" icon="chart" accent="primary" />
+        <x-ui.finance-stat-card title="Bu Ay Kesilen" :value="money_excl_vat($summary['this_month_issued'])" icon="earning" accent="success" />
+        <x-ui.finance-stat-card title="Tahsil Edilen" :value="money_excl_vat($summary['collected_amount'])" icon="earning" accent="blue" />
+        <x-ui.finance-stat-card title="Bekleyen" :value="money_excl_vat($summary['pending_amount'])" icon="chart" accent="warning" />
         <x-ui.finance-stat-card title="İptal Edilen" :value="number_format($summary['cancelled_count'])" icon="chart" accent="danger" />
     </div>
 
@@ -85,7 +78,7 @@
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Hakediş Dönemi</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Fatura Tarihi</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Vade Tarihi</th>
-                        <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 text-right">Tutar (KDV Hariç)</th>
+                        <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 text-right">Tutar</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 text-right">KDV</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Tahsilat Durumu</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Fatura Durumu</th>

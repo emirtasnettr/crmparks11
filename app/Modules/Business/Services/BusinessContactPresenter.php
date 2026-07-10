@@ -16,7 +16,7 @@ class BusinessContactPresenter
         return [
             'id' => $contact->id,
             'business_id' => $contact->business_id,
-            'business_name' => $contact->business?->company_name ?? '—',
+            'business_name' => $contact->business?->displayName() ?? '—',
             'full_name' => $contact->full_name,
             'title' => $contact->title,
             'phone' => $contact->phone,

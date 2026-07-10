@@ -35,9 +35,15 @@ class EntityDeactivateTest extends TestCase
         $courier = Courier::factory()->create(['status' => 'active', 'created_by' => $user->id]);
         $agency = Agency::factory()->create(['status' => 'active', 'created_by' => $user->id]);
 
-        $this->actingAs($user)->post(route('businesses.deactivate', $business->id))
+        $this->actingAs($user)->post(route('businesses.deactivate', $business->id), [
+            'contract_end_date' => now()->toDateString(),
+            'notes' => 'Sözleşme sonlandırıldı',
+        ])
             ->assertRedirect(route('businesses.index'))
             ->assertSessionHas('success');
+
+        $this->assertSame('inactive', $business->fresh()->status);
+        $this->assertSame(now()->toDateString(), $business->fresh()->contract_end_date?->toDateString());
 
         $this->actingAs($user)->post(route('couriers.deactivate', $courier->id))
             ->assertRedirect(route('couriers.index'));
@@ -45,7 +51,6 @@ class EntityDeactivateTest extends TestCase
         $this->actingAs($user)->post(route('agencies.deactivate', $agency->id))
             ->assertRedirect(route('agencies.index'));
 
-        $this->assertSame('inactive', $business->fresh()->status);
         $this->assertSame('inactive', $courier->fresh()->status);
         $this->assertSame('inactive', $agency->fresh()->status);
     }

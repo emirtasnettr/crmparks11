@@ -202,7 +202,14 @@ class BusinessController extends Controller
       abort(404);
     }
 
-    $this->businesses->deactivate($business);
+    $data = $request->validate([
+      'contract_end_date' => ['required', 'date'],
+      'notes' => ['nullable', 'string', 'max:5000'],
+    ], [
+      'contract_end_date.required' => 'Pasif durum için sözleşme bitiş tarihi zorunludur.',
+    ]);
+
+    $this->businesses->deactivate($business, $data);
 
     return redirect()
       ->route('businesses.index')

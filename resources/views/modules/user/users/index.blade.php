@@ -2,13 +2,6 @@
 
 @section('title', 'Kullanıcılar')
 
-@section('breadcrumb')
-    <span class="text-gray-500 dark:text-slate-400">Kullanıcı Yönetimi</span>
-    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-    </svg>
-    <span class="font-medium text-gray-900 dark:text-white">Kullanıcılar</span>
-@endsection
 
 @section('content')
 <div
@@ -16,6 +9,7 @@
         'routes' => [
             'resetPassword' => url('/kullanici-yonetimi/kullanicilar'),
         ],
+        'openCreate' => $errors->hasAny(['first_name', 'last_name', 'phone', 'email', 'password', 'roles', 'linked_business_id', 'linked_courier_id', 'linked_agency_id', 'status']),
     ]))"
     @user-row-action.window="handleRowAction($event.detail)"
 >

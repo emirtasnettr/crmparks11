@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Courier\Data\CourierWorkHistoryFormData;
 use App\Modules\Courier\Services\CourierWorkHistoryPresenter;
 use App\Modules\Courier\Services\CourierWorkHistoryService;
+use App\Support\EntityCardRedirect;
 use App\Support\RequestFilter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -79,8 +80,11 @@ class CourierWorkHistoryController extends Controller
 
         $this->workHistory->terminate($record);
 
-        return redirect()
-            ->route('couriers.work-history.index', ['courier_id' => $record->courier_id])
-            ->with('success', 'Çalışma kaydı sonlandırıldı.');
+        return EntityCardRedirect::after(
+            route('couriers.work-history.index', ['courier_id' => $record->courier_id]),
+            'Çalışma kaydı sonlandırıldı.',
+            route('couriers.show', $record->courier_id),
+            'work_history',
+        );
     }
 }

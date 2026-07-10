@@ -29,7 +29,7 @@ class AgencyEarningPresenter
         return [
             'id' => (int) $lines->min('id'),
             'agency_id' => $agency->id,
-            'agency_name' => $agency->company_name,
+            'agency_name' => $agency->displayName(),
             'agency_authorized' => '—',
             'agency_city' => $agency->city?->name ?? '—',
             'agency_phone' => $agency->phone ?? '—',
@@ -54,7 +54,7 @@ class AgencyEarningPresenter
             'description' => null,
             'lines' => $lines->map(fn (EarningLine $line) => [
                 'courier_name' => $line->courier?->full_name ?? '—',
-                'business_name' => $line->business?->company_name ?? '—',
+                'business_name' => $line->business?->displayName() ?? '—',
                 'package_count' => (int) $line->package_count,
                 'agency_payment' => (float) $line->agency_payment,
             ])->values()->all(),

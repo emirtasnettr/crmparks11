@@ -14,7 +14,7 @@ class EarningNotificationService
 
     public function notifyCreated(EarningLine $earning, User $actor): void
     {
-        $businessName = $earning->business?->company_name ?? 'İşletme';
+        $businessName = $earning->business?->displayName() ?? 'İşletme';
         $period = $this->periodLabel($earning);
 
         $this->dispatcher->notifyRoles(
@@ -36,7 +36,7 @@ class EarningNotificationService
 
     public function notifyApproved(EarningLine $earning, User $actor): void
     {
-        $businessName = $earning->business?->company_name ?? 'İşletme';
+        $businessName = $earning->business?->displayName() ?? 'İşletme';
         $period = $this->periodLabel($earning);
 
         $this->dispatcher->notifyRoles(

@@ -7,6 +7,7 @@ use App\Modules\Business\Data\BusinessDocumentFormData;
 use App\Modules\Business\Requests\StoreBusinessDocumentRequest;
 use App\Modules\Business\Services\BusinessDocumentPresenter;
 use App\Modules\Business\Services\BusinessDocumentService;
+use App\Support\EntityCardRedirect;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -62,9 +63,11 @@ class BusinessDocumentController extends Controller
         );
 
         if ($request->boolean('redirect_to_business')) {
-            return redirect()
-                ->route('businesses.show', $document->documentable_id)
-                ->with('success', 'Evrak başarıyla yüklendi.');
+            return EntityCardRedirect::toShow(
+                route('businesses.show', $document->documentable_id),
+                'documents',
+                'Evrak başarıyla yüklendi.',
+            );
         }
 
         return redirect()
@@ -93,8 +96,11 @@ class BusinessDocumentController extends Controller
         $businessId = $document->documentable_id;
         $this->documents->destroy($document);
 
-        return redirect()
-            ->route('businesses.documents.index', ['business_id' => $businessId])
-            ->with('success', 'Evrak silindi.');
+        return EntityCardRedirect::after(
+            route('businesses.documents.index', ['business_id' => $businessId]),
+            'Evrak silindi.',
+            route('businesses.show', $businessId),
+            'documents',
+        );
     }
 }

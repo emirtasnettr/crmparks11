@@ -4,7 +4,7 @@
     use App\Core\Actions\RowActions;
 
     $id = $agency['id'];
-    $name = $agency['company_name'];
+    $name = $agency['display_name'] ?? $agency['brand_name'] ?? $agency['company_name'];
 
     $items = [
         RowActions::link('Görüntüle', route('agencies.show', $id)),

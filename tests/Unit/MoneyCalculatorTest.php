@@ -7,12 +7,12 @@ use PHPUnit\Framework\TestCase;
 
 class MoneyCalculatorTest extends TestCase
 {
-    public function test_format_appends_vat_exclusive_suffix(): void
+    public function test_format_returns_amount_without_inline_vat_suffix(): void
     {
-        $this->assertSame('1.234,56 ₺ KDV hariç', MoneyCalculator::format(1234.56));
+        $this->assertSame('1.234,56 ₺', MoneyCalculator::format(1234.56));
     }
 
-    public function test_format_vat_amount_does_not_append_suffix(): void
+    public function test_format_vat_amount_matches_standard_format(): void
     {
         $this->assertSame('246,91 ₺', MoneyCalculator::formatVatAmount(246.91));
     }

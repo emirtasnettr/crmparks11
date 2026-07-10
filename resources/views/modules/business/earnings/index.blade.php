@@ -2,13 +2,6 @@
 
 @section('title', 'Hakedişler')
 
-@section('breadcrumb')
-    <a href="{{ route('businesses.index') }}" class="hover:text-gray-900 dark:hover:text-white">İşletmeler</a>
-    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-    </svg>
-    <span class="font-medium text-gray-900 dark:text-white">Hakedişler</span>
-@endsection
 
 @section('content')
 <div
@@ -53,7 +46,7 @@
 
     {{-- İstatistik Kartları --}}
     <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-        <x-ui.finance-stat-card title="Toplam Hakediş" :value="money_excl_vat($summary['count'])" icon="earning" accent="blue" />
+        <x-ui.finance-stat-card title="Toplam Hakediş" :value="number_format($summary['count'])" icon="earning" accent="blue" />
         <x-ui.finance-stat-card title="Toplam Gelir" :value="number_format($summary['total_revenue'])" icon="chart" accent="success" />
         <x-ui.finance-stat-card title="Toplam Gider" :value="money_excl_vat($summary['total_expense'])" icon="earning" accent="danger" />
         <x-ui.finance-stat-card title="Toplam Kâr" :value="money_excl_vat($summary['total_profit'])" icon="chart" accent="violet" />
@@ -91,7 +84,7 @@
     <x-ui.card :padding="false" class="mt-6">
         <div class="flex flex-col gap-3 border-b border-gray-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 sm:px-6">
             <p class="text-sm font-medium text-gray-900 dark:text-white">
-                <span class="text-lg font-bold">{{ money_excl_vat($total) }}</span> kayıt listeleniyor
+                <span class="text-lg font-bold">{{ number_format($total) }}</span> kayıt listeleniyor
             </p>
             <x-ui.export-button :href="route('businesses.earnings.export', request()->query())" />
         </div>

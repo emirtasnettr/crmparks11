@@ -9,6 +9,7 @@ use App\Modules\Business\Requests\StoreBusinessAssignmentRequest;
 use App\Modules\Business\Requests\UpdateBusinessAssignmentRequest;
 use App\Modules\Business\Services\BusinessAssignmentPresenter;
 use App\Modules\Business\Services\BusinessAssignmentService;
+use App\Support\EntityCardRedirect;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -92,9 +93,11 @@ class BusinessAssignmentController extends Controller
         $assignment = $this->assignments->create($request->validated(), $request->user());
 
         if ($request->boolean('redirect_to_business')) {
-            return redirect()
-                ->route('businesses.show', $assignment->business_id)
-                ->with('success', 'Kurye ataması başarıyla oluşturuldu.');
+            return EntityCardRedirect::toShow(
+                route('businesses.show', $assignment->business_id),
+                'assignments',
+                'Kurye ataması başarıyla oluşturuldu.',
+            );
         }
 
         return redirect()
@@ -126,8 +129,11 @@ class BusinessAssignmentController extends Controller
 
         $this->assignments->terminate($assignment);
 
-        return redirect()
-            ->route('businesses.assignments.index', ['business_id' => $assignment->business_id])
-            ->with('success', 'Atama sonlandırıldı.');
+        return EntityCardRedirect::after(
+            route('businesses.assignments.index', ['business_id' => $assignment->business_id]),
+            'Atama sonlandırıldı.',
+            route('businesses.show', $assignment->business_id),
+            'assignments',
+        );
     }
 }

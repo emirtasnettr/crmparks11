@@ -2,17 +2,6 @@
 
 @section('title', 'Gider Detayı')
 
-@section('breadcrumb')
-    <span class="text-gray-500 dark:text-slate-400">Finans</span>
-    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-    </svg>
-    <a href="{{ route('finance.expenses.index') }}" class="hover:text-gray-900 dark:hover:text-white">Giderler</a>
-    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-    </svg>
-    <span class="font-medium text-gray-900 dark:text-white">{{ $expense['reference'] }}</span>
-@endsection
 
 @section('content')
 <div class="max-w-6xl">
@@ -39,9 +28,9 @@
 
     <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <x-ui.finance-stat-card title="Net Tutar" :value="$expense['amount_formatted']" accent="danger" />
-        <x-ui.finance-stat-card title="KDV" :value="$expense['vat_amount_formatted']" accent="warning" />
-        <x-ui.finance-stat-card title="Brüt Tutar" :value="$expense['gross_amount_formatted']" accent="primary" />
-        <x-ui.finance-stat-card title="KDV Oranı" :value="number_format($expense['vat_rate'], 0) . '%'" accent="violet" />
+        <x-ui.finance-stat-card title="KDV" :value="$expense['vat_amount_formatted']" :excl-vat="false" accent="warning" />
+        <x-ui.finance-stat-card title="Brüt Tutar" :value="$expense['gross_amount_formatted']" :excl-vat="false" accent="primary" />
+        <x-ui.finance-stat-card title="KDV Oranı" :value="number_format($expense['vat_rate'], 0) . '%'" :excl-vat="false" accent="violet" />
     </div>
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">

@@ -2,17 +2,6 @@
 
 @section('title', $agency['company_name'].' — Düzenle')
 
-@section('breadcrumb')
-    <a href="{{ route('agencies.index') }}" class="hover:text-gray-900 dark:hover:text-white">Acenteler</a>
-    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-    </svg>
-    <a href="{{ route('agencies.show', $agency['id']) }}" class="hover:text-gray-900 dark:hover:text-white">{{ $agency['company_name'] }}</a>
-    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-    </svg>
-    <span class="font-medium text-gray-900 dark:text-white">Düzenle</span>
-@endsection
 
 @section('content')
 <div

@@ -11,6 +11,7 @@ use App\Modules\Business\Requests\StoreBusinessContractRequest;
 use App\Modules\Business\Services\BusinessContractPresenter;
 use App\Modules\Business\Services\BusinessContractService;
 use App\Modules\Business\Services\BusinessDocumentService;
+use App\Support\EntityCardRedirect;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -98,9 +99,11 @@ class BusinessContractController extends Controller
         }
 
         if ($request->boolean('redirect_to_business')) {
-            return redirect()
-                ->route('businesses.show', $contract->contractable_id)
-                ->with('success', 'Sözleşme başarıyla oluşturuldu.');
+            return EntityCardRedirect::toShow(
+                route('businesses.show', $contract->contractable_id),
+                'contracts',
+                'Sözleşme başarıyla oluşturuldu.',
+            );
         }
 
         return redirect()
@@ -117,8 +120,11 @@ class BusinessContractController extends Controller
 
         $this->contracts->deactivate($contract);
 
-        return redirect()
-            ->route('businesses.contracts.index', ['business_id' => $contract->contractable_id])
-            ->with('success', 'Sözleşme pasife alındı.');
+        return EntityCardRedirect::after(
+            route('businesses.contracts.index', ['business_id' => $contract->contractable_id]),
+            'Sözleşme pasife alındı.',
+            route('businesses.show', $contract->contractable_id),
+            'contracts',
+        );
     }
 }

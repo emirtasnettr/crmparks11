@@ -6,6 +6,7 @@ use App\Core\Traits\HasUuid;
 use App\Models\User;
 use App\Modules\Courier\Models\Courier;
 use Database\Factories\BusinessCourierAssignmentFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -34,6 +35,24 @@ class BusinessCourierAssignment extends Model
             'start_date' => 'date',
             'end_date' => 'date',
         ];
+    }
+
+    /**
+     * Currently active assignments (not terminated / not past end date).
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeCurrentlyActive(Builder $query): Builder
+    {
+        $today = now()->toDateString();
+
+        return $query
+            ->where('status', 'active')
+            ->where(function (Builder $inner) use ($today): void {
+                $inner->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $today);
+            });
     }
 
     public function business(): BelongsTo

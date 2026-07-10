@@ -81,12 +81,13 @@ class GlobalSearchService
                     ->orWhereRaw('LOWER(COALESCE(brand_name, "")) LIKE ?', [$needle])
                     ->orWhereRaw('LOWER(COALESCE(phone, "")) LIKE ?', [$needle]);
             })
+            ->orderBy('brand_name')
             ->orderBy('company_name')
             ->limit($limit)
             ->get()
             ->map(fn (Business $business) => [
                 'id' => $business->id,
-                'title' => $business->company_name,
+                'title' => $business->displayName(),
                 'subtitle' => trim(($business->city?->name ?? '').' / '.($business->district?->name ?? ''), ' /') ?: ($business->phone ?? '—'),
                 'url' => route('businesses.show', $business->id),
                 'type' => 'business',
@@ -113,7 +114,7 @@ class GlobalSearchService
             ->map(fn (Courier $courier) => [
                 'id' => $courier->id,
                 'title' => $courier->full_name,
-                'subtitle' => $courier->agency?->company_name ?? ($courier->phone ?? 'Esnaf Kurye'),
+                'subtitle' => $courier->agency?->displayName() ?? ($courier->phone ?? 'Esnaf Kurye'),
                 'url' => route('couriers.show', $courier->id),
                 'type' => 'courier',
             ]);
@@ -130,16 +131,18 @@ class GlobalSearchService
             ->with(['city', 'district'])
             ->where(function ($q) use ($needle): void {
                 $q->whereRaw('LOWER(company_name) LIKE ?', [$needle])
+                    ->orWhereRaw('LOWER(COALESCE(brand_name, "")) LIKE ?', [$needle])
                     ->orWhereRaw('LOWER(COALESCE(authorized_person, "")) LIKE ?', [$needle])
                     ->orWhereRaw('LOWER(COALESCE(phone, "")) LIKE ?', [$needle])
                     ->orWhereRaw('LOWER(COALESCE(email, "")) LIKE ?', [$needle]);
             })
+            ->orderBy('brand_name')
             ->orderBy('company_name')
             ->limit($limit)
             ->get()
             ->map(fn (Agency $agency) => [
                 'id' => $agency->id,
-                'title' => $agency->company_name,
+                'title' => $agency->displayName(),
                 'subtitle' => trim(($agency->city?->name ?? '').' / '.($agency->district?->name ?? ''), ' /') ?: ($agency->phone ?? '—'),
                 'url' => route('agencies.show', $agency->id),
                 'type' => 'agency',

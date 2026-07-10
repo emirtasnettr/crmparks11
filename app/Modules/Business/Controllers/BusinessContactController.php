@@ -10,6 +10,7 @@ use App\Modules\Business\Requests\StoreBusinessContactRequest;
 use App\Modules\Business\Requests\UpdateBusinessContactRequest;
 use App\Modules\Business\Services\BusinessContactPresenter;
 use App\Modules\Business\Services\BusinessContactService;
+use App\Support\EntityCardRedirect;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -78,9 +79,11 @@ class BusinessContactController extends Controller
         $contact = $this->contacts->create($request->validated());
 
         if ($request->boolean('redirect_to_business')) {
-            return redirect()
-                ->route('businesses.show', $contact->business_id)
-                ->with('success', 'Yetkili başarıyla eklendi.');
+            return EntityCardRedirect::toShow(
+                route('businesses.show', $contact->business_id),
+                'contacts',
+                'Yetkili başarıyla eklendi.',
+            );
         }
 
         return redirect()
@@ -112,8 +115,11 @@ class BusinessContactController extends Controller
 
         $this->contacts->deactivate($contact);
 
-        return redirect()
-            ->route('businesses.contacts.index', ['business_id' => $contact->business_id])
-            ->with('success', 'Yetkili pasife alındı.');
+        return EntityCardRedirect::after(
+            route('businesses.contacts.index', ['business_id' => $contact->business_id]),
+            'Yetkili pasife alındı.',
+            route('businesses.show', $contact->business_id),
+            'contacts',
+        );
     }
 }

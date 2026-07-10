@@ -91,11 +91,12 @@ class UserManagementService
     public function businesses(): array
     {
         return Business::query()
+            ->orderBy('brand_name')
             ->orderBy('company_name')
-            ->get(['id', 'company_name'])
+            ->get(['id', 'company_name', 'brand_name'])
             ->map(fn (Business $business) => [
                 'id' => $business->id,
-                'name' => $business->company_name,
+                'name' => $business->displayName(),
             ])
             ->all();
     }
@@ -121,11 +122,12 @@ class UserManagementService
     public function agencies(): array
     {
         return Agency::query()
+            ->orderBy('brand_name')
             ->orderBy('company_name')
-            ->get(['id', 'company_name'])
+            ->get(['id', 'company_name', 'brand_name'])
             ->map(fn (Agency $agency) => [
                 'id' => $agency->id,
-                'name' => $agency->company_name,
+                'name' => $agency->displayName(),
             ])
             ->all();
     }
@@ -250,6 +252,38 @@ class UserManagementService
         });
     }
 
+    public function forceDelete(int $id, User $actor): void
+    {
+        DB::transaction(function () use ($id, $actor): void {
+            $user = User::withTrashed()->find($id);
+
+            if ($user === null) {
+                abort(404);
+            }
+
+            if (! $this->canForceDelete($user, $actor)) {
+                throw ValidationException::withMessages([
+                    'user' => 'Bu kullanıcı kalıcı olarak silinemez.',
+                ]);
+            }
+
+            $name = $user->name;
+
+            $this->activityLog->log(
+                'user_force_deleted',
+                $user,
+                description: "{$name} kullanıcısı kalıcı olarak silindi.",
+            );
+
+            DB::table('period_locks')->where('locked_by', $user->id)->delete();
+
+            $user->tokens()->delete();
+            $user->roles()->detach();
+            $user->permissions()->detach();
+            $user->forceDelete();
+        });
+    }
+
     public function setStatus(int $id, Status $status, User $actor): User
     {
         return DB::transaction(function () use ($id, $status, $actor): User {
@@ -302,6 +336,15 @@ class UserManagementService
         }
 
         return true;
+    }
+
+    public function canForceDelete(User $user, User $actor): bool
+    {
+        if (! $actor->hasRole('super_admin')) {
+            return false;
+        }
+
+        return $this->canDelete($user, $actor);
     }
 
     public function sendPasswordResetLink(int $id, User $actor): void

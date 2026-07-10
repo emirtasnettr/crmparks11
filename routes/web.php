@@ -265,6 +265,9 @@ Route::middleware('auth')->group(function () {
             Route::post('/kullanicilar/{id}/pasife-al', [UserManagementController::class, 'deactivate'])
                 ->middleware('permission:user.delete')
                 ->name('deactivate');
+            Route::delete('/kullanicilar/{id}/kalici-sil', [UserManagementController::class, 'forceDestroy'])
+                ->middleware('role:super_admin')
+                ->name('force-destroy');
             Route::delete('/kullanicilar/{id}', [UserManagementController::class, 'destroy'])
                 ->middleware('permission:user.delete')
                 ->name('destroy');

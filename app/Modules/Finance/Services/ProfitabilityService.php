@@ -55,11 +55,12 @@ class ProfitabilityService
     public function businesses(): array
     {
         return Business::query()
+            ->orderBy('brand_name')
             ->orderBy('company_name')
-            ->get(['id', 'company_name'])
+            ->get(['id', 'company_name', 'brand_name'])
             ->map(fn (Business $business) => [
                 'id' => $business->id,
-                'name' => $business->company_name,
+                'name' => $business->displayName(),
             ])
             ->all();
     }
@@ -85,11 +86,12 @@ class ProfitabilityService
     public function agencies(): array
     {
         return Agency::query()
+            ->orderBy('brand_name')
             ->orderBy('company_name')
-            ->get(['id', 'company_name'])
+            ->get(['id', 'company_name', 'brand_name'])
             ->map(fn (Agency $agency) => [
                 'id' => $agency->id,
-                'name' => $agency->company_name,
+                'name' => $agency->displayName(),
             ])
             ->all();
     }
@@ -233,7 +235,7 @@ class ProfitabilityService
 
                 $row = [
                     'agency_id' => $agency->id,
-                    'agency_name' => $agency->company_name,
+                    'agency_name' => $agency->displayName(),
                     'city' => $agency->city?->name ?? '—',
                     'courier_count' => $agencyLines->pluck('courier_id')->unique()->count(),
                     'total_packages' => (int) $agencyLines->sum('package_count'),

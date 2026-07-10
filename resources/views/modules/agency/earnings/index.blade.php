@@ -2,13 +2,6 @@
 
 @section('title', 'Hakedişler')
 
-@section('breadcrumb')
-    <a href="{{ route('agencies.index') }}" class="hover:text-gray-900 dark:hover:text-white">Acenteler</a>
-    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-    </svg>
-    <span class="font-medium text-gray-900 dark:text-white">Hakedişler</span>
-@endsection
 
 @section('content')
 <div x-data="agencyEarningPage(@js(['openBulk' => $errors->has('file')]))">
@@ -36,7 +29,7 @@
 
     {{-- İstatistik Kartları --}}
     <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <x-ui.finance-stat-card title="Toplam Hakediş" :value="money_excl_vat($summary['count'])" icon="earning" accent="blue" />
+        <x-ui.finance-stat-card title="Toplam Hakediş" :value="number_format($summary['count'])" icon="earning" accent="blue" />
         <x-ui.finance-stat-card title="Toplam Ödenecek" :value="number_format($summary['total_payable'])" icon="chart" accent="violet" />
         <x-ui.finance-stat-card title="Ödenen" :value="money_excl_vat($summary['paid_amount'])" icon="earning" accent="success" />
         <x-ui.finance-stat-card title="Bekleyen" :value="number_format($summary['pending_count'])" icon="earning" accent="warning" />
@@ -69,7 +62,7 @@
     <x-ui.card :padding="false" class="mt-6">
         <div class="border-b border-gray-200 px-4 py-4 dark:border-slate-700 sm:px-6">
             <p class="text-sm font-medium text-gray-900 dark:text-white">
-                <span class="text-lg font-bold">{{ money_excl_vat($total) }}</span> kayıt listeleniyor
+                <span class="text-lg font-bold">{{ number_format($total) }}</span> kayıt listeleniyor
             </p>
         </div>
 

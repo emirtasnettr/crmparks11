@@ -37,10 +37,11 @@ class BusinessAssignmentService
     /**
      * @return Collection<int, BusinessCourierAssignment>
      */
-    public function forBusiness(int $businessId): Collection
+    public function forBusiness(int $businessId, bool $activeOnly = false): Collection
     {
         return BusinessCourierAssignment::query()
             ->where('business_id', $businessId)
+            ->when($activeOnly, fn (Builder $query) => $query->currentlyActive())
             ->with(['business', 'courier.agency'])
             ->orderByDesc('start_date')
             ->get();
@@ -55,14 +56,8 @@ class BusinessAssignmentService
 
     public function countActive(): int
     {
-        $today = now()->toDateString();
-
         return BusinessCourierAssignment::query()
-            ->where('status', 'active')
-            ->where(function (Builder $query) use ($today): void {
-                $query->whereNull('end_date')
-                    ->orWhereDate('end_date', '>=', $today);
-            })
+            ->currentlyActive()
             ->count();
     }
 
@@ -72,11 +67,12 @@ class BusinessAssignmentService
     public function businesses(): array
     {
         return Business::query()
+            ->orderBy('brand_name')
             ->orderBy('company_name')
-            ->get(['id', 'company_name'])
+            ->get(['id', 'company_name', 'brand_name'])
             ->map(fn (Business $business) => [
                 'id' => $business->id,
-                'name' => $business->company_name,
+                'name' => $business->displayName(),
             ])
             ->all();
     }
@@ -87,11 +83,12 @@ class BusinessAssignmentService
     public function agencies(): array
     {
         return Agency::query()
+            ->orderBy('brand_name')
             ->orderBy('company_name')
-            ->get(['id', 'company_name'])
+            ->get(['id', 'company_name', 'brand_name'])
             ->map(fn (Agency $agency) => [
                 'id' => $agency->id,
-                'name' => $agency->company_name,
+                'name' => $agency->displayName(),
             ])
             ->all();
     }

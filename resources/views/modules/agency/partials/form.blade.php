@@ -37,7 +37,12 @@
                 x-model="form.company_name"
                 ::class="errors.company_name ? 'border-red-300 dark:border-red-500' : ''"
             />
-            <x-ui.input name="brand_name" label="Marka Adı" x-model="form.brand_name" />
+            <x-ui.input
+                name="brand_name"
+                label="Marka Adı *"
+                x-model="form.brand_name"
+                ::class="errors.brand_name ? 'border-red-300 dark:border-red-500' : ''"
+            />
             <x-ui.input
                 name="phone"
                 type="tel"
@@ -51,6 +56,7 @@
         </div>
 
         <p x-show="errors.company_name" x-cloak class="mt-2 text-sm text-red-600 dark:text-red-400" x-text="errors.company_name"></p>
+        <p x-show="errors.brand_name" x-cloak class="mt-2 text-sm text-red-600 dark:text-red-400" x-text="errors.brand_name"></p>
         <p x-show="errors.phone" x-cloak class="mt-1 text-sm text-red-600 dark:text-red-400" x-text="errors.phone"></p>
     </x-ui.card>
 

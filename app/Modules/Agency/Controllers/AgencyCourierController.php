@@ -8,6 +8,7 @@ use App\Modules\Agency\Data\AgencyCourierFormData;
 use App\Modules\Agency\Exports\AgencyListExportSheets;
 use App\Modules\Agency\Requests\StoreAgencyCourierAssignmentRequest;
 use App\Modules\Agency\Services\AgencyCourierService;
+use App\Support\EntityCardRedirect;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -76,9 +77,11 @@ class AgencyCourierController extends Controller
         $courier = $this->couriers->assign($request->validated(), $request->user());
 
         if ($request->boolean('redirect_to_agency')) {
-            return redirect()
-                ->route('agencies.show', $courier->agency_id)
-                ->with('success', 'Kurye acenteye başarıyla atandı.');
+            return EntityCardRedirect::toShow(
+                route('agencies.show', $courier->agency_id),
+                'couriers',
+                'Kurye acenteye başarıyla atandı.',
+            );
         }
 
         return redirect()
@@ -96,8 +99,11 @@ class AgencyCourierController extends Controller
         $agencyId = $courier->agency_id;
         $this->couriers->detach($courier, $request->user());
 
-        return redirect()
-            ->route('agencies.couriers.index', ['agency_id' => $agencyId])
-            ->with('success', 'Kurye acenteden ayrıldı.');
+        return EntityCardRedirect::after(
+            route('agencies.couriers.index', ['agency_id' => $agencyId]),
+            'Kurye acenteden ayrıldı.',
+            route('agencies.show', $agencyId),
+            'couriers',
+        );
     }
 }

@@ -60,6 +60,7 @@ class BusinessFactory extends Factory
             'address' => fake()->address(),
             'status' => 'active',
             'earning_period' => 'weekly',
+            'planned_courier_count' => fake()->numberBetween(2, 12),
             'notes' => fake()->sentence(),
             'created_by' => User::factory(),
         ];

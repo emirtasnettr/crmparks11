@@ -18,7 +18,7 @@ class AgencyContactPresenter
         return [
             'id' => $contact->id,
             'agency_id' => $contact->agency_id,
-            'agency_name' => $contact->agency?->company_name ?? '—',
+            'agency_name' => $contact->agency?->displayName() ?? '—',
             'full_name' => $contact->full_name,
             'title' => $contact->title,
             'phone' => $contact->phone,
@@ -41,7 +41,7 @@ class AgencyContactPresenter
             'id' => $contact->id,
             'uuid' => $contact->uuid,
             'agency_id' => $contact->agency_id,
-            'agency_name' => $contact->agency?->company_name ?? '—',
+            'agency_name' => $contact->agency?->displayName() ?? '—',
             'full_name' => $contact->full_name,
             'title' => $contact->title,
             'phone' => $contact->phone,

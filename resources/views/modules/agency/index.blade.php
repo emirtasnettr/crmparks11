@@ -2,9 +2,6 @@
 
 @section('title', 'Acenteler')
 
-@section('breadcrumb')
-    <span class="font-medium text-gray-900 dark:text-white">Acenteler</span>
-@endsection
 
 @section('content')
 <div x-data="agencyListPage(@js($agenciesForModal))" @agency-detail.window="openDetail($event.detail)">
@@ -87,7 +84,7 @@
                 <thead>
                     <tr class="border-b border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-800/50">
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 sm:px-6">Logo</th>
-                        <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Firma Ünvanı</th>
+                        <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Marka Adı</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Yetkili</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Telefon</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">İl / İlçe</th>
@@ -99,18 +96,25 @@
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-slate-700">
                     @forelse ($agencies as $agency)
-                        <tr class="transition-colors hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                        <tr
+                            role="link"
+                            tabindex="0"
+                            class="cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-slate-800/50"
+                            data-href="{{ route('agencies.show', $agency['id']) }}"
+                            onclick="window.location.href = this.dataset.href"
+                            onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); window.location.href = this.dataset.href; }"
+                        >
                             <td class="px-4 py-3 sm:px-6">
                                 <x-ui.entity-avatar
                                     :url="$agency['logo_url'] ?? null"
                                     :initials="$agency['logo']"
                                     :color="$agency['logo_color']"
-                                    :alt="$agency['company_name'].' logosu'"
+                                    :alt="($agency['display_name'] ?? $agency['brand_name'] ?? $agency['company_name']).' logosu'"
                                 />
                             </td>
                             <td class="max-w-[220px] px-4 py-3">
-                                <p class="line-clamp-2 font-medium text-gray-900 dark:text-white">{{ $agency['company_name'] }}</p>
-                                <p class="mt-0.5 text-xs text-gray-500 dark:text-slate-400">{{ $agency['tax_number'] }}</p>
+                                <p class="line-clamp-2 font-medium text-gray-900 dark:text-white">{{ $agency['display_name'] ?? $agency['brand_name'] ?? $agency['company_name'] }}</p>
+                                <p class="mt-0.5 text-xs text-gray-500 dark:text-slate-400">{{ $agency['company_name'] }}</p>
                             </td>
                             <td class="px-4 py-3 text-gray-600 dark:text-slate-400">
                                 {{ $agency['authorized_person'] }}
@@ -130,7 +134,7 @@
                             <td class="px-4 py-3">
                                 <x-agency.status-badge :status="$agency['status']" />
                             </td>
-                            <td class="px-4 py-3 sm:px-6">
+                            <td class="px-4 py-3 sm:px-6" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
                                 <x-agency.row-actions :agency="$agency" />
                             </td>
                         </tr>

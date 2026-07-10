@@ -52,15 +52,15 @@ class FinanceActivityLogPresenter
         $subject = $log->subject;
 
         return match (true) {
-            $subject instanceof FinanceRevenue => $subject->business?->company_name
+            $subject instanceof FinanceRevenue => $subject->business?->displayName()
                 ?? $subject->currentAccount?->title
                 ?? '—',
             $subject instanceof FinanceExpense => $subject->courier?->full_name
-                ?? $subject->agency?->company_name
+                ?? $subject->agency?->displayName()
                 ?? '—',
-            $subject instanceof FinanceCollection => $subject->business?->company_name ?? '—',
+            $subject instanceof FinanceCollection => $subject->business?->displayName() ?? '—',
             $subject instanceof FinancePayment => $subject->recipient_name ?? '—',
-            $subject instanceof FinanceInvoice => $subject->business?->company_name ?? '—',
+            $subject instanceof FinanceInvoice => $subject->business?->displayName() ?? '—',
             $subject instanceof CurrentAccount => $subject->title ?? '—',
             $subject instanceof CurrentAccountMovement => $subject->currentAccount?->title ?? '—',
             default => '—',

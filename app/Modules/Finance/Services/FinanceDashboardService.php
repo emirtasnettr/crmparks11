@@ -134,7 +134,7 @@ class FinanceDashboardService
         $revenueByBusiness = $businessRevenues
             ->take(5)
             ->map(fn (FinanceRevenue $row) => [
-                'label' => $row->business?->brand_name ?? $row->business?->company_name ?? '—',
+                'label' => $row->business?->displayName() ?? '—',
                 'value' => (int) round((float) $row->total),
             ])
             ->all();
@@ -228,7 +228,7 @@ class FinanceDashboardService
                 $remaining = round((float) $collection->total_amount - (float) $collection->collected_amount, 2);
 
                 return [
-                    'business' => $collection->business?->company_name ?? '—',
+                    'business' => $collection->business?->displayName() ?? '—',
                     'invoice' => $collection->invoice_no ?? $collection->reference,
                     'due_date' => $due->toDateString(),
                     'amount' => $remaining,

@@ -26,16 +26,69 @@ class DashboardService
 
     public function getStats(): array
     {
-        $totalCouriers = Courier::query()->count();
-        $activeCouriers = Courier::query()->where('status', 'active')->count();
-
         return [
             'total_businesses' => Business::query()->count(),
-            'total_couriers' => $totalCouriers,
+            'total_couriers' => Courier::query()->count(),
             'total_agencies' => Agency::query()->count(),
-            'active_couriers' => $activeCouriers,
-            'inactive_couriers' => $totalCouriers - $activeCouriers,
+            'active_couriers' => Courier::query()->where('status', 'active')->count(),
         ];
+    }
+
+    /**
+     * Opening-stage businesses ordered by nearest opening date.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getOpeningStageBusinesses(): array
+    {
+        $today = Carbon::today();
+
+        return Business::query()
+            ->with(['city:id,name', 'district:id,name', 'activePricing'])
+            ->where('status', 'opening_stage')
+            ->orderByRaw('CASE WHEN start_date IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('start_date')
+            ->orderBy('brand_name')
+            ->get()
+            ->map(function (Business $business) use ($today): array {
+                $planned = (int) ($business->planned_courier_count ?? 0);
+                $completed = $business->activeCourierCount();
+                $startDate = $business->start_date;
+                $daysUntil = $startDate !== null
+                    ? (int) $today->diffInDays($startDate, false)
+                    : null;
+
+                $city = $business->city?->name;
+                $district = $business->district?->name;
+                $location = match (true) {
+                    $city !== null && $district !== null => $city.' / '.$district,
+                    $city !== null => $city,
+                    $district !== null => $district,
+                    default => '—',
+                };
+
+                $customerAmount = (float) ($business->activePricing?->customer_unit_price ?? 0);
+                $courierAmount = (float) ($business->activePricing?->courier_unit_price ?? 0);
+
+                return [
+                    'id' => $business->id,
+                    'brand_name' => $business->displayName(),
+                    'location' => $location,
+                    'customer_amount' => $customerAmount,
+                    'customer_amount_formatted' => MoneyCalculator::formatVatAmount($customerAmount),
+                    'courier_amount' => $courierAmount,
+                    'courier_amount_formatted' => MoneyCalculator::formatVatAmount($courierAmount),
+                    'planned_courier_count' => $planned,
+                    'completed_courier_count' => $completed,
+                    'start_date' => $startDate?->toDateString(),
+                    'start_date_formatted' => $startDate?->format('d.m.Y') ?? '—',
+                    'days_until_opening' => $daysUntil,
+                    'is_opening_soon' => $daysUntil === 1,
+                    'url' => route('businesses.show', $business->id),
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     /**
@@ -104,7 +157,7 @@ class DashboardService
         $today = Carbon::today();
 
         return FinanceCollection::query()
-            ->with('business:id,company_name')
+            ->with('business:id,company_name,brand_name')
             ->whereIn('status', ['pending', 'partial', 'overdue'])
             ->orderBy('due_date')
             ->limit($limit)
@@ -115,7 +168,7 @@ class DashboardService
 
                 return [
                     'id' => $collection->id,
-                    'business' => $collection->business?->company_name ?? '—',
+                    'business' => $collection->business?->displayName() ?? '—',
                     'reference' => $collection->reference,
                     'due_date_formatted' => $collection->due_date->format('d.m.Y'),
                     'amount_formatted' => MoneyCalculator::format($remaining),
@@ -168,14 +221,14 @@ class DashboardService
     public function getPendingEarnings(int $limit = 5): array
     {
         return $this->pendingEarningQuery()
-            ->with(['business:id,company_name', 'courier:id,full_name', 'status'])
+            ->with(['business:id,company_name,brand_name', 'courier:id,full_name', 'status'])
             ->orderByDesc('id')
             ->limit($limit)
             ->get()
             ->map(function (EarningLine $line): array {
                 return [
                     'id' => $line->id,
-                    'business' => $line->business?->company_name ?? '—',
+                    'business' => $line->business?->displayName() ?? '—',
                     'courier' => $line->courier?->full_name ?? '—',
                     'period' => sprintf('%02d/%d', $line->period_month, $line->period_year),
                     'revenue_formatted' => MoneyCalculator::format((float) $line->revenue_total),
@@ -282,6 +335,7 @@ class DashboardService
             'id' => $id,
             'company_name' => $business['company_name'],
             'brand_name' => $business['brand_name'],
+            'display_name' => $business['display_name'] ?? $business['brand_name'] ?? $business['company_name'],
             'logo' => $business['logo'],
             'logo_color' => $business['logo_color'],
             'logo_url' => $business['logo_url'] ?? null,

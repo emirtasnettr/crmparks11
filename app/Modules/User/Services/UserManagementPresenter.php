@@ -88,7 +88,23 @@ class UserManagementPresenter
             'email_verified_at' => $user->email_verified_at?->toDateTimeString(),
             'can_update' => auth()->user()?->can('user.update') ?? false,
             'can_delete' => (auth()->user()?->can('user.delete') ?? false) && auth()->id() !== $user->id,
+            'can_force_delete' => $this->canForceDelete($user),
         ];
+    }
+
+    private function canForceDelete(User $user): bool
+    {
+        $actor = auth()->user();
+
+        if ($actor === null || ! $actor->hasRole('super_admin') || $actor->id === $user->id) {
+            return false;
+        }
+
+        if ($user->hasRole('super_admin') && User::role('super_admin')->count() <= 1) {
+            return false;
+        }
+
+        return true;
     }
 
     /**

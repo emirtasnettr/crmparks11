@@ -34,7 +34,7 @@ class ExpensePresenter
         $amount = (float) $expense->amount;
         $vatAmount = round($amount * ($expense->vat_rate / 100), 2);
         $grossAmount = round($amount + $vatAmount, 2);
-        $payeeDisplay = $expense->courier?->full_name ?? $expense->agency?->company_name ?? '—';
+        $payeeDisplay = $expense->courier?->full_name ?? $expense->agency?->displayName() ?? '—';
 
         $row = [
             'id' => $expense->id,

@@ -77,11 +77,12 @@ class AgencyContractService
     public function agencies(): array
     {
         return Agency::query()
+            ->orderBy('brand_name')
             ->orderBy('company_name')
-            ->get(['id', 'company_name'])
+            ->get(['id', 'company_name', 'brand_name'])
             ->map(fn (Agency $agency) => [
                 'id' => $agency->id,
-                'name' => $agency->company_name,
+                'name' => $agency->displayName(),
             ])
             ->all();
     }

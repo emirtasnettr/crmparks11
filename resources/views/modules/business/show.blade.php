@@ -1,14 +1,7 @@
 @extends('layouts.app')
 
-@section('title', $business['company_name'])
+@section('title', $business['display_name'] ?? $business['brand_name'])
 
-@section('breadcrumb')
-    <a href="{{ route('businesses.index') }}" class="hover:text-gray-900 dark:hover:text-white">İşletmeler</a>
-    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-    </svg>
-    <span class="font-medium text-gray-900 dark:text-white">{{ $business['company_name'] }}</span>
-@endsection
 
 @section('content')
 <div class="max-w-6xl">
@@ -21,15 +14,15 @@
                 shape="rounded-2xl"
                 size="h-16 w-16"
                 text-size="text-lg"
-                :alt="$business['company_name'].' logosu'"
+                :alt="($business['display_name'] ?? $business['brand_name']).' logosu'"
             />
             <div>
                 <div class="flex flex-wrap items-center gap-3">
-                    <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{{ $business['company_name'] }}</h1>
+                    <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{{ $business['display_name'] ?? $business['brand_name'] }}</h1>
                     <x-business.status-badge :status="$business['status']" />
                 </div>
                 <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">
-                    {{ $business['brand_name'] }} · {{ $business['location'] }} · {{ $business['active_couriers'] }} aktif kurye
+                    {{ $business['company_name'] }} · {{ $business['location'] }} · {{ $business['active_couriers'] }} aktif / {{ number_format($business['planned_courier_count'] ?? 0) }} planlanan kurye
                 </p>
             </div>
         </div>
@@ -84,24 +77,34 @@
             </div>
 
             <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <x-ui.finance-stat-card title="Paket Başı Alınan" :value="\App\Core\Helpers\MoneyCalculator::formatVatAmount($overviewStats['received_per_package'])" subtitle="KDV hariç" icon="earning" accent="success" />
-                <x-ui.finance-stat-card title="Paket Başı Kuryeye Verilen" :value="\App\Core\Helpers\MoneyCalculator::formatVatAmount($overviewStats['courier_per_package'])" subtitle="KDV hariç" icon="courier" accent="warning" />
+                <x-ui.finance-stat-card title="Paket Başı Alınan" :value="\App\Core\Helpers\MoneyCalculator::formatVatAmount($overviewStats['received_per_package'])" icon="earning" accent="success" />
+                <x-ui.finance-stat-card title="Paket Başı Kuryeye Verilen" :value="\App\Core\Helpers\MoneyCalculator::formatVatAmount($overviewStats['courier_per_package'])" icon="courier" accent="warning" />
                 <x-ui.finance-stat-card title="Aktif Kurye Sayısı" :value="number_format($overviewStats['active_couriers'])" icon="courier" accent="blue" />
-                <x-ui.finance-stat-card title="Paket Başı Net Kazanç" :value="\App\Core\Helpers\MoneyCalculator::formatVatAmount($overviewStats['net_per_package'])" subtitle="KDV hariç" icon="chart" accent="primary" />
+                <x-ui.finance-stat-card title="Paket Başı Net Kazanç" :value="\App\Core\Helpers\MoneyCalculator::formatVatAmount($overviewStats['net_per_package'])" icon="chart" accent="primary" />
             </div>
 
             <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <x-ui.card title="Genel Bilgiler">
                     <dl class="space-y-3 text-sm">
-                        <x-entity.detail-row label="Firma Ünvanı" :value="$business['company_name']" />
                         <x-entity.detail-row label="Marka Adı" :value="$business['brand_name']" />
+                        <x-entity.detail-row label="Firma Ünvanı" :value="$business['company_name']" />
                         <x-entity.detail-row label="Kayıt No" :value="$business['uuid']" />
                         <x-entity.detail-row label="Çalışma Modeli" :value="$business['pricing_model_label']" />
+                        <x-entity.detail-row label="Planlanan Kurye" :value="number_format($business['planned_courier_count'] ?? 0)" />
                         <x-entity.detail-row label="Aktif Kurye" :value="$business['active_couriers']" />
                         <x-entity.detail-row label="Kayıt Tarihi" :value="$business['created_at_formatted']" />
                         <x-entity.detail-row label="Durum">
                             <x-business.status-badge :status="$business['status']" />
                         </x-entity.detail-row>
+                        @if (($business['status'] ?? '') === 'inactive' && ! empty($business['contract_end_date_formatted']))
+                            <x-entity.detail-row label="Sözleşme Bitiş" :value="$business['contract_end_date_formatted']" />
+                        @endif
+                        @if (in_array($business['status'] ?? '', ['pending', 'contract_stage'], true) && ! empty($business['estimated_opening_date_formatted']))
+                            <x-entity.detail-row label="Tahmini Açılış" :value="$business['estimated_opening_date_formatted']" />
+                        @endif
+                        @if (($business['status'] ?? '') === 'opening_stage' && ! empty($business['start_date_formatted']))
+                            <x-entity.detail-row label="Başlangıç Tarihi" :value="$business['start_date_formatted']" />
+                        @endif
                     </dl>
                 </x-ui.card>
 
@@ -144,6 +147,7 @@
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Görev</th>
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Telefon</th>
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">E-Posta</th>
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">İşlemler</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
@@ -153,6 +157,9 @@
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $contact['title'] }}</td>
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $contact['phone'] }}</td>
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $contact['email'] }}</td>
+                                        <td class="py-2.5">
+                                            <x-business.contact-row-actions :contact="$contact" />
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -164,7 +171,7 @@
             </x-ui.card>
             @include('modules.business.contacts.partials.modal', [
                 'hideEntitySelector' => true,
-                'presetEntityLabel' => $business['company_name'],
+                'presetEntityLabel' => $business['display_name'] ?? $business['brand_name'],
                 'lockedBusinessId' => $business['id'],
                 'redirectToBusiness' => true,
                 'titles' => $contactTitles,
@@ -187,6 +194,7 @@
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Başlangıç</th>
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Bitiş</th>
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Durum</th>
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">İşlemler</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
@@ -199,6 +207,9 @@
                                         <td class="py-2.5">
                                             <x-business.contract-status-badge :status="$contract['status']" />
                                         </td>
+                                        <td class="py-2.5">
+                                            <x-business.contract-row-actions :contract="$contract" />
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -210,7 +221,7 @@
             </x-ui.card>
             @include('modules.business.contracts.partials.modal', [
                 'hideEntitySelector' => true,
-                'presetEntityLabel' => $business['company_name'],
+                'presetEntityLabel' => $business['display_name'] ?? $business['brand_name'],
                 'lockedBusinessId' => $business['id'],
                 'redirectToBusiness' => true,
                 'contractTypes' => $contractTypes,
@@ -233,6 +244,7 @@
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Başlangıç</th>
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Bitiş</th>
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Durum</th>
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">İşlemler</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
@@ -245,6 +257,9 @@
                                         <td class="py-2.5">
                                             <x-business.assignment-status-badge :status="$assignment['work_status']" />
                                         </td>
+                                        <td class="py-2.5">
+                                            <x-business.assignment-row-actions :assignment="$assignment" />
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -256,7 +271,7 @@
             </x-ui.card>
             @include('modules.business.assignments.partials.modal', [
                 'hideEntitySelector' => true,
-                'presetEntityLabel' => $business['company_name'],
+                'presetEntityLabel' => $business['display_name'] ?? $business['brand_name'],
                 'lockedBusinessId' => $business['id'],
                 'redirectToBusiness' => true,
                 'couriers' => $assignmentCouriers,
@@ -279,6 +294,7 @@
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Tür</th>
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Dosya</th>
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Yükleyen</th>
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">İşlemler</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
@@ -288,6 +304,9 @@
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $document['document_type_label'] }}</td>
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $document['file_name'] }}</td>
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $document['uploaded_by'] }}</td>
+                                        <td class="py-2.5">
+                                            <x-business.document-row-actions :document="$document" />
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -299,7 +318,7 @@
             </x-ui.card>
             @include('modules.business.documents.partials.modal', [
                 'hideEntitySelector' => true,
-                'presetEntityLabel' => $business['company_name'],
+                'presetEntityLabel' => $business['display_name'] ?? $business['brand_name'],
                 'lockedBusinessId' => $business['id'],
                 'redirectToBusiness' => true,
                 'documentTypes' => $documentTypes,

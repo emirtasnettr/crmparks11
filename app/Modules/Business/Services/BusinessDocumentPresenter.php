@@ -44,7 +44,7 @@ class BusinessDocumentPresenter
             'id' => $document->id,
             'uuid' => $document->uuid,
             'business_id' => $business?->id,
-            'business_name' => $business?->company_name ?? '—',
+            'business_name' => $business?->displayName() ?? '—',
             'name' => pathinfo($document->original_name, PATHINFO_FILENAME),
             'document_type' => $document->category?->code ?? 'other',
             'document_type_label' => $document->category?->label ?? 'Diğer',

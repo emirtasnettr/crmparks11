@@ -2,9 +2,6 @@
 
 @section('title', 'Dashboard')
 
-@section('breadcrumb')
-    <span class="font-medium text-gray-900 dark:text-white">Dashboard</span>
-@endsection
 
 @section('content')
 <div class="mb-8">
@@ -14,123 +11,116 @@
     </p>
 </div>
 
-<div class="mb-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-5">
+<section class="mb-8">
+    <style>
+        @keyframes opening-soon-blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.25; }
+        }
+        .opening-soon-blink {
+            animation: opening-soon-blink 1.1s ease-in-out infinite;
+        }
+    </style>
+    <x-ui.card :padding="false">
+        <div class="flex flex-col gap-1 border-b border-gray-200 px-5 py-4 dark:border-slate-700 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <div>
+                <h2 class="text-[19px] font-semibold text-gray-900 dark:text-white">Açılış Aşamasındakiler</h2>
+            </div>
+            <a
+                href="{{ route('businesses.index', ['status' => 'opening_stage']) }}"
+                class="text-[17px] font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+            >
+                Tümünü Gör
+            </a>
+        </div>
+
+        @if (count($openingStageBusinesses))
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[640px] text-left text-[17px]">
+                    <thead>
+                        <tr class="border-b border-gray-100 bg-gray-50/80 dark:border-slate-700/80 dark:bg-slate-800/40">
+                            <th class="px-5 py-3 font-medium text-gray-500 dark:text-slate-400 sm:px-6">Marka Adı</th>
+                            <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">İl/İlçe</th>
+                            <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">İşletmeden Alınan Tutar</th>
+                            <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Kuryeye Verilecek Tutar</th>
+                            <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Planlanan Kurye</th>
+                            <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Tamamlanan Kurye</th>
+                            <th class="px-5 py-3 font-medium text-gray-500 dark:text-slate-400 sm:px-6">Açılış Tarihi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 dark:divide-slate-700/80">
+                        @foreach ($openingStageBusinesses as $business)
+                            @php
+                                $couriersComplete = $business['completed_courier_count'] >= $business['planned_courier_count'];
+                            @endphp
+                            <tr
+                                @class([
+                                    'transition-colors',
+                                    'bg-emerald-50/90 hover:bg-emerald-50 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/15' => $couriersComplete,
+                                    'bg-rose-50/90 hover:bg-rose-50 dark:bg-rose-500/10 dark:hover:bg-rose-500/15' => ! $couriersComplete,
+                                ])
+                            >
+                                <td class="px-5 py-3.5 sm:px-6">
+                                    <a href="{{ $business['url'] }}" class="group inline-flex items-center gap-2">
+                                        <span class="font-medium text-gray-900 group-hover:text-primary-600 dark:text-white dark:group-hover:text-primary-400">
+                                            {{ $business['brand_name'] }}
+                                        </span>
+                                        @if ($business['is_opening_soon'])
+                                            <span class="opening-soon-blink rounded-md bg-amber-100 px-1.5 py-0.5 text-[14px] font-medium text-amber-800 dark:bg-amber-500/20 dark:text-amber-200">
+                                                1 gün kaldı
+                                            </span>
+                                        @endif
+                                    </a>
+                                </td>
+                                <td class="px-4 py-3.5 text-gray-700 dark:text-slate-300">
+                                    {{ $business['location'] }}
+                                </td>
+                                <td class="px-4 py-3.5 tabular-nums text-gray-700 dark:text-slate-300">
+                                    {{ $business['customer_amount_formatted'] }}
+                                </td>
+                                <td class="px-4 py-3.5 tabular-nums text-gray-700 dark:text-slate-300">
+                                    {{ $business['courier_amount_formatted'] }}
+                                </td>
+                                <td class="px-4 py-3.5 tabular-nums text-gray-700 dark:text-slate-300">
+                                    {{ number_format($business['planned_courier_count']) }}
+                                </td>
+                                <td
+                                    @class([
+                                        'px-4 py-3.5 tabular-nums font-medium',
+                                        'text-emerald-800 dark:text-emerald-200' => $couriersComplete,
+                                        'text-rose-800 dark:text-rose-200' => ! $couriersComplete,
+                                    ])
+                                >
+                                    {{ number_format($business['completed_courier_count']) }}
+                                </td>
+                                <td class="px-5 py-3.5 sm:px-6">
+                                    <span @class([
+                                        'tabular-nums font-medium',
+                                        'text-amber-800 dark:text-amber-200' => $business['is_opening_soon'],
+                                        'text-gray-900 dark:text-white' => ! $business['is_opening_soon'],
+                                    ])>
+                                        {{ $business['start_date_formatted'] }}
+                                    </span>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @else
+            <div class="px-5 py-10 text-center sm:px-6">
+                <p class="text-[17px] text-gray-500 dark:text-slate-400">Açılış aşamasında işletme bulunmuyor.</p>
+            </div>
+        @endif
+    </x-ui.card>
+</section>
+
+<div class="mb-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
     <x-ui.stat-card title="Toplam İşletme" :value="number_format($stats['total_businesses'])" icon="building" color="primary" />
     <x-ui.stat-card title="Toplam Kurye" :value="number_format($stats['total_couriers'])" icon="courier" color="primary" />
     <x-ui.stat-card title="Toplam Acente" :value="number_format($stats['total_agencies'])" icon="agency" color="primary" />
     <x-ui.stat-card title="Aktif Kurye" :value="number_format($stats['active_couriers'])" icon="courier" color="success" />
-    <x-ui.stat-card title="Pasif Kurye" :value="number_format($stats['inactive_couriers'])" icon="courier" color="secondary" class="col-span-2 md:col-span-1" />
 </div>
-
-@if ($canFinance && $finance)
-    <div class="mb-2 flex items-center justify-between">
-        <div>
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Finans Özeti</h2>
-            <p class="text-sm text-gray-500 dark:text-slate-400">{{ $finance['period_label'] }} dönemi</p>
-        </div>
-        <a href="{{ route('finance.dashboard.index') }}" class="text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400">
-            Finans Dashboard
-        </a>
-    </div>
-
-    <div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-        <x-ui.finance-stat-card title="Bu Ay Gelir" :value="$finance['revenue_formatted']" icon="earning" accent="success" />
-        <x-ui.finance-stat-card title="Bu Ay Gider" :value="$finance['expense_formatted']" icon="chart" accent="danger" />
-        <x-ui.finance-stat-card title="Net Kâr" :value="$finance['net_profit_formatted']" icon="chart" accent="primary" />
-        <x-ui.finance-stat-card
-            title="Bekleyen Tahsilat"
-            :value="$finance['pending_collection_formatted']"
-            :subtitle="$finance['pending_collection_count'].' kayıt'"
-            icon="earning"
-            accent="warning"
-        />
-        <x-ui.finance-stat-card
-            title="Bekleyen Ödeme"
-            :value="$finance['pending_payment_formatted']"
-            :subtitle="$finance['pending_payment_count'].' kayıt'"
-            icon="courier"
-            accent="violet"
-        />
-        <x-ui.finance-stat-card
-            title="Onay Bekleyen Hakediş"
-            :value="number_format($finance['pending_earning_count'])"
-            icon="chart"
-            accent="blue"
-        />
-    </div>
-@endif
-
-@if (($canFinance && (count($pendingCollections) > 0 || count($pendingPayments) > 0)) || ($canEarnings && count($pendingEarnings) > 0))
-    <div class="mb-8 grid grid-cols-1 gap-6 xl:grid-cols-3">
-        @if ($canFinance)
-            <x-ui.card title="Bekleyen Tahsilatlar">
-                <x-slot:actions>
-                    <a href="{{ route('finance.collections.index') }}" class="text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400">Tümü</a>
-                </x-slot:actions>
-
-                @forelse ($pendingCollections as $item)
-                    <a href="{{ $item['url'] }}" class="flex items-start justify-between gap-3 border-b border-gray-100 py-3 last:border-0 last:pb-0 first:pt-0 hover:opacity-80 dark:border-slate-700">
-                        <div class="min-w-0">
-                            <p class="truncate text-sm font-medium text-gray-900 dark:text-white">{{ $item['business'] }}</p>
-                            <p class="text-xs text-gray-500 dark:text-slate-400">{{ $item['reference'] }} · {{ $item['due_date_formatted'] }}</p>
-                        </div>
-                        <div class="shrink-0 text-right">
-                            <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $item['amount_formatted'] }}</p>
-                            <p @class(['text-xs', 'text-red-600 dark:text-red-400' => $item['is_overdue'], 'text-amber-600 dark:text-amber-400' => ! $item['is_overdue']])>
-                                {{ $item['delay_label'] }}
-                            </p>
-                        </div>
-                    </a>
-                @empty
-                    <p class="text-sm text-gray-500 dark:text-slate-400">Bekleyen tahsilat yok.</p>
-                @endforelse
-            </x-ui.card>
-
-            <x-ui.card title="Bekleyen Ödemeler">
-                <x-slot:actions>
-                    <a href="{{ route('finance.payments.index') }}" class="text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400">Tümü</a>
-                </x-slot:actions>
-
-                @forelse ($pendingPayments as $item)
-                    <a href="{{ $item['url'] }}" class="flex items-start justify-between gap-3 border-b border-gray-100 py-3 last:border-0 last:pb-0 first:pt-0 hover:opacity-80 dark:border-slate-700">
-                        <div class="min-w-0">
-                            <p class="truncate text-sm font-medium text-gray-900 dark:text-white">{{ $item['recipient'] }}</p>
-                            <p class="text-xs text-gray-500 dark:text-slate-400">{{ $item['reference'] }} · {{ $item['scheduled_date_formatted'] }}</p>
-                        </div>
-                        <div class="shrink-0 text-right">
-                            <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $item['amount_formatted'] }}</p>
-                            <p @class(['text-xs', 'text-red-600 dark:text-red-400' => $item['is_overdue'], 'text-amber-600 dark:text-amber-400' => ! $item['is_overdue']])>
-                                {{ $item['delay_label'] }}
-                            </p>
-                        </div>
-                    </a>
-                @empty
-                    <p class="text-sm text-gray-500 dark:text-slate-400">Bekleyen ödeme yok.</p>
-                @endforelse
-            </x-ui.card>
-        @endif
-
-        @if ($canEarnings)
-            <x-ui.card title="Onay Bekleyen Hakedişler">
-                <x-slot:actions>
-                    <a href="{{ route('businesses.earnings.index', ['status' => 'pending']) }}" class="text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400">Tümü</a>
-                </x-slot:actions>
-
-                @forelse ($pendingEarnings as $item)
-                    <a href="{{ $item['url'] }}" class="flex items-start justify-between gap-3 border-b border-gray-100 py-3 last:border-0 last:pb-0 first:pt-0 hover:opacity-80 dark:border-slate-700">
-                        <div class="min-w-0">
-                            <p class="truncate text-sm font-medium text-gray-900 dark:text-white">{{ $item['business'] }}</p>
-                            <p class="text-xs text-gray-500 dark:text-slate-400">{{ $item['courier'] }} · {{ $item['period'] }}</p>
-                        </div>
-                        <p class="shrink-0 text-sm font-semibold text-gray-900 dark:text-white">{{ $item['revenue_formatted'] }}</p>
-                    </a>
-                @empty
-                    <p class="text-sm text-gray-500 dark:text-slate-400">Onay bekleyen hakediş yok.</p>
-                @endforelse
-            </x-ui.card>
-        @endif
-    </div>
-@endif
 
 <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
     <x-ui.card title="Son Eklenen İşletmeler">
@@ -148,10 +138,10 @@
                             :url="$business['logo_url']"
                             :initials="$business['logo']"
                             :color="$business['logo_color']"
-                            :alt="$business['company_name'].' logosu'"
+                            :alt="($business['display_name'] ?? $business['brand_name']).' logosu'"
                         />
                         <div class="min-w-0 flex-1">
-                            <p class="truncate font-medium text-gray-900 dark:text-white">{{ $business['company_name'] }}</p>
+                            <p class="truncate font-medium text-gray-900 dark:text-white">{{ $business['display_name'] ?? $business['brand_name'] }}</p>
                             <p class="truncate text-xs text-gray-500 dark:text-slate-400">
                                 {{ $business['location'] }} · {{ $business['pricing_model_label'] }}
                             </p>

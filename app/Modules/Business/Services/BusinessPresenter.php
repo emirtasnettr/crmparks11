@@ -54,6 +54,7 @@ class BusinessPresenter
       'id' => $business->id,
       'company_name' => $business->company_name,
       'brand_name' => $business->brand_name,
+      'display_name' => $business->displayName(),
       'phone' => $business->phone,
       'email' => $business->email,
       'website' => $business->website,
@@ -63,8 +64,12 @@ class BusinessPresenter
       'district' => $business->district?->name ?? '',
       'address' => $business->address,
       'status' => $business->status,
+      'contract_end_date' => $business->contract_end_date?->toDateString(),
+      'estimated_opening_date' => $business->estimated_opening_date?->toDateString(),
+      'start_date' => $business->start_date?->toDateString(),
       'notes' => $business->notes,
       'earning_period' => $business->earning_period,
+      'planned_courier_count' => (int) ($business->planned_courier_count ?? 0),
       'pricing_model' => $this->normalizePricingModelForList($pricingCode),
       'active_couriers' => $business->activeCourierCount(),
       'logo_path' => $business->logo_path,
@@ -109,10 +114,12 @@ class BusinessPresenter
       'has_logo_image' => $base['has_logo_image'],
       'company_name' => $base['company_name'],
       'brand_name' => $base['brand_name'],
+      'display_name' => $base['display_name'] ?? $base['brand_name'] ?? $base['company_name'],
       'phone' => $base['phone'],
       'location' => trim($base['city'].' / '.$base['district'], ' /'),
       'pricing_model_label' => $pricingLabels[$base['pricing_model']] ?? $base['pricing_model'],
       'active_couriers' => $base['active_couriers'],
+      'planned_courier_count' => $base['planned_courier_count'],
       'status' => $base['status'],
       'status_label' => $statusLabels[$base['status']] ?? $base['status'],
       'contacts_url' => route('businesses.contacts.index', ['business_id' => $id]),
@@ -145,6 +152,9 @@ class BusinessPresenter
       'customer_price' => $this->formatStoredPrice($unitPrices['revenue_unit'], $pricingModel),
       'courier_price' => $this->formatStoredPrice($unitPrices['courier_unit'], $pricingModel),
       'notes' => $base['notes'],
+      'contract_end_date_formatted' => $business->contract_end_date?->format('d.m.Y'),
+      'estimated_opening_date_formatted' => $business->estimated_opening_date?->format('d.m.Y'),
+      'start_date_formatted' => $business->start_date?->format('d.m.Y'),
       'created_at_formatted' => $business->created_at?->format('d.m.Y') ?? now()->format('d.m.Y'),
       'contacts' => $this->contacts
         ->forBusiness($business->id)
@@ -157,7 +167,7 @@ class BusinessPresenter
         ->values()
         ->all(),
       'assignments' => $this->assignments
-        ->forBusiness($business->id)
+        ->forBusiness($business->id, activeOnly: true)
         ->map(fn (BusinessCourierAssignment $assignment) => $this->assignmentPresenter->showRow($assignment))
         ->values()
         ->all(),
@@ -205,7 +215,11 @@ class BusinessPresenter
       'customer_price' => number_format($unitPrices['revenue_unit'], 2, '.', ''),
       'courier_price' => number_format($unitPrices['courier_unit'], 2, '.', ''),
       'earning_period' => $base['earning_period'] ?? 'weekly',
+      'planned_courier_count' => $base['planned_courier_count'] > 0 ? (string) $base['planned_courier_count'] : '',
       'status' => $base['status'],
+      'contract_end_date' => $base['contract_end_date'] ?? '',
+      'estimated_opening_date' => $base['estimated_opening_date'] ?? '',
+      'start_date' => $base['start_date'] ?? '',
       'notes' => $base['notes'],
       'logo_url' => $base['logo_url'],
     ];

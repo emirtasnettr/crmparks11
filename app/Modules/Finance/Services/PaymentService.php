@@ -107,11 +107,12 @@ class PaymentService
     public function agencies(): array
     {
         return Agency::query()
+            ->orderBy('brand_name')
             ->orderBy('company_name')
-            ->get(['id', 'company_name'])
+            ->get(['id', 'company_name', 'brand_name'])
             ->map(fn (Agency $agency) => [
                 'id' => $agency->id,
-                'name' => $agency->company_name,
+                'name' => $agency->displayName(),
             ])
             ->all();
     }
@@ -371,7 +372,7 @@ class PaymentService
             $agency = Agency::query()->findOrFail($id);
             $account = $this->currentAccounts->ensureForEntity($agency);
 
-            return [null, $agency->id, $agency->company_name, $account->id];
+            return [null, $agency->id, $agency->displayName(), $account->id];
         }
 
         $name = PaymentFormData::staticRecipientName($type, $id);

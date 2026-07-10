@@ -92,9 +92,18 @@ class BusinessService
     });
   }
 
-  public function deactivate(Business $business): Business
+  public function deactivate(Business $business, array $data = []): Business
   {
-    $business->update(['status' => 'inactive']);
+    $payload = [
+      'status' => 'inactive',
+      'contract_end_date' => $data['contract_end_date'] ?? now()->toDateString(),
+    ];
+
+    if (array_key_exists('notes', $data)) {
+      $payload['notes'] = $data['notes'];
+    }
+
+    $business->update($payload);
 
     return $business->fresh(['city', 'district', 'activePricing.pricingModelType']);
   }
@@ -238,7 +247,7 @@ class BusinessService
   {
     $attributes = [
       'company_name' => $data['company_name'],
-      'brand_name' => $data['brand_name'] ?? null,
+      'brand_name' => $data['brand_name'],
       'tax_office' => $data['tax_office'] ?? '',
       'tax_number' => $data['tax_number'] ?? $business?->tax_number ?? $this->generateTaxNumber(),
       'phone' => $data['phone'],
@@ -250,12 +259,30 @@ class BusinessService
       'notes' => $data['notes'] ?? null,
     ];
 
+    $status = $data['status'] ?? null;
+
+    if ($status === 'inactive') {
+      $attributes['contract_end_date'] = $data['contract_end_date'] ?? null;
+    }
+
+    if (in_array($status, ['pending', 'contract_stage'], true)) {
+      $attributes['estimated_opening_date'] = $data['estimated_opening_date'] ?? null;
+    }
+
+    if ($status === 'opening_stage') {
+      $attributes['start_date'] = $data['start_date'] ?? null;
+    }
+
     if (Schema::hasColumn('businesses', 'website')) {
       $attributes['website'] = $data['website'] ?? null;
     }
 
     if (Schema::hasColumn('businesses', 'earning_period')) {
       $attributes['earning_period'] = $data['earning_period'] ?? null;
+    }
+
+    if (Schema::hasColumn('businesses', 'planned_courier_count')) {
+      $attributes['planned_courier_count'] = (int) ($data['planned_courier_count'] ?? 0);
     }
 
     if ($business === null) {

@@ -2,13 +2,6 @@
 
 @section('title', $courier['full_name'])
 
-@section('breadcrumb')
-    <a href="{{ route('couriers.index') }}" class="hover:text-gray-900 dark:hover:text-white">Kuryeler</a>
-    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-    </svg>
-    <span class="font-medium text-gray-900 dark:text-white">{{ $courier['full_name'] }}</span>
-@endsection
 
 @section('content')
 <div class="max-w-6xl">
@@ -133,6 +126,7 @@
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Başlangıç</th>
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Bitiş</th>
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Durum</th>
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">İşlemler</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
@@ -142,6 +136,9 @@
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $history['start_date_formatted'] ?? $history['start_date'] }}</td>
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $history['end_date_formatted'] ?? ($history['end_date'] ?? '—') }}</td>
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $history['work_status_label'] ?? ($history['status'] ?? '—') }}</td>
+                                        <td class="py-2.5">
+                                            <x-courier.work-history-row-actions :record="$history" />
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -167,6 +164,7 @@
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Dosya</th>
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Geçerlilik</th>
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Durum</th>
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">İşlemler</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
@@ -176,6 +174,9 @@
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $document['file_name'] ?? '—' }}</td>
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $document['expiry_date_formatted'] ?? '—' }}</td>
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $document['status_label'] ?? $document['status'] }}</td>
+                                        <td class="py-2.5">
+                                            <x-courier.document-row-actions :document="$document" />
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -210,6 +211,7 @@
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">IBAN</th>
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Varsayılan</th>
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Durum</th>
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">İşlemler</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
@@ -220,6 +222,9 @@
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $account['iban_formatted'] ?? $account['iban'] }}</td>
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $account['is_default'] ? 'Evet' : 'Hayır' }}</td>
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $account['status_label'] ?? $account['status'] }}</td>
+                                        <td class="py-2.5">
+                                            <x-courier.bank-account-row-actions :account="$account" />
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -255,6 +260,7 @@
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Marka / Model</th>
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Sigorta Bitiş</th>
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Durum</th>
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">İşlemler</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
@@ -265,6 +271,9 @@
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ ($vehicle['brand'] ?? '').' / '.($vehicle['model'] ?? '') }}</td>
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $vehicle['insurance_expiry_date_formatted'] ?? $vehicle['insurance_expiry_date'] ?? '—' }}</td>
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $vehicle['status_label'] ?? $vehicle['status'] }}</td>
+                                        <td class="py-2.5">
+                                            <x-courier.vehicle-row-actions :vehicle="$vehicle" />
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>

@@ -46,7 +46,7 @@ class ReportService
 
             return [
                 'id' => $line->id,
-                'business' => $line->business?->company_name ?? '—',
+                'business' => $line->business?->displayName() ?? '—',
                 'courier' => $line->courier?->full_name ?? '—',
                 'period' => sprintf('%02d/%d', $line->period_month, $line->period_year),
                 'status' => $status,
@@ -135,7 +135,7 @@ class ReportService
 
             return [
                 'id' => $collection->id,
-                'business' => $collection->business?->company_name ?? '—',
+                'business' => $collection->business?->displayName() ?? '—',
                 'reference' => $collection->reference,
                 'due_date_formatted' => $collection->due_date->format('d.m.Y'),
                 'days_overdue' => max(0, $days),
@@ -327,7 +327,7 @@ class ReportService
 
                 return [
                     'agency_id' => $agencyId,
-                    'agency' => $agency?->company_name ?? '—',
+                    'agency' => $agency?->displayName() ?? '—',
                     'couriers' => $group->pluck('courier_id')->unique()->count(),
                     'packages' => $packages,
                     'lines' => $group->count(),

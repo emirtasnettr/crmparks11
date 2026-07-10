@@ -2,17 +2,6 @@
 
 @section('title', 'Tahsilat Detayı')
 
-@section('breadcrumb')
-    <span class="text-gray-500 dark:text-slate-400">Finans</span>
-    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-    </svg>
-    <a href="{{ route('finance.collections.index') }}" class="hover:text-gray-900 dark:hover:text-white">Tahsilatlar</a>
-    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-    </svg>
-    <span class="font-medium text-gray-900 dark:text-white">{{ $collection['reference'] }}</span>
-@endsection
 
 @section('content')
 <div class="max-w-6xl">
@@ -39,7 +28,7 @@
         <x-ui.finance-stat-card title="Toplam Tutar" :value="$collection['total_amount_formatted']" accent="primary" />
         <x-ui.finance-stat-card title="Tahsil Edilen" :value="$collection['collected_amount_formatted']" accent="success" />
         <x-ui.finance-stat-card title="Kalan Tutar" :value="$collection['remaining_amount_formatted']" accent="danger" />
-        <x-ui.finance-stat-card title="Ödeme Yöntemi" :value="$collection['payment_method_label']" accent="violet" />
+        <x-ui.finance-stat-card title="Ödeme Yöntemi" :value="$collection['payment_method_label']" :excl-vat="false" accent="violet" />
     </div>
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">

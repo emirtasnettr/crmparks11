@@ -2,9 +2,6 @@
 
 @section('title', 'Raporlar')
 
-@section('breadcrumb')
-    <span class="font-medium text-gray-900 dark:text-white">Raporlar</span>
-@endsection
 
 @section('content')
 <div class="mb-6">

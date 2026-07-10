@@ -78,7 +78,7 @@ class BusinessOverviewStats
         return [
             'received_per_package' => $receivedPerPackage,
             'courier_per_package' => $courierPerPackage,
-            'active_couriers' => self::activeCouriersInPeriod($businessId, $start, $end),
+            'active_couriers' => self::currentActiveCouriers($businessId),
             'net_per_package' => $netPerPackage,
             'total_packages' => $totalPackages,
             'received_per_package_formatted' => MoneyCalculator::format($receivedPerPackage),
@@ -121,17 +121,14 @@ class BusinessOverviewStats
             ->get();
     }
 
-    private static function activeCouriersInPeriod(int $businessId, CarbonInterface $start, CarbonInterface $end): int
+    private static function currentActiveCouriers(int $businessId): int
     {
-        return BusinessCourierAssignment::query()
+        return (int) BusinessCourierAssignment::query()
             ->where('business_id', $businessId)
-            ->whereDate('start_date', '<=', $end->toDateString())
-            ->where(function (Builder $query) use ($start): void {
-                $query->whereNull('end_date')
-                    ->orWhereDate('end_date', '>=', $start->toDateString());
-            })
-            ->distinct()
-            ->count('courier_id');
+            ->currentlyActive()
+            ->pluck('courier_id')
+            ->unique()
+            ->count();
     }
 
     /**

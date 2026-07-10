@@ -83,6 +83,17 @@ class UserManagementController extends Controller
             ->with('success', 'Kullanıcı pasife alındı.');
     }
 
+    public function forceDestroy(Request $request, int $id): RedirectResponse
+    {
+        abort_unless($request->user()?->hasRole('super_admin'), 403);
+
+        $this->userService->forceDelete($id, $request->user());
+
+        return redirect()
+            ->route('users.index')
+            ->with('success', 'Kullanıcı kalıcı olarak silindi.');
+    }
+
     public function suspend(Request $request, int $id): RedirectResponse
     {
         abort_unless($request->user()?->can('user.update'), 403);

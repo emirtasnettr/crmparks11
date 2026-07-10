@@ -23,31 +23,10 @@ window.formatMoneyExcludingVat = (amount, decimals = 2) => {
         maximumFractionDigits: decimals,
     }).format(amount || 0);
 
-    return `${formatted} ₺ KDV hariç`;
+    return `${formatted} ₺`;
 };
 
 const formatMoneyExclVat = (amount, decimals = 2) => window.formatMoneyExcludingVat(amount, decimals);
-
-Alpine.data('themeToggle', () => ({
-    theme: localStorage.getItem('theme') || 'system',
-
-    init() {
-        this.apply();
-    },
-
-    toggle() {
-        this.theme = this.theme === 'dark' ? 'light' : 'dark';
-        localStorage.setItem('theme', this.theme);
-        this.apply();
-    },
-
-    apply() {
-        const isDark = this.theme === 'dark'
-            || (this.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-
-        document.documentElement.classList.toggle('dark', isDark);
-    },
-}));
 
 Alpine.data('topNav', () => ({
     mobileOpen: false,
@@ -316,7 +295,11 @@ Alpine.data('businessForm', (districtsByCity = {}, initial = {}, isEdit = false,
         customer_price: '',
         courier_price: '',
         earning_period: '',
+        planned_courier_count: '',
         status: 'active',
+        contract_end_date: '',
+        estimated_opening_date: '',
+        start_date: '',
         notes: '',
         ...initial,
     },
@@ -324,6 +307,12 @@ Alpine.data('businessForm', (districtsByCity = {}, initial = {}, isEdit = false,
     init() {
         if (this.form.city) {
             this.districts = this.districtsByCity[this.form.city] || [];
+        }
+
+        const params = new URLSearchParams(window.location.search);
+        const presetStatus = params.get('status');
+        if (presetStatus && ['active', 'inactive', 'pending', 'contract_stage', 'opening_stage'].includes(presetStatus)) {
+            this.form.status = presetStatus;
         }
 
         this.$watch('form.pricing_model', () => {
@@ -346,6 +335,10 @@ Alpine.data('businessForm', (districtsByCity = {}, initial = {}, isEdit = false,
             this.errors.company_name = 'Firma ünvanı zorunludur.';
         }
 
+        if (!this.form.brand_name.trim()) {
+            this.errors.brand_name = 'Marka adı zorunludur.';
+        }
+
         if (!this.form.phone.trim()) {
             this.errors.phone = 'Telefon numarası zorunludur.';
         }
@@ -356,6 +349,23 @@ Alpine.data('businessForm', (districtsByCity = {}, initial = {}, isEdit = false,
 
         if (this.earningsEnabled && !this.form.earning_period) {
             this.errors.earning_period = 'Hakediş periyodu seçilmelidir.';
+        }
+
+        const plannedCount = Number(this.form.planned_courier_count);
+        if (!this.form.planned_courier_count || Number.isNaN(plannedCount) || plannedCount < 1) {
+            this.errors.planned_courier_count = 'Planlanan kurye sayısı zorunludur (en az 1).';
+        }
+
+        if (this.form.status === 'inactive' && !this.form.contract_end_date) {
+            this.errors.contract_end_date = 'Pasif durum için sözleşme bitiş tarihi zorunludur.';
+        }
+
+        if ((this.form.status === 'pending' || this.form.status === 'contract_stage') && !this.form.estimated_opening_date) {
+            this.errors.estimated_opening_date = 'Tahmini açılış tarihi zorunludur.';
+        }
+
+        if (this.form.status === 'opening_stage' && !this.form.start_date) {
+            this.errors.start_date = 'Açılış aşaması için başlangıç tarihi zorunludur.';
         }
 
         return Object.keys(this.errors).length === 0;
@@ -459,6 +469,10 @@ Alpine.data('agencyForm', (districtsByCity = {}, initial = {}, isEdit = false) =
 
         if (!this.form.company_name.trim()) {
             this.errors.company_name = 'Firma ünvanı zorunludur.';
+        }
+
+        if (!this.form.brand_name.trim()) {
+            this.errors.brand_name = 'Marka adı zorunludur.';
         }
 
         if (!this.form.phone.trim()) {
@@ -3139,99 +3153,16 @@ Alpine.data('financeCashFlowPage', () => ({
 }));
 
 Alpine.data('userManagementPage', (preset = {}) => ({
-    activeModal: null,
-    saved: false,
-    errors: {},
+    activeModal: preset.openCreate ? 'create' : null,
     routes: preset.routes ?? {},
-    form: {
-        first_name: '',
-        last_name: '',
-        phone: '',
-        email: '',
-        password: '',
-        password_confirmation: '',
-        roles: [],
-        linked_business_id: '',
-        linked_courier_id: '',
-        linked_agency_id: '',
-        status: 'active',
-    },
 
     closeModals() {
         this.activeModal = null;
-        this.saved = false;
-        this.errors = {};
-        this.resetForm();
-    },
-
-    resetForm() {
-        this.form = {
-            first_name: '',
-            last_name: '',
-            phone: '',
-            email: '',
-            password: '',
-            password_confirmation: '',
-            roles: [],
-            linked_business_id: '',
-            linked_courier_id: '',
-            linked_agency_id: '',
-            status: 'active',
-        };
-    },
-
-    validateForm() {
-        this.errors = {};
-
-        if (!this.form.first_name?.trim()) {
-            this.errors.first_name = 'Ad zorunludur.';
-        }
-
-        if (!this.form.last_name?.trim()) {
-            this.errors.last_name = 'Soyad zorunludur.';
-        }
-
-        if (!this.form.phone?.trim()) {
-            this.errors.phone = 'Telefon zorunludur.';
-        }
-
-        if (!this.form.email?.trim()) {
-            this.errors.email = 'E-posta zorunludur.';
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.form.email)) {
-            this.errors.email = 'Geçerli bir e-posta adresi girin.';
-        }
-
-        if (!this.form.password) {
-            this.errors.password = 'Şifre zorunludur.';
-        } else if (this.form.password.length < 8) {
-            this.errors.password = 'Şifre en az 8 karakter olmalıdır.';
-        }
-
-        if (this.form.password !== this.form.password_confirmation) {
-            this.errors.password_confirmation = 'Şifreler eşleşmiyor.';
-        }
-
-        if (!this.form.roles?.length) {
-            this.errors.roles = 'En az bir rol seçilmelidir.';
-        }
-
-        return Object.keys(this.errors).length === 0;
-    },
-
-    saveUser() {
-        this.saved = false;
-
-        if (!this.validateForm()) {
-            return;
-        }
-
-        this.saved = true;
     },
 
     handleRowAction(detail) {
         if (detail?.modal) {
             this.activeModal = detail.modal;
-            this.saved = false;
 
             return;
         }
@@ -3253,55 +3184,16 @@ Alpine.data('userManagementPage', (preset = {}) => ({
     },
 }));
 
-Alpine.data('roleManagementPage', () => ({
-    activeModal: null,
-    saved: false,
-    errors: {},
-    form: {
-        display_name: '',
-        description: '',
-        status: 'active',
-    },
+Alpine.data('roleManagementPage', (preset = {}) => ({
+    activeModal: preset.openCreate ? 'create' : null,
 
     closeModals() {
         this.activeModal = null;
-        this.saved = false;
-        this.errors = {};
-        this.resetForm();
-    },
-
-    resetForm() {
-        this.form = {
-            display_name: '',
-            description: '',
-            status: 'active',
-        };
-    },
-
-    validateForm() {
-        this.errors = {};
-
-        if (!this.form.display_name?.trim()) {
-            this.errors.display_name = 'Rol adı zorunludur.';
-        }
-
-        return Object.keys(this.errors).length === 0;
-    },
-
-    saveRole() {
-        this.saved = false;
-
-        if (!this.validateForm()) {
-            return;
-        }
-
-        this.saved = true;
     },
 
     handleRowAction(detail) {
         if (detail?.modal) {
             this.activeModal = detail.modal;
-            this.saved = false;
         }
     },
 }));
@@ -4146,11 +4038,34 @@ Alpine.data('policySettingsPage', (policies = {}) => ({
 
 Alpine.data('globalSearch', (endpoint) => ({
     query: '',
-    open: false,
+    panelOpen: false,
+    resultsOpen: false,
     loading: false,
     groups: [],
     total: 0,
     endpoint,
+
+    togglePanel() {
+        this.panelOpen = ! this.panelOpen;
+
+        if (this.panelOpen) {
+            this.$nextTick(() => this.$refs.input?.focus());
+        } else {
+            this.resetResults();
+        }
+    },
+
+    closePanel() {
+        this.panelOpen = false;
+        this.resetResults();
+    },
+
+    resetResults() {
+        this.resultsOpen = false;
+        this.groups = [];
+        this.total = 0;
+        this.loading = false;
+    },
 
     async search() {
         const q = this.query.trim();
@@ -4158,12 +4073,12 @@ Alpine.data('globalSearch', (endpoint) => ({
         if (q.length < 2) {
             this.groups = [];
             this.total = 0;
-            this.open = false;
+            this.resultsOpen = false;
             return;
         }
 
         this.loading = true;
-        this.open = true;
+        this.resultsOpen = true;
 
         try {
             const response = await fetch(`${this.endpoint}?q=${encodeURIComponent(q)}`, {
@@ -4190,7 +4105,7 @@ Alpine.data('globalSearch', (endpoint) => ({
     },
 
     close() {
-        this.open = false;
+        this.closePanel();
     },
 }));
 

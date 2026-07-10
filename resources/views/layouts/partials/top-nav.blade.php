@@ -6,7 +6,7 @@
         ->values();
 @endphp
 
-<header class="sticky top-0 z-40 border-b border-gray-200 bg-white/95 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-800/95">
+<header class="sticky top-0 z-40 overflow-visible border-b border-gray-200 bg-white/95 backdrop-blur-sm">
     <div class="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
         <button
             type="button"
@@ -30,7 +30,7 @@
             @endif
         </a>
 
-        <nav class="hidden min-w-0 flex-1 items-center gap-0.5 overflow-x-auto lg:flex" aria-label="Ana menü">
+        <nav class="hidden min-w-0 flex-1 items-center gap-0.5 lg:flex" aria-label="Ana menü">
             @foreach ($menuItems as $item)
                 @if (($item['type'] ?? 'link') === 'group')
                     @if (! empty($item['disabled']))
@@ -48,16 +48,23 @@
                         @continue
                     @endif
 
-                    <div class="relative shrink-0" @click.outside="closeDropdown('{{ $item['key'] }}')">
+                    <div
+                        class="relative shrink-0"
+                        x-data="{ open: false }"
+                        @keydown.escape.window="open = false"
+                        @click.outside="open = false"
+                    >
                         <button
                             type="button"
-                            @click="toggleDropdown('{{ $item['key'] }}')"
-                            class="inline-flex items-center gap-1 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors {{ $groupActive ? 'bg-primary-50 text-primary-700 dark:bg-primary-600/10 dark:text-primary-400' : 'text-gray-700 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-700' }}"
+                            @click="open = !open"
+                            class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors {{ $groupActive ? 'bg-primary-50 text-primary-700' : 'text-gray-700 hover:bg-gray-100' }}"
+                            :aria-expanded="open.toString()"
                         >
+                            <x-ui.icon :name="$item['icon']" class="h-4 w-4 shrink-0" />
                             <span>{{ $item['label'] }}</span>
                             <svg
                                 class="h-3.5 w-3.5 shrink-0 opacity-70 transition-transform"
-                                :class="openDropdown === '{{ $item['key'] }}' ? 'rotate-180' : ''"
+                                :class="open ? 'rotate-180' : ''"
                                 fill="none"
                                 viewBox="0 0 24 24"
                                 stroke="currentColor"
@@ -67,17 +74,17 @@
                         </button>
 
                         <div
-                            x-show="openDropdown === '{{ $item['key'] }}'"
+                            x-show="open"
                             x-cloak
                             x-transition
-                            class="absolute left-0 top-full z-50 mt-1 min-w-[13rem] rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-slate-600 dark:bg-slate-800"
+                            class="absolute left-0 top-full z-[60] mt-1 min-w-[13rem] rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
                         >
                             @foreach ($visibleChildren as $child)
                                 @php $childActive = SidebarMenu::isActive($child['active'] ?? [$child['route']]); @endphp
                                 <a
                                     href="{{ route($child['route']) }}"
-                                    @click="openDropdown = null"
-                                    class="block px-3 py-2 text-sm transition-colors {{ $childActive ? 'bg-primary-50 font-medium text-primary-700 dark:bg-primary-600/10 dark:text-primary-400' : 'text-gray-700 hover:bg-gray-50 dark:text-slate-300 dark:hover:bg-slate-700' }}"
+                                    @click="open = false"
+                                    class="block px-3 py-2 text-sm transition-colors {{ $childActive ? 'bg-primary-50 font-medium text-primary-700' : 'text-gray-700 hover:bg-gray-50' }}"
                                 >
                                     {{ $child['label'] }}
                                 </a>
@@ -88,32 +95,17 @@
                     @php $linkActive = SidebarMenu::isActive($item['active'] ?? [$item['route']]); @endphp
                     <a
                         href="{{ route($item['route']) }}"
-                        class="shrink-0 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors {{ $linkActive ? 'bg-primary-50 text-primary-700 dark:bg-primary-600/10 dark:text-primary-400' : 'text-gray-700 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-700' }}"
+                        class="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors {{ $linkActive ? 'bg-primary-50 text-primary-700' : 'text-gray-700 hover:bg-gray-100' }}"
                     >
+                        <x-ui.icon :name="$item['icon']" class="h-4 w-4 shrink-0" />
                         {{ $item['label'] }}
                     </a>
                 @endif
             @endforeach
         </nav>
 
-        <div class="ml-auto flex min-w-0 items-center gap-2">
-            <div class="hidden min-w-[10rem] max-w-sm flex-1 md:block lg:max-w-xs xl:max-w-md">
-                @include('layouts.partials.global-search')
-            </div>
-
-            <button
-                type="button"
-                @click="$root.toggle()"
-                class="rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-700"
-                title="Tema değiştir"
-            >
-                <svg x-show="theme !== 'dark'" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
-                </svg>
-                <svg x-show="theme === 'dark'" x-cloak class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
-                </svg>
-            </button>
+        <div class="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
+            @include('layouts.partials.global-search')
 
             @include('layouts.partials.notification-bell')
 
@@ -121,12 +113,13 @@
                 <button
                     type="button"
                     @click="open = !open"
-                    class="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-gray-100 dark:hover:bg-slate-700"
+                    class="flex items-center rounded-full p-0.5 hover:bg-gray-100"
+                    title="{{ auth()->user()->name }}"
+                    aria-label="{{ auth()->user()->name }}"
                 >
                     <div class="flex h-8 w-8 items-center justify-center rounded-full bg-primary-600 text-xs font-semibold text-white">
                         {{ auth()->user()->initials() }}
                     </div>
-                    <span class="hidden text-sm font-medium text-gray-700 dark:text-slate-300 sm:block">{{ auth()->user()->name }}</span>
                 </button>
 
                 <div
@@ -188,10 +181,6 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>
-        </div>
-
-        <div class="border-b border-gray-200 p-3 dark:border-slate-700 md:hidden">
-            @include('layouts.partials.global-search')
         </div>
 
         <nav class="flex-1 overflow-y-auto p-3">

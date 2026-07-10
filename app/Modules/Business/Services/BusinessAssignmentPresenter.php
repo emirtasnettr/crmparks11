@@ -46,9 +46,9 @@ class BusinessAssignmentPresenter
             'courier_type' => $courierType,
             'courier_name' => $courier?->full_name ?? '—',
             'courier_phone' => $courier?->phone ?? '—',
-            'business_name' => $business?->company_name ?? '—',
+            'business_name' => $business?->displayName() ?? '—',
             'business_brand' => $business?->brand_name ?? '—',
-            'agency_name' => $agency?->company_name ?? '—',
+            'agency_name' => $agency?->displayName() ?? '—',
             'courier_type_label' => $courierType === 'agency'
                 ? ($agency?->company_name ?: '—')
                 : 'Esnaf Kurye',

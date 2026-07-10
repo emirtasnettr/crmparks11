@@ -7,6 +7,7 @@ use App\Modules\Courier\Data\CourierDocumentFormData;
 use App\Modules\Courier\Requests\StoreCourierDocumentRequest;
 use App\Modules\Courier\Services\CourierDocumentPresenter;
 use App\Modules\Courier\Services\CourierDocumentService;
+use App\Support\EntityCardRedirect;
 use App\Support\RequestFilter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -76,9 +77,11 @@ class CourierDocumentController extends Controller
         );
 
         if ($request->boolean('redirect_to_courier')) {
-            return redirect()
-                ->route('couriers.show', $document->documentable_id)
-                ->with('success', 'Belge başarıyla yüklendi.');
+            return EntityCardRedirect::toShow(
+                route('couriers.show', $document->documentable_id),
+                'documents',
+                'Belge başarıyla yüklendi.',
+            );
         }
 
         return redirect()
@@ -107,8 +110,11 @@ class CourierDocumentController extends Controller
         $courierId = $document->documentable_id;
         $this->documents->destroy($document);
 
-        return redirect()
-            ->route('couriers.documents.index', ['courier_id' => $courierId])
-            ->with('success', 'Belge silindi.');
+        return EntityCardRedirect::after(
+            route('couriers.documents.index', ['courier_id' => $courierId]),
+            'Belge silindi.',
+            route('couriers.show', $courierId),
+            'documents',
+        );
     }
 }

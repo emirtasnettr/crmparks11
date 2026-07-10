@@ -45,6 +45,20 @@
             url: route('users.deactivate', $id),
         );
     }
+
+    if ($user['can_force_delete'] ?? false) {
+        $items[] = RowActions::divider();
+        $items[] = RowActions::run(
+            'Kalıcı Olarak Sil',
+            'force-destroy',
+            confirm: "{$name} kalıcı olarak silinsin mi? Bu işlem geri alınamaz.",
+            message: 'Kullanıcı kalıcı olarak silindi.',
+            tone: 'danger',
+            id: $id,
+            url: route('users.force-destroy', $id),
+            method: 'DELETE',
+        );
+    }
 @endphp
 
 <x-ui.action-menu :items="$items" width="w-52" />

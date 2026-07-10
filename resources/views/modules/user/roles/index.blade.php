@@ -2,16 +2,14 @@
 
 @section('title', 'Roller')
 
-@section('breadcrumb')
-    <span class="text-gray-500 dark:text-slate-400">Kullanıcı Yönetimi</span>
-    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-    </svg>
-    <span class="font-medium text-gray-900 dark:text-white">Roller</span>
-@endsection
 
 @section('content')
-<div x-data="roleManagementPage()" x-on:role-row-action.window="handleRowAction($event.detail)">
+<div
+    x-data="roleManagementPage(@js([
+        'openCreate' => $errors->hasAny(['display_name', 'description', 'status']),
+    ]))"
+    x-on:role-row-action.window="handleRowAction($event.detail)"
+>
     <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
             <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Roller</h1>

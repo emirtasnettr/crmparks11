@@ -7,6 +7,7 @@ use App\Modules\Agency\Data\AgencyDocumentFormData;
 use App\Modules\Agency\Requests\StoreAgencyDocumentRequest;
 use App\Modules\Agency\Services\AgencyDocumentPresenter;
 use App\Modules\Agency\Services\AgencyDocumentService;
+use App\Support\EntityCardRedirect;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -75,9 +76,11 @@ class AgencyDocumentController extends Controller
         );
 
         if ($request->boolean('redirect_to_agency')) {
-            return redirect()
-                ->route('agencies.show', $document->documentable_id)
-                ->with('success', 'Evrak başarıyla yüklendi.');
+            return EntityCardRedirect::toShow(
+                route('agencies.show', $document->documentable_id),
+                'documents',
+                'Evrak başarıyla yüklendi.',
+            );
         }
 
         return redirect()
@@ -106,8 +109,11 @@ class AgencyDocumentController extends Controller
         $agencyId = $document->documentable_id;
         $this->documents->destroy($document);
 
-        return redirect()
-            ->route('agencies.documents.index', ['agency_id' => $agencyId])
-            ->with('success', 'Evrak silindi.');
+        return EntityCardRedirect::after(
+            route('agencies.documents.index', ['agency_id' => $agencyId]),
+            'Evrak silindi.',
+            route('agencies.show', $agencyId),
+            'documents',
+        );
     }
 }

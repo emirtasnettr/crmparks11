@@ -48,7 +48,7 @@ class BusinessContractPresenter
             'id' => $contract->id,
             'uuid' => $contract->uuid,
             'business_id' => $business?->id,
-            'business_name' => $business?->company_name ?? '—',
+            'business_name' => $business?->displayName() ?? '—',
             'business_brand' => $business?->brand_name ?? '—',
             'contract_number' => $contract->contract_number,
             'contract_type' => $contract->contractType?->code ?? '',

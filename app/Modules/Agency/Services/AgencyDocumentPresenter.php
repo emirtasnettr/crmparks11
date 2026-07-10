@@ -61,7 +61,7 @@ class AgencyDocumentPresenter
             'id' => $document->id,
             'uuid' => $document->uuid,
             'agency_id' => $agency?->id,
-            'agency_name' => $agency?->company_name ?? '—',
+            'agency_name' => $agency?->displayName() ?? '—',
             'agency_city' => $agency?->city?->name ?? '—',
             'agency_phone' => $agency?->phone ?? '—',
             'agency_email' => $agency?->email ?? '—',

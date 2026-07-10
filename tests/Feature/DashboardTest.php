@@ -56,14 +56,59 @@ class DashboardTest extends TestCase
         $response->assertSee(number_format(Business::query()->count()));
         $response->assertSee(number_format(Courier::query()->count()));
         $response->assertSee(number_format(Agency::query()->count()));
+        $response->assertSee('Açılış Aşamasındakiler');
         $response->assertSee('Son Eklenen İşletmeler');
         $response->assertSee('Son Eklenen Kuryeler');
         $response->assertSee('Kurye Tür Dağılımı');
-        $response->assertSee('Finans Özeti');
-        $response->assertSee('Bu Ay Gelir');
-        $response->assertSee('Bekleyen Tahsilat');
-        $response->assertSee('Bekleyen Ödeme');
-        $response->assertSee('Onay Bekleyen Hakediş');
+        $response->assertDontSee('Finans Özeti');
+        $response->assertDontSee('Bu Ay Gelir');
+        $response->assertDontSee('Bekleyen Tahsilatlar');
+        $response->assertDontSee('Bekleyen Ödemeler');
+        $response->assertDontSee('Onay Bekleyen Hakedişler');
+    }
+
+    public function test_opening_stage_businesses_appear_on_dashboard_sorted_by_start_date(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $later = Business::factory()->create([
+            'brand_name' => 'Geç Açılacak',
+            'status' => 'opening_stage',
+            'start_date' => now()->addDays(5)->toDateString(),
+            'planned_courier_count' => 8,
+            'created_by' => $user->id,
+        ]);
+
+        $soon = Business::factory()->create([
+            'brand_name' => 'Yarın Açılacak',
+            'status' => 'opening_stage',
+            'start_date' => now()->addDay()->toDateString(),
+            'planned_courier_count' => 4,
+            'created_by' => $user->id,
+        ]);
+
+        Business::factory()->create([
+            'brand_name' => 'Aktif Marka',
+            'status' => 'active',
+            'created_by' => $user->id,
+        ]);
+
+        $rows = app(DashboardService::class)->getOpeningStageBusinesses();
+
+        $this->assertCount(2, $rows);
+        $this->assertSame($soon->id, $rows[0]['id']);
+        $this->assertSame($later->id, $rows[1]['id']);
+        $this->assertTrue($rows[0]['is_opening_soon']);
+        $this->assertFalse($rows[1]['is_opening_soon']);
+        $this->assertSame(4, $rows[0]['planned_courier_count']);
+
+        $response = $this->actingAs($user)->get(route('dashboard'));
+        $response->assertOk();
+        $response->assertSee('Yarın Açılacak');
+        $response->assertSee('Geç Açılacak');
+        $response->assertSee('1 gün kaldı');
+        $response->assertSee('Açılış Aşamasındakiler');
     }
 
     public function test_operations_staff_does_not_see_finance_overview(): void
@@ -76,6 +121,8 @@ class DashboardTest extends TestCase
         $response->assertOk();
         $response->assertDontSee('Finans Özeti');
         $response->assertDontSee('Bekleyen Tahsilatlar');
+        $response->assertDontSee('Bekleyen Ödemeler');
+        $response->assertDontSee('Onay Bekleyen Hakedişler');
     }
 
     public function test_dashboard_service_returns_latest_entities_and_distribution(): void
@@ -112,10 +159,7 @@ class DashboardTest extends TestCase
         $this->assertSame(Courier::query()->count(), $stats['total_couriers']);
         $this->assertSame(Agency::query()->count(), $stats['total_agencies']);
         $this->assertSame(Courier::query()->where('status', 'active')->count(), $stats['active_couriers']);
-        $this->assertSame(
-            Courier::query()->count() - Courier::query()->where('status', 'active')->count(),
-            $stats['inactive_couriers']
-        );
+        $this->assertArrayNotHasKey('inactive_couriers', $stats);
         $this->assertArrayNotHasKey('monthly_revenue', $stats);
     }
 

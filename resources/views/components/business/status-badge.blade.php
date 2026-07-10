@@ -5,6 +5,7 @@
         'active' => ['label' => 'Aktif', 'class' => 'success'],
         'pending' => ['label' => 'Beklemede', 'class' => 'warning'],
         'contract_stage' => ['label' => 'Sözleşme Aşamasında', 'class' => 'primary'],
+        'opening_stage' => ['label' => 'Açılış Aşamasında', 'class' => 'primary'],
         'inactive' => ['label' => 'Pasif', 'class' => 'secondary'],
     ];
 

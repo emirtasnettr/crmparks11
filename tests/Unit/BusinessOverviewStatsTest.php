@@ -103,6 +103,7 @@ class BusinessOverviewStatsTest extends TestCase
             'courier_id' => $firstCourier->id,
             'start_date' => '2026-07-01',
             'end_date' => null,
+            'status' => 'active',
             'assigned_by' => $user->id,
         ]);
 
@@ -111,6 +112,7 @@ class BusinessOverviewStatsTest extends TestCase
             'courier_id' => $secondCourier->id,
             'start_date' => '2026-06-01',
             'end_date' => '2026-06-30',
+            'status' => 'inactive',
             'assigned_by' => $user->id,
         ]);
 
@@ -121,6 +123,45 @@ class BusinessOverviewStatsTest extends TestCase
         );
 
         $this->assertSame(1, $stats['active_couriers']);
+    }
+
+    public function test_terminated_assignments_are_excluded_from_active_courier_count(): void
+    {
+        Carbon::setTestNow('2026-07-08 12:00:00');
+
+        $user = User::factory()->create();
+        $business = Business::factory()->create(['created_by' => $user->id]);
+        $activeCourier = \App\Modules\Courier\Models\Courier::factory()->create(['created_by' => $user->id]);
+        $terminatedCourier = \App\Modules\Courier\Models\Courier::factory()->create(['created_by' => $user->id]);
+
+        BusinessCourierAssignment::factory()->create([
+            'business_id' => $business->id,
+            'courier_id' => $activeCourier->id,
+            'start_date' => '2026-07-01',
+            'end_date' => null,
+            'status' => 'active',
+            'assigned_by' => $user->id,
+        ]);
+
+        BusinessCourierAssignment::factory()->create([
+            'business_id' => $business->id,
+            'courier_id' => $terminatedCourier->id,
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-07-07',
+            'status' => 'inactive',
+            'assigned_by' => $user->id,
+        ]);
+
+        $stats = BusinessOverviewStats::forBusiness(
+            $business->id,
+            Carbon::parse('2026-07-02'),
+            Carbon::parse('2026-07-08'),
+        );
+
+        $this->assertSame(1, $stats['active_couriers']);
+        $this->assertSame(1, $business->fresh()->activeCourierCount());
+
+        Carbon::setTestNow();
     }
 
     public function test_overview_stats_aggregate_earning_lines_in_period(): void

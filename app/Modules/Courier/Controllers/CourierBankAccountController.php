@@ -7,6 +7,7 @@ use App\Modules\Courier\Data\CourierBankAccountFormData;
 use App\Modules\Courier\Requests\StoreCourierBankAccountRequest;
 use App\Modules\Courier\Services\CourierBankAccountPresenter;
 use App\Modules\Courier\Services\CourierBankAccountService;
+use App\Support\EntityCardRedirect;
 use App\Support\RequestFilter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -77,9 +78,11 @@ class CourierBankAccountController extends Controller
         $account = $this->bankAccounts->create($request->validated());
 
         if ($request->boolean('redirect_to_courier')) {
-            return redirect()
-                ->route('couriers.show', $account->courier_id)
-                ->with('success', 'Banka hesabı başarıyla kaydedildi.');
+            return EntityCardRedirect::toShow(
+                route('couriers.show', $account->courier_id),
+                'bank_accounts',
+                'Banka hesabı başarıyla kaydedildi.',
+            );
         }
 
         return redirect()
@@ -96,9 +99,12 @@ class CourierBankAccountController extends Controller
 
         $this->bankAccounts->makeDefault($account);
 
-        return redirect()
-            ->route('couriers.bank-accounts.index', ['courier_id' => $account->courier_id])
-            ->with('success', 'Hesap varsayılan olarak işaretlendi.');
+        return EntityCardRedirect::after(
+            route('couriers.bank-accounts.index', ['courier_id' => $account->courier_id]),
+            'Hesap varsayılan olarak işaretlendi.',
+            route('couriers.show', $account->courier_id),
+            'bank_accounts',
+        );
     }
 
     public function deactivate(Request $request, int $id): RedirectResponse
@@ -110,8 +116,11 @@ class CourierBankAccountController extends Controller
 
         $this->bankAccounts->deactivate($account);
 
-        return redirect()
-            ->route('couriers.bank-accounts.index', ['courier_id' => $account->courier_id])
-            ->with('success', 'Banka hesabı pasife alındı.');
+        return EntityCardRedirect::after(
+            route('couriers.bank-accounts.index', ['courier_id' => $account->courier_id]),
+            'Banka hesabı pasife alındı.',
+            route('couriers.show', $account->courier_id),
+            'bank_accounts',
+        );
     }
 }

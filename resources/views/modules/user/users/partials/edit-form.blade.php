@@ -88,3 +88,20 @@
         </form>
     </x-ui.card>
 @endif
+
+@if ($user['can_force_delete'] ?? false)
+    <x-ui.card title="Kalıcı Olarak Sil" class="mt-6 border-red-200 dark:border-red-900/50">
+        <p class="mb-4 text-sm text-gray-600 dark:text-slate-300">
+            Bu işlem kullanıcıyı veritabanından tamamen siler ve geri alınamaz. Yalnızca Süper Admin yapabilir.
+        </p>
+        <form
+            method="POST"
+            action="{{ route('users.force-destroy', $user['id']) }}"
+            onsubmit="return confirm('Bu kullanıcı kalıcı olarak silinsin mi? Bu işlem geri alınamaz.')"
+        >
+            @csrf
+            @method('DELETE')
+            <x-ui.button type="submit" variant="danger">Kalıcı Olarak Sil</x-ui.button>
+        </form>
+    </x-ui.card>
+@endif

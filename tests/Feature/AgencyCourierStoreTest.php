@@ -85,7 +85,7 @@ class AgencyCourierStoreTest extends TestCase
         $indexResponse = $this->actingAs($user)->get(route('agencies.couriers.index', ['agency_id' => $agency->id]));
         $indexResponse->assertOk();
         $indexResponse->assertSee('Emre Demir');
-        $indexResponse->assertSee('Hızlı Kurye Lojistik Ltd. Şti.');
+        $indexResponse->assertSee($agency->displayName());
     }
 
     public function test_agency_courier_can_be_assigned_from_agency_show(): void
@@ -106,7 +106,7 @@ class AgencyCourierStoreTest extends TestCase
             'status' => 'active',
         ]);
 
-        $response->assertRedirect(route('agencies.show', $agency->id));
+        $response->assertRedirect(route('agencies.show', $agency->id).'?tab=couriers');
 
         $showResponse = $this->actingAs($user)->get(route('agencies.show', $agency->id));
         $showResponse->assertOk();

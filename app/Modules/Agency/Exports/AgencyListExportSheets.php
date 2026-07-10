@@ -30,8 +30,9 @@ final class AgencyListExportSheets
 
         return ListExport::sheet(
             $rows,
-            ['Firma Ünvanı', 'Vergi No', 'Yetkili', 'Telefon', 'İl / İlçe', 'Aktif Kurye', 'Aktif İşletme', 'Durum'],
+            ['Marka Adı', 'Firma Ünvanı', 'Vergi No', 'Yetkili', 'Telefon', 'İl / İlçe', 'Aktif Kurye', 'Aktif İşletme', 'Durum'],
             [
+                fn (array $row) => $row['display_name'] ?? $row['brand_name'] ?? $row['company_name'],
                 fn (array $row) => $row['company_name'],
                 fn (array $row) => $row['tax_number'],
                 fn (array $row) => $row['authorized_person'],

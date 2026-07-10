@@ -39,6 +39,7 @@ class BusinessUpdateTest extends TestCase
             'phone' => '0212 000 00 00',
             'pricing_model' => 'per_package',
             'earning_period' => 'weekly',
+            'planned_courier_count' => 3,
             'status' => 'active',
         ]);
 
@@ -70,6 +71,7 @@ class BusinessUpdateTest extends TestCase
             'customer_price' => '50.00',
             'courier_price' => '35.00',
             'earning_period' => 'weekly',
+            'planned_courier_count' => 5,
             'status' => 'active',
             'notes' => 'Güncellenmiş not',
             'logo' => $logo,
@@ -89,6 +91,7 @@ class BusinessUpdateTest extends TestCase
         $showResponse = $this->actingAs($user)->get(route('businesses.show', $business->id));
 
         $showResponse->assertOk();
+        $showResponse->assertSee('Burger House');
         $showResponse->assertSee('Güncel Burger House');
         $showResponse->assertSee('50,00 ₺', false);
         $showResponse->assertSee('35,00 ₺', false);
@@ -123,7 +126,10 @@ class BusinessUpdateTest extends TestCase
             'district' => 'Nilüfer',
             'pricing_model' => 'daily',
             'earning_period' => 'weekly',
+            'planned_courier_count' => 4,
             'status' => 'pending',
+            'estimated_opening_date' => '2026-08-15',
+            'notes' => 'Açılış bekleniyor',
             'tax_number' => $business->tax_number,
         ]);
 
@@ -131,15 +137,67 @@ class BusinessUpdateTest extends TestCase
 
         $business->refresh();
         $this->assertSame('pending', $business->status);
+        $this->assertSame('2026-08-15', $business->estimated_opening_date?->toDateString());
 
         $showResponse = $this->actingAs($user)->get(route('businesses.show', $business->id));
         $showResponse->assertOk();
         $showResponse->assertSee('Beklemede');
+        $showResponse->assertSee('15.08.2026');
 
         $indexResponse = $this->actingAs($user)->get(route('businesses.index', ['status' => 'pending']));
         $indexResponse->assertOk();
         $indexResponse->assertSee('Tatlı Diyarı');
         $indexResponse->assertSee('Beklemede');
+    }
+
+    public function test_inactive_status_requires_contract_end_date(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+
+        $response = $this->actingAs($user)
+            ->from(route('businesses.edit', $business->id))
+            ->put(route('businesses.update', $business->id), [
+                'company_name' => $business->company_name,
+                'brand_name' => $business->brand_name,
+                'phone' => $business->phone,
+                'pricing_model' => 'per_package',
+                'earning_period' => 'weekly',
+                'planned_courier_count' => 3,
+                'status' => 'inactive',
+                'tax_number' => $business->tax_number,
+            ]);
+
+        $response->assertRedirect(route('businesses.edit', $business->id));
+        $response->assertSessionHasErrors('contract_end_date');
+        $this->assertSame('active', $business->fresh()->status);
+    }
+
+    public function test_business_can_be_set_inactive_with_contract_end_date(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+
+        $response = $this->actingAs($user)->put(route('businesses.update', $business->id), [
+            'company_name' => $business->company_name,
+            'brand_name' => $business->brand_name,
+            'phone' => $business->phone,
+            'pricing_model' => 'per_package',
+            'earning_period' => 'weekly',
+            'planned_courier_count' => 3,
+            'status' => 'inactive',
+            'contract_end_date' => '2026-07-01',
+            'notes' => 'Sözleşme bitti',
+            'tax_number' => $business->tax_number,
+        ]);
+
+        $response->assertRedirect(route('businesses.show', $business->id));
+        $business->refresh();
+        $this->assertSame('inactive', $business->status);
+        $this->assertSame('2026-07-01', $business->contract_end_date?->toDateString());
+        $this->assertSame('Sözleşme bitti', $business->notes);
     }
 
     public function test_business_update_returns_404_for_unknown_id(): void
@@ -149,9 +207,11 @@ class BusinessUpdateTest extends TestCase
 
         $response = $this->actingAs($user)->put(route('businesses.update', 999), [
             'company_name' => 'Test',
+            'brand_name' => 'Test Marka',
             'phone' => '0212 000 00 00',
             'pricing_model' => 'per_package',
             'earning_period' => 'weekly',
+            'planned_courier_count' => 2,
             'status' => 'active',
         ]);
 

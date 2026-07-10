@@ -89,11 +89,12 @@ class BusinessEarningService
     public function businesses(): array
     {
         return Business::query()
+            ->orderBy('brand_name')
             ->orderBy('company_name')
-            ->get(['id', 'company_name'])
+            ->get(['id', 'company_name', 'brand_name'])
             ->map(fn (Business $business) => [
                 'id' => $business->id,
-                'name' => $business->company_name,
+                'name' => $business->displayName(),
             ])
             ->all();
     }
@@ -112,11 +113,12 @@ class BusinessEarningService
     public function agencies(): array
     {
         return Agency::query()
+            ->orderBy('brand_name')
             ->orderBy('company_name')
-            ->get(['id', 'company_name'])
+            ->get(['id', 'company_name', 'brand_name'])
             ->map(fn (Agency $agency) => [
                 'id' => $agency->id,
-                'name' => $agency->company_name,
+                'name' => $agency->displayName(),
             ])
             ->all();
     }
@@ -384,7 +386,7 @@ class BusinessEarningService
         $line->loadMissing(['business', 'courier']);
 
         $period = sprintf('%02d/%d', $line->period_month, $line->period_year);
-        $business = $line->business?->company_name ?? 'İşletme';
+        $business = $line->business?->displayName() ?? 'İşletme';
         $courier = $line->courier?->full_name ?? 'Kurye';
 
         return "{$business} / {$courier} ({$period}) hakedişi {$action}.";

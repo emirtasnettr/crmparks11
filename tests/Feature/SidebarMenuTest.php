@@ -35,9 +35,18 @@ class SidebarMenuTest extends TestCase
         $response->assertSee(route('finance.revenues.index'), false);
         $response->assertDontSee('Bu modül şimdilik pasif', false);
         $response->assertSee(route('users.index'), false);
+        $response->assertSee(route('roles.index'), false);
+        $response->assertSee(route('permissions.index'), false);
+        $response->assertSee(route('users.activity-log.index'), false);
+        $response->assertSee(route('notifications.index'), false);
         $response->assertSee(route('settings.index'), false);
         $response->assertSee(route('form-builder.index'), false);
         $response->assertSee(route('landing-page-builder.index'), false);
+        $response->assertSee('Ayarlar');
+        $response->assertSee('Sistem Ayarları');
+        $response->assertSee('Kullanıcılar');
+        $response->assertSee('Roller');
+        $response->assertSee('Yetkiler');
         $response->assertDontSee(route('policy-settings.index'), false);
         $response->assertDontSee('Yakında');
     }

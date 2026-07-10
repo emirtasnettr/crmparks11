@@ -75,11 +75,12 @@ class AgencyCourierService
     public function agencies(): array
     {
         return Agency::query()
+            ->orderBy('brand_name')
             ->orderBy('company_name')
-            ->get(['id', 'company_name'])
+            ->get(['id', 'company_name', 'brand_name'])
             ->map(fn (Agency $agency) => [
                 'id' => $agency->id,
-                'name' => $agency->company_name,
+                'name' => $agency->displayName(),
             ])
             ->all();
     }
@@ -125,7 +126,7 @@ class AgencyCourierService
                 $courier,
                 oldValues: ['agency_id' => null],
                 newValues: ['agency_id' => $agency->id],
-                description: "{$courier->full_name} kuryesi {$agency->company_name} acentesine atandı.",
+                description: "{$courier->full_name} kuryesi {$agency->displayName()} acentesine atandı.",
             );
 
             return $courier;
@@ -149,7 +150,7 @@ class AgencyCourierService
             }
 
             $agencyId = $courier->agency_id;
-            $agencyName = $courier->agency?->company_name ?? 'acente';
+            $agencyName = $courier->agency?->displayName() ?? 'acente';
 
             $courier->update([
                 'agency_id' => null,

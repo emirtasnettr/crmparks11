@@ -34,6 +34,7 @@ class BusinessStoreTest extends TestCase
             'phone' => '0212 111 22 33',
             'pricing_model' => 'per_package',
             'earning_period' => 'weekly',
+            'planned_courier_count' => 4,
             'status' => 'active',
         ]);
 
@@ -61,6 +62,7 @@ class BusinessStoreTest extends TestCase
             'customer_price' => '55.00',
             'courier_price' => '40.00',
             'earning_period' => 'weekly',
+            'planned_courier_count' => 6,
             'status' => 'active',
             'notes' => 'Canlı kayıt testi',
         ]);
@@ -74,10 +76,50 @@ class BusinessStoreTest extends TestCase
         $this->assertSame('Point Kurye Market Ltd. Şti.', $business->company_name);
         $this->assertSame('Point Market', $business->brand_name);
         $this->assertSame('1234567890', $business->tax_number);
+        $this->assertSame(6, (int) $business->planned_courier_count);
         $this->assertSame('Canlı kayıt testi', $business->notes);
 
         $indexResponse = $this->actingAs($user)->get(route('businesses.index'));
         $indexResponse->assertOk();
+        $indexResponse->assertSee('Point Market');
         $indexResponse->assertSee('Point Kurye Market Ltd. Şti.');
+    }
+
+    public function test_business_store_requires_brand_name(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $response = $this->actingAs($user)->from(route('businesses.create'))->post(route('businesses.store'), [
+            'company_name' => 'Markasız İşletme Ltd.',
+            'phone' => '0212 111 22 33',
+            'pricing_model' => 'per_package',
+            'earning_period' => 'weekly',
+            'planned_courier_count' => 3,
+            'status' => 'active',
+        ]);
+
+        $response->assertRedirect(route('businesses.create'));
+        $response->assertSessionHasErrors('brand_name');
+        $this->assertDatabaseCount('businesses', 0);
+    }
+
+    public function test_business_store_requires_planned_courier_count(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $response = $this->actingAs($user)->from(route('businesses.create'))->post(route('businesses.store'), [
+            'company_name' => 'Eksik Kurye Sayılı Ltd.',
+            'brand_name' => 'Eksik Şube',
+            'phone' => '0212 111 22 33',
+            'pricing_model' => 'per_package',
+            'earning_period' => 'weekly',
+            'status' => 'active',
+        ]);
+
+        $response->assertRedirect(route('businesses.create'));
+        $response->assertSessionHasErrors('planned_courier_count');
+        $this->assertDatabaseCount('businesses', 0);
     }
 }

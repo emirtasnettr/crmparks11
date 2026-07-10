@@ -2,9 +2,6 @@
 
 @section('title', 'Form Builder')
 
-@section('breadcrumb')
-    <span class="font-medium text-gray-900 dark:text-white">Form Builder</span>
-@endsection
 
 @section('content')
 <div x-data="formBuilderListPage()" @crmlog-action.window="handleDelete($event.detail)">

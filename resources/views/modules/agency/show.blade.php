@@ -1,14 +1,7 @@
 @extends('layouts.app')
 
-@section('title', $agency['company_name'])
+@section('title', $agency['display_name'] ?? $agency['brand_name'] ?? $agency['company_name'])
 
-@section('breadcrumb')
-    <a href="{{ route('agencies.index') }}" class="hover:text-gray-900 dark:hover:text-white">Acenteler</a>
-    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-    </svg>
-    <span class="font-medium text-gray-900 dark:text-white">{{ $agency['company_name'] }}</span>
-@endsection
 
 @section('content')
 <div class="max-w-6xl">
@@ -21,15 +14,15 @@
                 shape="rounded-2xl"
                 size="h-16 w-16"
                 text-size="text-lg"
-                :alt="$agency['company_name'].' logosu'"
+                :alt="($agency['display_name'] ?? $agency['brand_name'] ?? $agency['company_name']).' logosu'"
             />
             <div>
                 <div class="flex flex-wrap items-center gap-3">
-                    <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{{ $agency['company_name'] }}</h1>
+                    <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{{ $agency['display_name'] ?? $agency['brand_name'] ?? $agency['company_name'] }}</h1>
                     <x-agency.status-badge :status="$agency['status']" />
                 </div>
                 <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">
-                    {{ $agency['authorized_person'] }} · {{ $agency['location'] }} · {{ $agency['active_couriers'] }} kurye
+                    {{ $agency['company_name'] }} · {{ $agency['authorized_person'] }} · {{ $agency['location'] }} · {{ $agency['active_couriers'] }} kurye
                 </p>
             </div>
         </div>
@@ -53,8 +46,8 @@
             <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <x-ui.card title="Firma Bilgileri">
                     <dl class="space-y-3 text-sm">
-                        <x-entity.detail-row label="Firma Ünvanı" :value="$agency['company_name']" />
                         <x-entity.detail-row label="Marka Adı" :value="$agency['brand_name']" />
+                        <x-entity.detail-row label="Firma Ünvanı" :value="$agency['company_name']" />
                         <x-entity.detail-row label="Yetkili Kişi" :value="$agency['authorized_person']" />
                         <x-entity.detail-row label="Kayıt No" :value="$agency['uuid']" />
                         <x-entity.detail-row label="Aktif Kurye" :value="$agency['active_couriers']" />
@@ -110,6 +103,7 @@
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Görev</th>
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Telefon</th>
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">E-Posta</th>
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">İşlemler</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
@@ -119,6 +113,9 @@
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $contact['title'] }}</td>
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $contact['phone'] }}</td>
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $contact['email'] }}</td>
+                                        <td class="py-2.5">
+                                            <x-agency.contact-row-actions :contact="$contact" />
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -130,7 +127,7 @@
             </x-ui.card>
             @include('modules.agency.contacts.partials.modal', [
                 'hideEntitySelector' => true,
-                'presetEntityLabel' => $agency['company_name'],
+                'presetEntityLabel' => $agency['display_name'] ?? $agency['brand_name'] ?? $agency['company_name'],
                 'lockedAgencyId' => $agency['id'],
                 'redirectToAgency' => true,
                 'titles' => $contactTitles,
@@ -138,7 +135,7 @@
             ])
         </x-entity.tab-panel>
 
-        <x-entity.tab-panel name="couriers" x-data="agencyCourierPage(@js(['agencyId' => $agency['id']]))">
+        <x-entity.tab-panel name="couriers" x-data="agencyCourierPage(@js(['agencyId' => $agency['id']]))" @agency-courier-detail.window="openDetail($event.detail)">
             <x-ui.card title="Kuryeler">
                 <x-slot:actions>
                     <x-entity.tab-add-button label="Kurye Ata" @click="openAssignModal = true" />
@@ -152,6 +149,7 @@
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Telefon</th>
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Araç</th>
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Durum</th>
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">İşlemler</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
@@ -161,6 +159,9 @@
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $record['phone'] }}</td>
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $record['vehicle_info'] }}</td>
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $record['status'] ?? '—' }}</td>
+                                        <td class="py-2.5">
+                                            <x-agency.courier-row-actions :record="$record" />
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -172,12 +173,13 @@
             </x-ui.card>
             @include('modules.agency.couriers.partials.assign-modal', [
                 'hideEntitySelector' => true,
-                'presetEntityLabel' => $agency['company_name'],
+                'presetEntityLabel' => $agency['display_name'] ?? $agency['brand_name'] ?? $agency['company_name'],
                 'lockedAgencyId' => $agency['id'],
                 'redirectToAgency' => true,
                 'couriers' => $assignCouriers,
                 'agencies' => [],
             ])
+            @include('modules.agency.couriers.partials.detail-modal')
         </x-entity.tab-panel>
 
         <x-entity.tab-panel name="contracts" x-data="agencyContractPage(@js(['agencyId' => $agency['id']]))">
@@ -194,6 +196,7 @@
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Tür</th>
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Başlangıç</th>
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Bitiş</th>
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">İşlemler</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
@@ -203,6 +206,9 @@
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $contract['contract_type_label'] ?? $contract['contract_type'] }}</td>
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $contract['start_date_formatted'] ?? $contract['start_date'] }}</td>
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $contract['end_date_formatted'] ?? $contract['end_date'] }}</td>
+                                        <td class="py-2.5">
+                                            <x-agency.contract-row-actions :contract="$contract" />
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -214,7 +220,7 @@
             </x-ui.card>
             @include('modules.agency.contracts.partials.modal', [
                 'hideEntitySelector' => true,
-                'presetEntityLabel' => $agency['company_name'],
+                'presetEntityLabel' => $agency['display_name'] ?? $agency['brand_name'] ?? $agency['company_name'],
                 'lockedAgencyId' => $agency['id'],
                 'redirectToAgency' => true,
                 'contractTypes' => $contractTypes,
@@ -236,6 +242,7 @@
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Belge No</th>
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Dosya</th>
                                     <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Durum</th>
+                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">İşlemler</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
@@ -245,6 +252,9 @@
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $document['document_number'] ?? '—' }}</td>
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $document['file_name'] }}</td>
                                         <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $document['status_label'] ?? ($document['computed_status'] ?? '—') }}</td>
+                                        <td class="py-2.5">
+                                            <x-agency.document-row-actions :document="$document" />
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -256,7 +266,7 @@
             </x-ui.card>
             @include('modules.agency.documents.partials.modal', [
                 'hideEntitySelector' => true,
-                'presetEntityLabel' => $agency['company_name'],
+                'presetEntityLabel' => $agency['display_name'] ?? $agency['brand_name'] ?? $agency['company_name'],
                 'lockedAgencyId' => $agency['id'],
                 'redirectToAgency' => true,
                 'documentTypes' => $documentTypes,

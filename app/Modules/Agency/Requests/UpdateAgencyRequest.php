@@ -23,7 +23,7 @@ class UpdateAgencyRequest extends FormRequest
 
         return [
             'company_name' => ['required', 'string', 'max:255'],
-            'brand_name' => ['nullable', 'string', 'max:255'],
+            'brand_name' => ['required', 'string', 'max:255'],
             'phone' => ['required', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:255'],
             'website' => ['nullable', 'url', 'max:255'],
@@ -57,6 +57,7 @@ class UpdateAgencyRequest extends FormRequest
     {
         return [
             'company_name.required' => 'Firma ünvanı zorunludur.',
+            'brand_name.required' => 'Marka adı zorunludur.',
             'phone.required' => 'Telefon numarası zorunludur.',
             'tax_number.required' => 'Vergi numarası zorunludur.',
             'city.required' => 'İl seçilmelidir.',

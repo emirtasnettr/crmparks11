@@ -9,6 +9,7 @@ use App\Modules\Agency\Exports\AgencyListExportSheets;
 use App\Modules\Agency\Requests\StoreAgencyContactRequest;
 use App\Modules\Agency\Services\AgencyContactPresenter;
 use App\Modules\Agency\Services\AgencyContactService;
+use App\Support\EntityCardRedirect;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -78,9 +79,11 @@ class AgencyContactController extends Controller
         $contact = $this->contacts->create($request->validated());
 
         if ($request->boolean('redirect_to_agency')) {
-            return redirect()
-                ->route('agencies.show', $contact->agency_id)
-                ->with('success', 'Yetkili başarıyla eklendi.');
+            return EntityCardRedirect::toShow(
+                route('agencies.show', $contact->agency_id),
+                'contacts',
+                'Yetkili başarıyla eklendi.',
+            );
         }
 
         return redirect()
@@ -108,8 +111,11 @@ class AgencyContactController extends Controller
 
         $this->contacts->deactivate($contact);
 
-        return redirect()
-            ->route('agencies.contacts.index', ['agency_id' => $contact->agency_id])
-            ->with('success', 'Yetkili pasife alındı.');
+        return EntityCardRedirect::after(
+            route('agencies.contacts.index', ['agency_id' => $contact->agency_id]),
+            'Yetkili pasife alındı.',
+            route('agencies.show', $contact->agency_id),
+            'contacts',
+        );
     }
 }

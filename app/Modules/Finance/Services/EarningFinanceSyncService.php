@@ -30,9 +30,7 @@ class EarningFinanceSyncService
         $periodLabel = $this->periodLabel($line);
         $vatRate = (int) ($this->settings->group('finance')->all()['default_vat'] ?? 20);
         $today = now()->toDateString();
-        $businessName = $line->business?->brand_name
-            ?? $line->business?->company_name
-            ?? 'İşletme';
+        $businessName = $line->business?->displayName() ?? 'İşletme';
         $courierName = $line->courier?->full_name ?? 'Kurye';
 
         $revenueAmount = round((float) $line->revenue_total + (float) $line->extra_payment, 2);
@@ -69,7 +67,7 @@ class EarningFinanceSyncService
         $agencyId = $line->courier?->agency_id;
 
         if ($agencyAmount > 0 && $agencyId !== null) {
-            $agencyName = $line->courier?->agency?->company_name ?? 'Acente';
+            $agencyName = $line->courier?->agency?->displayName() ?? 'Acente';
 
             $this->payments->create([
                 'recipient_type' => 'agency',

@@ -8,6 +8,7 @@ use App\Models\District;
 use App\Models\User;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\Agency\Models\AgencyContact;
+use App\Support\HasBrandDisplayName;
 use Database\Factories\AgencyFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -18,7 +19,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Agency extends Model
 {
     /** @use HasFactory<AgencyFactory> */
-    use HasFactory, HasUuid, SoftDeletes;
+    use HasBrandDisplayName, HasFactory, HasUuid, SoftDeletes;
 
     protected $fillable = [
         'company_name',

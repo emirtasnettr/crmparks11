@@ -91,7 +91,7 @@ class AgencyContactStoreTest extends TestCase
             'status' => 'active',
         ]);
 
-        $response->assertRedirect(route('agencies.show', $agency->id));
+        $response->assertRedirect(route('agencies.show', $agency->id).'?tab=contacts');
 
         $showResponse = $this->actingAs($user)->get(route('agencies.show', $agency->id));
         $showResponse->assertOk();

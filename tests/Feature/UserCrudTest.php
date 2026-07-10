@@ -117,6 +117,54 @@ class UserCrudTest extends TestCase
         ]);
     }
 
+    public function test_super_admin_can_force_delete_user(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('super_admin');
+
+        $managed = User::factory()->withRole('operations_manager')->create([
+            'email' => 'silinecek@example.com',
+        ]);
+
+        $response = $this->actingAs($admin)->delete(route('users.force-destroy', $managed->id));
+
+        $response->assertRedirect(route('users.index'));
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('users', ['id' => $managed->id]);
+        $this->assertSame(0, User::withTrashed()->where('id', $managed->id)->count());
+
+        $this->assertDatabaseHas('activity_logs', [
+            'action' => 'user_force_deleted',
+            'subject_type' => User::class,
+            'subject_id' => $managed->id,
+        ]);
+    }
+
+    public function test_non_super_admin_cannot_force_delete_user(): void
+    {
+        $manager = User::factory()->create();
+        $manager->assignRole('general_manager');
+
+        $managed = User::factory()->withRole('operations_manager')->create();
+
+        $response = $this->actingAs($manager)->delete(route('users.force-destroy', $managed->id));
+
+        $response->assertForbidden();
+        $this->assertDatabaseHas('users', ['id' => $managed->id, 'deleted_at' => null]);
+    }
+
+    public function test_super_admin_cannot_force_delete_themselves(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('super_admin');
+
+        $response = $this->actingAs($admin)->delete(route('users.force-destroy', $admin->id));
+
+        $response->assertSessionHasErrors('user');
+        $this->assertDatabaseHas('users', ['id' => $admin->id, 'deleted_at' => null]);
+    }
+
     public function test_user_cannot_delete_themselves(): void
     {
         $admin = User::factory()->create();

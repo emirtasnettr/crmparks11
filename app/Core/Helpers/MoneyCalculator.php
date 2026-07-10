@@ -4,7 +4,7 @@ namespace App\Core\Helpers;
 
 class MoneyCalculator
 {
-    public const VAT_SUFFIX = ' KDV hariç';
+    public const VAT_LABEL = 'KDV hariç';
 
     public static function calculatePackageBased(
         int $packageCount,
@@ -47,12 +47,12 @@ class MoneyCalculator
 
     public static function format(float $amount, int $decimals = 2): string
     {
-        return number_format($amount, $decimals, ',', '.').' ₺'.self::VAT_SUFFIX;
+        return number_format($amount, $decimals, ',', '.').' ₺';
     }
 
     public static function formatVatAmount(float $amount, int $decimals = 2): string
     {
-        return number_format($amount, $decimals, ',', '.').' ₺';
+        return self::format($amount, $decimals);
     }
 
     public static function formatIncludingVat(float $amount, int $decimals = 2): string

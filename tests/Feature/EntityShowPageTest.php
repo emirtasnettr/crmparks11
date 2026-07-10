@@ -96,7 +96,7 @@ class EntityShowPageTest extends TestCase
     $this->assertSame(36.0, $stats['courier_per_package']);
     $this->assertSame(1, $stats['active_couriers']);
     $this->assertSame(12.0, $stats['net_per_package']);
-    $this->assertStringContainsString('KDV hariç', $stats['received_per_package_formatted']);
+    $this->assertSame('48,00 ₺', $stats['received_per_package_formatted']);
 
     $response = $this->actingAs($user)->get(route('businesses.show', $business->id));
     $response->assertSee(\App\Core\Helpers\MoneyCalculator::formatVatAmount($stats['received_per_package']), false);

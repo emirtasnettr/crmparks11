@@ -103,14 +103,17 @@
                         <div>
                             <p class="text-xs text-gray-500 dark:text-slate-400">Toplam Gelir</p>
                             <p class="text-lg font-bold text-emerald-600 dark:text-emerald-400" x-text="formatMoney(calcSingle().revenue)"></p>
+                            <p class="mt-0.5 text-[10px] text-gray-400 dark:text-slate-500">KDV hariç</p>
                         </div>
                         <div>
                             <p class="text-xs text-gray-500 dark:text-slate-400">Toplam Gider</p>
                             <p class="text-lg font-bold text-red-600 dark:text-red-400" x-text="formatMoney(calcSingle().expense)"></p>
+                            <p class="mt-0.5 text-[10px] text-gray-400 dark:text-slate-500">KDV hariç</p>
                         </div>
                         <div>
                             <p class="text-xs text-gray-500 dark:text-slate-400">Toplam Kâr</p>
                             <p class="text-lg font-bold" :class="calcSingle().profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'" x-text="formatMoney(calcSingle().profit)"></p>
+                            <p class="mt-0.5 text-[10px] text-gray-400 dark:text-slate-500">KDV hariç</p>
                         </div>
                     </div>
                 </div>

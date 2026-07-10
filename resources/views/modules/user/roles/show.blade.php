@@ -2,17 +2,6 @@
 
 @section('title', $role['display_name'])
 
-@section('breadcrumb')
-    <span class="text-gray-500 dark:text-slate-400">Kullanıcı Yönetimi</span>
-    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-    </svg>
-    <a href="{{ route('roles.index') }}" class="hover:text-gray-900 dark:hover:text-white">Roller</a>
-    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-    </svg>
-    <span class="font-medium text-gray-900 dark:text-white">{{ $role['display_name'] }}</span>
-@endsection
 
 @section('content')
 <div class="max-w-6xl">

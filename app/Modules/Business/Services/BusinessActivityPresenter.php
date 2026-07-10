@@ -83,7 +83,7 @@ class BusinessActivityPresenter
             'occurred_at_formatted' => $occurredAt->format('d.m.Y H:i'),
             'occurred_at_date' => $occurredAt->format('Y-m-d'),
             'business_id' => $business?->id,
-            'business_name' => $business?->company_name ?? '—',
+            'business_name' => $business?->displayName() ?? '—',
             'action' => $log->action,
             'action_label' => BusinessActivityFormData::actionTypes()[$log->action] ?? $log->action,
             'user_id' => $log->user_id,

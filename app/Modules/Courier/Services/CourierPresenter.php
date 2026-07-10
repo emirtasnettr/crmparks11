@@ -46,7 +46,7 @@ class CourierPresenter
             'birth_date' => $courier->birth_date?->format('Y-m-d'),
             'courier_type' => $courier->courier_type,
             'agency_id' => $courier->agency_id,
-            'agency_name' => $courier->agency?->company_name,
+            'agency_name' => $courier->agency?->displayName(),
             'vehicle_type' => $vehicleCode,
             'vehicle_type_label' => CourierFormData::vehicleTypes()[$vehicleCode] ?? '—',
             'courier_type_label' => CourierFormData::courierTypes()[$courier->courier_type] ?? '—',

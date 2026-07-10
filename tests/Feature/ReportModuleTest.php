@@ -63,7 +63,7 @@ class ReportModuleTest extends TestCase
         $this->actingAs($user)->get(route('reports.earnings'))
             ->assertOk()
             ->assertSee('Hakediş Özeti')
-            ->assertSee($business->company_name);
+            ->assertSee($business->displayName());
 
         $this->actingAs($user)->get(route('reports.operations'))
             ->assertOk()
@@ -93,7 +93,7 @@ class ReportModuleTest extends TestCase
         $this->actingAs($user)->get(route('reports.collections'))
             ->assertOk()
             ->assertSee('Tahsilat Yaşlandırma')
-            ->assertSee($business->company_name);
+            ->assertSee($business->displayName());
 
         $this->actingAs($user)->get(route('reports.collections.export'))
             ->assertOk();
@@ -123,7 +123,7 @@ class ReportModuleTest extends TestCase
         $this->actingAs($user)->get(route('reports.agency-share'))
             ->assertOk()
             ->assertSee('Acente Payı')
-            ->assertSee($agency->company_name);
+            ->assertSee($agency->displayName());
 
         $this->actingAs($user)->get(route('reports.agency-share.export'))
             ->assertOk();

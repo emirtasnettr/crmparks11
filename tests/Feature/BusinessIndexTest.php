@@ -79,7 +79,9 @@ class BusinessIndexTest extends TestCase
             'district' => 'Nilüfer',
             'pricing_model' => 'daily',
             'earning_period' => 'weekly',
+            'planned_courier_count' => 4,
             'status' => 'contract_stage',
+            'estimated_opening_date' => '2026-09-01',
             'tax_number' => $business->tax_number,
         ]);
 
@@ -88,11 +90,56 @@ class BusinessIndexTest extends TestCase
         $showResponse = $this->actingAs($user)->get(route('businesses.show', $business->id));
         $showResponse->assertOk();
         $showResponse->assertSee('Sözleşme Aşamasında');
+        $showResponse->assertSee('01.09.2026');
 
         $indexResponse = $this->actingAs($user)->get(route('businesses.index', ['status' => 'contract_stage']));
         $indexResponse->assertOk();
         $indexResponse->assertSee('Tatlı Diyarı');
         $indexResponse->assertSee('Sözleşme Aşamasında');
+    }
+
+    public function test_business_opening_stage_status_is_available(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user, [
+            'company_name' => 'Yeni Şube Gıda Ltd. Şti.',
+            'brand_name' => 'Yeni Şube',
+            'phone' => '0212 111 22 33',
+            'status' => 'active',
+        ]);
+
+        $createResponse = $this->actingAs($user)->get(route('businesses.create'));
+        $createResponse->assertOk();
+        $createResponse->assertSee('Açılış Aşamasında');
+
+        $response = $this->actingAs($user)->put(route('businesses.update', $business->id), [
+            'company_name' => 'Yeni Şube Gıda Ltd. Şti.',
+            'brand_name' => 'Yeni Şube',
+            'phone' => '0212 111 22 33',
+            'city' => 'İstanbul',
+            'district' => 'Kadıköy',
+            'pricing_model' => 'per_package',
+            'earning_period' => 'weekly',
+            'planned_courier_count' => 5,
+            'status' => 'opening_stage',
+            'start_date' => '2026-07-20',
+            'tax_number' => $business->tax_number,
+        ]);
+
+        $response->assertRedirect(route('businesses.show', $business->id));
+        $this->assertSame('opening_stage', $business->fresh()->status);
+        $this->assertSame('2026-07-20', $business->fresh()->start_date?->toDateString());
+
+        $showResponse = $this->actingAs($user)->get(route('businesses.show', $business->id));
+        $showResponse->assertOk();
+        $showResponse->assertSee('Açılış Aşamasında');
+        $showResponse->assertSee('20.07.2026');
+
+        $indexResponse = $this->actingAs($user)->get(route('businesses.index', ['status' => 'opening_stage']));
+        $indexResponse->assertOk();
+        $indexResponse->assertSee('Yeni Şube');
+        $indexResponse->assertSee('Açılış Aşamasında');
     }
 
     public function test_authenticated_user_can_view_business_create_form(): void

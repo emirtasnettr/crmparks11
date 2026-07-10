@@ -151,7 +151,7 @@ class ScheduledReminderService
                 }
 
                 $dueDate = $collection->due_date->format('d.m.Y');
-                $businessName = $collection->business?->company_name ?? 'İşletme';
+                $businessName = $collection->business?->displayName() ?? 'İşletme';
                 $isOverdue = $collection->due_date->lt($today);
 
                 $queued = $this->dispatcher->notifyRoles(

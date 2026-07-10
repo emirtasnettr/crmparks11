@@ -30,8 +30,8 @@
                     </div>
                 </template>
                 <div>
-                    <p class="font-semibold text-gray-900 dark:text-white" x-text="selected?.company_name"></p>
-                    <p class="text-sm text-gray-500 dark:text-slate-400" x-text="selected?.brand_name"></p>
+                    <p class="font-semibold text-gray-900 dark:text-white" x-text="selected?.display_name || selected?.brand_name"></p>
+                    <p class="text-sm text-gray-500 dark:text-slate-400" x-text="selected?.company_name"></p>
                 </div>
             </div>
 

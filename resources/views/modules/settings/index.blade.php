@@ -2,9 +2,6 @@
 
 @section('title', 'Sistem Ayarları')
 
-@section('breadcrumb')
-    <span class="font-medium text-gray-900 dark:text-white">Sistem Ayarları</span>
-@endsection
 
 @section('content')
 <div x-data="systemSettingsPage()">

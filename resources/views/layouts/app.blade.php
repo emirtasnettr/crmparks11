@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr" x-data="themeToggle" x-init="init()">
+<html lang="tr">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,19 +8,22 @@
     @if (! empty($branding['favicon_url']))
         <link rel="icon" href="{{ $branding['favicon_url'] }}" type="image/png">
     @endif
+    <script>
+        document.documentElement.classList.remove('dark');
+        try { localStorage.removeItem('theme'); } catch (e) {}
+    </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body
-    class="min-h-screen"
-    x-data="topNav()"
+    class="min-h-screen bg-gray-50"
+    x-data="topNav"
     @crmlog-action.window="handleCrmlogAction($event.detail)"
-    @keydown.escape.window="openDropdown = null; mobileOpen = false"
+    @keydown.escape.window="mobileOpen = false"
 >
     <div class="flex min-h-screen flex-col">
         @include('layouts.partials.top-nav')
 
         <main class="flex-1 p-4 sm:p-6 lg:p-8">
-            @include('layouts.partials.breadcrumb')
             @include('layouts.partials.flash-messages')
 
             @yield('content')
@@ -31,7 +34,7 @@
         x-show="toast"
         x-cloak
         x-transition
-        class="fixed bottom-6 right-6 z-[60] max-w-sm rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 shadow-lg dark:border-emerald-800/50 dark:bg-emerald-900/30 dark:text-emerald-200"
+        class="fixed bottom-6 right-6 z-[60] max-w-sm rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 shadow-lg"
         x-text="toast"
     ></div>
 

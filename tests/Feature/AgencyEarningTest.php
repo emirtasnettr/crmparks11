@@ -56,7 +56,7 @@ class AgencyEarningTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Hakedişler');
-        $response->assertSee('Hızlı Kurye Acentesi Ltd. Şti.');
+        $response->assertSee($agency->displayName());
     }
 
     private function createAgency(User $user, array $overrides = []): Agency

@@ -11,6 +11,7 @@ use App\Modules\Agency\Requests\StoreAgencyContractRequest;
 use App\Modules\Agency\Services\AgencyContractPresenter;
 use App\Modules\Agency\Services\AgencyContractService;
 use App\Modules\Agency\Services\AgencyDocumentService;
+use App\Support\EntityCardRedirect;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -104,9 +105,11 @@ class AgencyContractController extends Controller
         }
 
         if ($request->boolean('redirect_to_agency')) {
-            return redirect()
-                ->route('agencies.show', $contract->contractable_id)
-                ->with('success', 'Sözleşme başarıyla oluşturuldu.');
+            return EntityCardRedirect::toShow(
+                route('agencies.show', $contract->contractable_id),
+                'contracts',
+                'Sözleşme başarıyla oluşturuldu.',
+            );
         }
 
         return redirect()
@@ -123,8 +126,11 @@ class AgencyContractController extends Controller
 
         $this->contracts->deactivate($contract);
 
-        return redirect()
-            ->route('agencies.contracts.index', ['agency_id' => $contract->contractable_id])
-            ->with('success', 'Sözleşme pasife alındı.');
+        return EntityCardRedirect::after(
+            route('agencies.contracts.index', ['agency_id' => $contract->contractable_id]),
+            'Sözleşme pasife alındı.',
+            route('agencies.show', $contract->contractable_id),
+            'contracts',
+        );
     }
 }

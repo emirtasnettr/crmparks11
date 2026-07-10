@@ -51,11 +51,12 @@ class BusinessActivityService
     public function businesses(): array
     {
         return Business::query()
+            ->orderBy('brand_name')
             ->orderBy('company_name')
-            ->get(['id', 'company_name'])
+            ->get(['id', 'company_name', 'brand_name'])
             ->map(fn (Business $business) => [
                 'id' => $business->id,
-                'name' => $business->company_name,
+                'name' => $business->displayName(),
             ])
             ->all();
     }

@@ -56,7 +56,7 @@ class AgencyContractTest extends TestCase
         $response->assertSee('Sözleşmeler');
         $response->assertSee('Yeni Sözleşme');
         $response->assertSee('ACS-2026-001');
-        $response->assertSee($agency->company_name);
+        $response->assertSee($agency->displayName());
     }
 
     public function test_authenticated_user_can_view_agency_contract_detail(): void
@@ -78,7 +78,7 @@ class AgencyContractTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Sözleşme Bilgileri');
-        $response->assertSee('Metro Lojistik Acente A.Ş.');
+        $response->assertSee($agency->displayName());
     }
 
     /**

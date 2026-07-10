@@ -6,6 +6,7 @@ use App\Core\Traits\HasUuid;
 use App\Models\City;
 use App\Models\District;
 use App\Models\User;
+use App\Support\HasBrandDisplayName;
 use Database\Factories\BusinessFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -17,7 +18,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Business extends Model
 {
     /** @use HasFactory<BusinessFactory> */
-    use HasFactory, HasUuid, SoftDeletes;
+    use HasBrandDisplayName, HasFactory, HasUuid, SoftDeletes;
 
     protected $fillable = [
         'company_name',
@@ -31,11 +32,25 @@ class Business extends Model
         'district_id',
         'address',
         'status',
+        'contract_end_date',
+        'estimated_opening_date',
+        'start_date',
         'earning_period',
+        'planned_courier_count',
         'notes',
         'logo_path',
         'created_by',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'contract_end_date' => 'date',
+            'estimated_opening_date' => 'date',
+            'start_date' => 'date',
+            'planned_courier_count' => 'integer',
+        ];
+    }
 
     public function city(): BelongsTo
     {
@@ -87,11 +102,7 @@ class Business extends Model
     public function activeCourierCount(): int
     {
         return (int) $this->assignments()
-            ->where('status', 'active')
-            ->where(function ($query): void {
-                $query->whereNull('end_date')
-                    ->orWhereDate('end_date', '>=', now());
-            })
+            ->currentlyActive()
             ->pluck('courier_id')
             ->unique()
             ->count();

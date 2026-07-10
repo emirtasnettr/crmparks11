@@ -2,9 +2,6 @@
 
 @section('title', 'Landing Page Builder')
 
-@section('breadcrumb')
-    <span class="font-medium text-gray-900 dark:text-white">Landing Page Builder</span>
-@endsection
 
 @section('content')
 <div x-data="landingPageBuilderListPage()" @crmlog-action.window="handleDelete($event.detail)">

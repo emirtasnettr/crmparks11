@@ -2,13 +2,6 @@
 
 @section('title', 'Cari Hesaplar')
 
-@section('breadcrumb')
-    <span class="text-gray-500 dark:text-slate-400">Finans</span>
-    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-    </svg>
-    <span class="font-medium text-gray-900 dark:text-white">Cari Hesaplar</span>
-@endsection
 
 @section('content')
 <div
@@ -47,8 +40,8 @@
     </div>
 
     <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-        <x-ui.finance-stat-card title="Toplam Cari" :value="money_excl_vat($summary['count'])" icon="building" accent="primary" />
-        <x-ui.finance-stat-card title="Toplam Alacak" :value="number_format($summary['total_receivable'])" icon="earning" accent="success" />
+        <x-ui.finance-stat-card title="Toplam Cari" :value="number_format($summary['count'])" icon="building" accent="primary" />
+        <x-ui.finance-stat-card title="Toplam Alacak" :value="money_excl_vat($summary['total_receivable'])" icon="earning" accent="success" />
         <x-ui.finance-stat-card title="Toplam Borç" :value="money_excl_vat($summary['total_payable'])" icon="chart" accent="danger" />
         <x-ui.finance-stat-card title="Net Bakiye" :value="money_excl_vat($summary['net_balance'])" icon="earning" accent="violet" />
         <x-ui.finance-stat-card title="Vadesi Geçen Alacak" :value="money_excl_vat($summary['overdue_receivable'])" icon="earning" accent="warning" />

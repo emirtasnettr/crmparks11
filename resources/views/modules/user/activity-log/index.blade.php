@@ -2,13 +2,6 @@
 
 @section('title', 'Aktivite Kayıtları')
 
-@section('breadcrumb')
-    <span class="text-gray-500 dark:text-slate-400">Kullanıcı Yönetimi</span>
-    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-    </svg>
-    <span class="font-medium text-gray-900 dark:text-white">Aktivite Kayıtları</span>
-@endsection
 
 @section('content')
 <div x-data="userActivityLogPage(@js($logsForModal))" @open-user-activity-detail.window="openDetail($event)">

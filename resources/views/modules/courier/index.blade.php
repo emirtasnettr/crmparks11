@@ -2,9 +2,6 @@
 
 @section('title', 'Kuryeler')
 
-@section('breadcrumb')
-    <span class="font-medium text-gray-900 dark:text-white">Kuryeler</span>
-@endsection
 
 @section('content')
 <div x-data="courierListPage(@js($couriersForModal))" @courier-detail.window="openDetail($event.detail)">
@@ -107,7 +104,14 @@
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-slate-700">
                     @forelse ($couriers as $courier)
-                        <tr class="transition-colors hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                        <tr
+                            role="link"
+                            tabindex="0"
+                            class="cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-slate-800/50"
+                            data-href="{{ route('couriers.show', $courier['id']) }}"
+                            onclick="window.location.href = this.dataset.href"
+                            onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); window.location.href = this.dataset.href; }"
+                        >
                             <td class="px-4 py-3 sm:px-6">
                                 <x-ui.entity-avatar
                                     :url="$courier['photo_url'] ?? null"
@@ -147,7 +151,7 @@
                             <td class="px-4 py-3">
                                 <x-courier.status-badge :status="$courier['status']" />
                             </td>
-                            <td class="px-4 py-3 sm:px-6">
+                            <td class="px-4 py-3 sm:px-6" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
                                 <x-courier.row-actions :courier="$courier" />
                             </td>
                         </tr>

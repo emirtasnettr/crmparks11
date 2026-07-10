@@ -111,7 +111,7 @@ class AgencyContactIndexTest extends TestCase
         $response->assertSee('Yetkili Bilgileri');
         $response->assertSee('Bağlı Acente');
         $response->assertSee('İletişim Bilgileri');
-        $response->assertSee('Hızlı Kurye Acentesi Ltd. Şti.');
+        $response->assertSee($agency->displayName());
         $response->assertSee('Ana iletişim noktası.');
     }
 

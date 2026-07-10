@@ -5,7 +5,7 @@
     use App\Modules\Business\Support\BusinessFeatures;
 
     $id = $business['id'];
-    $name = $business['company_name'];
+    $name = $business['display_name'] ?? $business['brand_name'] ?? $business['company_name'];
 
     $items = [
         RowActions::link('Görüntüle', route('businesses.show', $id)),
@@ -26,14 +26,10 @@
 
     if (($business['status'] ?? '') === 'active') {
         $items[] = RowActions::divider();
-        $items[] = RowActions::run(
+        $items[] = RowActions::link(
             'Pasife Al',
-            'deactivate',
-            confirm: "{$name} pasife alınsın mı?",
-            message: 'İşletme pasife alındı.',
-            tone: 'danger',
-            id: $id,
-            url: route('businesses.deactivate', $id),
+            route('businesses.edit', $id).'?status=inactive',
+            'danger',
         );
     }
 @endphp

@@ -2,9 +2,6 @@
 
 @section('title', 'İşletmeler')
 
-@section('breadcrumb')
-    <span class="font-medium text-gray-900 dark:text-white">İşletmeler</span>
-@endsection
 
 @section('content')
 <div x-data="businessListPage(@js($businessesForModal))" @business-detail.window="openDetail($event.detail)">
@@ -86,8 +83,8 @@
     <table class="w-full min-w-[1100px] text-left text-sm">
       <thead>
         <tr class="border-b border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-800/50">
-          <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 sm:px-6">Firma Ünvanı</th>
-          <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Marka Adı</th>
+          <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 sm:px-6">Marka Adı</th>
+          <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Firma Ünvanı</th>
           <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">İşletmeden Alınan Ücret</th>
           <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Kuryeye Verilen Ücret</th>
           <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Telefon</th>
@@ -100,12 +97,19 @@
       </thead>
       <tbody class="divide-y divide-gray-200 dark:divide-slate-700">
         @forelse ($businesses as $business)
-          <tr class="transition-colors hover:bg-gray-50 dark:hover:bg-slate-800/50">
+          <tr
+            role="link"
+            tabindex="0"
+            class="cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-slate-800/50"
+            data-href="{{ route('businesses.show', $business['id']) }}"
+            onclick="window.location.href = this.dataset.href"
+            onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); window.location.href = this.dataset.href; }"
+          >
             <td class="px-4 py-3 font-medium text-gray-900 dark:text-white sm:px-6">
-              {{ $business['company_name'] }}
+              {{ $business['display_name'] ?? $business['brand_name'] }}
             </td>
             <td class="px-4 py-3 text-gray-600 dark:text-slate-400">
-              {{ $business['brand_name'] }}
+              {{ $business['company_name'] }}
             </td>
             <td class="whitespace-nowrap px-4 py-3 text-gray-900 dark:text-white">
               {{ $business['customer_price_label'] }}
@@ -128,7 +132,7 @@
             <td class="px-4 py-3">
               <x-business.status-badge :status="$business['status']" />
             </td>
-            <td class="px-4 py-3 sm:px-6">
+            <td class="px-4 py-3 sm:px-6" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
               <x-business.row-actions :business="$business" />
             </td>
           </tr>

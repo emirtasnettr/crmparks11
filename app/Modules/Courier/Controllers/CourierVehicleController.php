@@ -7,6 +7,7 @@ use App\Modules\Courier\Data\CourierVehicleFormData;
 use App\Modules\Courier\Requests\StoreCourierVehicleRequest;
 use App\Modules\Courier\Services\CourierVehiclePresenter;
 use App\Modules\Courier\Services\CourierVehicleService;
+use App\Support\EntityCardRedirect;
 use App\Support\RequestFilter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -76,9 +77,11 @@ class CourierVehicleController extends Controller
         $vehicle = $this->vehicles->create($request->validated());
 
         if ($request->boolean('redirect_to_courier')) {
-            return redirect()
-                ->route('couriers.show', $vehicle->courier_id)
-                ->with('success', 'Araç başarıyla kaydedildi.');
+            return EntityCardRedirect::toShow(
+                route('couriers.show', $vehicle->courier_id),
+                'vehicles',
+                'Araç başarıyla kaydedildi.',
+            );
         }
 
         return redirect()
@@ -95,8 +98,11 @@ class CourierVehicleController extends Controller
 
         $this->vehicles->deactivate($vehicle);
 
-        return redirect()
-            ->route('couriers.vehicles.index', ['courier_id' => $vehicle->courier_id])
-            ->with('success', 'Araç pasife alındı.');
+        return EntityCardRedirect::after(
+            route('couriers.vehicles.index', ['courier_id' => $vehicle->courier_id]),
+            'Araç pasife alındı.',
+            route('couriers.show', $vehicle->courier_id),
+            'vehicles',
+        );
     }
 }

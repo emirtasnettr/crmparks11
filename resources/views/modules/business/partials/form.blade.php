@@ -37,7 +37,12 @@
                 x-model="form.company_name"
                 ::class="errors.company_name ? 'border-red-300' : ''"
             />
-            <x-ui.input name="brand_name" label="Marka Adı" x-model="form.brand_name" />
+            <x-ui.input
+                name="brand_name"
+                label="Marka Adı *"
+                x-model="form.brand_name"
+                ::class="errors.brand_name ? 'border-red-300' : ''"
+            />
             <x-ui.input
                 name="phone"
                 type="tel"
@@ -50,6 +55,7 @@
             <x-ui.file-upload name="logo" label="Logo Yükle" :current-url="$logoUrl" />
         </div>
         <p x-show="errors.company_name" x-cloak class="mt-2 text-sm text-red-600 dark:text-red-400" x-text="errors.company_name"></p>
+        <p x-show="errors.brand_name" x-cloak class="mt-2 text-sm text-red-600 dark:text-red-400" x-text="errors.brand_name"></p>
         <p x-show="errors.phone" x-cloak class="mt-2 text-sm text-red-600 dark:text-red-400" x-text="errors.phone"></p>
     </x-ui.card>
 
@@ -238,11 +244,61 @@
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <x-ui.select
                 name="status"
-                label="Durum"
+                label="Durum *"
                 :options="$statuses"
                 x-model="form.status"
             />
+            <div>
+                <x-ui.input
+                    name="planned_courier_count"
+                    type="number"
+                    min="1"
+                    step="1"
+                    label="Planlanan Kurye Sayısı *"
+                    placeholder="Örn. 5"
+                    x-model="form.planned_courier_count"
+                    ::class="errors.planned_courier_count ? 'border-red-300' : ''"
+                />
+                <p x-show="errors.planned_courier_count" x-cloak class="mt-2 text-sm text-red-600 dark:text-red-400" x-text="errors.planned_courier_count"></p>
+            </div>
+
+            <div x-show="form.status === 'inactive'" x-cloak>
+                <x-ui.input
+                    name="contract_end_date"
+                    type="date"
+                    label="Sözleşme Bitiş Tarihi *"
+                    x-model="form.contract_end_date"
+                    ::class="errors.contract_end_date ? 'border-red-300' : ''"
+                />
+                <p x-show="errors.contract_end_date" x-cloak class="mt-2 text-sm text-red-600 dark:text-red-400" x-text="errors.contract_end_date"></p>
+            </div>
+
+            <div x-show="form.status === 'pending' || form.status === 'contract_stage'" x-cloak>
+                <x-ui.input
+                    name="estimated_opening_date"
+                    type="date"
+                    label="Tahmini Açılış Tarihi *"
+                    x-model="form.estimated_opening_date"
+                    ::class="errors.estimated_opening_date ? 'border-red-300' : ''"
+                />
+                <p x-show="errors.estimated_opening_date" x-cloak class="mt-2 text-sm text-red-600 dark:text-red-400" x-text="errors.estimated_opening_date"></p>
+            </div>
+
+            <div x-show="form.status === 'opening_stage'" x-cloak>
+                <x-ui.input
+                    name="start_date"
+                    type="date"
+                    label="Başlangıç Tarihi *"
+                    x-model="form.start_date"
+                    ::class="errors.start_date ? 'border-red-300' : ''"
+                />
+                <p x-show="errors.start_date" x-cloak class="mt-2 text-sm text-red-600 dark:text-red-400" x-text="errors.start_date"></p>
+            </div>
         </div>
+
+        <p x-show="form.status !== 'active'" x-cloak class="mt-3 text-xs text-gray-500 dark:text-slate-400">
+            Not alanı isteğe bağlıdır; durumla ilgili açıklama eklemek için aşağıdaki Notlar bölümünü kullanabilirsiniz.
+        </p>
     </x-ui.card>
 
     {{-- Kart 7: Notlar --}}

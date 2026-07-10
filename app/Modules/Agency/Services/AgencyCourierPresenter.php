@@ -20,13 +20,13 @@ class AgencyCourierPresenter
         $vehicleCode = $courier->vehicleType?->code ?? 'motor';
         $joinDate = $courier->start_date;
         $initials = $this->initials($courier->full_name);
-        $activeBusiness = $assignment?->business?->company_name;
+        $activeBusiness = $assignment?->business?->displayName();
 
         return [
             'id' => $courier->id,
             'courier_id' => $courier->id,
             'agency_id' => $courier->agency_id,
-            'agency_name' => $courier->agency?->company_name ?? '—',
+            'agency_name' => $courier->agency?->displayName() ?? '—',
             'courier_name' => $courier->full_name,
             'phone' => $courier->phone ?? '—',
             'vehicle_type' => $vehicleCode,

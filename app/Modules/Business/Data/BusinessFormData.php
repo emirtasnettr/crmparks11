@@ -89,6 +89,7 @@ class BusinessFormData
             'inactive' => 'Pasif',
             'pending' => 'Beklemede',
             'contract_stage' => 'Sözleşme Aşamasında',
+            'opening_stage' => 'Açılış Aşamasında',
         ];
     }
 }

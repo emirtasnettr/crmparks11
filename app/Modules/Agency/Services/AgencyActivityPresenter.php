@@ -93,7 +93,7 @@ class AgencyActivityPresenter
             'occurred_at_date' => $occurredAt->format('d.m.Y'),
             'occurred_at_time' => $occurredAt->format('H:i'),
             'agency_id' => $agency?->id,
-            'agency_name' => $agency?->company_name ?? '—',
+            'agency_name' => $agency?->displayName() ?? '—',
             'action' => $log->action,
             'action_label' => AgencyActivityFormData::actionTypes()[$log->action] ?? $log->action,
             'user_id' => $log->user_id,

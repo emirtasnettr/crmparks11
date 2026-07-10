@@ -20,6 +20,16 @@ class LoginTest extends TestCase
         $this->seed(AdminUserSeeder::class);
     }
 
+    public function test_login_page_does_not_show_demo_accounts(): void
+    {
+        $response = $this->get(route('login'));
+
+        $response->assertOk();
+        $response->assertDontSee('Demo Hesaplar');
+        $response->assertDontSee('mudur@crmlog.com');
+        $response->assertDontSee('operasyon@crmlog.com');
+    }
+
     public function test_admin_can_login_with_demo_credentials(): void
     {
         $response = $this->post(route('login'), [

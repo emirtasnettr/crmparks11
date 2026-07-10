@@ -52,7 +52,7 @@ class AgencyContractPresenter
             'id' => $contract->id,
             'uuid' => $contract->uuid,
             'agency_id' => $agency?->id,
-            'agency_name' => $agency?->company_name ?? '—',
+            'agency_name' => $agency?->displayName() ?? '—',
             'contract_number' => $contract->contract_number,
             'contract_type' => $contract->contractType?->code ?? '',
             'contract_type_label' => $contract->contractType?->label ?? '—',

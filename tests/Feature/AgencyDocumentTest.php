@@ -58,7 +58,7 @@ class AgencyDocumentTest extends TestCase
         $response->assertSee('Evraklar');
         $response->assertSee('Evrak Yükle');
         $response->assertSee('VL-1234567890');
-        $response->assertSee($agency->company_name);
+        $response->assertSee($agency->displayName());
     }
 
     public function test_agency_document_can_be_uploaded(): void

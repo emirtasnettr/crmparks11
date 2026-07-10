@@ -27,8 +27,8 @@ final class BusinessListExportSheets
         return ListExport::sheet(
             $items,
             [
-                'Firma Ünvanı',
                 'Marka Adı',
+                'Firma Ünvanı',
                 'İşletmeden Alınan Ücret',
                 'Kuryeye Verilen Ücret',
                 'Telefon',
@@ -39,8 +39,8 @@ final class BusinessListExportSheets
                 'Durum',
             ],
             [
+                fn (array $row) => $row['display_name'] ?? $row['brand_name'],
                 fn (array $row) => $row['company_name'],
-                fn (array $row) => $row['brand_name'],
                 fn (array $row) => $row['customer_price_label'],
                 fn (array $row) => $row['courier_price_label'],
                 fn (array $row) => $row['phone'],

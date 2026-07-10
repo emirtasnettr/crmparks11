@@ -60,7 +60,10 @@
 
                 <div class="space-y-1.5 sm:col-span-2">
                     <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Net Ödeme</label>
-                    <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-lg font-bold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400" x-text="formatMoney(calcNet().net)"></div>
+                    <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-800 dark:bg-emerald-900/20">
+                        <div class="text-lg font-bold text-emerald-700 dark:text-emerald-400" x-text="formatMoney(calcNet().net)"></div>
+                        <p class="mt-0.5 text-[10px] font-normal text-emerald-700/70 dark:text-emerald-400/70">KDV hariç</p>
+                    </div>
                 </div>
             </div>
 
