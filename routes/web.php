@@ -45,6 +45,8 @@ use App\Modules\User\Controllers\RoleManagementController;
 use App\Modules\User\Controllers\UserActivityLogController;
 use App\Modules\User\Controllers\UserManagementController;
 use App\Modules\Notification\Controllers\NotificationController;
+use App\Modules\Report\Controllers\ReportController;
+use App\Modules\Search\Controllers\SearchController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -58,6 +60,21 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->middleware('permission:dashboard.view')
         ->name('dashboard');
+
+    Route::get('/arama', SearchController::class)->name('search');
+
+    Route::prefix('raporlar')->middleware('permission:report.view')->name('reports.')->group(function () {
+        Route::get('/', [ReportController::class, 'index'])->name('index');
+        Route::get('/hakedis-ozeti', [ReportController::class, 'earnings'])->name('earnings');
+        Route::get('/hakedis-ozeti/export', [ReportController::class, 'earningsExport'])
+            ->middleware('permission:report.export')
+            ->name('earnings.export');
+        Route::get('/tahsilat-yaslandirma', [ReportController::class, 'collections'])->name('collections');
+        Route::get('/tahsilat-yaslandirma/export', [ReportController::class, 'collectionsExport'])
+            ->middleware('permission:report.export')
+            ->name('collections.export');
+        Route::get('/operasyon-ozeti', [ReportController::class, 'operations'])->name('operations');
+    });
 
     Route::prefix('isletmeler')->name('businesses.')->middleware('permission:business.view')->group(function () {
         Route::get('/', [BusinessController::class, 'index'])->name('index');

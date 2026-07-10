@@ -4089,4 +4089,54 @@ Alpine.data('policySettingsPage', (policies = {}) => ({
     },
 }));
 
+Alpine.data('globalSearch', (endpoint) => ({
+    query: '',
+    open: false,
+    loading: false,
+    groups: [],
+    total: 0,
+    endpoint,
+
+    async search() {
+        const q = this.query.trim();
+
+        if (q.length < 2) {
+            this.groups = [];
+            this.total = 0;
+            this.open = false;
+            return;
+        }
+
+        this.loading = true;
+        this.open = true;
+
+        try {
+            const response = await fetch(`${this.endpoint}?q=${encodeURIComponent(q)}`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            });
+
+            if (! response.ok) {
+                throw new Error('search failed');
+            }
+
+            const payload = await response.json();
+            this.groups = payload.data?.groups ?? [];
+            this.total = payload.data?.total ?? 0;
+        } catch (error) {
+            this.groups = [];
+            this.total = 0;
+        } finally {
+            this.loading = false;
+        }
+    },
+
+    close() {
+        this.open = false;
+    },
+}));
+
 Alpine.start();

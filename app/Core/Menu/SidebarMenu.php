@@ -25,6 +25,15 @@ class SidebarMenu
                 'permission' => 'dashboard.view',
             ],
             [
+                'key' => 'reports',
+                'type' => 'link',
+                'label' => 'Raporlar',
+                'icon' => 'report',
+                'route' => 'reports.index',
+                'active' => ['reports.*'],
+                'permission' => 'report.view',
+            ],
+            [
                 'key' => 'businesses',
                 'type' => 'group',
                 'label' => 'İşletmeler',
