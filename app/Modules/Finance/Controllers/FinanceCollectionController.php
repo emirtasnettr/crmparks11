@@ -6,6 +6,7 @@ use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
 use App\Modules\Finance\Data\CollectionFormData;
 use App\Modules\Finance\Exports\FinanceListExportSheets;
+use App\Modules\Finance\Requests\BulkCollectRequest;
 use App\Modules\Finance\Requests\StoreCollectionRequest;
 use App\Modules\Finance\Requests\UpdateCollectionRequest;
 use App\Modules\Finance\Services\CollectionPresenter;
@@ -66,6 +67,23 @@ class FinanceCollectionController extends Controller
         return redirect()
             ->route('finance.collections.index')
             ->with('success', 'Tahsilat kaydı başarıyla oluşturuldu.');
+    }
+
+    public function bulk(BulkCollectRequest $request): RedirectResponse
+    {
+        $data = $request->validated();
+        $result = $this->service->bulkCollect($data['ids'], $data, $request->user());
+
+        $message = "{$result['processed']} tahsilat işlendi.";
+
+        if ($result['failed'] > 0) {
+            $message .= " {$result['failed']} kayıt atlandı.";
+        }
+
+        return redirect()
+            ->route('finance.collections.index')
+            ->with('success', $message)
+            ->with('import_errors', $result['errors']);
     }
 
     public function update(UpdateCollectionRequest $request, int $id): RedirectResponse

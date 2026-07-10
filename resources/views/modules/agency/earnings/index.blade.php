@@ -11,7 +11,7 @@
 @endsection
 
 @section('content')
-<div x-data="agencyEarningPage()">
+<div x-data="agencyEarningPage(@js(['openBulk' => $errors->has('file')]))">
     <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
             <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Hakedişler</h1>

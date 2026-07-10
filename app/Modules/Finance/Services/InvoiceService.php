@@ -97,6 +97,7 @@ class InvoiceService
 
         return EarningLine::query()
             ->whereNotIn('id', $usedEarningIds)
+            ->whereHas('status', fn (Builder $query) => $query->whereIn('code', ['approved', 'paid', 'pending_review']))
             ->orderByDesc('period_year')
             ->orderByDesc('period_month')
             ->limit(50)
@@ -109,6 +110,66 @@ class InvoiceService
                 'amount' => (float) $line->revenue_total,
             ])
             ->all();
+    }
+
+    /**
+     * @param  array<int, int|string>  $earningIds
+     * @param  array<string, mixed>  $data
+     * @return array{processed: int, failed: int, errors: array<int, string>}
+     */
+    public function bulkCreateFromEarnings(array $earningIds, array $data, User $user): array
+    {
+        $processed = 0;
+        $errors = [];
+        $invoiceDate = Carbon::parse($data['invoice_date']);
+        $dueDate = isset($data['due_date'])
+            ? Carbon::parse($data['due_date'])
+            : $invoiceDate->copy()->addDays(15);
+
+        foreach ($earningIds as $earningId) {
+            try {
+                $line = EarningLine::query()->with('status')->find((int) $earningId);
+
+                if ($line === null) {
+                    $errors[] = "Hakediş #{$earningId} bulunamadı.";
+
+                    continue;
+                }
+
+                if (FinanceInvoice::query()->where('earning_line_id', $line->id)->exists()) {
+                    $errors[] = sprintf('ISH-%06d için fatura zaten var.', $line->id);
+
+                    continue;
+                }
+
+                $this->create([
+                    'business_id' => $line->business_id,
+                    'earning_line_id' => $line->id,
+                    'invoice_type' => $data['invoice_type'] ?? 'manual',
+                    'invoice_date' => $invoiceDate->toDateString(),
+                    'due_date' => $dueDate->toDateString(),
+                    'subtotal' => (float) $line->revenue_total,
+                    'vat_rate' => (int) ($data['vat_rate'] ?? 20),
+                    'description' => $data['description'] ?? null,
+                ], $user);
+
+                $processed++;
+            } catch (\Throwable $e) {
+                $errors[] = $e->getMessage();
+            }
+        }
+
+        if ($processed === 0 && $errors !== []) {
+            throw ValidationException::withMessages([
+                'earning_ids' => 'Hiçbir fatura oluşturulamadı. '.$errors[0],
+            ]);
+        }
+
+        return [
+            'processed' => $processed,
+            'failed' => count($errors),
+            'errors' => array_slice($errors, 0, 10),
+        ];
     }
 
     /**

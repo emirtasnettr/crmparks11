@@ -6,6 +6,7 @@ use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
 use App\Modules\Finance\Data\PaymentFormData;
 use App\Modules\Finance\Exports\FinanceListExportSheets;
+use App\Modules\Finance\Requests\BulkPayRequest;
 use App\Modules\Finance\Requests\StorePaymentRequest;
 use App\Modules\Finance\Requests\UpdatePaymentRequest;
 use App\Modules\Finance\Services\PaymentPresenter;
@@ -76,6 +77,23 @@ class FinancePaymentController extends Controller
         return redirect()
             ->route('finance.payments.index')
             ->with('success', 'Ödeme kaydı başarıyla oluşturuldu.');
+    }
+
+    public function bulk(BulkPayRequest $request): RedirectResponse
+    {
+        $data = $request->validated();
+        $result = $this->service->bulkPay($data['ids'], $data, $request->user());
+
+        $message = "{$result['processed']} ödeme işlendi.";
+
+        if ($result['failed'] > 0) {
+            $message .= " {$result['failed']} kayıt atlandı.";
+        }
+
+        return redirect()
+            ->route('finance.payments.index')
+            ->with('success', $message)
+            ->with('import_errors', $result['errors']);
     }
 
     public function update(UpdatePaymentRequest $request, int $id): RedirectResponse

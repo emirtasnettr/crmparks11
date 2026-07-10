@@ -280,6 +280,82 @@ class PaymentService
     }
 
     /**
+     * @param  array<string, mixed>  $data
+     */
+    public function payRemaining(int $id, array $data, User $user): FinancePayment
+    {
+        return DB::transaction(function () use ($id, $data, $user): FinancePayment {
+            $payment = $this->find($id);
+
+            if ($payment === null) {
+                abort(404);
+            }
+
+            if (! $this->canUpdate($payment)) {
+                throw ValidationException::withMessages([
+                    'ids' => "{$payment->reference} ödemesi zaten tamamlanmış veya iptal.",
+                ]);
+            }
+
+            $remaining = round((float) $payment->total_amount - (float) $payment->paid_amount, 2);
+
+            if ($remaining <= 0) {
+                throw ValidationException::withMessages([
+                    'ids' => "{$payment->reference} için ödenecek tutar yok.",
+                ]);
+            }
+
+            $this->addLine($payment, [
+                'amount' => $remaining,
+                'payment_date' => $data['payment_date'],
+                'payment_method' => $data['payment_method'],
+                'payment_reference' => $data['payment_reference'] ?? null,
+                'bank_account' => $data['bank_account'] ?? null,
+            ], $user);
+
+            $this->activityLog->log(
+                'payment_bulk_paid',
+                $payment,
+                description: "{$payment->reference} toplu ödeme ile kapatıldı.",
+            );
+
+            return $payment->fresh(['courier', 'agency', 'earningLine', 'currentAccount', 'lines']);
+        });
+    }
+
+    /**
+     * @param  array<int, int|string>  $ids
+     * @param  array<string, mixed>  $data
+     * @return array{processed: int, failed: int, errors: array<int, string>}
+     */
+    public function bulkPay(array $ids, array $data, User $user): array
+    {
+        $processed = 0;
+        $errors = [];
+
+        foreach ($ids as $id) {
+            try {
+                $this->payRemaining((int) $id, $data, $user);
+                $processed++;
+            } catch (\Throwable $e) {
+                $errors[] = $e->getMessage();
+            }
+        }
+
+        if ($processed === 0 && $errors !== []) {
+            throw ValidationException::withMessages([
+                'ids' => 'Hiçbir ödeme işlenemedi. '.$errors[0],
+            ]);
+        }
+
+        return [
+            'processed' => $processed,
+            'failed' => count($errors),
+            'errors' => array_slice($errors, 0, 10),
+        ];
+    }
+
+    /**
      * @return array{0: ?int, 1: ?int, 2: string, 3: ?int}
      */
     private function resolveRecipient(string $type, int $id): array

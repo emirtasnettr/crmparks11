@@ -125,6 +125,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/belgeler/{id}', [CourierDocumentController::class, 'show'])->name('documents.show');
         Route::get('/hakedisler', [CourierEarningController::class, 'index'])->name('earnings.index');
         Route::get('/hakedisler/export', [CourierEarningController::class, 'export'])->name('earnings.export');
+        Route::get('/hakedisler/sablon', [CourierEarningController::class, 'template'])
+            ->middleware('permission:earning.create')
+            ->name('earnings.template');
+        Route::post('/hakedisler/ice-aktar', [CourierEarningController::class, 'import'])
+            ->middleware('permission:earning.create')
+            ->name('earnings.import');
         Route::get('/hakedisler/{id}', [CourierEarningController::class, 'show'])->name('earnings.show');
         Route::get('/calisma-gecmisi', [CourierWorkHistoryController::class, 'index'])->name('work-history.index');
         Route::get('/calisma-gecmisi/{id}', [CourierWorkHistoryController::class, 'show'])->name('work-history.show');
@@ -160,16 +166,19 @@ Route::middleware('auth')->group(function () {
         Route::get('/giderler/{id}', [FinanceExpenseController::class, 'show'])->name('expenses.show');
         Route::get('/tahsilatlar', [FinanceCollectionController::class, 'index'])->name('collections.index');
         Route::post('/tahsilatlar', [FinanceCollectionController::class, 'store'])->name('collections.store');
+        Route::post('/tahsilatlar/toplu', [FinanceCollectionController::class, 'bulk'])->name('collections.bulk');
         Route::put('/tahsilatlar/{id}', [FinanceCollectionController::class, 'update'])->name('collections.update');
         Route::get('/tahsilatlar/export', [FinanceCollectionController::class, 'export'])->name('collections.export');
         Route::get('/tahsilatlar/{id}', [FinanceCollectionController::class, 'show'])->name('collections.show');
         Route::get('/odemeler', [FinancePaymentController::class, 'index'])->name('payments.index');
         Route::post('/odemeler', [FinancePaymentController::class, 'store'])->name('payments.store');
+        Route::post('/odemeler/toplu', [FinancePaymentController::class, 'bulk'])->name('payments.bulk');
         Route::put('/odemeler/{id}', [FinancePaymentController::class, 'update'])->name('payments.update');
         Route::get('/odemeler/export', [FinancePaymentController::class, 'export'])->name('payments.export');
         Route::get('/odemeler/{id}', [FinancePaymentController::class, 'show'])->name('payments.show');
         Route::get('/faturalar', [FinanceInvoiceController::class, 'index'])->name('invoices.index');
         Route::post('/faturalar', [FinanceInvoiceController::class, 'store'])->name('invoices.store');
+        Route::post('/faturalar/toplu', [FinanceInvoiceController::class, 'bulk'])->name('invoices.bulk');
         Route::put('/faturalar/{id}', [FinanceInvoiceController::class, 'update'])->name('invoices.update');
         Route::get('/faturalar/export', [FinanceInvoiceController::class, 'export'])->name('invoices.export');
         Route::get('/faturalar/{id}', [FinanceInvoiceController::class, 'show'])->name('invoices.show');
@@ -288,6 +297,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/sozlesmeler/{id}', [AgencyContractController::class, 'show'])->name('contracts.show');
         Route::get('/hakedisler', [AgencyEarningController::class, 'index'])->name('earnings.index');
         Route::get('/hakedisler/export', [AgencyEarningController::class, 'export'])->name('earnings.export');
+        Route::get('/hakedisler/sablon', [AgencyEarningController::class, 'template'])
+            ->middleware('permission:earning.create')
+            ->name('earnings.template');
+        Route::post('/hakedisler/ice-aktar', [AgencyEarningController::class, 'import'])
+            ->middleware('permission:earning.create')
+            ->name('earnings.import');
         Route::get('/hakedisler/{id}', [AgencyEarningController::class, 'show'])->name('earnings.show');
         Route::get('/evraklar', [AgencyDocumentController::class, 'index'])->name('documents.index');
         Route::post('/evraklar', [AgencyDocumentController::class, 'store'])->middleware('permission:agency.update')->name('documents.store');

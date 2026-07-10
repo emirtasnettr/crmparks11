@@ -6,6 +6,7 @@ use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
 use App\Modules\Finance\Data\InvoiceFormData;
 use App\Modules\Finance\Exports\FinanceListExportSheets;
+use App\Modules\Finance\Requests\BulkInvoiceRequest;
 use App\Modules\Finance\Requests\StoreInvoiceRequest;
 use App\Modules\Finance\Requests\UpdateInvoiceRequest;
 use App\Modules\Finance\Services\InvoicePresenter;
@@ -66,6 +67,23 @@ class FinanceInvoiceController extends Controller
         return redirect()
             ->route('finance.invoices.index')
             ->with('success', 'Fatura kaydı başarıyla oluşturuldu.');
+    }
+
+    public function bulk(BulkInvoiceRequest $request): RedirectResponse
+    {
+        $data = $request->validated();
+        $result = $this->service->bulkCreateFromEarnings($data['earning_ids'], $data, $request->user());
+
+        $message = "{$result['processed']} fatura oluşturuldu.";
+
+        if ($result['failed'] > 0) {
+            $message .= " {$result['failed']} kayıt atlandı.";
+        }
+
+        return redirect()
+            ->route('finance.invoices.index')
+            ->with('success', $message)
+            ->with('import_errors', $result['errors']);
     }
 
     public function update(UpdateInvoiceRequest $request, int $id): RedirectResponse

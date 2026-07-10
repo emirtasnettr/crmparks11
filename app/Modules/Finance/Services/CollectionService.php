@@ -236,6 +236,82 @@ class CollectionService
     }
 
     /**
+     * @param  array<string, mixed>  $data
+     */
+    public function collectRemaining(int $id, array $data, User $user): FinanceCollection
+    {
+        return DB::transaction(function () use ($id, $data, $user): FinanceCollection {
+            $collection = $this->find($id);
+
+            if ($collection === null) {
+                abort(404);
+            }
+
+            if (! $this->canUpdate($collection)) {
+                throw ValidationException::withMessages([
+                    'ids' => "{$collection->reference} tahsilatı zaten tamamlanmış.",
+                ]);
+            }
+
+            $remaining = round((float) $collection->total_amount - (float) $collection->collected_amount, 2);
+
+            if ($remaining <= 0) {
+                throw ValidationException::withMessages([
+                    'ids' => "{$collection->reference} için tahsil edilecek tutar yok.",
+                ]);
+            }
+
+            $this->addPayment($collection, [
+                'amount' => $remaining,
+                'payment_date' => $data['collection_date'],
+                'payment_method' => $data['payment_method'],
+                'payment_reference' => $data['payment_reference'] ?? null,
+                'bank' => $data['bank'] ?? null,
+            ], $user);
+
+            $this->activityLog->log(
+                'collection_bulk_collected',
+                $collection,
+                description: "{$collection->reference} toplu tahsilat ile kapatıldı.",
+            );
+
+            return $collection->fresh(['business.city', 'revenue', 'currentAccount', 'payments']);
+        });
+    }
+
+    /**
+     * @param  array<int, int|string>  $ids
+     * @param  array<string, mixed>  $data
+     * @return array{processed: int, failed: int, errors: array<int, string>}
+     */
+    public function bulkCollect(array $ids, array $data, User $user): array
+    {
+        $processed = 0;
+        $errors = [];
+
+        foreach ($ids as $id) {
+            try {
+                $this->collectRemaining((int) $id, $data, $user);
+                $processed++;
+            } catch (\Throwable $e) {
+                $errors[] = $e->getMessage();
+            }
+        }
+
+        if ($processed === 0 && $errors !== []) {
+            throw ValidationException::withMessages([
+                'ids' => 'Hiçbir tahsilat işlenemedi. '.$errors[0],
+            ]);
+        }
+
+        return [
+            'processed' => $processed,
+            'failed' => count($errors),
+            'errors' => array_slice($errors, 0, 10),
+        ];
+    }
+
+    /**
      * @param  array<string, mixed>  $paymentData
      */
     private function addPayment(FinanceCollection $collection, array $paymentData, User $user): FinanceCollectionPayment

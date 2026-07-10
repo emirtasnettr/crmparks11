@@ -80,7 +80,14 @@
             <table class="w-full min-w-[1300px] text-left text-sm">
                 <thead>
                     <tr class="border-b border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-800/50">
-                        <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 sm:px-6">Ödeme No</th>
+                        <th class="px-4 py-3 sm:px-6">
+                            <input
+                                type="checkbox"
+                                class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                @change="toggleSelectAll(@js(collect($payments)->where('can_update', true)->pluck('id')->values()->all()))"
+                            >
+                        </th>
+                        <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Ödeme No</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Alıcı</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Alıcı Türü</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Hakediş No</th>
@@ -98,7 +105,17 @@
                             'transition-colors hover:bg-gray-50 dark:hover:bg-slate-800/50',
                             'opacity-60' => ! $payment['is_active'],
                         ])>
-                            <td class="whitespace-nowrap px-4 py-3 font-mono text-xs sm:px-6">
+                            <td class="whitespace-nowrap px-4 py-3 sm:px-6">
+                                @if ($payment['can_update'])
+                                    <input
+                                        type="checkbox"
+                                        class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                        :checked="isSelected({{ $payment['id'] }})"
+                                        @change="toggleSelect({{ $payment['id'] }})"
+                                    >
+                                @endif
+                            </td>
+                            <td class="whitespace-nowrap px-4 py-3 font-mono text-xs">
                                 <a href="{{ route('finance.payments.show', $payment['id']) }}" class="font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400">
                                     {{ $payment['reference'] }}
                                 </a>

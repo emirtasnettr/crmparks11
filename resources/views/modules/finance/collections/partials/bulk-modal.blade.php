@@ -15,29 +15,32 @@
             </button>
         </div>
 
-        <form @submit.prevent="saveBulk()" class="space-y-4 px-6 py-4">
+        <form method="POST" action="{{ route('finance.collections.bulk') }}" class="space-y-4 px-6 py-4">
+            @csrf
+
             <p class="text-sm text-gray-600 dark:text-slate-300">
-                Vadesi gelen tahsilatları toplu olarak işaretleyin. Gerçek entegrasyonda seçili kayıtlar için cari hareketler otomatik oluşturulacaktır.
+                Listeden seçtiğiniz bekleyen/kısmi tahsilatların kalan tutarını tek seferde kapatır.
+                <span class="font-medium" x-text="selectedIds.length + ' kayıt seçili'"></span>
             </p>
 
-            <x-ui.input type="date" label="Tahsilat Tarihi" x-model="bulk.collection_date" />
+            <template x-for="id in selectedIds" :key="id">
+                <input type="hidden" name="ids[]" :value="id">
+            </template>
+
+            <x-ui.input type="date" name="collection_date" label="Tahsilat Tarihi" x-model="bulk.collection_date" :error="$errors->first('collection_date')" />
 
             <div class="space-y-1.5">
                 <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Ödeme Yöntemi</label>
-                <select x-model="bulk.payment_method" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
+                <select name="payment_method" x-model="bulk.payment_method" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
                     @foreach ($paymentMethods as $key => $label)
                         <option value="{{ $key }}">{{ $label }}</option>
                     @endforeach
                 </select>
             </div>
 
-            <div x-show="bulkSaved" x-cloak class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-800/50 dark:bg-emerald-900/20 dark:text-emerald-300">
-                Toplu tahsilat işlemi kaydedildi.
-            </div>
-
             <div class="flex justify-end gap-2 border-t border-gray-200 pt-4 dark:border-slate-700">
                 <x-ui.button type="button" variant="secondary" @click="closeModals()">İptal</x-ui.button>
-                <x-ui.button type="submit">Uygula</x-ui.button>
+                <x-ui.button type="submit" ::disabled="selectedIds.length === 0">Uygula</x-ui.button>
             </div>
         </form>
     </div>

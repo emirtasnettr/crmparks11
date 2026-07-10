@@ -80,7 +80,14 @@
             <table class="w-full min-w-[1400px] text-left text-sm">
                 <thead>
                     <tr class="border-b border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-800/50">
-                        <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 sm:px-6">Tahsilat No</th>
+                        <th class="px-4 py-3 sm:px-6">
+                            <input
+                                type="checkbox"
+                                class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                @change="toggleSelectAll(@js(collect($collections)->where('can_update', true)->pluck('id')->values()->all()))"
+                            >
+                        </th>
+                        <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Tahsilat No</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">İşletme</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Gelir No</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Fatura No</th>
@@ -96,7 +103,17 @@
                 <tbody class="divide-y divide-gray-200 dark:divide-slate-700">
                     @forelse ($collections as $collection)
                         <tr class="transition-colors hover:bg-gray-50 dark:hover:bg-slate-800/50">
-                            <td class="whitespace-nowrap px-4 py-3 font-mono text-xs sm:px-6">
+                            <td class="whitespace-nowrap px-4 py-3 sm:px-6">
+                                @if ($collection['can_update'])
+                                    <input
+                                        type="checkbox"
+                                        class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                        :checked="isSelected({{ $collection['id'] }})"
+                                        @change="toggleSelect({{ $collection['id'] }})"
+                                    >
+                                @endif
+                            </td>
+                            <td class="whitespace-nowrap px-4 py-3 font-mono text-xs">
                                 <a href="{{ route('finance.collections.show', $collection['id']) }}" class="font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400">
                                     {{ $collection['reference'] }}
                                 </a>

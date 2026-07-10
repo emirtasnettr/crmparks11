@@ -854,10 +854,9 @@ Alpine.data('agencyContractPage', (preset = {}) => {
 };
 });
 
-Alpine.data('agencyEarningPage', () => ({
-    activeModal: null,
+Alpine.data('agencyEarningPage', (preset = {}) => ({
+    activeModal: preset.openBulk ? 'bulk' : null,
     singleSaved: false,
-    bulkSaved: false,
     singleErrors: {},
     single: {
         agency_id: '',
@@ -875,7 +874,6 @@ Alpine.data('agencyEarningPage', () => ({
     closeModals() {
         this.activeModal = null;
         this.singleSaved = false;
-        this.bulkSaved = false;
         this.singleErrors = {};
         this.resetSingle();
     },
@@ -934,10 +932,6 @@ Alpine.data('agencyEarningPage', () => ({
         }
 
         this.singleSaved = true;
-    },
-
-    importBulk() {
-        this.bulkSaved = true;
     },
 }));
 
@@ -1248,10 +1242,9 @@ Alpine.data('earningPage', (preset = {}) => ({
     },
 }));
 
-Alpine.data('courierEarningPage', () => ({
-    activeModal: null,
+Alpine.data('courierEarningPage', (preset = {}) => ({
+    activeModal: preset.openBulk ? 'bulk' : null,
     singleSaved: false,
-    bulkSaved: false,
     singleErrors: {},
     single: {
         courier_id: '',
@@ -1270,7 +1263,6 @@ Alpine.data('courierEarningPage', () => ({
     closeModals() {
         this.activeModal = null;
         this.singleSaved = false;
-        this.bulkSaved = false;
         this.singleErrors = {};
         this.resetSingle();
     },
@@ -1343,10 +1335,6 @@ Alpine.data('courierEarningPage', () => ({
         }
 
         this.singleSaved = true;
-    },
-
-    importBulk() {
-        this.bulkSaved = true;
     },
 }));
 
@@ -2367,15 +2355,15 @@ Alpine.data('financeExpensePage', () => ({
 Alpine.data('financeCollectionPage', () => ({
     activeModal: null,
     saved: false,
-    bulkSaved: false,
     errors: {},
     remainingAmount: 0,
+    selectedIds: [],
     form: {
         business_id: '',
         revenue_id: '',
         invoice_no: '',
-        collection_date: '2026-07-07',
-        due_date: '2026-07-15',
+        collection_date: new Date().toISOString().slice(0, 10),
+        due_date: '',
         total_amount: '',
         collected_amount: '',
         payment_method: '',
@@ -2384,16 +2372,36 @@ Alpine.data('financeCollectionPage', () => ({
         description: '',
     },
     bulk: {
-        collection_date: '2026-07-07',
+        collection_date: new Date().toISOString().slice(0, 10),
         payment_method: 'bank_transfer',
     },
 
     closeModals() {
         this.activeModal = null;
         this.saved = false;
-        this.bulkSaved = false;
         this.errors = {};
         this.resetForm();
+    },
+
+    toggleSelect(id) {
+        const value = Number(id);
+        if (this.selectedIds.includes(value)) {
+            this.selectedIds = this.selectedIds.filter((item) => item !== value);
+        } else {
+            this.selectedIds.push(value);
+        }
+    },
+
+    toggleSelectAll(ids) {
+        const values = ids.map(Number);
+        const allSelected = values.every((id) => this.selectedIds.includes(id));
+        this.selectedIds = allSelected
+            ? this.selectedIds.filter((id) => !values.includes(id))
+            : Array.from(new Set([...this.selectedIds, ...values]));
+    },
+
+    isSelected(id) {
+        return this.selectedIds.includes(Number(id));
     },
 
     resetForm() {
@@ -2401,8 +2409,8 @@ Alpine.data('financeCollectionPage', () => ({
             business_id: '',
             revenue_id: '',
             invoice_no: '',
-            collection_date: '2026-07-07',
-            due_date: '2026-07-15',
+            collection_date: new Date().toISOString().slice(0, 10),
+            due_date: '',
             total_amount: '',
             collected_amount: '',
             payment_method: '',
@@ -2456,11 +2464,6 @@ Alpine.data('financeCollectionPage', () => ({
         this.saved = true;
     },
 
-    saveBulk() {
-        this.bulkSaved = false;
-        this.bulkSaved = true;
-    },
-
     handleRowAction(detail) {
         if (detail?.modal) {
             this.activeModal = detail.modal;
@@ -2472,15 +2475,15 @@ Alpine.data('financeCollectionPage', () => ({
 Alpine.data('financePaymentPage', (recipientsByType = {}) => ({
     activeModal: null,
     saved: false,
-    bulkSaved: false,
     errors: {},
     remainingAmount: 0,
+    selectedIds: [],
     recipientsByType,
     form: {
         recipient_type: '',
         recipient_id: '',
         earning_id: '',
-        payment_date: '2026-07-07',
+        payment_date: new Date().toISOString().slice(0, 10),
         total_amount: '',
         paid_amount: '',
         payment_method: '',
@@ -2489,7 +2492,7 @@ Alpine.data('financePaymentPage', (recipientsByType = {}) => ({
         description: '',
     },
     bulk: {
-        payment_date: '2026-07-07',
+        payment_date: new Date().toISOString().slice(0, 10),
         payment_method: 'bank_transfer',
     },
 
@@ -2504,9 +2507,29 @@ Alpine.data('financePaymentPage', (recipientsByType = {}) => ({
     closeModals() {
         this.activeModal = null;
         this.saved = false;
-        this.bulkSaved = false;
         this.errors = {};
         this.resetForm();
+    },
+
+    toggleSelect(id) {
+        const value = Number(id);
+        if (this.selectedIds.includes(value)) {
+            this.selectedIds = this.selectedIds.filter((item) => item !== value);
+        } else {
+            this.selectedIds.push(value);
+        }
+    },
+
+    toggleSelectAll(ids) {
+        const values = ids.map(Number);
+        const allSelected = values.every((id) => this.selectedIds.includes(id));
+        this.selectedIds = allSelected
+            ? this.selectedIds.filter((id) => !values.includes(id))
+            : Array.from(new Set([...this.selectedIds, ...values]));
+    },
+
+    isSelected(id) {
+        return this.selectedIds.includes(Number(id));
     },
 
     resetForm() {
@@ -2514,7 +2537,7 @@ Alpine.data('financePaymentPage', (recipientsByType = {}) => ({
             recipient_type: '',
             recipient_id: '',
             earning_id: '',
-            payment_date: '2026-07-07',
+            payment_date: new Date().toISOString().slice(0, 10),
             total_amount: '',
             paid_amount: '',
             payment_method: '',
@@ -2580,11 +2603,6 @@ Alpine.data('financePaymentPage', (recipientsByType = {}) => ({
         this.saved = true;
     },
 
-    saveBulk() {
-        this.bulkSaved = false;
-        this.bulkSaved = true;
-    },
-
     handleRowAction(detail) {
         if (detail?.modal) {
             this.activeModal = detail.modal;
@@ -2596,7 +2614,6 @@ Alpine.data('financePaymentPage', (recipientsByType = {}) => ({
 Alpine.data('financeInvoicePage', () => ({
     activeModal: null,
     saved: false,
-    bulkSaved: false,
     errors: {},
     vatAmount: 0,
     grandTotal: 0,
@@ -2604,22 +2621,21 @@ Alpine.data('financeInvoicePage', () => ({
         business_id: '',
         earning_id: '',
         invoice_type: 'e_invoice',
-        invoice_date: '2026-07-07',
-        due_date: '2026-07-22',
+        invoice_date: new Date().toISOString().slice(0, 10),
+        due_date: '',
         subtotal: '',
         vat_rate: 20,
         description: '',
     },
     bulk: {
         invoice_type: 'e_invoice',
-        invoice_date: '2026-07-07',
+        invoice_date: new Date().toISOString().slice(0, 10),
         vat_rate: 20,
     },
 
     closeModals() {
         this.activeModal = null;
         this.saved = false;
-        this.bulkSaved = false;
         this.errors = {};
         this.resetForm();
     },
@@ -2629,8 +2645,8 @@ Alpine.data('financeInvoicePage', () => ({
             business_id: '',
             earning_id: '',
             invoice_type: 'e_invoice',
-            invoice_date: '2026-07-07',
-            due_date: '2026-07-22',
+            invoice_date: new Date().toISOString().slice(0, 10),
+            due_date: '',
             subtotal: '',
             vat_rate: 20,
             description: '',
@@ -2641,8 +2657,8 @@ Alpine.data('financeInvoicePage', () => ({
 
     calcTotals() {
         const subtotal = parseFloat(this.form.subtotal) || 0;
-        const vatRate = parseFloat(this.form.vat_rate) || 0;
-        this.vatAmount = Math.round(subtotal * (vatRate / 100) * 100) / 100;
+        const rate = parseFloat(this.form.vat_rate) || 0;
+        this.vatAmount = Math.round(subtotal * (rate / 100) * 100) / 100;
         this.grandTotal = Math.round((subtotal + this.vatAmount) * 100) / 100;
     },
 
@@ -2657,8 +2673,8 @@ Alpine.data('financeInvoicePage', () => ({
             this.errors.business_id = 'İşletme seçilmelidir.';
         }
 
-        if (!this.form.earning_id) {
-            this.errors.earning_id = 'Hakediş seçilmelidir.';
+        if (!this.form.invoice_date) {
+            this.errors.invoice_date = 'Fatura tarihi girilmelidir.';
         }
 
         if (!this.form.subtotal || Number(this.form.subtotal) <= 0) {
@@ -2677,11 +2693,6 @@ Alpine.data('financeInvoicePage', () => ({
         }
 
         this.saved = true;
-    },
-
-    saveBulk() {
-        this.bulkSaved = false;
-        this.bulkSaved = true;
     },
 
     handleRowAction(detail) {

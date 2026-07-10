@@ -8,6 +8,8 @@ use App\Modules\Agency\Data\AgencyEarningFormData;
 use App\Modules\Agency\Exports\AgencyListExportSheets;
 use App\Modules\Agency\Services\AgencyEarningService;
 use App\Modules\Agency\Support\AgencyFeatures;
+use App\Modules\Business\Requests\ImportBusinessEarningRequest;
+use App\Modules\Business\Services\BusinessEarningImportService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -19,6 +21,7 @@ class AgencyEarningController extends Controller
 
     public function __construct(
         private readonly AgencyEarningService $earnings,
+        private readonly BusinessEarningImportService $importer,
     ) {}
 
     public function index(Request $request): View|RedirectResponse
@@ -77,6 +80,41 @@ class AgencyEarningController extends Controller
             AgencyListExportSheets::earnings($filters),
             'Acente Hakedişleri',
         );
+    }
+
+    public function template(): BinaryFileResponse|RedirectResponse
+    {
+        if (! AgencyFeatures::earningsEnabled()) {
+            return redirect()->route('agencies.index');
+        }
+
+        abort_unless(auth()->user()?->can('earning.create'), 403);
+
+        return $this->downloadExportSheet(
+            'hakedis-sablonu',
+            $this->importer->templateSheet(),
+            'Hakediş Şablonu',
+        );
+    }
+
+    public function import(ImportBusinessEarningRequest $request): RedirectResponse
+    {
+        if (! AgencyFeatures::earningsEnabled()) {
+            abort(404);
+        }
+
+        $result = $this->importer->import($request->file('file'), $request->user());
+
+        $message = "{$result['imported']} hakediş içe aktarıldı.";
+
+        if ($result['failed'] > 0) {
+            $message .= " {$result['failed']} satır atlandı.";
+        }
+
+        return redirect()
+            ->route('agencies.earnings.index')
+            ->with('success', $message)
+            ->with('import_errors', $result['errors']);
     }
 
     public function show(int $id): View|RedirectResponse
