@@ -6,17 +6,21 @@ use App\Models\City;
 use App\Models\Contract;
 use App\Models\ContractType;
 use App\Models\District;
+use App\Models\Document;
+use App\Models\DocumentCategory;
 use App\Models\PricingModelType;
 use App\Models\User;
 use App\Models\VehicleType;
-use App\Modules\Agency\Data\AgencyDummyData;
 use App\Modules\Agency\Models\Agency;
-use App\Modules\Business\Data\BusinessDummyData;
+use App\Modules\Agency\Models\AgencyContact;
+use App\Modules\Agency\Services\AgencyPresenter;
 use App\Modules\Business\Models\Business;
+use App\Modules\Business\Models\BusinessContact;
 use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\Business\Models\BusinessPricing;
-use App\Modules\Courier\Data\CourierDummyData;
+use App\Modules\Business\Services\BusinessPresenter;
 use App\Modules\Courier\Models\Courier;
+use App\Modules\Courier\Services\CourierPresenter;
 use Database\Seeders\CitySeeder;
 use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
@@ -227,108 +231,195 @@ class EntityShowPageTest extends TestCase
 
   public function test_courier_show_payload_only_includes_own_related_data(): void
   {
-    $courier = CourierDummyData::showPayload(1);
+    $user = User::factory()->create();
+    $courierA = $this->createCourier($user, ['full_name' => 'Ahmet Yıldız']);
+    $courierB = $this->createCourier($user, ['full_name' => 'Murat Kaya']);
+    $business = $this->createBusiness($user);
+    $categoryId = DocumentCategory::query()->where('code', 'identity')->value('id');
 
-    $this->assertNotNull($courier);
-    $this->assertSame(1, $courier['id']);
+    Document::factory()->create([
+      'documentable_type' => Courier::class,
+      'documentable_id' => $courierA->id,
+      'document_category_id' => $categoryId,
+      'original_name' => 'ahmet-yildiz-kimlik.pdf',
+      'uploaded_by' => $user->id,
+    ]);
 
-    foreach ($courier['documents'] as $document) {
-      $this->assertSame(1, $document['courier_id']);
+    Document::factory()->create([
+      'documentable_type' => Courier::class,
+      'documentable_id' => $courierB->id,
+      'document_category_id' => $categoryId,
+      'original_name' => 'murat-kaya-kimlik.pdf',
+      'uploaded_by' => $user->id,
+    ]);
+
+    BusinessCourierAssignment::factory()->create([
+      'business_id' => $business->id,
+      'courier_id' => $courierA->id,
+      'start_date' => '2026-01-01',
+      'assigned_by' => $user->id,
+    ]);
+
+    BusinessCourierAssignment::factory()->create([
+      'business_id' => $business->id,
+      'courier_id' => $courierB->id,
+      'start_date' => '2026-02-01',
+      'assigned_by' => $user->id,
+    ]);
+
+    $payload = app(CourierPresenter::class)->showPayload($courierA->fresh());
+
+    $this->assertSame($courierA->id, $payload['id']);
+
+    foreach ($payload['documents'] as $document) {
+      $this->assertSame($courierA->id, $document['courier_id']);
     }
 
-    foreach ($courier['work_history'] as $history) {
-      $this->assertSame(1, $history['courier_id']);
+    foreach ($payload['work_history'] as $history) {
+      $this->assertSame($courierA->id, $history['courier_id']);
     }
 
-    $this->assertArrayHasKey('earnings', $courier);
-
-    foreach ($courier['earnings'] as $earning) {
-      $this->assertSame(1, $earning['courier_id']);
-    }
-
-    foreach ($courier['bank_accounts'] as $account) {
-      $this->assertSame(1, $account['courier_id']);
-    }
-
-    foreach ($courier['vehicles'] as $vehicle) {
-      $this->assertSame(1, $vehicle['courier_id']);
-    }
-
-    foreach ($courier['activities'] as $activity) {
-      $this->assertSame(1, $activity['courier_id']);
-    }
-
-    $fileNames = collect($courier['documents'])->pluck('file_name')->all();
+    $fileNames = collect($payload['documents'])->pluck('file_name')->all();
     $this->assertContains('ahmet-yildiz-kimlik.pdf', $fileNames);
     $this->assertNotContains('murat-kaya-kimlik.pdf', $fileNames);
   }
 
   public function test_business_show_payload_only_includes_own_related_data(): void
   {
-    $business = BusinessDummyData::showPayload(1);
+    $user = User::factory()->create();
+    $businessA = $this->createBusiness($user, ['company_name' => 'Burger House Gıda Ltd. Şti.']);
+    $businessB = $this->createBusiness($user, ['company_name' => 'Napoli Pizza Restoran A.Ş.']);
+    $courier = $this->createCourier($user);
+    $contractTypeId = ContractType::query()->value('id');
 
-    $this->assertNotNull($business);
-    $this->assertSame(1, $business['id']);
+    BusinessContact::factory()->create([
+      'business_id' => $businessA->id,
+      'full_name' => 'Mehmet Yılmaz',
+    ]);
 
-    foreach ($business['contacts'] as $contact) {
-      $this->assertSame(1, $contact['business_id']);
+    BusinessContact::factory()->create([
+      'business_id' => $businessB->id,
+      'full_name' => 'Ali Veli',
+    ]);
+
+    BusinessCourierAssignment::factory()->create([
+      'business_id' => $businessA->id,
+      'courier_id' => $courier->id,
+      'start_date' => '2026-01-01',
+      'assigned_by' => $user->id,
+    ]);
+
+    Contract::factory()->create([
+      'contractable_type' => Business::class,
+      'contractable_id' => $businessA->id,
+      'contract_type_id' => $contractTypeId,
+      'contract_number' => 'BRG-2026-001',
+    ]);
+
+    Contract::factory()->create([
+      'contractable_type' => Business::class,
+      'contractable_id' => $businessB->id,
+      'contract_type_id' => $contractTypeId,
+      'contract_number' => 'NPL-2026-001',
+    ]);
+
+    $payload = app(BusinessPresenter::class)->showPayload($businessA->fresh());
+
+    $this->assertSame($businessA->id, $payload['id']);
+
+    foreach ($payload['contacts'] as $contact) {
+      $this->assertSame($businessA->id, $contact['business_id']);
     }
 
-    foreach ($business['contracts'] as $contract) {
-      $this->assertSame(1, $contract['business_id']);
+    foreach ($payload['contracts'] as $contract) {
+      $this->assertSame($businessA->id, $contract['business_id']);
     }
 
-    foreach ($business['assignments'] as $assignment) {
-      $this->assertSame(1, $assignment['business_id']);
+    foreach ($payload['assignments'] as $assignment) {
+      $this->assertSame($businessA->id, $assignment['business_id']);
     }
 
-    $this->assertArrayHasKey('earnings', $business);
-
-    foreach ($business['earnings'] as $earning) {
-      $this->assertSame(1, $earning['business_id']);
-    }
-
-    foreach ($business['documents'] as $document) {
-      $this->assertSame(1, $document['business_id']);
-    }
-
-    foreach ($business['activities'] as $activity) {
-      $this->assertSame(1, $activity['business_id']);
-    }
+    $contactNames = collect($payload['contacts'])->pluck('full_name')->all();
+    $this->assertContains('Mehmet Yılmaz', $contactNames);
+    $this->assertNotContains('Ali Veli', $contactNames);
   }
 
   public function test_agency_show_payload_only_includes_own_related_data(): void
   {
-    $agency = AgencyDummyData::showPayload(1);
+    $user = User::factory()->create();
+    $agencyA = $this->createAgency($user, ['company_name' => 'Hızlı Kurye Acentesi Ltd. Şti.']);
+    $agencyB = $this->createAgency($user, ['company_name' => 'Metro Lojistik A.Ş.']);
+    $contractTypeId = ContractType::query()->value('id');
+    $categoryId = DocumentCategory::query()->where('code', 'identity')->value('id');
 
-    $this->assertNotNull($agency);
-    $this->assertSame(1, $agency['id']);
+    AgencyContact::factory()->create([
+      'agency_id' => $agencyA->id,
+      'full_name' => 'Ayşe Korkmaz',
+    ]);
 
-    foreach ($agency['contacts'] as $contact) {
-      $this->assertSame(1, $contact['agency_id']);
+    AgencyContact::factory()->create([
+      'agency_id' => $agencyB->id,
+      'full_name' => 'Deniz Polat',
+    ]);
+
+    $this->createCourier($user, [
+      'full_name' => 'Emre Demir',
+      'agency_id' => $agencyA->id,
+      'courier_type' => 'agency',
+    ]);
+
+    $this->createCourier($user, [
+      'full_name' => 'Burak Şen',
+      'agency_id' => $agencyB->id,
+      'courier_type' => 'agency',
+    ]);
+
+    Contract::factory()->create([
+      'contractable_type' => Agency::class,
+      'contractable_id' => $agencyA->id,
+      'contract_type_id' => $contractTypeId,
+      'contract_number' => 'ACS-2026-001',
+    ]);
+
+    Document::factory()->create([
+      'documentable_type' => Agency::class,
+      'documentable_id' => $agencyA->id,
+      'document_category_id' => $categoryId,
+      'original_name' => 'hizli-kurye-sozlesme.pdf',
+      'uploaded_by' => $user->id,
+    ]);
+
+    Document::factory()->create([
+      'documentable_type' => Agency::class,
+      'documentable_id' => $agencyB->id,
+      'document_category_id' => $categoryId,
+      'original_name' => 'metro-lojistik-sozlesme.pdf',
+      'uploaded_by' => $user->id,
+    ]);
+
+    $payload = app(AgencyPresenter::class)->showPayload($agencyA->fresh());
+
+    $this->assertSame($agencyA->id, $payload['id']);
+
+    foreach ($payload['contacts'] as $contact) {
+      $this->assertSame($agencyA->id, $contact['agency_id']);
     }
 
-    foreach ($agency['couriers'] as $record) {
-      $this->assertSame(1, $record['agency_id']);
+    foreach ($payload['couriers'] as $record) {
+      $this->assertSame($agencyA->id, $record['agency_id']);
     }
 
-    foreach ($agency['contracts'] as $contract) {
-      $this->assertSame(1, $contract['agency_id']);
+    foreach ($payload['contracts'] as $contract) {
+      $this->assertSame($agencyA->id, $contract['agency_id']);
     }
 
-    $this->assertArrayHasKey('earnings', $agency);
-
-    foreach ($agency['earnings'] as $earning) {
-      $this->assertSame(1, $earning['agency_id']);
+    foreach ($payload['documents'] as $document) {
+      $this->assertSame($agencyA->id, $document['agency_id']);
     }
 
-    foreach ($agency['documents'] as $document) {
-      $this->assertSame(1, $document['agency_id']);
-    }
-
-    foreach ($agency['activities'] as $activity) {
-      $this->assertSame(1, $activity['agency_id']);
-    }
+    $courierNames = collect($payload['couriers'])->pluck('courier_name')->all();
+    $this->assertContains('Emre Demir', $courierNames);
+    $this->assertNotContains('Burak Şen', $courierNames);
   }
 
   public function test_entity_edit_pages_open_with_prefilled_forms(): void
