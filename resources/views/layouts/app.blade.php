@@ -10,29 +10,21 @@
     @endif
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-@php
-    use App\Core\Menu\SidebarMenu;
-
-    $expandedGroups = SidebarMenu::initialExpandedGroups();
-@endphp
 <body
     class="min-h-screen"
-    x-data="sidebar(@js($expandedGroups))"
+    x-data="topNav()"
     @crmlog-action.window="handleCrmlogAction($event.detail)"
+    @keydown.escape.window="openDropdown = null; mobileOpen = false"
 >
-    <div class="flex min-h-screen">
-        @include('layouts.partials.sidebar')
+    <div class="flex min-h-screen flex-col">
+        @include('layouts.partials.top-nav')
 
-        <div class="flex flex-1 flex-col lg:pl-64">
-            @include('layouts.partials.header')
+        <main class="flex-1 p-4 sm:p-6 lg:p-8">
+            @include('layouts.partials.breadcrumb')
+            @include('layouts.partials.flash-messages')
 
-            <main class="flex-1 p-4 sm:p-6 lg:p-8">
-                @include('layouts.partials.breadcrumb')
-                @include('layouts.partials.flash-messages')
-
-                @yield('content')
-            </main>
-        </div>
+            @yield('content')
+        </main>
     </div>
 
     <div

@@ -49,13 +49,19 @@ Alpine.data('themeToggle', () => ({
     },
 }));
 
-Alpine.data('sidebar', (initialExpanded = {}) => ({
-    open: window.innerWidth >= 1024,
-    expanded: initialExpanded,
+Alpine.data('topNav', () => ({
+    mobileOpen: false,
+    openDropdown: null,
     toast: null,
 
-    toggle() {
-        this.open = !this.open;
+    toggleDropdown(key) {
+        this.openDropdown = this.openDropdown === key ? null : key;
+    },
+
+    closeDropdown(key) {
+        if (this.openDropdown === key) {
+            this.openDropdown = null;
+        }
     },
 
     handleCrmlogAction(detail) {

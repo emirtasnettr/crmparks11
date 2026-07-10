@@ -1,5 +1,5 @@
 <div
-    class="relative hidden max-w-md flex-1 sm:block"
+    class="relative w-full max-w-md flex-1"
     x-data="globalSearch(@js(route('search')))"
     @keydown.escape.window="close()"
 >
