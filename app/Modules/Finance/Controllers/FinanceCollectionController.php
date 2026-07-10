@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Finance\Data\CollectionFormData;
 use App\Modules\Finance\Exports\FinanceListExportSheets;
 use App\Modules\Finance\Requests\BulkCollectRequest;
+use App\Modules\Finance\Requests\StoreCollectionReceiptRequest;
 use App\Modules\Finance\Requests\StoreCollectionRequest;
 use App\Modules\Finance\Requests\UpdateCollectionRequest;
 use App\Modules\Finance\Services\CollectionPresenter;
@@ -15,8 +16,10 @@ use App\Modules\Finance\Services\CollectionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class FinanceCollectionController extends Controller
 {
@@ -96,6 +99,27 @@ class FinanceCollectionController extends Controller
         return redirect()
             ->route('finance.collections.show', $collection->id)
             ->with('success', 'Tahsilat kaydı başarıyla güncellendi.');
+    }
+
+    public function storeReceipt(StoreCollectionReceiptRequest $request, int $id): RedirectResponse
+    {
+        $collection = $this->service->storeReceipt($id, $request->file('file'), $request->user());
+
+        return redirect()
+            ->route('finance.collections.show', $collection->id)
+            ->with('success', 'Dekont başarıyla yüklendi.');
+    }
+
+    public function downloadReceipt(int $id): StreamedResponse
+    {
+        $collection = $this->service->find($id);
+
+        abort_if($collection === null || ! $collection->receipt_path, 404);
+
+        return Storage::disk('public')->download(
+            $collection->receipt_path,
+            $collection->receipt_original_name ?: basename($collection->receipt_path),
+        );
     }
 
     public function export(Request $request): BinaryFileResponse

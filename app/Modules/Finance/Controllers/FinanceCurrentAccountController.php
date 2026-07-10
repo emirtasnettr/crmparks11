@@ -92,6 +92,15 @@ class FinanceCurrentAccountController extends Controller
             ->with('success', 'Cari hesap başarıyla güncellendi.');
     }
 
+    public function deactivate(Request $request, int $id): RedirectResponse
+    {
+        $this->service->deactivate($id, $request->user());
+
+        return redirect()
+            ->route('finance.current-accounts.index')
+            ->with('success', 'Cari hesap pasife alındı.');
+    }
+
     public function storeMovement(StoreCurrentAccountMovementRequest $request): RedirectResponse
     {
         $this->service->createMovement($request->validated(), $request->user());

@@ -8,10 +8,14 @@ use App\Modules\Business\Models\Business;
 use App\Modules\Finance\Models\FinanceCollection;
 use App\Modules\Finance\Models\FinanceCollectionPayment;
 use App\Modules\Finance\Models\FinanceRevenue;
+use App\Support\SecureUploadValidator;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class CollectionService
@@ -233,6 +237,46 @@ class CollectionService
     public function canUpdate(FinanceCollection $collection): bool
     {
         return $collection->status !== 'collected';
+    }
+
+    public function storeReceipt(int $id, UploadedFile $file, User $user): FinanceCollection
+    {
+        return DB::transaction(function () use ($id, $file, $user): FinanceCollection {
+            $collection = $this->find($id);
+
+            if ($collection === null) {
+                abort(404);
+            }
+
+            $profile = SecureUploadValidator::formDocumentProfile();
+            $extension = SecureUploadValidator::assertAllowed(
+                $file,
+                $profile['extensions'],
+                $profile['mimeTypes'],
+            );
+
+            $disk = 'public';
+            $filename = 'dekont-'.$collection->id.'-'.Str::random(8).'.'.$extension;
+            $path = $file->storeAs('finance-receipts/'.$collection->id, $filename, $disk);
+
+            if ($collection->receipt_path) {
+                Storage::disk($disk)->delete($collection->receipt_path);
+            }
+
+            $collection->update([
+                'receipt_path' => $path,
+                'receipt_original_name' => $file->getClientOriginalName(),
+                'receipt_uploaded_at' => now(),
+            ]);
+
+            $this->activityLog->log(
+                'collection_receipt_uploaded',
+                $collection,
+                description: "{$collection->reference} tahsilatına dekont yüklendi.",
+            );
+
+            return $collection->fresh(['business.city', 'revenue', 'currentAccount', 'payments']);
+        });
     }
 
     /**

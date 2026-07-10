@@ -186,6 +186,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/cari-hesaplar', [FinanceCurrentAccountController::class, 'index'])->name('current-accounts.index');
         Route::post('/cari-hesaplar', [FinanceCurrentAccountController::class, 'store'])->name('current-accounts.store');
         Route::put('/cari-hesaplar/{id}', [FinanceCurrentAccountController::class, 'update'])->name('current-accounts.update');
+        Route::post('/cari-hesaplar/{id}/pasife-al', [FinanceCurrentAccountController::class, 'deactivate'])->name('current-accounts.deactivate');
         Route::post('/cari-hesaplar/hareketler', [FinanceCurrentAccountController::class, 'storeMovement'])->name('current-accounts.movements.store');
         Route::get('/cari-hesaplar/export', [FinanceCurrentAccountController::class, 'export'])->name('current-accounts.export');
         Route::get('/cari-hesaplar/{id}/pdf', [FinanceCurrentAccountController::class, 'statementPdf'])->name('current-accounts.pdf');
@@ -199,6 +200,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/giderler', [FinanceExpenseController::class, 'index'])->name('expenses.index');
         Route::post('/giderler', [FinanceExpenseController::class, 'store'])->name('expenses.store');
         Route::put('/giderler/{id}', [FinanceExpenseController::class, 'update'])->name('expenses.update');
+        Route::delete('/giderler/{id}', [FinanceExpenseController::class, 'destroy'])->name('expenses.destroy');
         Route::get('/giderler/export', [FinanceExpenseController::class, 'export'])->name('expenses.export');
         Route::get('/giderler/pdf', [FinanceExpenseController::class, 'exportPdf'])->name('expenses.export-pdf');
         Route::get('/giderler/{id}/pdf', [FinanceExpenseController::class, 'pdf'])->name('expenses.pdf');
@@ -207,6 +209,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/tahsilatlar', [FinanceCollectionController::class, 'store'])->name('collections.store');
         Route::post('/tahsilatlar/toplu', [FinanceCollectionController::class, 'bulk'])->name('collections.bulk');
         Route::put('/tahsilatlar/{id}', [FinanceCollectionController::class, 'update'])->name('collections.update');
+        Route::post('/tahsilatlar/{id}/dekont', [FinanceCollectionController::class, 'storeReceipt'])->name('collections.receipts.store');
+        Route::get('/tahsilatlar/{id}/dekont', [FinanceCollectionController::class, 'downloadReceipt'])->name('collections.receipts.download');
         Route::get('/tahsilatlar/export', [FinanceCollectionController::class, 'export'])->name('collections.export');
         Route::get('/tahsilatlar/{id}/pdf', [FinanceCollectionController::class, 'pdf'])->name('collections.pdf');
         Route::get('/tahsilatlar/{id}', [FinanceCollectionController::class, 'show'])->name('collections.show');
@@ -221,6 +225,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/faturalar', [FinanceInvoiceController::class, 'store'])->name('invoices.store');
         Route::post('/faturalar/toplu', [FinanceInvoiceController::class, 'bulk'])->name('invoices.bulk');
         Route::put('/faturalar/{id}', [FinanceInvoiceController::class, 'update'])->name('invoices.update');
+        Route::post('/faturalar/{id}/iptal', [FinanceInvoiceController::class, 'cancel'])->name('invoices.cancel');
         Route::get('/faturalar/export', [FinanceInvoiceController::class, 'export'])->name('invoices.export');
         Route::get('/faturalar/pdf', [FinanceInvoiceController::class, 'exportPdf'])->name('invoices.export-pdf');
         Route::get('/faturalar/{id}/pdf', [FinanceInvoiceController::class, 'pdf'])->name('invoices.pdf');

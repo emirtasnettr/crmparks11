@@ -142,26 +142,19 @@ class CollectionPresenter
      */
     private function buildReceipts(FinanceCollection $collection, array $row): array
     {
-        if ($collection->collected_amount <= 0) {
-            return [];
-        }
-
-        $items = [
-            [
-                'name' => 'Dekont-'.$collection->reference.'.pdf',
-                'type' => 'Banka Dekontu',
-                'date' => $row['collection_date_formatted'],
-            ],
-        ];
-
-        if ($collection->status === 'partial' && $collection->payments->count() > 1) {
-            $items[] = [
-                'name' => 'Dekont-'.$collection->reference.'-2.pdf',
-                'type' => 'Kısmi Tahsilat',
-                'date' => $row['collection_date_formatted'],
+        if ($collection->receipt_path) {
+            return [
+                [
+                    'name' => $collection->receipt_original_name
+                        ?: ('Dekont-'.$collection->reference.'.pdf'),
+                    'type' => 'Banka Dekontu',
+                    'date' => $collection->receipt_uploaded_at?->format('d.m.Y')
+                        ?? $row['collection_date_formatted'],
+                    'download_url' => route('finance.collections.receipts.download', $collection->id),
+                ],
             ];
         }
 
-        return $items;
+        return [];
     }
 }

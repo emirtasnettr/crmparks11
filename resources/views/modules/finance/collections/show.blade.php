@@ -168,19 +168,57 @@
             @endif
         </x-ui.card>
 
-        <x-ui.card title="Dekontlar">
+        <x-ui.card title="Dekontlar" id="receipts">
             @if (count($collection['receipts']) > 0)
-                <ul class="space-y-2 text-sm">
+                <ul class="mb-4 space-y-2 text-sm">
                     @foreach ($collection['receipts'] as $receipt)
                         <li class="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 dark:border-slate-700">
-                            <span class="font-medium text-gray-900 dark:text-white">{{ $receipt['name'] }}</span>
-                            <span class="text-xs text-gray-500 dark:text-slate-400">{{ $receipt['date'] }}</span>
+                            <div>
+                                <span class="font-medium text-gray-900 dark:text-white">{{ $receipt['name'] }}</span>
+                                <span class="ml-2 text-xs text-gray-500 dark:text-slate-400">{{ $receipt['date'] }}</span>
+                            </div>
+                            @if (! empty($receipt['download_url']))
+                                <a href="{{ $receipt['download_url'] }}" class="text-sm font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">
+                                    İndir
+                                </a>
+                            @endif
                         </li>
                     @endforeach
                 </ul>
             @else
-                <p class="text-sm text-gray-500 dark:text-slate-400">Yüklenmiş dekont bulunmuyor.</p>
+                <p class="mb-4 text-sm text-gray-500 dark:text-slate-400">Yüklenmiş dekont bulunmuyor.</p>
             @endif
+
+            <form
+                action="{{ route('finance.collections.receipts.store', $collection['id']) }}"
+                method="POST"
+                enctype="multipart/form-data"
+                class="space-y-3"
+            >
+                @csrf
+                <div>
+                    <label for="receipt-file" class="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">
+                        Dekont dosyası
+                    </label>
+                    <input
+                        id="receipt-file"
+                        type="file"
+                        name="file"
+                        accept=".pdf,.png,.jpg,.jpeg,.webp"
+                        required
+                        class="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-brand-700 dark:text-slate-300 dark:file:bg-brand-900/30 dark:file:text-brand-300"
+                    >
+                    @error('file')
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                    @enderror
+                </div>
+                <button
+                    type="submit"
+                    class="inline-flex items-center rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700"
+                >
+                    Dekont Yükle
+                </button>
+            </form>
         </x-ui.card>
 
         <x-ui.card title="Notlar">

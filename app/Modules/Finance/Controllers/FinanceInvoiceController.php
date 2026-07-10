@@ -98,6 +98,15 @@ class FinanceInvoiceController extends Controller
             ->with('success', 'Fatura kaydı başarıyla güncellendi.');
     }
 
+    public function cancel(Request $request, int $id): RedirectResponse
+    {
+        $this->service->cancel($id, $request->user());
+
+        return redirect()
+            ->route('finance.invoices.index')
+            ->with('success', 'Fatura iptal edildi.');
+    }
+
     public function export(Request $request): BinaryFileResponse
     {
         $filters = [

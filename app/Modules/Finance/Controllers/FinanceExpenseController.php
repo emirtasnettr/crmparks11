@@ -79,6 +79,15 @@ class FinanceExpenseController extends Controller
             ->with('success', 'Gider kaydı başarıyla güncellendi.');
     }
 
+    public function destroy(Request $request, int $id): RedirectResponse
+    {
+        $this->service->delete($id, $request->user());
+
+        return redirect()
+            ->route('finance.expenses.index')
+            ->with('success', 'Gider kaydı silindi.');
+    }
+
     public function export(Request $request): BinaryFileResponse
     {
         $filters = [

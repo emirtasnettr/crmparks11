@@ -29,6 +29,9 @@ class FinanceCollection extends Model
         'status',
         'description',
         'notes',
+        'receipt_path',
+        'receipt_original_name',
+        'receipt_uploaded_at',
         'created_by',
     ];
 
@@ -38,6 +41,7 @@ class FinanceCollection extends Model
             'total_amount' => 'decimal:2',
             'collected_amount' => 'decimal:2',
             'due_date' => 'date',
+            'receipt_uploaded_at' => 'datetime',
         ];
     }
 

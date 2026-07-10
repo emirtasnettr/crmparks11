@@ -20,7 +20,15 @@
         RowActions::link('Ödeme Gir', route('finance.payments.index')),
         RowActions::link('Cari Kartına Git', $cariLink),
         RowActions::divider(),
-        RowActions::run('Sil', 'delete', confirm: 'Gider kaydı silinsin mi?', message: 'Gider kaydı silindi.', tone: 'danger', id: $id),
+        RowActions::run(
+            'Sil',
+            'delete',
+            confirm: 'Gider kaydı silinsin mi?',
+            tone: 'danger',
+            id: $id,
+            url: route('finance.expenses.destroy', $id),
+            method: 'DELETE',
+        ),
     ]);
 @endphp
 

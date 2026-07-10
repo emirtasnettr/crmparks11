@@ -178,6 +178,37 @@ class CurrentAccountService
         return true;
     }
 
+    public function deactivate(int $id, User $user): CurrentAccount
+    {
+        return DB::transaction(function () use ($id, $user): CurrentAccount {
+            $account = $this->find($id);
+
+            if ($account === null) {
+                abort(404);
+            }
+
+            if ($account->status === 'passive') {
+                throw ValidationException::withMessages([
+                    'current_account' => 'Bu cari hesap zaten pasif.',
+                ]);
+            }
+
+            $oldStatus = $account->status;
+
+            $account->update(['status' => 'passive']);
+
+            $this->activityLog->log(
+                'current_account_deactivated',
+                $account,
+                description: "{$account->code} cari hesabı pasife alındı.",
+                oldValues: ['status' => $oldStatus],
+                newValues: ['status' => 'passive'],
+            );
+
+            return $account->fresh('movements');
+        });
+    }
+
     /**
      * @param  array<string, mixed>  $data
      */

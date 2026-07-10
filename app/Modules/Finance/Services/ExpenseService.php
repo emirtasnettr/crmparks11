@@ -209,6 +209,27 @@ class ExpenseService
         return true;
     }
 
+    public function delete(int $id, User $user): void
+    {
+        DB::transaction(function () use ($id, $user): void {
+            $expense = $this->find($id);
+
+            if ($expense === null) {
+                abort(404);
+            }
+
+            $reference = $expense->reference;
+
+            $this->activityLog->log(
+                'expense_deleted',
+                $expense,
+                description: "{$reference} gider kaydı silindi.",
+            );
+
+            $expense->delete();
+        });
+    }
+
     /**
      * @param  array<string, mixed>  $filters
      */

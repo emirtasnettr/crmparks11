@@ -331,6 +331,67 @@ class InvoiceService
         return $invoice->invoice_status !== 'cancelled';
     }
 
+    public function cancel(int $id, User $user): FinanceInvoice
+    {
+        return DB::transaction(function () use ($id, $user): FinanceInvoice {
+            $invoice = $this->find($id);
+
+            if ($invoice === null) {
+                abort(404);
+            }
+
+            if (! $this->canUpdate($invoice)) {
+                throw ValidationException::withMessages([
+                    'invoice' => 'Bu fatura zaten iptal edilmiş.',
+                ]);
+            }
+
+            if ((float) $invoice->collected_amount > 0) {
+                throw ValidationException::withMessages([
+                    'invoice' => 'Tahsilatı başlamış faturalar iptal edilemez.',
+                ]);
+            }
+
+            $oldStatus = $invoice->invoice_status;
+
+            $invoice->update([
+                'invoice_status' => 'cancelled',
+                'collection_status' => 'pending',
+                'gib_status' => in_array($invoice->invoice_type, ['e_invoice', 'e_archive'], true)
+                    ? 'cancelled'
+                    : $invoice->gib_status,
+            ]);
+
+            if ($invoice->collection_id !== null) {
+                FinanceCollection::query()
+                    ->whereKey($invoice->collection_id)
+                    ->where('collected_amount', 0)
+                    ->update(['status' => 'pending']);
+            }
+
+            if ($oldStatus === 'issued' && $invoice->current_account_id !== null) {
+                $this->currentAccounts->createMovement([
+                    'current_account_id' => $invoice->current_account_id,
+                    'transaction_date' => now()->toDateString(),
+                    'type' => 'credit_note',
+                    'document_no' => $invoice->reference,
+                    'amount' => (float) $invoice->subtotal,
+                    'description' => 'Fatura iptali: '.$invoice->reference,
+                ], $user);
+            }
+
+            $this->activityLog->log(
+                'invoice_cancelled',
+                $invoice,
+                description: "{$invoice->reference} fatura kaydı iptal edildi.",
+                oldValues: ['invoice_status' => $oldStatus],
+                newValues: ['invoice_status' => 'cancelled'],
+            );
+
+            return $invoice->fresh(['business.city', 'business.district', 'earningLine', 'currentAccount', 'collection']);
+        });
+    }
+
     private function createCollectionForInvoice(FinanceInvoice $invoice, User $user): FinanceCollection
     {
         $collection = FinanceCollection::query()->create([

@@ -14,7 +14,17 @@
 
     if ($invoice['can_update'] ?? false) {
         $items[] = RowActions::link('Düzenle', route('finance.invoices.show', $id).'#edit');
-        $items[] = RowActions::run('İptal Et', 'cancel', confirm: 'Fatura iptal edilsin mi?', message: 'Fatura iptal edildi.', tone: 'danger', id: $id);
+    }
+
+    if ($invoice['can_cancel'] ?? false) {
+        $items[] = RowActions::run(
+            'İptal Et',
+            'cancel',
+            confirm: 'Fatura iptal edilsin mi?',
+            tone: 'danger',
+            id: $id,
+            url: route('finance.invoices.cancel', $id),
+        );
     }
 
     if ($invoice['collection_id'] ?? false) {

@@ -17,10 +17,17 @@
         $items[] = RowActions::dispatch('Düzenle', 'finance-row-action', ['action' => 'edit', 'id' => $id]);
     }
 
-    $items = array_merge($items, [
-        RowActions::divider(),
-        RowActions::run('Pasife Al', 'deactivate', confirm: 'Cari hesap pasife alınsın mı?', message: 'Cari hesap pasife alındı.', tone: 'danger', id: $id),
-    ]);
+    if ($account['can_deactivate'] ?? ($account['status'] ?? '') === 'active') {
+        $items[] = RowActions::divider();
+        $items[] = RowActions::run(
+            'Pasife Al',
+            'deactivate',
+            confirm: 'Cari hesap pasife alınsın mı?',
+            tone: 'danger',
+            id: $id,
+            url: route('finance.current-accounts.deactivate', $id),
+        );
+    }
 @endphp
 
 <x-ui.action-menu :items="$items" width="w-52" />

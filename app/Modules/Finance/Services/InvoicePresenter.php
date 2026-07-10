@@ -69,6 +69,7 @@ class InvoicePresenter
             'description' => $invoice->description,
             'notes' => $invoice->notes,
             'can_update' => $invoice->invoice_status !== 'cancelled',
+            'can_cancel' => $invoice->invoice_status !== 'cancelled' && (float) $invoice->collected_amount <= 0,
             'created_at' => $invoice->created_at?->toDateString(),
             'business_name' => $business?->company_name ?? '—',
             'business_brand' => $business?->brand_name ?? '—',
