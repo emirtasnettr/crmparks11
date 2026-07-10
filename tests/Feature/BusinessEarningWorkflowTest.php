@@ -7,8 +7,12 @@ use App\Models\District;
 use App\Models\EarningLine;
 use App\Models\EarningStatus;
 use App\Models\User;
+use App\Modules\Agency\Models\Agency;
 use App\Modules\Business\Models\Business;
 use App\Modules\Courier\Models\Courier;
+use App\Modules\Finance\Models\FinanceExpense;
+use App\Modules\Finance\Models\FinancePayment;
+use App\Modules\Finance\Models\FinanceRevenue;
 use Database\Seeders\CitySeeder;
 use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
@@ -86,6 +90,72 @@ class BusinessEarningWorkflowTest extends TestCase
         $this->assertSame('approved', $line->status?->code);
         $this->assertSame($user->id, $line->approved_by);
         $this->assertNotNull($line->approved_at);
+
+        $this->assertDatabaseHas('finance_revenues', [
+            'earning_line_id' => $line->id,
+            'business_id' => $business->id,
+            'revenue_type' => 'per_package',
+            'collection_status' => 'pending',
+        ]);
+
+        $this->assertDatabaseHas('finance_payments', [
+            'earning_line_id' => $line->id,
+            'recipient_type' => 'courier',
+            'recipient_id' => $courier->id,
+            'source' => 'earning',
+        ]);
+
+        $this->assertSame(1, FinanceRevenue::query()->where('earning_line_id', $line->id)->count());
+        $this->assertSame(1, FinancePayment::query()->where('earning_line_id', $line->id)->count());
+    }
+
+    public function test_approve_earning_with_agency_payment_creates_agency_finance_record(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $agency = Agency::factory()->create(['created_by' => $user->id]);
+        $courier = $this->createCourier($user, ['agency_id' => $agency->id]);
+        $line = $this->createEarning($business, $courier, $user, 'pending_review', [
+            'agency_payment' => 2500.00,
+        ]);
+
+        $response = $this->actingAs($user)->post(route('businesses.earnings.approve', $line->id));
+
+        $response->assertRedirect(route('businesses.earnings.show', $line->id));
+
+        $this->assertDatabaseHas('finance_payments', [
+            'earning_line_id' => $line->id,
+            'recipient_type' => 'agency',
+            'recipient_id' => $agency->id,
+            'total_amount' => 2500.00,
+        ]);
+
+        $this->assertSame(2, FinancePayment::query()->where('earning_line_id', $line->id)->count());
+    }
+
+    public function test_approve_earning_with_extra_expense_creates_expense_record(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $courier = $this->createCourier($user);
+        $line = $this->createEarning($business, $courier, $user, 'pending_review', [
+            'extra_expense' => 750.50,
+        ]);
+
+        $response = $this->actingAs($user)->post(route('businesses.earnings.approve', $line->id));
+
+        $response->assertRedirect(route('businesses.earnings.show', $line->id));
+
+        $this->assertDatabaseHas('finance_expenses', [
+            'earning_line_id' => $line->id,
+            'expense_type' => 'other',
+            'amount' => 750.50,
+            'payment_status' => 'pending',
+        ]);
+
+        $this->assertSame(1, FinanceExpense::query()->where('earning_line_id', $line->id)->count());
     }
 
     public function test_user_without_approve_permission_cannot_approve_earning(): void
@@ -217,12 +287,13 @@ class BusinessEarningWorkflowTest extends TestCase
         Courier $courier,
         User $user,
         string $statusCode = 'draft',
+        array $overrides = [],
     ): EarningLine {
-        return EarningLine::factory()->create([
+        return EarningLine::factory()->create(array_merge([
             'business_id' => $business->id,
             'courier_id' => $courier->id,
             'created_by' => $user->id,
             'status_id' => EarningStatus::query()->where('code', $statusCode)->value('id'),
-        ]);
+        ], $overrides));
     }
 }

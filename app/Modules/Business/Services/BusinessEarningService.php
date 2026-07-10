@@ -6,6 +6,7 @@ use App\Models\EarningLine;
 use App\Models\EarningStatus;
 use App\Models\User;
 use App\Modules\ActivityLog\Services\ActivityLogService;
+use App\Modules\Finance\Services\EarningFinanceSyncService;
 use App\Modules\Agency\Models\Agency;
 use App\Modules\Business\Models\Business;
 use App\Modules\Courier\Models\Courier;
@@ -23,6 +24,7 @@ class BusinessEarningService
         private readonly BusinessEarningPresenter $presenter,
         private readonly BusinessAssignmentService $assignments,
         private readonly ActivityLogService $activityLog,
+        private readonly EarningFinanceSyncService $earningFinanceSync,
     ) {}
 
     /**
@@ -235,6 +237,8 @@ class BusinessEarningService
             ]);
 
             $line = $line->fresh(['business', 'courier.agency', 'status', 'creator']);
+
+            $this->earningFinanceSync->syncOnApprove($line, $user);
 
             $this->activityLog->log(
                 'earning_updated',
