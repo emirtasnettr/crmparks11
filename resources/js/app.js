@@ -1084,9 +1084,8 @@ Alpine.data('assignmentPage', (preset = {}) => {
 });
 
 Alpine.data('earningPage', (preset = {}) => ({
-    activeModal: null,
+    activeModal: preset.openBulk ? 'bulk' : null,
     submitting: false,
-    bulkSaved: false,
     singleErrors: {},
     editId: null,
     earningsById: preset.earningsById ?? {},
@@ -1111,7 +1110,6 @@ Alpine.data('earningPage', (preset = {}) => ({
     closeModals() {
         this.activeModal = null;
         this.submitting = false;
-        this.bulkSaved = false;
         this.singleErrors = {};
         this.editId = null;
         this.resetSingle();
@@ -1247,10 +1245,6 @@ Alpine.data('earningPage', (preset = {}) => ({
         }
 
         this.submitting = true;
-    },
-
-    importBulk() {
-        this.bulkSaved = true;
     },
 }));
 

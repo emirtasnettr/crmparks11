@@ -14,6 +14,7 @@
 <div
     x-data="earningPage(@js([
         'earningsById' => collect($earnings)->keyBy('id'),
+        'openBulk' => $errors->has('file'),
         'routes' => [
             'store' => route('businesses.earnings.store'),
             'update' => url('/isletmeler/hakedisler'),

@@ -7,8 +7,10 @@ use App\Http\Controllers\Controller;
 use App\Modules\Business\Data\BusinessEarningFormData;
 use App\Modules\Business\Exports\BusinessListExportSheets;
 use App\Modules\Business\Requests\ApproveBusinessEarningRequest;
+use App\Modules\Business\Requests\ImportBusinessEarningRequest;
 use App\Modules\Business\Requests\StoreBusinessEarningRequest;
 use App\Modules\Business\Requests\UpdateBusinessEarningRequest;
+use App\Modules\Business\Services\BusinessEarningImportService;
 use App\Modules\Business\Services\BusinessEarningPresenter;
 use App\Modules\Business\Services\BusinessEarningService;
 use App\Modules\Business\Support\BusinessFeatures;
@@ -24,6 +26,7 @@ class BusinessEarningController extends Controller
     public function __construct(
         private readonly BusinessEarningService $earnings,
         private readonly BusinessEarningPresenter $presenter,
+        private readonly BusinessEarningImportService $importer,
     ) {}
 
     public function index(Request $request): View|RedirectResponse
@@ -129,6 +132,41 @@ class BusinessEarningController extends Controller
                 'period_year' => $line->period_year,
             ])
             ->with('success', 'Hakediş başarıyla oluşturuldu.');
+    }
+
+    public function template(): BinaryFileResponse|RedirectResponse
+    {
+        if (! BusinessFeatures::earningsEnabled()) {
+            return redirect()->route('businesses.index');
+        }
+
+        abort_unless(auth()->user()?->can('earning.create'), 403);
+
+        return $this->downloadExportSheet(
+            'hakedis-sablonu',
+            $this->importer->templateSheet(),
+            'Hakediş Şablonu',
+        );
+    }
+
+    public function import(ImportBusinessEarningRequest $request): RedirectResponse
+    {
+        if (! BusinessFeatures::earningsEnabled()) {
+            abort(404);
+        }
+
+        $result = $this->importer->import($request->file('file'), $request->user());
+
+        $message = "{$result['imported']} hakediş içe aktarıldı.";
+
+        if ($result['failed'] > 0) {
+            $message .= " {$result['failed']} satır atlandı.";
+        }
+
+        return redirect()
+            ->route('businesses.earnings.index')
+            ->with('success', $message)
+            ->with('import_errors', $result['errors']);
     }
 
     public function update(UpdateBusinessEarningRequest $request, int $id): RedirectResponse

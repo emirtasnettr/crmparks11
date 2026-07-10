@@ -96,6 +96,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/atanan-kuryeler/{id}', [BusinessAssignmentController::class, 'show'])->name('assignments.show');
         Route::get('/hakedisler', [BusinessEarningController::class, 'index'])->name('earnings.index');
         Route::get('/hakedisler/export', [BusinessEarningController::class, 'export'])->name('earnings.export');
+        Route::get('/hakedisler/sablon', [BusinessEarningController::class, 'template'])
+            ->middleware('permission:earning.create')
+            ->name('earnings.template');
+        Route::post('/hakedisler/ice-aktar', [BusinessEarningController::class, 'import'])
+            ->middleware('permission:earning.create')
+            ->name('earnings.import');
         Route::post('/hakedisler', [BusinessEarningController::class, 'store'])->middleware('permission:earning.create')->name('earnings.store');
         Route::put('/hakedisler/{id}', [BusinessEarningController::class, 'update'])->middleware('permission:earning.update')->name('earnings.update');
         Route::post('/hakedisler/{id}/onayla', [BusinessEarningController::class, 'approve'])->middleware('permission:earning.approve')->name('earnings.approve');
