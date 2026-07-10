@@ -164,6 +164,9 @@ Route::middleware('auth')->group(function () {
 
         Route::name('permissions.')->group(function () {
             Route::get('/yetkiler', [PermissionManagementController::class, 'index'])->name('index');
+            Route::put('/yetkiler', [PermissionManagementController::class, 'update'])
+                ->middleware('permission:user.update')
+                ->name('update');
         });
     });
 

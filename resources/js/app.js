@@ -3138,15 +3138,19 @@ Alpine.data('roleManagementPage', () => ({
     },
 }));
 
-Alpine.data('permissionManagementPage', (rolesPayload = {}, initialRole = 'general_manager', summary = {}) => ({
+Alpine.data('permissionManagementPage', (rolesPayload = {}, initialRole = 'general_manager', summary = {}, saveUrl = '') => ({
     rolesPayload,
     selectedRole: initialRole,
     previousRole: initialRole,
+    saveUrl,
     matrix: [],
     defaults: [],
     isLocked: false,
     dirty: false,
     saved: false,
+    saving: false,
+    saveError: null,
+    saveMessage: null,
     moduleSearch: '',
     permissionSearch: '',
     activeCount: summary.active_permissions ?? 0,
@@ -3350,8 +3354,8 @@ Alpine.data('permissionManagementPage', (rolesPayload = {}, initialRole = 'gener
 
         this.matrix.forEach((row) => {
             Object.values(row.actions).forEach((action) => {
-                if (action?.applicable && action.granted && action.primary_slug) {
-                    slugs.push(action.primary_slug);
+                if (action?.applicable && action.granted) {
+                    slugs.push(...(action.slugs ?? []));
                 }
             });
         });
@@ -3359,24 +3363,57 @@ Alpine.data('permissionManagementPage', (rolesPayload = {}, initialRole = 'gener
         return [...new Set(slugs)];
     },
 
-    save() {
-        if (this.isLocked) {
+    async save() {
+        if (this.isLocked || this.saving || !this.saveUrl) {
             return;
         }
 
-        this.saved = true;
-        this.dirty = false;
+        this.saving = true;
+        this.saveError = null;
+        this.saveMessage = null;
 
-        // Gerçek entegrasyonda: PermissionManagementDummyData::auditLogPayload(...)
-        console.info('[CRMLog] permission_matrix_saved', {
-            role: this.selectedRole,
-            permissions: this.collectGrantedSlugs(),
-        });
+        try {
+            const response = await fetch(this.saveUrl, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                },
+                body: JSON.stringify({
+                    role: this.selectedRole,
+                    permissions: this.collectGrantedSlugs(),
+                }),
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (! response.ok) {
+                const validationMessage = data.errors
+                    ? Object.values(data.errors).flat().join(' ')
+                    : null;
+
+                throw new Error(validationMessage || data.message || 'Yetki değişiklikleri kaydedilemedi.');
+            }
+
+            this.rolesPayload[this.selectedRole] = data.role_payload;
+            this.loadRole(this.selectedRole, false);
+            this.saved = true;
+            this.dirty = false;
+            this.saveMessage = data.message ?? 'Yetki değişiklikleri kaydedildi.';
+        } catch (error) {
+            this.saved = false;
+            this.saveError = error?.message ?? 'Yetki değişiklikleri kaydedilemedi.';
+        } finally {
+            this.saving = false;
+        }
     },
 
     markDirty() {
         this.dirty = true;
         this.saved = false;
+        this.saveError = null;
+        this.saveMessage = null;
         this.updateCounts();
     },
 

@@ -12,7 +12,7 @@
 
 @section('content')
 <div
-    x-data="permissionManagementPage(@js($rolesPayload), @js($selectedRole), @js($summary))"
+    x-data="permissionManagementPage(@js($rolesPayload), @js($selectedRole), @js($summary), @js($saveUrl))"
     class="flex flex-col gap-6 xl:flex-row"
 >
     <aside class="w-full shrink-0 xl:w-64">
@@ -52,8 +52,9 @@
             </div>
 
             <div class="flex flex-wrap gap-2">
-                <x-ui.button type="button" @click="save()" ::disabled="isLocked">
-                    Kaydet
+                <x-ui.button type="button" @click="save()" ::disabled="isLocked || saving">
+                    <span x-show="!saving">Kaydet</span>
+                    <span x-show="saving" x-cloak>Kaydediliyor...</span>
                 </x-ui.button>
                 <x-ui.button type="button" variant="secondary" @click="selectAll()" ::disabled="isLocked">
                     Tümünü Seç
@@ -121,9 +122,15 @@
             x-show="saved"
             x-cloak
             class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-800/50 dark:bg-emerald-900/20 dark:text-emerald-300"
-        >
-            Yetki değişiklikleri kaydedildi. Gerçek entegrasyonda Spatie Permission sync ve audit log oluşturulacaktır.
-        </div>
+            x-text="saveMessage || 'Yetki değişiklikleri kaydedildi.'"
+        ></div>
+
+        <div
+            x-show="saveError"
+            x-cloak
+            class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800/50 dark:bg-red-900/20 dark:text-red-300"
+            x-text="saveError"
+        ></div>
 
         <x-ui.card :padding="false">
             <div class="max-h-[calc(100vh-20rem)] overflow-auto">

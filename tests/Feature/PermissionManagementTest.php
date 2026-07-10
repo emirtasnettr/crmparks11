@@ -3,9 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Modules\ActivityLog\Models\ActivityLog;
 use App\Modules\User\Services\PermissionManagementService;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class PermissionManagementTest extends TestCase
@@ -155,5 +157,85 @@ class PermissionManagementTest extends TestCase
 
         $this->assertSame('permission_changes', $payload['log_name']);
         $this->assertContains('report.export', $payload['properties']['added']);
+    }
+
+    public function test_permission_matrix_update_requires_user_update_permission(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('operations_manager');
+
+        $response = $this->actingAs($user)->putJson(route('permissions.update'), [
+            'role' => 'finance_officer',
+            'permissions' => ['dashboard.view'],
+        ]);
+
+        $response->assertForbidden();
+    }
+
+    public function test_super_admin_can_update_role_permissions(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $response = $this->actingAs($user)->putJson(route('permissions.update'), [
+            'role' => 'finance_officer',
+            'permissions' => [
+                'dashboard.view',
+                'dashboard.financial',
+                'earning.view',
+                'earning.approve',
+                'report.view',
+                'report.export',
+            ],
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('role', 'finance_officer');
+        $response->assertJsonPath('message', 'Yetki değişiklikleri kaydedildi.');
+
+        $role = Role::findByName('finance_officer');
+        $this->assertTrue($role->hasPermissionTo('report.export'));
+        $this->assertTrue($role->hasPermissionTo('earning.approve'));
+    }
+
+    public function test_sync_role_permissions_rejects_super_admin_role(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+
+        app(PermissionManagementService::class)->syncRolePermissions(
+            'super_admin',
+            ['dashboard.view'],
+            $user,
+        );
+    }
+
+    public function test_permission_matrix_update_writes_activity_log(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $this->actingAs($user)->putJson(route('permissions.update'), [
+            'role' => 'operations_staff',
+            'permissions' => [
+                'dashboard.view',
+                'business.view',
+                'courier.view',
+                'agency.view',
+                'assignment.view',
+            ],
+        ])->assertOk();
+
+        $log = ActivityLog::query()
+            ->where('action', 'permission_updated')
+            ->latest('created_at')
+            ->first();
+
+        $this->assertNotNull($log);
+        $this->assertSame($user->id, $log->user_id);
+        $this->assertStringContainsString('Operasyon Personeli', $log->description ?? '');
+        $this->assertSame('operations_staff', $log->new_values['role'] ?? null);
     }
 }
