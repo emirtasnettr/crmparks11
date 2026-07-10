@@ -116,6 +116,14 @@ class AgencyDocumentService
         });
     }
 
+    public function destroy(Document $document): void
+    {
+        DB::transaction(function () use ($document): void {
+            $this->storage->delete($document->file_path, $document->disk ?: 'public');
+            $document->delete();
+        });
+    }
+
     /**
      * @param  array<string, mixed>  $filters
      */

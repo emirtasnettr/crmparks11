@@ -14,6 +14,10 @@ final class ContractStatusResolver
             return 'draft';
         }
 
+        if (in_array($storedStatus, ['cancelled', 'inactive'], true)) {
+            return 'cancelled';
+        }
+
         if ($endDate->lt($today)) {
             return 'expired';
         }

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Business\Services;
 
+use App\Core\Services\EntityDocumentStorageService;
 use App\Models\Document;
 use App\Modules\Business\Models\Business;
 use App\Support\DocumentPresentation;
@@ -9,6 +10,10 @@ use Carbon\Carbon;
 
 class BusinessDocumentPresenter
 {
+    public function __construct(
+        private readonly EntityDocumentStorageService $storage,
+    ) {}
+
     /**
      * @return array<string, mixed>
      */
@@ -45,6 +50,7 @@ class BusinessDocumentPresenter
             'document_type_label' => $document->category?->label ?? 'Diğer',
             'file_name' => $document->original_name,
             'file_extension' => $extension,
+            'file_url' => $this->storage->url($document->file_path),
             'file_size_bytes' => (int) $document->file_size,
             'file_size_formatted' => DocumentPresentation::formatFileSize((int) $document->file_size),
             'uploaded_at' => $uploadedAt->toDateString(),

@@ -102,4 +102,18 @@ class BusinessContactController extends Controller
             ->back()
             ->with('success', 'Yetkili bilgileri güncellendi.');
     }
+
+    public function deactivate(Request $request, int $id): RedirectResponse
+    {
+        abort_unless($request->user()?->can('business.update'), 403);
+
+        $contact = $this->contacts->find($id);
+        abort_if($contact === null, 404);
+
+        $this->contacts->deactivate($contact);
+
+        return redirect()
+            ->route('businesses.contacts.index', ['business_id' => $contact->business_id])
+            ->with('success', 'Yetkili pasife alındı.');
+    }
 }

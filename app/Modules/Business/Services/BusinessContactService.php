@@ -87,6 +87,19 @@ class BusinessContactService
         });
     }
 
+    public function deactivate(BusinessContact $contact): BusinessContact
+    {
+        return $this->update($contact, [
+            'full_name' => $contact->full_name,
+            'title' => $contact->title,
+            'phone' => $contact->phone,
+            'email' => $contact->email,
+            'is_default' => false,
+            'status' => 'inactive',
+            'notes' => $contact->notes,
+        ]);
+    }
+
     /**
      * @param  array<string, mixed>  $filters
      */

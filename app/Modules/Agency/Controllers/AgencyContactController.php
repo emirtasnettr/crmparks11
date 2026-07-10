@@ -98,4 +98,18 @@ class AgencyContactController extends Controller
             'contact' => $this->presenter->showRow($contact),
         ]);
     }
+
+    public function deactivate(Request $request, int $id): RedirectResponse
+    {
+        abort_unless($request->user()?->can('agency.update'), 403);
+
+        $contact = $this->contacts->find($id);
+        abort_if($contact === null, 404);
+
+        $this->contacts->deactivate($contact);
+
+        return redirect()
+            ->route('agencies.contacts.index', ['agency_id' => $contact->agency_id])
+            ->with('success', 'Yetkili pasife alındı.');
+    }
 }

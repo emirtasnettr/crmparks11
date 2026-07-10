@@ -84,4 +84,30 @@ class AgencyDocumentController extends Controller
             ->route('agencies.documents.index', ['agency_id' => $document->documentable_id])
             ->with('success', 'Evrak başarıyla yüklendi.');
     }
+
+    public function download(Request $request, int $id): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        abort_unless($request->user()?->can('agency.view'), 403);
+
+        $document = $this->documents->find($id);
+        abort_if($document === null, 404);
+
+        return \Illuminate\Support\Facades\Storage::disk($document->disk ?: 'public')
+            ->download($document->file_path, $document->original_name);
+    }
+
+    public function destroy(Request $request, int $id): RedirectResponse
+    {
+        abort_unless($request->user()?->can('agency.update'), 403);
+
+        $document = $this->documents->find($id);
+        abort_if($document === null, 404);
+
+        $agencyId = $document->documentable_id;
+        $this->documents->destroy($document);
+
+        return redirect()
+            ->route('agencies.documents.index', ['agency_id' => $agencyId])
+            ->with('success', 'Evrak silindi.');
+    }
 }

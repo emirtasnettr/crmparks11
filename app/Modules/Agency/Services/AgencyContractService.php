@@ -118,6 +118,13 @@ class AgencyContractService
         });
     }
 
+    public function deactivate(Contract $contract): Contract
+    {
+        $contract->update(['status' => 'cancelled']);
+
+        return $contract->fresh(['contractable', 'contractType', 'creator']);
+    }
+
     /**
      * @param  array<string, mixed>  $filters
      */

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Courier\Services;
 
+use App\Core\Services\EntityDocumentStorageService;
 use App\Models\Document;
 use App\Modules\Courier\Data\CourierDocumentFormData;
 use App\Modules\Courier\Models\Courier;
@@ -11,6 +12,10 @@ use Carbon\Carbon;
 class CourierDocumentPresenter
 {
     public const EXPIRY_WARNING_DAYS = 30;
+
+    public function __construct(
+        private readonly EntityDocumentStorageService $storage,
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -65,6 +70,7 @@ class CourierDocumentPresenter
             'document_number' => pathinfo($document->original_name, PATHINFO_FILENAME),
             'file_name' => $document->original_name,
             'file_extension' => $extension,
+            'file_url' => $this->storage->url($document->file_path),
             'uploaded_at' => $uploadedAt->toDateString(),
             'uploaded_at_formatted' => $uploadedAt->format('d.m.Y'),
             'expiry_date' => $expiryDate?->toDateString(),

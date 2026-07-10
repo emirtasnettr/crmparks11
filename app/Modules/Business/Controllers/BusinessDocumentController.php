@@ -71,4 +71,30 @@ class BusinessDocumentController extends Controller
             ->route('businesses.documents.index', ['business_id' => $document->documentable_id])
             ->with('success', 'Evrak başarıyla yüklendi.');
     }
+
+    public function download(Request $request, int $id): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        abort_unless($request->user()?->can('business.view'), 403);
+
+        $document = $this->documents->find($id);
+        abort_if($document === null, 404);
+
+        return \Illuminate\Support\Facades\Storage::disk($document->disk ?: 'public')
+            ->download($document->file_path, $document->original_name);
+    }
+
+    public function destroy(Request $request, int $id): RedirectResponse
+    {
+        abort_unless($request->user()?->can('business.update'), 403);
+
+        $document = $this->documents->find($id);
+        abort_if($document === null, 404);
+
+        $businessId = $document->documentable_id;
+        $this->documents->destroy($document);
+
+        return redirect()
+            ->route('businesses.documents.index', ['business_id' => $businessId])
+            ->with('success', 'Evrak silindi.');
+    }
 }

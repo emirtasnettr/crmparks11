@@ -85,4 +85,30 @@ class CourierDocumentController extends Controller
             ->route('couriers.documents.index', ['courier_id' => $document->documentable_id])
             ->with('success', 'Belge başarıyla yüklendi.');
     }
+
+    public function download(Request $request, int $id): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        abort_unless($request->user()?->can('courier.view'), 403);
+
+        $document = $this->documents->find($id);
+        abort_if($document === null, 404);
+
+        return \Illuminate\Support\Facades\Storage::disk($document->disk ?: 'public')
+            ->download($document->file_path, $document->original_name);
+    }
+
+    public function destroy(Request $request, int $id): RedirectResponse
+    {
+        abort_unless($request->user()?->can('courier.update'), 403);
+
+        $document = $this->documents->find($id);
+        abort_if($document === null, 404);
+
+        $courierId = $document->documentable_id;
+        $this->documents->destroy($document);
+
+        return redirect()
+            ->route('couriers.documents.index', ['courier_id' => $courierId])
+            ->with('success', 'Belge silindi.');
+    }
 }

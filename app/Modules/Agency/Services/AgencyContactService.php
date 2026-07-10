@@ -89,6 +89,35 @@ class AgencyContactService
     }
 
     /**
+     * @param  array<string, mixed>  $data
+     */
+    public function update(AgencyContact $contact, array $data): AgencyContact
+    {
+        return DB::transaction(function () use ($contact, $data): AgencyContact {
+            if (! empty($data['is_default'])) {
+                $this->clearDefaultForAgency((int) $contact->agency_id, $contact->id);
+            }
+
+            $contact->update($this->attributes($data, $contact));
+
+            return $contact->fresh(['agency']);
+        });
+    }
+
+    public function deactivate(AgencyContact $contact): AgencyContact
+    {
+        return $this->update($contact, [
+            'full_name' => $contact->full_name,
+            'title' => $contact->title,
+            'phone' => $contact->phone,
+            'email' => $contact->email,
+            'is_default' => false,
+            'status' => 'inactive',
+            'notes' => $contact->notes,
+        ]);
+    }
+
+    /**
      * @param  array<string, mixed>  $filters
      */
     private function baseQuery(array $filters): Builder

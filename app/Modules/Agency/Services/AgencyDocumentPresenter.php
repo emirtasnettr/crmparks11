@@ -2,6 +2,7 @@
 
 namespace App\Modules\Agency\Services;
 
+use App\Core\Services\EntityDocumentStorageService;
 use App\Models\Document;
 use App\Modules\Agency\Models\Agency;
 use App\Support\DocumentPresentation;
@@ -10,6 +11,10 @@ use Carbon\Carbon;
 class AgencyDocumentPresenter
 {
     public const EXPIRY_WARNING_DAYS = 30;
+
+    public function __construct(
+        private readonly EntityDocumentStorageService $storage,
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -66,6 +71,7 @@ class AgencyDocumentPresenter
             'document_number' => pathinfo($document->original_name, PATHINFO_FILENAME),
             'file_name' => $document->original_name,
             'file_extension' => $extension,
+            'file_url' => $this->storage->url($document->file_path),
             'uploaded_at' => $uploadedAt->toDateString(),
             'uploaded_at_formatted' => $uploadedAt->format('d.m.Y'),
             'expiry_date' => $expiryDate?->toDateString(),

@@ -107,4 +107,18 @@ class BusinessContractController extends Controller
             ->route('businesses.contracts.index', ['business_id' => $contract->contractable_id])
             ->with('success', 'Sözleşme başarıyla oluşturuldu.');
     }
+
+    public function deactivate(Request $request, int $id): RedirectResponse
+    {
+        abort_unless($request->user()?->can('business.update'), 403);
+
+        $contract = $this->contracts->find($id);
+        abort_if($contract === null, 404);
+
+        $this->contracts->deactivate($contract);
+
+        return redirect()
+            ->route('businesses.contracts.index', ['business_id' => $contract->contractable_id])
+            ->with('success', 'Sözleşme pasife alındı.');
+    }
 }

@@ -98,10 +98,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/yetkililer/export', [BusinessContactController::class, 'export'])->name('contacts.export');
         Route::post('/yetkililer', [BusinessContactController::class, 'store'])->middleware('permission:business.update')->name('contacts.store');
         Route::put('/yetkililer/{id}', [BusinessContactController::class, 'update'])->middleware('permission:business.update')->name('contacts.update');
+        Route::post('/yetkililer/{id}/pasife-al', [BusinessContactController::class, 'deactivate'])->middleware('permission:business.update')->name('contacts.deactivate');
         Route::get('/sozlesmeler', [BusinessContractController::class, 'index'])->name('contracts.index');
         Route::get('/sozlesmeler/export', [BusinessContractController::class, 'export'])->name('contracts.export');
         Route::post('/sozlesmeler', [BusinessContractController::class, 'store'])->middleware('permission:business.update')->name('contracts.store');
         Route::get('/sozlesmeler/{id}', [BusinessContractController::class, 'show'])->name('contracts.show');
+        Route::post('/sozlesmeler/{id}/pasife-al', [BusinessContractController::class, 'deactivate'])->middleware('permission:business.update')->name('contracts.deactivate');
         Route::get('/atanan-kuryeler', [BusinessAssignmentController::class, 'index'])->name('assignments.index');
         Route::get('/atanan-kuryeler/export', [BusinessAssignmentController::class, 'export'])->name('assignments.export');
         Route::post('/atanan-kuryeler', [BusinessAssignmentController::class, 'store'])->middleware('permission:business.update')->name('assignments.store');
@@ -122,6 +124,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/hakedisler/{id}', [BusinessEarningController::class, 'show'])->name('earnings.show');
         Route::get('/evraklar', [BusinessDocumentController::class, 'index'])->name('documents.index');
         Route::post('/evraklar', [BusinessDocumentController::class, 'store'])->middleware('permission:business.update')->name('documents.store');
+        Route::get('/evraklar/{id}/indir', [BusinessDocumentController::class, 'download'])->name('documents.download');
+        Route::delete('/evraklar/{id}', [BusinessDocumentController::class, 'destroy'])->middleware('permission:business.update')->name('documents.destroy');
         Route::get('/hareket-gecmisi', [BusinessActivityController::class, 'index'])->name('activities.index');
         Route::get('/{id}/duzenle', [BusinessController::class, 'edit'])->name('edit');
         Route::put('/{id}', [BusinessController::class, 'update'])->middleware('permission:business.update')->name('update');
@@ -136,6 +140,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/', [CourierController::class, 'store'])->middleware('permission:courier.create')->name('store');
         Route::get('/belgeler', [CourierDocumentController::class, 'index'])->name('documents.index');
         Route::post('/belgeler', [CourierDocumentController::class, 'store'])->middleware('permission:courier.update')->name('documents.store');
+        Route::get('/belgeler/{id}/indir', [CourierDocumentController::class, 'download'])->name('documents.download');
+        Route::delete('/belgeler/{id}', [CourierDocumentController::class, 'destroy'])->middleware('permission:courier.update')->name('documents.destroy');
         Route::get('/belgeler/{id}', [CourierDocumentController::class, 'show'])->name('documents.show');
         Route::get('/hakedisler', [CourierEarningController::class, 'index'])->name('earnings.index');
         Route::get('/hakedisler/export', [CourierEarningController::class, 'export'])->name('earnings.export');
@@ -325,6 +331,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/yetkililer/export', [AgencyContactController::class, 'export'])->name('contacts.export');
         Route::post('/yetkililer', [AgencyContactController::class, 'store'])->middleware('permission:agency.update')->name('contacts.store');
         Route::get('/yetkililer/{id}', [AgencyContactController::class, 'show'])->name('contacts.show');
+        Route::post('/yetkililer/{id}/pasife-al', [AgencyContactController::class, 'deactivate'])->middleware('permission:agency.update')->name('contacts.deactivate');
         Route::get('/kuryeler', [AgencyCourierController::class, 'index'])->name('couriers.index');
         Route::get('/kuryeler/export', [AgencyCourierController::class, 'export'])->name('couriers.export');
         Route::post('/kuryeler', [AgencyCourierController::class, 'store'])->middleware('permission:agency.update')->name('couriers.store');
@@ -332,6 +339,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/sozlesmeler/export', [AgencyContractController::class, 'export'])->name('contracts.export');
         Route::post('/sozlesmeler', [AgencyContractController::class, 'store'])->middleware('permission:agency.update')->name('contracts.store');
         Route::get('/sozlesmeler/{id}', [AgencyContractController::class, 'show'])->name('contracts.show');
+        Route::post('/sozlesmeler/{id}/pasife-al', [AgencyContractController::class, 'deactivate'])->middleware('permission:agency.update')->name('contracts.deactivate');
         Route::get('/hakedisler', [AgencyEarningController::class, 'index'])->name('earnings.index');
         Route::get('/hakedisler/export', [AgencyEarningController::class, 'export'])->name('earnings.export');
         Route::get('/hakedisler/sablon', [AgencyEarningController::class, 'template'])
@@ -344,6 +352,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/hakedisler/{id}', [AgencyEarningController::class, 'show'])->name('earnings.show');
         Route::get('/evraklar', [AgencyDocumentController::class, 'index'])->name('documents.index');
         Route::post('/evraklar', [AgencyDocumentController::class, 'store'])->middleware('permission:agency.update')->name('documents.store');
+        Route::get('/evraklar/{id}/indir', [AgencyDocumentController::class, 'download'])->name('documents.download');
+        Route::delete('/evraklar/{id}', [AgencyDocumentController::class, 'destroy'])->middleware('permission:agency.update')->name('documents.destroy');
         Route::get('/evraklar/{id}', [AgencyDocumentController::class, 'show'])->name('documents.show');
         Route::get('/hareket-gecmisi', [AgencyActivityController::class, 'index'])->name('activities.index');
         Route::get('/hareket-gecmisi/export', [AgencyActivityController::class, 'export'])->name('activities.export');

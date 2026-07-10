@@ -99,6 +99,22 @@ class BusinessDocumentService
         ], $file, $user);
     }
 
+    public function find(int $id): ?Document
+    {
+        return Document::query()
+            ->where('documentable_type', Business::class)
+            ->with(['documentable', 'category', 'uploader'])
+            ->find($id);
+    }
+
+    public function destroy(Document $document): void
+    {
+        DB::transaction(function () use ($document): void {
+            $this->storage->delete($document->file_path, $document->disk ?: 'public');
+            $document->delete();
+        });
+    }
+
     /**
      * @param  array<string, mixed>  $filters
      */
