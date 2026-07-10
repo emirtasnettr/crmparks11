@@ -11,7 +11,14 @@
 @endsection
 
 @section('content')
-<div x-data="userManagementPage()" @user-row-action.window="handleRowAction($event.detail)">
+<div
+    x-data="userManagementPage(@js([
+        'routes' => [
+            'resetPassword' => url('/kullanici-yonetimi/kullanicilar'),
+        ],
+    ]))"
+    @user-row-action.window="handleRowAction($event.detail)"
+>
     <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
             <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Kullanıcılar</h1>
@@ -155,5 +162,9 @@
     </x-ui.card>
 
     @include('modules.user.users.partials.create-modal')
+
+    <form x-ref="resetPasswordForm" method="POST" class="hidden">
+        @csrf
+    </form>
 </div>
 @endsection

@@ -3106,10 +3106,11 @@ Alpine.data('financeCashFlowPage', () => ({
     },
 }));
 
-Alpine.data('userManagementPage', () => ({
+Alpine.data('userManagementPage', (preset = {}) => ({
     activeModal: null,
     saved: false,
     errors: {},
+    routes: preset.routes ?? {},
     form: {
         first_name: '',
         last_name: '',
@@ -3199,6 +3200,23 @@ Alpine.data('userManagementPage', () => ({
         if (detail?.modal) {
             this.activeModal = detail.modal;
             this.saved = false;
+
+            return;
+        }
+
+        if (detail?.action === 'reset-password' && detail?.id) {
+            if (detail.confirm && !window.confirm(detail.confirm)) {
+                return;
+            }
+
+            const form = this.$refs.resetPasswordForm;
+
+            if (!form) {
+                return;
+            }
+
+            form.action = `${this.routes.resetPassword}/${detail.id}/sifre-sifirla`;
+            form.submit();
         }
     },
 }));

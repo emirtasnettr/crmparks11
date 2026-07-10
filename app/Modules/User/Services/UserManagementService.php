@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 
 class UserManagementService
@@ -265,6 +266,41 @@ class UserManagementService
         }
 
         return true;
+    }
+
+    public function sendPasswordResetLink(int $id, User $actor): void
+    {
+        $user = User::query()->find($id);
+
+        if ($user === null) {
+            abort(404);
+        }
+
+        if (! $this->canUpdate($user, $actor)) {
+            throw ValidationException::withMessages([
+                'user' => 'Bu kullanıcı için şifre sıfırlanamaz.',
+            ]);
+        }
+
+        if ($user->status !== Status::Active) {
+            throw ValidationException::withMessages([
+                'user' => 'Pasif kullanıcı için şifre sıfırlama gönderilemez.',
+            ]);
+        }
+
+        $status = Password::sendResetLink(['email' => $user->email]);
+
+        if ($status !== Password::RESET_LINK_SENT) {
+            throw ValidationException::withMessages([
+                'user' => __($status),
+            ]);
+        }
+
+        $this->activityLog->log(
+            'password_reset_sent',
+            $user,
+            description: "{$user->name} için şifre sıfırlama bağlantısı gönderildi.",
+        );
     }
 
     /**

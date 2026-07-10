@@ -82,6 +82,17 @@ class UserManagementController extends Controller
             ->with('success', 'Kullanıcı pasife alındı.');
     }
 
+    public function resetPassword(Request $request, int $id): RedirectResponse
+    {
+        abort_unless($request->user()?->can('user.update'), 403);
+
+        $this->userService->sendPasswordResetLink($id, $request->user());
+
+        return redirect()
+            ->route('users.index')
+            ->with('success', 'Şifre sıfırlama bağlantısı e-posta adresine gönderildi.');
+    }
+
     public function export(Request $request): BinaryFileResponse
     {
         $filters = [

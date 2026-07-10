@@ -109,6 +109,12 @@
               </p>
             </div>
 
+            @if (session('success'))
+              <div class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300">
+                {{ session('success') }}
+              </div>
+            @endif
+
             @if ($errors->any())
               <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
                 {{ $errors->first() }}
@@ -149,6 +155,10 @@
                   >
                   <span class="text-sm text-gray-600 dark:text-slate-400">Beni hatırla</span>
                 </label>
+
+                <a href="{{ route('password.request') }}" class="text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400">
+                  Şifremi unuttum
+                </a>
               </div>
 
               <x-ui.button type="submit" class="w-full rounded-xl py-2.5 text-base shadow-lg shadow-primary-600/20">

@@ -12,10 +12,14 @@
 
     if ($user['can_update'] ?? false) {
         $items[] = RowActions::link('Düzenle', route('users.show', $id).'#edit');
+        $items[] = RowActions::dispatch('Şifre Sıfırla', 'user-row-action', [
+            'action' => 'reset-password',
+            'id' => $id,
+            'confirm' => "{$name} için şifre sıfırlama bağlantısı gönderilsin mi?",
+        ]);
     }
 
     $items[] = RowActions::link('Rolleri Yönet', route('permissions.index'));
-    $items[] = RowActions::run('Şifre Sıfırla', 'reset-password', confirm: "{$name} için şifre sıfırlansın mı?", message: 'Şifre sıfırlama bağlantısı gönderildi.');
     $items[] = RowActions::divider();
     $items[] = RowActions::run('Hesabı Askıya Al', 'suspend', confirm: "{$name} askıya alınsın mı?", message: 'Hesap askıya alındı.', tone: 'warning', id: $id);
 

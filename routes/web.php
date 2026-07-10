@@ -40,6 +40,7 @@ use App\Modules\Policy\Controllers\PolicyController;
 use App\Modules\Policy\Controllers\PolicySettingsController;
 use App\Modules\Setting\Controllers\SettingsController;
 use App\Modules\User\Controllers\AuthController;
+use App\Modules\User\Controllers\PasswordResetController;
 use App\Modules\User\Controllers\PermissionManagementController;
 use App\Modules\User\Controllers\RoleManagementController;
 use App\Modules\User\Controllers\UserActivityLogController;
@@ -52,6 +53,10 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login']);
+    Route::get('/sifremi-unuttum', [PasswordResetController::class, 'showForgotForm'])->name('password.request');
+    Route::post('/sifremi-unuttum', [PasswordResetController::class, 'sendResetLink'])->name('password.email');
+    Route::get('/sifre-sifirla/{token}', [PasswordResetController::class, 'showResetForm'])->name('password.reset');
+    Route::post('/sifre-sifirla', [PasswordResetController::class, 'reset'])->name('password.update');
 });
 
 Route::middleware('auth')->group(function () {
@@ -203,6 +208,9 @@ Route::middleware('auth')->group(function () {
             Route::put('/kullanicilar/{id}', [UserManagementController::class, 'update'])
                 ->middleware('permission:user.update')
                 ->name('update');
+            Route::post('/kullanicilar/{id}/sifre-sifirla', [UserManagementController::class, 'resetPassword'])
+                ->middleware('permission:user.update')
+                ->name('reset-password');
             Route::delete('/kullanicilar/{id}', [UserManagementController::class, 'destroy'])
                 ->middleware('permission:user.delete')
                 ->name('destroy');

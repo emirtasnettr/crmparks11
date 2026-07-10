@@ -6,7 +6,10 @@ use App\Core\Enums\Status;
 use App\Core\Enums\Theme;
 use App\Core\Enums\UserType;
 use App\Core\Traits\HasUuid;
+use App\Notifications\ResetPasswordNotification;
 use Database\Factories\UserFactory;
+use Illuminate\Auth\Passwords\CanResetPassword;
+use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -23,10 +26,10 @@ use Spatie\Permission\Traits\HasRoles;
     'status', 'theme', 'locale', 'last_login_at', 'last_login_ip',
 ])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable
+class User extends Authenticatable implements CanResetPasswordContract
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, HasRoles, HasUuid, Notifiable, SoftDeletes;
+    use CanResetPassword, HasApiTokens, HasFactory, HasRoles, HasUuid, Notifiable, SoftDeletes;
 
     protected function casts(): array
     {
@@ -60,5 +63,10 @@ class User extends Authenticatable
         }
 
         return $initials ?: 'U';
+    }
+
+    public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
     }
 }
