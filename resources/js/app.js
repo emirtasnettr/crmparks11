@@ -1083,11 +1083,14 @@ Alpine.data('assignmentPage', (preset = {}) => {
 };
 });
 
-Alpine.data('earningPage', () => ({
+Alpine.data('earningPage', (preset = {}) => ({
     activeModal: null,
     submitting: false,
     bulkSaved: false,
     singleErrors: {},
+    editId: null,
+    earningsById: preset.earningsById ?? {},
+    routes: preset.routes ?? {},
     single: {
         business_id: '',
         courier_id: '',
@@ -1110,6 +1113,7 @@ Alpine.data('earningPage', () => ({
         this.submitting = false;
         this.bulkSaved = false;
         this.singleErrors = {};
+        this.editId = null;
         this.resetSingle();
     },
 
@@ -1130,6 +1134,73 @@ Alpine.data('earningPage', () => ({
             deduction: 0,
             description: '',
         };
+    },
+
+    openEdit(id) {
+        const row = this.earningsById[id];
+
+        if (!row) {
+            return;
+        }
+
+        this.editId = id;
+        this.single = {
+            business_id: String(row.business_id ?? ''),
+            courier_id: String(row.courier_id ?? ''),
+            period_month: String(row.period_month ?? ''),
+            period_year: String(row.period_year ?? ''),
+            pricing_model: row.pricing_model ?? 'per_package',
+            package_count: row.package_count ?? '',
+            revenue_unit_price: row.revenue_unit_price ?? '',
+            courier_unit_price: row.courier_unit_price ?? '',
+            revenue_total: row.revenue ?? '',
+            courier_payment: row.courier_payment ?? '',
+            extra_income: row.extra_income ?? 0,
+            extra_expense: row.extra_expense ?? 0,
+            deduction: row.deduction ?? 0,
+            description: row.description ?? '',
+        };
+        this.activeModal = 'single';
+    },
+
+    handleRowAction(detail) {
+        if (!detail?.action || !detail?.id) {
+            return;
+        }
+
+        if (detail.confirm && !window.confirm(detail.confirm)) {
+            return;
+        }
+
+        if (detail.action === 'edit') {
+            this.openEdit(detail.id);
+
+            return;
+        }
+
+        if (detail.action === 'approve') {
+            const form = this.$refs.approveForm;
+
+            if (!form) {
+                return;
+            }
+
+            form.action = `${this.routes.approve}/${detail.id}/onayla`;
+            form.submit();
+
+            return;
+        }
+
+        if (detail.action === 'delete') {
+            const form = this.$refs.deleteForm;
+
+            if (!form) {
+                return;
+            }
+
+            form.action = `${this.routes.destroy}/${detail.id}`;
+            form.submit();
+        }
     },
 
     calcSingle() {

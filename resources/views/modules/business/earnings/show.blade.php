@@ -11,6 +11,18 @@
 @endsection
 
 @section('content')
+<div
+    x-data="earningPage(@js([
+        'earningsById' => [$earning['id'] => $earning],
+        'routes' => [
+            'store' => route('businesses.earnings.store'),
+            'update' => url('/isletmeler/hakedisler'),
+            'approve' => url('/isletmeler/hakedisler'),
+            'destroy' => url('/isletmeler/hakedisler'),
+        ],
+    ]))"
+    @earning-row-action.window="handleRowAction($event.detail)"
+>
 <div class="max-w-5xl">
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -20,7 +32,32 @@
             </div>
             <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">{{ $earning['business_name'] }} — {{ $earning['courier_name'] }}</p>
         </div>
-        <x-ui.button variant="secondary">Düzenle</x-ui.button>
+        <div class="flex flex-wrap gap-2">
+            @if ($earning['can_update'])
+                <x-ui.button type="button" @click="openEdit({{ $earning['id'] }})">Düzenle</x-ui.button>
+            @endif
+            @if ($earning['can_approve'])
+                @can('earning.approve')
+                    <form method="POST" action="{{ route('businesses.earnings.approve', $earning['id']) }}">
+                        @csrf
+                        <x-ui.button type="submit">Onayla</x-ui.button>
+                    </form>
+                @endcan
+            @endif
+            @if ($earning['can_delete'])
+                @can('earning.delete')
+                    <form
+                        method="POST"
+                        action="{{ route('businesses.earnings.destroy', $earning['id']) }}"
+                        onsubmit="return confirm('Hakediş silinsin mi?')"
+                    >
+                        @csrf
+                        @method('DELETE')
+                        <x-ui.button type="submit" variant="danger">Sil</x-ui.button>
+                    </form>
+                @endcan
+            @endif
+        </div>
     </div>
 
   {{-- Üst Kartlar --}}
@@ -102,5 +139,8 @@
   <div class="mt-6">
     <x-ui.button href="{{ route('businesses.earnings.index') }}" variant="secondary">Listeye Dön</x-ui.button>
   </div>
+</div>
+
+@include('modules.business.earnings.partials.single-modal')
 </div>
 @endsection

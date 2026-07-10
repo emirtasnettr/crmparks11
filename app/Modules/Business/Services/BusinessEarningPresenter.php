@@ -70,6 +70,24 @@ class BusinessEarningPresenter
             'courier_payment_formatted' => MoneyCalculator::format($courierPayment),
             'total_expense_formatted' => MoneyCalculator::format($courierPayment + $extraExpense),
             'profit_formatted' => MoneyCalculator::format($profit),
+            'can_update' => $this->canUpdate($statusCode),
+            'can_approve' => $this->canApprove($statusCode),
+            'can_delete' => $this->canDelete($statusCode),
         ];
+    }
+
+    private function canUpdate(string $statusCode): bool
+    {
+        return ! in_array($statusCode, ['paid', 'cancelled'], true);
+    }
+
+    private function canApprove(string $statusCode): bool
+    {
+        return in_array($statusCode, ['draft', 'pending'], true);
+    }
+
+    private function canDelete(string $statusCode): bool
+    {
+        return $this->canUpdate($statusCode);
     }
 }

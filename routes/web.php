@@ -79,6 +79,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/hakedisler', [BusinessEarningController::class, 'index'])->name('earnings.index');
         Route::get('/hakedisler/export', [BusinessEarningController::class, 'export'])->name('earnings.export');
         Route::post('/hakedisler', [BusinessEarningController::class, 'store'])->middleware('permission:earning.create')->name('earnings.store');
+        Route::put('/hakedisler/{id}', [BusinessEarningController::class, 'update'])->middleware('permission:earning.update')->name('earnings.update');
+        Route::post('/hakedisler/{id}/onayla', [BusinessEarningController::class, 'approve'])->middleware('permission:earning.approve')->name('earnings.approve');
+        Route::delete('/hakedisler/{id}', [BusinessEarningController::class, 'destroy'])->middleware('permission:earning.delete')->name('earnings.destroy');
         Route::get('/hakedisler/{id}', [BusinessEarningController::class, 'show'])->name('earnings.show');
         Route::get('/evraklar', [BusinessDocumentController::class, 'index'])->name('documents.index');
         Route::post('/evraklar', [BusinessDocumentController::class, 'store'])->middleware('permission:business.update')->name('documents.store');

@@ -11,7 +11,18 @@
 @endsection
 
 @section('content')
-<div x-data="earningPage()">
+<div
+    x-data="earningPage(@js([
+        'earningsById' => collect($earnings)->keyBy('id'),
+        'routes' => [
+            'store' => route('businesses.earnings.store'),
+            'update' => url('/isletmeler/hakedisler'),
+            'approve' => url('/isletmeler/hakedisler'),
+            'destroy' => url('/isletmeler/hakedisler'),
+        ],
+    ]))"
+    @earning-row-action.window="handleRowAction($event.detail)"
+>
     <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
             <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Hakedişler</h1>
@@ -146,5 +157,14 @@
 
     @include('modules.business.earnings.partials.single-modal')
     @include('modules.business.earnings.partials.bulk-modal')
+
+    <form x-ref="approveForm" method="POST" class="hidden">
+        @csrf
+    </form>
+
+    <form x-ref="deleteForm" method="POST" class="hidden">
+        @csrf
+        @method('DELETE')
+    </form>
 </div>
 @endsection

@@ -6,7 +6,9 @@ use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
 use App\Modules\Business\Data\BusinessEarningFormData;
 use App\Modules\Business\Exports\BusinessListExportSheets;
+use App\Modules\Business\Requests\ApproveBusinessEarningRequest;
 use App\Modules\Business\Requests\StoreBusinessEarningRequest;
+use App\Modules\Business\Requests\UpdateBusinessEarningRequest;
 use App\Modules\Business\Services\BusinessEarningPresenter;
 use App\Modules\Business\Services\BusinessEarningService;
 use App\Modules\Business\Support\BusinessFeatures;
@@ -105,6 +107,10 @@ class BusinessEarningController extends Controller
 
         return view('modules.business.earnings.show', [
             'earning' => $this->presenter->showRow($earning),
+            'businesses' => $this->earnings->businesses(),
+            'couriers' => $this->earnings->couriers(),
+            'months' => BusinessEarningFormData::months(),
+            'pricingModels' => BusinessEarningFormData::pricingModels(),
         ]);
     }
 
@@ -123,5 +129,53 @@ class BusinessEarningController extends Controller
                 'period_year' => $line->period_year,
             ])
             ->with('success', 'Hakediş başarıyla oluşturuldu.');
+    }
+
+    public function update(UpdateBusinessEarningRequest $request, int $id): RedirectResponse
+    {
+        if (! BusinessFeatures::earningsEnabled()) {
+            abort(404);
+        }
+
+        $line = $this->earnings->update($id, $request->validated(), $request->user());
+
+        return redirect()
+            ->route('businesses.earnings.show', $line->id)
+            ->with('success', 'Hakediş başarıyla güncellendi.');
+    }
+
+    public function approve(ApproveBusinessEarningRequest $request, int $id): RedirectResponse
+    {
+        if (! BusinessFeatures::earningsEnabled()) {
+            abort(404);
+        }
+
+        $line = $this->earnings->approve($id, $request->user());
+
+        return redirect()
+            ->route('businesses.earnings.show', $line->id)
+            ->with('success', 'Hakediş onaylandı.');
+    }
+
+    public function destroy(Request $request, int $id): RedirectResponse
+    {
+        if (! BusinessFeatures::earningsEnabled()) {
+            abort(404);
+        }
+
+        abort_unless($request->user()?->can('earning.delete'), 403);
+
+        $line = $this->earnings->find($id);
+        $filters = $line ? [
+            'business_id' => $line->business_id,
+            'period_month' => $line->period_month,
+            'period_year' => $line->period_year,
+        ] : [];
+
+        $this->earnings->delete($id, $request->user());
+
+        return redirect()
+            ->route('businesses.earnings.index', $filters)
+            ->with('success', 'Hakediş silindi.');
     }
 }

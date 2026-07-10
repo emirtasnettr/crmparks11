@@ -5,6 +5,7 @@ namespace App\Modules\Business\Services;
 use App\Models\EarningLine;
 use App\Models\EarningStatus;
 use App\Models\User;
+use App\Modules\ActivityLog\Services\ActivityLogService;
 use App\Modules\Agency\Models\Agency;
 use App\Modules\Business\Models\Business;
 use App\Modules\Courier\Models\Courier;
@@ -14,12 +15,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 
 class BusinessEarningService
 {
     public function __construct(
         private readonly BusinessEarningPresenter $presenter,
         private readonly BusinessAssignmentService $assignments,
+        private readonly ActivityLogService $activityLog,
     ) {}
 
     /**
@@ -126,7 +129,7 @@ class BusinessEarningService
             $amounts = EarningCalculator::fromForm($data, $courier->agency_id !== null);
             $paidAt = ($data['status'] ?? 'draft') === 'paid' ? now() : null;
 
-            return EarningLine::query()->create(array_merge($amounts, [
+            $line = EarningLine::query()->create(array_merge($amounts, [
                 'business_id' => (int) $data['business_id'],
                 'courier_id' => $courier->id,
                 'pricing_model' => $data['pricing_model'] ?? 'per_package',
@@ -137,7 +140,168 @@ class BusinessEarningService
                 'paid_at' => $paidAt,
                 'created_by' => $user->id,
             ]));
+
+            $this->activityLog->log(
+                'earning_created',
+                $line,
+                description: $this->activityDescription($line, 'oluşturuldu'),
+            );
+
+            return $line;
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function update(int $id, array $data, User $user): EarningLine
+    {
+        return DB::transaction(function () use ($id, $data, $user): EarningLine {
+            $line = $this->find($id);
+
+            if ($line === null) {
+                abort(404);
+            }
+
+            if (! $this->canUpdate($line)) {
+                throw ValidationException::withMessages([
+                    'earning' => 'Bu hakediş düzenlenemez.',
+                ]);
+            }
+
+            $courier = Courier::query()->findOrFail((int) $data['courier_id']);
+            $amounts = EarningCalculator::fromForm($data, $courier->agency_id !== null);
+            $oldValues = $line->only([
+                'business_id',
+                'courier_id',
+                'period_month',
+                'period_year',
+                'pricing_model',
+                'package_count',
+                'revenue_total',
+                'courier_total',
+                'profit',
+                'description',
+            ]);
+
+            $line->update(array_merge($amounts, [
+                'business_id' => (int) $data['business_id'],
+                'courier_id' => $courier->id,
+                'pricing_model' => $data['pricing_model'] ?? 'per_package',
+                'period_month' => (int) $data['period_month'],
+                'period_year' => (int) $data['period_year'],
+                'description' => $data['description'] ?? null,
+            ]));
+
+            $line = $line->fresh(['business', 'courier.agency', 'status', 'creator']);
+
+            $this->activityLog->log(
+                'earning_updated',
+                $line,
+                oldValues: $oldValues,
+                newValues: $line->only(array_keys($oldValues)),
+                description: $this->activityDescription($line, 'güncellendi'),
+            );
+
+            return $line;
+        });
+    }
+
+    public function approve(int $id, User $user): EarningLine
+    {
+        return DB::transaction(function () use ($id, $user): EarningLine {
+            $line = $this->find($id);
+
+            if ($line === null) {
+                abort(404);
+            }
+
+            if (! $this->canApprove($line)) {
+                throw ValidationException::withMessages([
+                    'earning' => 'Bu hakediş onaylanamaz.',
+                ]);
+            }
+
+            $statusId = EarningStatus::query()->where('code', 'approved')->value('id');
+
+            if ($statusId === null) {
+                abort(500, 'Onay durumu bulunamadı.');
+            }
+
+            $line->update([
+                'status_id' => $statusId,
+                'approved_by' => $user->id,
+                'approved_at' => now(),
+            ]);
+
+            $line = $line->fresh(['business', 'courier.agency', 'status', 'creator']);
+
+            $this->activityLog->log(
+                'earning_updated',
+                $line,
+                description: $this->activityDescription($line, 'onaylandı'),
+            );
+
+            return $line;
+        });
+    }
+
+    public function delete(int $id, User $user): void
+    {
+        DB::transaction(function () use ($id, $user): void {
+            $line = $this->find($id);
+
+            if ($line === null) {
+                abort(404);
+            }
+
+            if (! $this->canDelete($line)) {
+                throw ValidationException::withMessages([
+                    'earning' => 'Bu hakediş silinemez.',
+                ]);
+            }
+
+            $this->activityLog->log(
+                'earning_updated',
+                $line,
+                description: $this->activityDescription($line, 'silindi'),
+            );
+
+            $line->delete();
+        });
+    }
+
+    public function canUpdate(EarningLine $line): bool
+    {
+        return ! in_array($this->statusCode($line), ['paid', 'cancelled'], true);
+    }
+
+    public function canApprove(EarningLine $line): bool
+    {
+        return in_array($this->statusCode($line), ['draft', 'pending_review'], true);
+    }
+
+    public function canDelete(EarningLine $line): bool
+    {
+        return $this->canUpdate($line);
+    }
+
+    public function statusCode(EarningLine $line): string
+    {
+        $line->loadMissing('status');
+
+        return (string) ($line->status?->code ?? 'draft');
+    }
+
+    private function activityDescription(EarningLine $line, string $action): string
+    {
+        $line->loadMissing(['business', 'courier']);
+
+        $period = sprintf('%02d/%d', $line->period_month, $line->period_year);
+        $business = $line->business?->company_name ?? 'İşletme';
+        $courier = $line->courier?->full_name ?? 'Kurye';
+
+        return "{$business} / {$courier} ({$period}) hakedişi {$action}.";
     }
 
     /**
