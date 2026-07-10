@@ -14,10 +14,13 @@
     }
 
     if ($earning['can_approve'] ?? false) {
-        $items[] = RowActions::dispatch('Onayla', 'earning-row-action', [
+        $approveLabel = ($earning['needs_second_approval'] ?? false) ? 'İkinci Onay' : 'Onayla';
+        $items[] = RowActions::dispatch($approveLabel, 'earning-row-action', [
             'action' => 'approve',
             'id' => $id,
-            'confirm' => 'Hakediş onaylansın mı?',
+            'confirm' => ($earning['needs_second_approval'] ?? false)
+                ? 'Hakediş ikinci onayı verilsin mi?'
+                : 'Hakediş onaylansın mı?',
         ]);
     }
 

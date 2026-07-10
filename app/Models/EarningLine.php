@@ -40,6 +40,8 @@ class EarningLine extends Model
         'profit',
         'description',
         'status_id',
+        'first_approved_by',
+        'first_approved_at',
         'approved_by',
         'approved_at',
         'paid_at',
@@ -49,6 +51,7 @@ class EarningLine extends Model
     protected function casts(): array
     {
         return [
+            'first_approved_at' => 'datetime',
             'approved_at' => 'datetime',
             'paid_at' => 'datetime',
         ];
@@ -77,6 +80,11 @@ class EarningLine extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function firstApprover(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'first_approved_by');
     }
 
     public function approver(): BelongsTo

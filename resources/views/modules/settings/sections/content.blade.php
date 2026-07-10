@@ -146,7 +146,12 @@
         <x-ui.card title="Hakediş Ayarları">
             <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <x-ui.radio-group name="default_period" label="Varsayılan Hakediş Dönemi" :selected="$settings['default_period']" :options="['weekly' => 'Haftalık', 'biweekly' => '15 Günlük', 'monthly' => 'Aylık']" />
-                <x-ui.radio-group name="approval_process" label="Hakediş Onay Süreci" :selected="$settings['approval_process']" :options="['single' => 'Tek Onay', 'dual' => 'Çift Onay', 'auto' => 'Otomatik Onay']" />
+                <div class="space-y-2">
+                    <x-ui.radio-group name="approval_process" label="Hakediş Onay Süreci" :selected="$settings['approval_process']" :options="['single' => 'Tek Onay', 'dual' => 'Çift Onay', 'auto' => 'Otomatik Onay']" />
+                    <p class="text-sm text-gray-500 dark:text-slate-400">
+                        Tek onay: bir yetkili yeterlidir. Çift onay: iki farklı yetkili gerekir. Otomatik onay: oluşturulan hakedişler doğrudan onaylanır.
+                    </p>
+                </div>
             </div>
         </x-ui.card>
         @break

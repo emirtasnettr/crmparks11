@@ -5,10 +5,15 @@ namespace App\Modules\Business\Services;
 use App\Core\Helpers\MoneyCalculator;
 use App\Models\EarningLine;
 use App\Modules\Business\Data\BusinessEarningFormData;
+use App\Modules\Setting\Services\SettingsManager;
 use App\Support\EarningStatusMapper;
 
 class BusinessEarningPresenter
 {
+    public function __construct(
+        private readonly SettingsManager $settings,
+    ) {}
+
     /**
      * @return array<string, mixed>
      */
@@ -71,8 +76,9 @@ class BusinessEarningPresenter
             'total_expense_formatted' => MoneyCalculator::format($courierPayment + $extraExpense),
             'profit_formatted' => MoneyCalculator::format($profit),
             'can_update' => $this->canUpdate($statusCode),
-            'can_approve' => $this->canApprove($statusCode),
+            'can_approve' => $this->canApprove($line, $statusCode),
             'can_delete' => $this->canDelete($statusCode),
+            'needs_second_approval' => $this->needsSecondApproval($line),
         ];
     }
 
@@ -81,13 +87,37 @@ class BusinessEarningPresenter
         return ! in_array($statusCode, ['paid', 'cancelled'], true);
     }
 
-    private function canApprove(string $statusCode): bool
+    private function canApprove(EarningLine $line, string $statusCode): bool
     {
-        return in_array($statusCode, ['draft', 'pending'], true);
+        if (! in_array($statusCode, ['draft', 'pending'], true)) {
+            return false;
+        }
+
+        if ($this->approvalProcess() !== 'dual' || $line->first_approved_by === null) {
+            return true;
+        }
+
+        $userId = auth()->id();
+
+        return $userId !== null && (int) $line->first_approved_by !== (int) $userId;
+    }
+
+    private function needsSecondApproval(EarningLine $line): bool
+    {
+        return $this->approvalProcess() === 'dual'
+            && $line->first_approved_by !== null
+            && in_array($line->status?->code, ['draft', 'pending_review'], true);
     }
 
     private function canDelete(string $statusCode): bool
     {
         return $this->canUpdate($statusCode);
+    }
+
+    private function approvalProcess(): string
+    {
+        $process = $this->settings->group('earnings')->all()['approval_process'] ?? 'dual';
+
+        return in_array($process, ['single', 'dual', 'auto'], true) ? $process : 'dual';
     }
 }

@@ -40,7 +40,7 @@
                 @can('earning.approve')
                     <form method="POST" action="{{ route('businesses.earnings.approve', $earning['id']) }}">
                         @csrf
-                        <x-ui.button type="submit">Onayla</x-ui.button>
+                        <x-ui.button type="submit">{{ ($earning['needs_second_approval'] ?? false) ? 'İkinci Onay' : 'Onayla' }}</x-ui.button>
                     </form>
                 @endcan
             @endif

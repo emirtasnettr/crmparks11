@@ -11,6 +11,7 @@ use App\Modules\Notification\Services\EarningNotificationService;
 use App\Modules\Agency\Models\Agency;
 use App\Modules\Business\Models\Business;
 use App\Modules\Courier\Models\Courier;
+use App\Modules\Setting\Services\SettingsManager;
 use App\Support\EarningCalculator;
 use App\Support\EarningStatusMapper;
 use Illuminate\Database\Eloquent\Builder;
@@ -27,6 +28,7 @@ class BusinessEarningService
         private readonly ActivityLogService $activityLog,
         private readonly EarningFinanceSyncService $earningFinanceSync,
         private readonly EarningNotificationService $earningNotifications,
+        private readonly SettingsManager $settings,
     ) {}
 
     /**
@@ -154,6 +156,13 @@ class BusinessEarningService
             $line = $line->fresh(['business', 'courier.agency', 'status']);
             $this->earningNotifications->notifyCreated($line, $user);
 
+            if (
+                $this->approvalProcess() === 'auto'
+                && in_array($statusCode, ['draft', 'pending_review'], true)
+            ) {
+                return $this->finalizeApproval($line, $user);
+            }
+
             return $line;
         });
     }
@@ -223,37 +232,17 @@ class BusinessEarningService
                 abort(404);
             }
 
-            if (! $this->canApprove($line)) {
+            if (! $this->canApprove($line, $user)) {
                 throw ValidationException::withMessages([
-                    'earning' => 'Bu hakediş onaylanamaz.',
+                    'earning' => $this->approveBlockedMessage($line, $user),
                 ]);
             }
 
-            $statusId = EarningStatus::query()->where('code', 'approved')->value('id');
-
-            if ($statusId === null) {
-                abort(500, 'Onay durumu bulunamadı.');
+            if ($this->approvalProcess() === 'dual' && $line->first_approved_by === null) {
+                return $this->recordFirstApproval($line, $user);
             }
 
-            $line->update([
-                'status_id' => $statusId,
-                'approved_by' => $user->id,
-                'approved_at' => now(),
-            ]);
-
-            $line = $line->fresh(['business', 'courier.agency', 'status', 'creator']);
-
-            $this->earningFinanceSync->syncOnApprove($line, $user);
-
-            $this->activityLog->log(
-                'earning_updated',
-                $line,
-                description: $this->activityDescription($line, 'onaylandı'),
-            );
-
-            $this->earningNotifications->notifyApproved($line, $user);
-
-            return $line;
+            return $this->finalizeApproval($line, $user);
         });
     }
 
@@ -287,9 +276,21 @@ class BusinessEarningService
         return ! in_array($this->statusCode($line), ['paid', 'cancelled'], true);
     }
 
-    public function canApprove(EarningLine $line): bool
+    public function canApprove(EarningLine $line, ?User $user = null): bool
     {
-        return in_array($this->statusCode($line), ['draft', 'pending_review'], true);
+        if (! in_array($this->statusCode($line), ['draft', 'pending_review'], true)) {
+            return false;
+        }
+
+        if ($this->approvalProcess() !== 'dual' || $line->first_approved_by === null) {
+            return true;
+        }
+
+        if ($user === null) {
+            return true;
+        }
+
+        return (int) $line->first_approved_by !== (int) $user->id;
     }
 
     public function canDelete(EarningLine $line): bool
@@ -302,6 +303,80 @@ class BusinessEarningService
         $line->loadMissing('status');
 
         return (string) ($line->status?->code ?? 'draft');
+    }
+
+    public function approvalProcess(): string
+    {
+        $process = $this->settings->group('earnings')->all()['approval_process'] ?? 'dual';
+
+        return in_array($process, ['single', 'dual', 'auto'], true) ? $process : 'dual';
+    }
+
+    private function recordFirstApproval(EarningLine $line, User $user): EarningLine
+    {
+        $statusId = EarningStatus::query()->where('code', 'pending_review')->value('id');
+
+        if ($statusId === null) {
+            abort(500, 'Bekleyen onay durumu bulunamadı.');
+        }
+
+        $line->update([
+            'status_id' => $statusId,
+            'first_approved_by' => $user->id,
+            'first_approved_at' => now(),
+        ]);
+
+        $line = $line->fresh(['business', 'courier.agency', 'status', 'creator', 'firstApprover']);
+
+        $this->activityLog->log(
+            'earning_updated',
+            $line,
+            description: $this->activityDescription($line, 'ilk onayı alındı'),
+        );
+
+        return $line;
+    }
+
+    private function finalizeApproval(EarningLine $line, User $user): EarningLine
+    {
+        $statusId = EarningStatus::query()->where('code', 'approved')->value('id');
+
+        if ($statusId === null) {
+            abort(500, 'Onay durumu bulunamadı.');
+        }
+
+        $line->update([
+            'status_id' => $statusId,
+            'approved_by' => $user->id,
+            'approved_at' => now(),
+        ]);
+
+        $line = $line->fresh(['business', 'courier.agency', 'status', 'creator']);
+
+        $this->earningFinanceSync->syncOnApprove($line, $user);
+
+        $this->activityLog->log(
+            'earning_updated',
+            $line,
+            description: $this->activityDescription($line, 'onaylandı'),
+        );
+
+        $this->earningNotifications->notifyApproved($line, $user);
+
+        return $line;
+    }
+
+    private function approveBlockedMessage(EarningLine $line, User $user): string
+    {
+        if (
+            $this->approvalProcess() === 'dual'
+            && $line->first_approved_by !== null
+            && (int) $line->first_approved_by === (int) $user->id
+        ) {
+            return 'Çift onay sürecinde ikinci onayı farklı bir kullanıcı vermelidir.';
+        }
+
+        return 'Bu hakediş onaylanamaz.';
     }
 
     private function activityDescription(EarningLine $line, string $action): string

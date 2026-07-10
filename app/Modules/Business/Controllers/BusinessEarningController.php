@@ -190,9 +190,13 @@ class BusinessEarningController extends Controller
 
         $line = $this->earnings->approve($id, $request->user());
 
+        $message = $line->status?->code === 'approved'
+            ? 'Hakediş onaylandı.'
+            : 'Hakediş ilk onayı alındı. İkinci onay bekleniyor.';
+
         return redirect()
             ->route('businesses.earnings.show', $line->id)
-            ->with('success', 'Hakediş onaylandı.');
+            ->with('success', $message);
     }
 
     public function destroy(Request $request, int $id): RedirectResponse

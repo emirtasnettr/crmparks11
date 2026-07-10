@@ -13,6 +13,7 @@ use App\Modules\Courier\Models\Courier;
 use App\Modules\Finance\Models\FinanceExpense;
 use App\Modules\Finance\Models\FinancePayment;
 use App\Modules\Finance\Models\FinanceRevenue;
+use App\Modules\Setting\Services\SettingsManager;
 use Database\Seeders\CitySeeder;
 use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
@@ -32,6 +33,8 @@ class BusinessEarningWorkflowTest extends TestCase
             CitySeeder::class,
             RoleAndPermissionSeeder::class,
         ]);
+
+        $this->setApprovalProcess('single');
     }
 
     public function test_super_admin_can_update_earning(): void
@@ -257,6 +260,101 @@ class BusinessEarningWorkflowTest extends TestCase
             'action' => 'earning_created',
             'subject_type' => EarningLine::class,
             'subject_id' => $line->id,
+        ]);
+    }
+
+    public function test_dual_approval_requires_two_different_users(): void
+    {
+        $this->setApprovalProcess('dual');
+
+        $first = User::factory()->create();
+        $first->assignRole('general_manager');
+        $second = User::factory()->create();
+        $second->assignRole('super_admin');
+        $business = $this->createBusiness($first);
+        $courier = $this->createCourier($first);
+        $line = $this->createEarning($business, $courier, $first, 'pending_review');
+
+        $firstResponse = $this->actingAs($first)->post(route('businesses.earnings.approve', $line->id));
+        $firstResponse->assertRedirect(route('businesses.earnings.show', $line->id));
+        $firstResponse->assertSessionHas('success', 'Hakediş ilk onayı alındı. İkinci onay bekleniyor.');
+
+        $line->refresh();
+        $this->assertSame('pending_review', $line->status?->code);
+        $this->assertSame($first->id, $line->first_approved_by);
+        $this->assertNotNull($line->first_approved_at);
+        $this->assertNull($line->approved_by);
+        $this->assertSame(0, FinanceRevenue::query()->where('earning_line_id', $line->id)->count());
+
+        $sameUserResponse = $this->actingAs($first)->post(route('businesses.earnings.approve', $line->id));
+        $sameUserResponse->assertSessionHasErrors('earning');
+
+        $secondResponse = $this->actingAs($second)->post(route('businesses.earnings.approve', $line->id));
+        $secondResponse->assertRedirect(route('businesses.earnings.show', $line->id));
+        $secondResponse->assertSessionHas('success', 'Hakediş onaylandı.');
+
+        $line->refresh();
+        $this->assertSame('approved', $line->status?->code);
+        $this->assertSame($second->id, $line->approved_by);
+        $this->assertSame(1, FinanceRevenue::query()->where('earning_line_id', $line->id)->count());
+    }
+
+    public function test_auto_approval_approves_on_create(): void
+    {
+        $this->setApprovalProcess('auto');
+
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $courier = $this->createCourier($user);
+
+        $response = $this->actingAs($user)->post(route('businesses.earnings.store'), [
+            'business_id' => $business->id,
+            'courier_id' => $courier->id,
+            'period_month' => 8,
+            'period_year' => 2026,
+            'pricing_model' => 'per_package',
+            'package_count' => 80,
+            'revenue_unit_price' => 45,
+            'courier_unit_price' => 38,
+            'status' => 'pending',
+        ]);
+
+        $line = EarningLine::query()->first();
+        $this->assertNotNull($line);
+        $response->assertRedirect(route('businesses.earnings.index', [
+            'business_id' => $business->id,
+            'period_month' => 8,
+            'period_year' => 2026,
+        ]));
+
+        $line->load('status');
+        $this->assertSame('approved', $line->status?->code);
+        $this->assertSame($user->id, $line->approved_by);
+        $this->assertSame(1, FinanceRevenue::query()->where('earning_line_id', $line->id)->count());
+    }
+
+    public function test_super_admin_can_save_earnings_approval_settings(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $response = $this->actingAs($user)->put(route('settings.update', 'earnings'), [
+            'default_period' => 'monthly',
+            'approval_process' => 'single',
+        ]);
+
+        $response->assertRedirect(route('settings.index', ['section' => 'earnings']));
+        $response->assertSessionHas('success');
+
+        $this->assertSame('single', app(SettingsManager::class)->group('earnings')->all()['approval_process']);
+    }
+
+    private function setApprovalProcess(string $process): void
+    {
+        app(SettingsManager::class)->group('earnings')->save([
+            'default_period' => 'monthly',
+            'approval_process' => $process,
         ]);
     }
 
