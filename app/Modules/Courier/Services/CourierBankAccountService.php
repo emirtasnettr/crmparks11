@@ -138,6 +138,32 @@ class CourierBankAccountService
         });
     }
 
+    public function makeDefault(CourierBankAccount $account): CourierBankAccount
+    {
+        return DB::transaction(function () use ($account): CourierBankAccount {
+            $this->clearDefaultForCourier((int) $account->courier_id, $account->id);
+
+            $account->update([
+                'is_default' => true,
+                'status' => 'active',
+            ]);
+
+            return $account->fresh(['courier']);
+        });
+    }
+
+    public function deactivate(CourierBankAccount $account): CourierBankAccount
+    {
+        return DB::transaction(function () use ($account): CourierBankAccount {
+            $account->update([
+                'status' => 'inactive',
+                'is_default' => false,
+            ]);
+
+            return $account->fresh(['courier']);
+        });
+    }
+
     /**
      * @param  array<string, mixed>  $filters
      */

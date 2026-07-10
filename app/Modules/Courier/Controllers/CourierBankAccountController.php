@@ -86,4 +86,32 @@ class CourierBankAccountController extends Controller
             ->route('couriers.bank-accounts.index', ['courier_id' => $account->courier_id])
             ->with('success', 'Banka hesabı başarıyla kaydedildi.');
     }
+
+    public function makeDefault(Request $request, int $id): RedirectResponse
+    {
+        abort_unless($request->user()?->can('courier.update'), 403);
+
+        $account = $this->bankAccounts->find($id);
+        abort_if($account === null, 404);
+
+        $this->bankAccounts->makeDefault($account);
+
+        return redirect()
+            ->route('couriers.bank-accounts.index', ['courier_id' => $account->courier_id])
+            ->with('success', 'Hesap varsayılan olarak işaretlendi.');
+    }
+
+    public function deactivate(Request $request, int $id): RedirectResponse
+    {
+        abort_unless($request->user()?->can('courier.update'), 403);
+
+        $account = $this->bankAccounts->find($id);
+        abort_if($account === null, 404);
+
+        $this->bankAccounts->deactivate($account);
+
+        return redirect()
+            ->route('couriers.bank-accounts.index', ['courier_id' => $account->courier_id])
+            ->with('success', 'Banka hesabı pasife alındı.');
+    }
 }

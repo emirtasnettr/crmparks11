@@ -154,12 +154,24 @@ Route::middleware('auth')->group(function () {
         Route::get('/hakedisler/{id}/pdf', [CourierEarningController::class, 'pdf'])->name('earnings.pdf');
         Route::get('/hakedisler/{id}', [CourierEarningController::class, 'show'])->name('earnings.show');
         Route::get('/calisma-gecmisi', [CourierWorkHistoryController::class, 'index'])->name('work-history.index');
+        Route::post('/calisma-gecmisi/{id}/sonlandir', [CourierWorkHistoryController::class, 'terminate'])
+            ->middleware('permission:courier.update')
+            ->name('work-history.terminate');
         Route::get('/calisma-gecmisi/{id}', [CourierWorkHistoryController::class, 'show'])->name('work-history.show');
         Route::get('/arac-bilgileri', [CourierVehicleController::class, 'index'])->name('vehicles.index');
         Route::post('/arac-bilgileri', [CourierVehicleController::class, 'store'])->middleware('permission:courier.update')->name('vehicles.store');
+        Route::post('/arac-bilgileri/{id}/pasife-al', [CourierVehicleController::class, 'deactivate'])
+            ->middleware('permission:courier.update')
+            ->name('vehicles.deactivate');
         Route::get('/arac-bilgileri/{id}', [CourierVehicleController::class, 'show'])->name('vehicles.show');
         Route::get('/banka-bilgileri', [CourierBankAccountController::class, 'index'])->name('bank-accounts.index');
         Route::post('/banka-bilgileri', [CourierBankAccountController::class, 'store'])->middleware('permission:courier.update')->name('bank-accounts.store');
+        Route::post('/banka-bilgileri/{id}/varsayilan', [CourierBankAccountController::class, 'makeDefault'])
+            ->middleware('permission:courier.update')
+            ->name('bank-accounts.make-default');
+        Route::post('/banka-bilgileri/{id}/pasife-al', [CourierBankAccountController::class, 'deactivate'])
+            ->middleware('permission:courier.update')
+            ->name('bank-accounts.deactivate');
         Route::get('/banka-bilgileri/{id}', [CourierBankAccountController::class, 'show'])->name('bank-accounts.show');
         Route::get('/hareket-gecmisi', [CourierActivityController::class, 'index'])->name('activities.index');
         Route::get('/{id}/duzenle', [CourierController::class, 'edit'])->name('edit');

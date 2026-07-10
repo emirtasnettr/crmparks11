@@ -8,12 +8,21 @@
 
     $items = [
         RowActions::link('Görüntüle', route('couriers.vehicles.show', $id)),
-        RowActions::run('Düzenle', 'edit', message: 'Araç bilgisi düzenleme için açıldı.'),
-        RowActions::run('Belge Yükle', 'upload', message: 'Araç belgesi yükleme ekranı açıldı.'),
+        RowActions::link('Belgeler', route('couriers.documents.index', ['courier_id' => $courierId])),
         RowActions::link('Kuryeye Git', route('couriers.vehicles.index', ['courier_id' => $courierId])),
-        RowActions::divider(),
-        RowActions::run('Pasife Al', 'deactivate', confirm: 'Araç kaydı pasife alınsın mı?', message: 'Araç pasife alındı.', tone: 'danger', id: $id),
     ];
+
+    if (($vehicle['status'] ?? '') === 'active') {
+        $items[] = RowActions::divider();
+        $items[] = RowActions::run(
+            'Pasife Al',
+            'deactivate',
+            confirm: 'Araç kaydı pasife alınsın mı?',
+            tone: 'danger',
+            id: $id,
+            url: route('couriers.vehicles.deactivate', $id),
+        );
+    }
 @endphp
 
 <x-ui.action-menu :items="$items" width="w-48" />

@@ -85,4 +85,18 @@ class CourierVehicleController extends Controller
             ->route('couriers.vehicles.index', ['courier_id' => $vehicle->courier_id])
             ->with('success', 'Araç başarıyla kaydedildi.');
     }
+
+    public function deactivate(Request $request, int $id): RedirectResponse
+    {
+        abort_unless($request->user()?->can('courier.update'), 403);
+
+        $vehicle = $this->vehicles->find($id);
+        abort_if($vehicle === null, 404);
+
+        $this->vehicles->deactivate($vehicle);
+
+        return redirect()
+            ->route('couriers.vehicles.index', ['courier_id' => $vehicle->courier_id])
+            ->with('success', 'Araç pasife alındı.');
+    }
 }

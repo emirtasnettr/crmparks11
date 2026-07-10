@@ -133,6 +133,13 @@ class CourierVehicleService
         });
     }
 
+    public function deactivate(CourierVehicle $vehicle): CourierVehicle
+    {
+        $vehicle->update(['status' => 'inactive']);
+
+        return $vehicle->fresh(['courier']);
+    }
+
     /**
      * @param  array<string, mixed>  $filters
      */

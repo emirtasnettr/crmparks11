@@ -8,6 +8,7 @@ use App\Modules\Business\Models\BusinessCourierAssignment;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class CourierWorkHistoryService
 {
@@ -40,6 +41,18 @@ class CourierWorkHistoryService
         return BusinessCourierAssignment::query()
             ->with(['business', 'courier.agency'])
             ->find($id);
+    }
+
+    public function terminate(BusinessCourierAssignment $assignment): BusinessCourierAssignment
+    {
+        return DB::transaction(function () use ($assignment): BusinessCourierAssignment {
+            $assignment->update([
+                'end_date' => now()->subDay()->toDateString(),
+                'status' => 'inactive',
+            ]);
+
+            return $assignment->fresh(['business', 'courier.agency']);
+        });
     }
 
     /**

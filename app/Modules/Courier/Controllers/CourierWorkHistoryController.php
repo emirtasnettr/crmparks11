@@ -7,6 +7,7 @@ use App\Modules\Courier\Data\CourierWorkHistoryFormData;
 use App\Modules\Courier\Services\CourierWorkHistoryPresenter;
 use App\Modules\Courier\Services\CourierWorkHistoryService;
 use App\Support\RequestFilter;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -67,5 +68,19 @@ class CourierWorkHistoryController extends Controller
         return view('modules.courier.work-history.show', [
             'record' => $this->presenter->showRow($record),
         ]);
+    }
+
+    public function terminate(Request $request, int $id): RedirectResponse
+    {
+        abort_unless($request->user()?->can('courier.update'), 403);
+
+        $record = $this->workHistory->find($id);
+        abort_if($record === null, 404);
+
+        $this->workHistory->terminate($record);
+
+        return redirect()
+            ->route('couriers.work-history.index', ['courier_id' => $record->courier_id])
+            ->with('success', 'Çalışma kaydı sonlandırıldı.');
     }
 }
