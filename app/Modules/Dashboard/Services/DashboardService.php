@@ -2,12 +2,20 @@
 
 namespace App\Modules\Dashboard\Services;
 
+use App\Core\Helpers\MoneyCalculator;
+use App\Models\EarningLine;
+use App\Models\EarningStatus;
 use App\Modules\Agency\Models\Agency;
 use App\Modules\Business\Models\Business;
 use App\Modules\Business\Services\BusinessPresenter;
 use App\Modules\Courier\Data\CourierFormData;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\Courier\Services\CourierPresenter;
+use App\Modules\Finance\Models\FinanceCollection;
+use App\Modules\Finance\Models\FinanceExpense;
+use App\Modules\Finance\Models\FinancePayment;
+use App\Modules\Finance\Models\FinanceRevenue;
+use Carbon\Carbon;
 
 class DashboardService
 {
@@ -28,6 +36,153 @@ class DashboardService
             'active_couriers' => $activeCouriers,
             'inactive_couriers' => $totalCouriers - $activeCouriers,
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getFinanceOverview(): array
+    {
+        $start = Carbon::today()->startOfMonth();
+        $end = Carbon::today()->endOfMonth();
+
+        $revenue = (float) FinanceRevenue::query()
+            ->whereBetween('revenue_date', [$start->toDateString(), $end->toDateString()])
+            ->sum('amount');
+
+        $expense = (float) FinanceExpense::query()
+            ->whereBetween('expense_date', [$start->toDateString(), $end->toDateString()])
+            ->sum('amount');
+
+        $profit = round($revenue - $expense, 2);
+
+        $pendingCollectionRemaining = (float) (FinanceCollection::query()
+            ->whereIn('status', ['pending', 'partial', 'overdue'])
+            ->selectRaw('SUM(total_amount - collected_amount) as remaining')
+            ->value('remaining') ?? 0);
+
+        $pendingPaymentRemaining = (float) (FinancePayment::query()
+            ->where('is_active', true)
+            ->whereIn('status', ['pending', 'partial', 'overdue'])
+            ->selectRaw('SUM(total_amount - paid_amount) as remaining')
+            ->value('remaining') ?? 0);
+
+        $pendingCollectionCount = FinanceCollection::query()
+            ->whereIn('status', ['pending', 'partial', 'overdue'])
+            ->count();
+
+        $pendingPaymentCount = FinancePayment::query()
+            ->where('is_active', true)
+            ->whereIn('status', ['pending', 'partial', 'overdue'])
+            ->count();
+
+        $pendingEarningCount = $this->pendingEarningQuery()->count();
+
+        return [
+            'period_label' => $start->translatedFormat('F Y'),
+            'revenue' => round($revenue, 2),
+            'revenue_formatted' => MoneyCalculator::format($revenue),
+            'expense' => round($expense, 2),
+            'expense_formatted' => MoneyCalculator::format($expense),
+            'net_profit' => $profit,
+            'net_profit_formatted' => MoneyCalculator::format($profit),
+            'pending_collection' => round($pendingCollectionRemaining, 2),
+            'pending_collection_formatted' => MoneyCalculator::format($pendingCollectionRemaining),
+            'pending_collection_count' => $pendingCollectionCount,
+            'pending_payment' => round($pendingPaymentRemaining, 2),
+            'pending_payment_formatted' => MoneyCalculator::format($pendingPaymentRemaining),
+            'pending_payment_count' => $pendingPaymentCount,
+            'pending_earning_count' => $pendingEarningCount,
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getPendingCollections(int $limit = 5): array
+    {
+        $today = Carbon::today();
+
+        return FinanceCollection::query()
+            ->with('business:id,company_name')
+            ->whereIn('status', ['pending', 'partial', 'overdue'])
+            ->orderBy('due_date')
+            ->limit($limit)
+            ->get()
+            ->map(function (FinanceCollection $collection) use ($today): array {
+                $remaining = round((float) $collection->total_amount - (float) $collection->collected_amount, 2);
+                $delay = (int) $today->diffInDays($collection->due_date, false);
+
+                return [
+                    'id' => $collection->id,
+                    'business' => $collection->business?->company_name ?? '—',
+                    'reference' => $collection->reference,
+                    'due_date_formatted' => $collection->due_date->format('d.m.Y'),
+                    'amount_formatted' => MoneyCalculator::format($remaining),
+                    'is_overdue' => $delay < 0,
+                    'delay_label' => $delay < 0
+                        ? abs($delay).' gün gecikmiş'
+                        : ($delay === 0 ? 'Bugün' : $delay.' gün kaldı'),
+                    'url' => route('finance.collections.show', $collection->id),
+                ];
+            })
+            ->all();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getPendingPayments(int $limit = 5): array
+    {
+        $today = Carbon::today();
+
+        return FinancePayment::query()
+            ->where('is_active', true)
+            ->whereIn('status', ['pending', 'partial', 'overdue'])
+            ->orderBy('scheduled_date')
+            ->limit($limit)
+            ->get()
+            ->map(function (FinancePayment $payment) use ($today): array {
+                $remaining = round((float) $payment->total_amount - (float) $payment->paid_amount, 2);
+                $delay = (int) $today->diffInDays($payment->scheduled_date, false);
+
+                return [
+                    'id' => $payment->id,
+                    'recipient' => $payment->recipient_name ?? '—',
+                    'reference' => $payment->reference,
+                    'scheduled_date_formatted' => $payment->scheduled_date->format('d.m.Y'),
+                    'amount_formatted' => MoneyCalculator::format($remaining),
+                    'is_overdue' => $delay < 0,
+                    'delay_label' => $delay < 0
+                        ? abs($delay).' gün gecikmiş'
+                        : ($delay === 0 ? 'Bugün' : $delay.' gün kaldı'),
+                    'url' => route('finance.payments.show', $payment->id),
+                ];
+            })
+            ->all();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getPendingEarnings(int $limit = 5): array
+    {
+        return $this->pendingEarningQuery()
+            ->with(['business:id,company_name', 'courier:id,full_name', 'status'])
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get()
+            ->map(function (EarningLine $line): array {
+                return [
+                    'id' => $line->id,
+                    'business' => $line->business?->company_name ?? '—',
+                    'courier' => $line->courier?->full_name ?? '—',
+                    'period' => sprintf('%02d/%d', $line->period_month, $line->period_year),
+                    'revenue_formatted' => MoneyCalculator::format((float) $line->revenue_total),
+                    'url' => route('businesses.earnings.show', $line->id),
+                ];
+            })
+            ->all();
     }
 
     /**
@@ -91,6 +246,20 @@ class DashboardService
             'total' => $total,
             'items' => $items,
         ];
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Builder<EarningLine>
+     */
+    private function pendingEarningQuery()
+    {
+        $statusId = EarningStatus::query()->where('code', 'pending_review')->value('id');
+
+        return EarningLine::query()->when(
+            $statusId !== null,
+            fn ($query) => $query->where('status_id', $statusId),
+            fn ($query) => $query->whereRaw('1 = 0'),
+        );
     }
 
     /**

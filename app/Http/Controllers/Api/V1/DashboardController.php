@@ -18,10 +18,27 @@ class DashboardController extends Controller
     {
         abort_unless($request->user()?->can('dashboard.view'), 403);
 
-        return ApiResponse::success([
+        $user = $request->user();
+        $canFinance = $user->can('dashboard.financial');
+        $canEarnings = $user->can('earning.view') || $user->can('earning.approve');
+
+        $data = [
             'stats' => $this->dashboard->getStats(),
             'latest_businesses' => $this->dashboard->getLatestBusinesses(5),
             'latest_couriers' => $this->dashboard->getLatestCouriers(5),
-        ], 'Dashboard verileri');
+            'courier_type_distribution' => $this->dashboard->getCourierTypeDistribution(),
+        ];
+
+        if ($canFinance) {
+            $data['finance'] = $this->dashboard->getFinanceOverview();
+            $data['pending_collections'] = $this->dashboard->getPendingCollections();
+            $data['pending_payments'] = $this->dashboard->getPendingPayments();
+        }
+
+        if ($canEarnings) {
+            $data['pending_earnings'] = $this->dashboard->getPendingEarnings();
+        }
+
+        return ApiResponse::success($data, 'Dashboard verileri');
     }
 }

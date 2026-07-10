@@ -2,11 +2,17 @@
 
 namespace Tests\Feature;
 
+use App\Models\EarningLine;
+use App\Models\EarningStatus;
 use App\Models\User;
 use App\Modules\Agency\Models\Agency;
 use App\Modules\Business\Models\Business;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\Dashboard\Services\DashboardService;
+use App\Modules\Finance\Models\FinanceCollection;
+use App\Modules\Finance\Models\FinanceExpense;
+use App\Modules\Finance\Models\FinancePayment;
+use App\Modules\Finance\Models\FinanceRevenue;
 use Database\Seeders\CitySeeder;
 use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
@@ -53,6 +59,23 @@ class DashboardTest extends TestCase
         $response->assertSee('Son Eklenen İşletmeler');
         $response->assertSee('Son Eklenen Kuryeler');
         $response->assertSee('Kurye Tür Dağılımı');
+        $response->assertSee('Finans Özeti');
+        $response->assertSee('Bu Ay Gelir');
+        $response->assertSee('Bekleyen Tahsilat');
+        $response->assertSee('Bekleyen Ödeme');
+        $response->assertSee('Onay Bekleyen Hakediş');
+    }
+
+    public function test_operations_staff_does_not_see_finance_overview(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('operations_staff');
+
+        $response = $this->actingAs($user)->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertDontSee('Finans Özeti');
+        $response->assertDontSee('Bekleyen Tahsilatlar');
     }
 
     public function test_dashboard_service_returns_latest_entities_and_distribution(): void
@@ -94,5 +117,66 @@ class DashboardTest extends TestCase
             $stats['inactive_couriers']
         );
         $this->assertArrayNotHasKey('monthly_revenue', $stats);
+    }
+
+    public function test_dashboard_service_returns_finance_overview_and_pending_lists(): void
+    {
+        $user = User::factory()->create();
+        $business = Business::factory()->create(['created_by' => $user->id]);
+        $courier = Courier::factory()->create(['created_by' => $user->id]);
+
+        FinanceRevenue::factory()->create([
+            'business_id' => $business->id,
+            'amount' => 10000,
+            'revenue_date' => now()->toDateString(),
+            'created_by' => $user->id,
+        ]);
+
+        FinanceExpense::factory()->create([
+            'amount' => 2500,
+            'expense_date' => now()->toDateString(),
+            'created_by' => $user->id,
+        ]);
+
+        FinanceCollection::factory()->create([
+            'business_id' => $business->id,
+            'total_amount' => 5000,
+            'collected_amount' => 0,
+            'status' => 'pending',
+            'due_date' => now()->addDays(3)->toDateString(),
+            'created_by' => $user->id,
+        ]);
+
+        FinancePayment::factory()->create([
+            'recipient_type' => 'courier',
+            'courier_id' => $courier->id,
+            'recipient_name' => $courier->full_name,
+            'total_amount' => 3000,
+            'paid_amount' => 0,
+            'status' => 'pending',
+            'scheduled_date' => now()->addDays(2)->toDateString(),
+            'created_by' => $user->id,
+        ]);
+
+        $pendingStatusId = EarningStatus::query()->where('code', 'pending_review')->value('id');
+        EarningLine::factory()->create([
+            'business_id' => $business->id,
+            'courier_id' => $courier->id,
+            'status_id' => $pendingStatusId,
+            'created_by' => $user->id,
+        ]);
+
+        $service = app(DashboardService::class);
+        $finance = $service->getFinanceOverview();
+
+        $this->assertSame(10000.0, $finance['revenue']);
+        $this->assertSame(2500.0, $finance['expense']);
+        $this->assertSame(7500.0, $finance['net_profit']);
+        $this->assertSame(5000.0, $finance['pending_collection']);
+        $this->assertSame(3000.0, $finance['pending_payment']);
+        $this->assertSame(1, $finance['pending_earning_count']);
+        $this->assertCount(1, $service->getPendingCollections());
+        $this->assertCount(1, $service->getPendingPayments());
+        $this->assertCount(1, $service->getPendingEarnings());
     }
 }

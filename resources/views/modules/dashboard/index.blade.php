@@ -22,6 +22,116 @@
     <x-ui.stat-card title="Pasif Kurye" :value="number_format($stats['inactive_couriers'])" icon="courier" color="secondary" class="col-span-2 md:col-span-1" />
 </div>
 
+@if ($canFinance && $finance)
+    <div class="mb-2 flex items-center justify-between">
+        <div>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Finans Özeti</h2>
+            <p class="text-sm text-gray-500 dark:text-slate-400">{{ $finance['period_label'] }} dönemi</p>
+        </div>
+        <a href="{{ route('finance.dashboard.index') }}" class="text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400">
+            Finans Dashboard
+        </a>
+    </div>
+
+    <div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+        <x-ui.finance-stat-card title="Bu Ay Gelir" :value="$finance['revenue_formatted']" icon="earning" accent="success" />
+        <x-ui.finance-stat-card title="Bu Ay Gider" :value="$finance['expense_formatted']" icon="chart" accent="danger" />
+        <x-ui.finance-stat-card title="Net Kâr" :value="$finance['net_profit_formatted']" icon="chart" accent="primary" />
+        <x-ui.finance-stat-card
+            title="Bekleyen Tahsilat"
+            :value="$finance['pending_collection_formatted']"
+            :subtitle="$finance['pending_collection_count'].' kayıt'"
+            icon="earning"
+            accent="warning"
+        />
+        <x-ui.finance-stat-card
+            title="Bekleyen Ödeme"
+            :value="$finance['pending_payment_formatted']"
+            :subtitle="$finance['pending_payment_count'].' kayıt'"
+            icon="courier"
+            accent="violet"
+        />
+        <x-ui.finance-stat-card
+            title="Onay Bekleyen Hakediş"
+            :value="number_format($finance['pending_earning_count'])"
+            icon="chart"
+            accent="blue"
+        />
+    </div>
+@endif
+
+@if (($canFinance && (count($pendingCollections) > 0 || count($pendingPayments) > 0)) || ($canEarnings && count($pendingEarnings) > 0))
+    <div class="mb-8 grid grid-cols-1 gap-6 xl:grid-cols-3">
+        @if ($canFinance)
+            <x-ui.card title="Bekleyen Tahsilatlar">
+                <x-slot:actions>
+                    <a href="{{ route('finance.collections.index') }}" class="text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400">Tümü</a>
+                </x-slot:actions>
+
+                @forelse ($pendingCollections as $item)
+                    <a href="{{ $item['url'] }}" class="flex items-start justify-between gap-3 border-b border-gray-100 py-3 last:border-0 last:pb-0 first:pt-0 hover:opacity-80 dark:border-slate-700">
+                        <div class="min-w-0">
+                            <p class="truncate text-sm font-medium text-gray-900 dark:text-white">{{ $item['business'] }}</p>
+                            <p class="text-xs text-gray-500 dark:text-slate-400">{{ $item['reference'] }} · {{ $item['due_date_formatted'] }}</p>
+                        </div>
+                        <div class="shrink-0 text-right">
+                            <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $item['amount_formatted'] }}</p>
+                            <p @class(['text-xs', 'text-red-600 dark:text-red-400' => $item['is_overdue'], 'text-amber-600 dark:text-amber-400' => ! $item['is_overdue']])>
+                                {{ $item['delay_label'] }}
+                            </p>
+                        </div>
+                    </a>
+                @empty
+                    <p class="text-sm text-gray-500 dark:text-slate-400">Bekleyen tahsilat yok.</p>
+                @endforelse
+            </x-ui.card>
+
+            <x-ui.card title="Bekleyen Ödemeler">
+                <x-slot:actions>
+                    <a href="{{ route('finance.payments.index') }}" class="text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400">Tümü</a>
+                </x-slot:actions>
+
+                @forelse ($pendingPayments as $item)
+                    <a href="{{ $item['url'] }}" class="flex items-start justify-between gap-3 border-b border-gray-100 py-3 last:border-0 last:pb-0 first:pt-0 hover:opacity-80 dark:border-slate-700">
+                        <div class="min-w-0">
+                            <p class="truncate text-sm font-medium text-gray-900 dark:text-white">{{ $item['recipient'] }}</p>
+                            <p class="text-xs text-gray-500 dark:text-slate-400">{{ $item['reference'] }} · {{ $item['scheduled_date_formatted'] }}</p>
+                        </div>
+                        <div class="shrink-0 text-right">
+                            <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $item['amount_formatted'] }}</p>
+                            <p @class(['text-xs', 'text-red-600 dark:text-red-400' => $item['is_overdue'], 'text-amber-600 dark:text-amber-400' => ! $item['is_overdue']])>
+                                {{ $item['delay_label'] }}
+                            </p>
+                        </div>
+                    </a>
+                @empty
+                    <p class="text-sm text-gray-500 dark:text-slate-400">Bekleyen ödeme yok.</p>
+                @endforelse
+            </x-ui.card>
+        @endif
+
+        @if ($canEarnings)
+            <x-ui.card title="Onay Bekleyen Hakedişler">
+                <x-slot:actions>
+                    <a href="{{ route('businesses.earnings.index', ['status' => 'pending']) }}" class="text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400">Tümü</a>
+                </x-slot:actions>
+
+                @forelse ($pendingEarnings as $item)
+                    <a href="{{ $item['url'] }}" class="flex items-start justify-between gap-3 border-b border-gray-100 py-3 last:border-0 last:pb-0 first:pt-0 hover:opacity-80 dark:border-slate-700">
+                        <div class="min-w-0">
+                            <p class="truncate text-sm font-medium text-gray-900 dark:text-white">{{ $item['business'] }}</p>
+                            <p class="text-xs text-gray-500 dark:text-slate-400">{{ $item['courier'] }} · {{ $item['period'] }}</p>
+                        </div>
+                        <p class="shrink-0 text-sm font-semibold text-gray-900 dark:text-white">{{ $item['revenue_formatted'] }}</p>
+                    </a>
+                @empty
+                    <p class="text-sm text-gray-500 dark:text-slate-400">Onay bekleyen hakediş yok.</p>
+                @endforelse
+            </x-ui.card>
+        @endif
+    </div>
+@endif
+
 <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
     <x-ui.card title="Son Eklenen İşletmeler">
         <x-slot:actions>

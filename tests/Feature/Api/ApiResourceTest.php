@@ -79,7 +79,16 @@ class ApiResourceTest extends TestCase
 
         $this->getJson('/api/v1/dashboard')
             ->assertOk()
-            ->assertJsonStructure(['data' => ['stats', 'latest_businesses', 'latest_couriers']]);
+            ->assertJsonStructure(['data' => [
+                'stats',
+                'latest_businesses',
+                'latest_couriers',
+                'courier_type_distribution',
+                'finance',
+                'pending_collections',
+                'pending_payments',
+                'pending_earnings',
+            ]]);
 
         $this->getJson('/api/v1/earnings')
             ->assertOk()
