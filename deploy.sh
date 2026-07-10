@@ -28,6 +28,9 @@ php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 
+echo "==> Queue worker yeniden başlatılıyor (varsa)..."
+php artisan queue:restart 2>/dev/null || true
+
 echo "==> PHP-FPM yeniden yükleniyor (varsa)..."
 if command -v systemctl >/dev/null 2>&1; then
   sudo systemctl reload php8.3-fpm 2>/dev/null || sudo systemctl reload php8.2-fpm 2>/dev/null || true

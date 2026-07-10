@@ -11,7 +11,7 @@ use App\Modules\Setting\Data\SettingsDefaults;
 use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Notification as NotificationFacade;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class NotificationTest extends TestCase
@@ -52,19 +52,17 @@ class NotificationTest extends TestCase
 
     public function test_dispatcher_respects_disabled_notification_settings(): void
     {
-        NotificationFacade::fake();
+        Queue::fake();
 
         $user = User::factory()->create();
         $user->assignRole('finance_officer');
-
-        $dispatcher = app(NotificationDispatcher::class);
 
         app(SettingsGroupRepositoryInterface::class)->put('notifications', array_merge(
             SettingsDefaults::notifications(),
             ['system_notifications' => false],
         ));
 
-        $dispatcher->notifyUser(
+        app(NotificationDispatcher::class)->notifyUser(
             $user,
             new SystemNotification(
                 type: 'earning_approved',
@@ -73,7 +71,7 @@ class NotificationTest extends TestCase
             ),
         );
 
-        NotificationFacade::assertNothingSent();
+        Queue::assertNothingPushed();
     }
 
     public function test_user_can_mark_notification_as_read(): void

@@ -14,6 +14,10 @@ class NotificationFormData
             'earning_approved' => 'Hakediş Onaylandı',
             'user_created' => 'Kullanıcı Oluşturuldu',
             'finance_synced' => 'Finans Kaydı Oluşturuldu',
+            'contract_expiry' => 'Sözleşme Bitiş Hatırlatması',
+            'document_expiry' => 'Evrak Süresi Hatırlatması',
+            'collection_reminder' => 'Tahsilat Hatırlatması',
+            'payment_reminder' => 'Ödeme Hatırlatması',
             'system' => 'Sistem Bildirimi',
         ];
     }
@@ -27,6 +31,10 @@ class NotificationFormData
             'earnings' => 'Hakedişler',
             'users' => 'Kullanıcılar',
             'finance' => 'Finans',
+            'contracts' => 'Sözleşmeler',
+            'documents' => 'Evraklar',
+            'collections' => 'Tahsilatlar',
+            'payments' => 'Ödemeler',
             'system' => 'Sistem',
         ];
     }
@@ -72,6 +80,10 @@ class NotificationFormData
             'earning_created', 'earning_approved' => 'earnings',
             'user_created' => 'users',
             'finance_synced' => 'finance',
+            'contract_expiry' => 'contracts',
+            'document_expiry' => 'documents',
+            'collection_reminder' => 'collections',
+            'payment_reminder' => 'payments',
             default => 'system',
         };
     }
@@ -81,6 +93,10 @@ class NotificationFormData
         return match ($type) {
             'earning_created', 'earning_approved', 'finance_synced' => 'earning_notifications',
             'user_created' => 'system_notifications',
+            'contract_expiry' => 'contract_expiry_notifications',
+            'document_expiry' => 'document_expiry_notifications',
+            'collection_reminder' => 'collection_reminder_notifications',
+            'payment_reminder' => 'payment_reminder_notifications',
             default => 'system_notifications',
         };
     }

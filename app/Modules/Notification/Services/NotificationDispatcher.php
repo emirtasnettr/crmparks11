@@ -3,8 +3,9 @@
 namespace App\Modules\Notification\Services;
 
 use App\Models\User;
-use App\Modules\Notification\Data\NotificationFormData;
+use App\Modules\Notification\Jobs\SendSystemNotificationJob;
 use App\Modules\Notification\Notifications\SystemNotification;
+use App\Modules\Notification\Data\NotificationFormData;
 use App\Modules\Setting\Services\SettingsManager;
 use Illuminate\Support\Collection;
 
@@ -16,29 +17,39 @@ class NotificationDispatcher
 
     public function notifyUser(User $user, SystemNotification $notification): void
     {
-        if (! $this->isTypeEnabled($notification->type)) {
+        if (! $this->shouldSend($notification->type)) {
             return;
         }
 
-        if (! $this->isSystemChannelEnabled()) {
-            return;
-        }
-
-        $user->notify($notification);
+        $this->queueNotification($user, $notification);
     }
 
     /**
      * @param  array<int, string>  $roles
      */
-    public function notifyRoles(array $roles, SystemNotification $notification, ?User $except = null): void
+    public function notifyRoles(array $roles, SystemNotification $notification, ?User $except = null): int
     {
-        if (! $this->isTypeEnabled($notification->type) || ! $this->isSystemChannelEnabled()) {
+        if (! $this->shouldSend($notification->type)) {
+            return 0;
+        }
+
+        $count = 0;
+
+        $this->usersForRoles($roles, $except)->each(function (User $user) use ($notification, &$count): void {
+            $this->queueNotification($user, $notification);
+            $count++;
+        });
+
+        return $count;
+    }
+
+    public function sendNow(User $user, SystemNotification $notification): void
+    {
+        if (! $this->shouldSend($notification->type)) {
             return;
         }
 
-        $this->usersForRoles($roles, $except)->each(
-            fn (User $user) => $user->notify($notification),
-        );
+        $user->notify($notification);
     }
 
     public function isTypeEnabled(string $type): bool
@@ -55,6 +66,23 @@ class NotificationDispatcher
     public function isSystemChannelEnabled(): bool
     {
         return (bool) ($this->notificationSettings()['system_notifications'] ?? true);
+    }
+
+    private function shouldSend(string $type): bool
+    {
+        return $this->isTypeEnabled($type) && $this->isSystemChannelEnabled();
+    }
+
+    private function queueNotification(User $user, SystemNotification $notification): void
+    {
+        SendSystemNotificationJob::dispatch(
+            $user->id,
+            $notification->type,
+            $notification->title,
+            $notification->message,
+            $notification->actionUrl,
+            $notification->meta,
+        );
     }
 
     /**
