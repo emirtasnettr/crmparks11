@@ -123,6 +123,12 @@ class SidebarMenu
                         'active' => ['users.activity-log.*'],
                         'roles' => ['super_admin', 'general_manager'],
                     ],
+                    [
+                        'label' => 'Bildirimler',
+                        'route' => 'notifications.index',
+                        'active' => ['notifications.*'],
+                        'permission' => 'notification.view',
+                    ],
                 ],
             ],
             [

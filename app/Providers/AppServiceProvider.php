@@ -6,6 +6,7 @@ use App\Modules\ActivityLog\Services\ActivityLogService;
 use App\Modules\Dashboard\Services\DashboardService;
 use App\Modules\Setting\Contracts\SettingsGroupRepositoryInterface;
 use App\Modules\Setting\Repositories\DatabaseSettingsGroupRepository;
+use App\Modules\Notification\Services\NotificationService;
 use App\Modules\Setting\Services\AppBrandingService;
 use App\Modules\Setting\Services\SettingsManager;
 use Illuminate\Support\Facades\Artisan;
@@ -36,6 +37,18 @@ class AppServiceProvider extends ServiceProvider
 
         View::composer(['layouts.*', 'auth.*', 'modules.settings.*'], function ($view) {
             $view->with('branding', app(AppBrandingService::class)->resolve());
+        });
+
+        View::composer('layouts.partials.notification-bell', function ($view) {
+            $user = auth()->user();
+
+            if ($user === null) {
+                $view->with('notificationHeader', ['unread_count' => 0, 'items' => []]);
+
+                return;
+            }
+
+            $view->with('notificationHeader', app(NotificationService::class)->headerPreview($user));
         });
     }
 }

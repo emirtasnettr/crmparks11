@@ -44,6 +44,7 @@ use App\Modules\User\Controllers\PermissionManagementController;
 use App\Modules\User\Controllers\RoleManagementController;
 use App\Modules\User\Controllers\UserActivityLogController;
 use App\Modules\User\Controllers\UserManagementController;
+use App\Modules\Notification\Controllers\NotificationController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -195,6 +196,19 @@ Route::middleware('auth')->group(function () {
                 ->middleware('permission:user.update')
                 ->name('update');
         });
+    });
+
+    Route::prefix('kullanici-yonetimi')->name('notifications.')->middleware('permission:notification.view')->group(function () {
+        Route::get('/bildirimler', [NotificationController::class, 'index'])->name('index');
+        Route::post('/bildirimler/tumunu-oku', [NotificationController::class, 'markAllRead'])
+            ->middleware('permission:notification.update')
+            ->name('mark-all-read');
+        Route::patch('/bildirimler/{id}/oku', [NotificationController::class, 'markRead'])
+            ->middleware('permission:notification.update')
+            ->name('mark-read');
+        Route::delete('/bildirimler/{id}', [NotificationController::class, 'destroy'])
+            ->middleware('permission:notification.delete')
+            ->name('destroy');
     });
 
     Route::prefix('kullanici-yonetimi')->middleware('role:super_admin|general_manager')->group(function () {

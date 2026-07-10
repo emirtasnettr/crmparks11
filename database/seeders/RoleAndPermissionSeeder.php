@@ -25,6 +25,7 @@ class RoleAndPermissionSeeder extends Seeder
             'earning.view', 'earning.create', 'earning.update', 'earning.delete', 'earning.approve', 'earning.view_own',
             'report.view', 'report.export',
             'user.view', 'user.create', 'user.update', 'user.delete',
+            'notification.view', 'notification.update', 'notification.delete',
             'setting.view', 'setting.update',
             'form_builder.view', 'form_builder.manage',
             'landing_page.view', 'landing_page.manage',
@@ -50,10 +51,12 @@ class RoleAndPermissionSeeder extends Seeder
                 'assignment.view', 'assignment.create', 'assignment.update',
                 'contract.view', 'contract.create', 'contract.update',
                 'earning.view', 'earning.create', 'earning.update',
+                'notification.view', 'notification.update',
             ],
             'finance_officer' => [
                 'dashboard.view', 'dashboard.financial',
                 'earning.view', 'earning.approve', 'report.view', 'report.export',
+                'notification.view', 'notification.update', 'notification.delete',
             ],
             'operations_staff' => [
                 'dashboard.view',
@@ -64,12 +67,14 @@ class RoleAndPermissionSeeder extends Seeder
                 'business.view_own',
                 'contract.view_own',
                 'earning.view_own',
+                'notification.view', 'notification.update',
             ],
             'courier' => [
                 'dashboard.view',
                 'courier.view_own',
                 'earning.view_own',
                 'contract.view_own',
+                'notification.view', 'notification.update',
             ],
             'agency' => [
                 'dashboard.view',
@@ -77,6 +82,7 @@ class RoleAndPermissionSeeder extends Seeder
                 'courier.view',
                 'earning.view_own',
                 'contract.view_own',
+                'notification.view', 'notification.update',
             ],
             'regional_coordinator' => [
                 'dashboard.view',

@@ -7,6 +7,7 @@ use App\Models\EarningStatus;
 use App\Models\User;
 use App\Modules\ActivityLog\Services\ActivityLogService;
 use App\Modules\Finance\Services\EarningFinanceSyncService;
+use App\Modules\Notification\Services\EarningNotificationService;
 use App\Modules\Agency\Models\Agency;
 use App\Modules\Business\Models\Business;
 use App\Modules\Courier\Models\Courier;
@@ -25,6 +26,7 @@ class BusinessEarningService
         private readonly BusinessAssignmentService $assignments,
         private readonly ActivityLogService $activityLog,
         private readonly EarningFinanceSyncService $earningFinanceSync,
+        private readonly EarningNotificationService $earningNotifications,
     ) {}
 
     /**
@@ -149,6 +151,9 @@ class BusinessEarningService
                 description: $this->activityDescription($line, 'oluşturuldu'),
             );
 
+            $line = $line->fresh(['business', 'courier.agency', 'status']);
+            $this->earningNotifications->notifyCreated($line, $user);
+
             return $line;
         });
     }
@@ -245,6 +250,8 @@ class BusinessEarningService
                 $line,
                 description: $this->activityDescription($line, 'onaylandı'),
             );
+
+            $this->earningNotifications->notifyApproved($line, $user);
 
             return $line;
         });

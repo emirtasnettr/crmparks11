@@ -77,6 +77,8 @@ class BusinessEarningWorkflowTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('general_manager');
+        $financeOfficer = User::factory()->create();
+        $financeOfficer->assignRole('finance_officer');
         $business = $this->createBusiness($user);
         $courier = $this->createCourier($user);
         $line = $this->createEarning($business, $courier, $user, 'pending_review');
@@ -90,6 +92,10 @@ class BusinessEarningWorkflowTest extends TestCase
         $this->assertSame('approved', $line->status?->code);
         $this->assertSame($user->id, $line->approved_by);
         $this->assertNotNull($line->approved_at);
+
+        $this->assertTrue(
+            $financeOfficer->notifications()->where('data->type', 'earning_approved')->exists()
+        );
 
         $this->assertDatabaseHas('finance_revenues', [
             'earning_line_id' => $line->id,

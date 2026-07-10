@@ -6,6 +6,7 @@ use App\Core\Enums\Status;
 use App\Core\Enums\UserType;
 use App\Models\User;
 use App\Modules\ActivityLog\Services\ActivityLogService;
+use App\Modules\Notification\Services\UserNotificationService;
 use App\Modules\Agency\Models\Agency;
 use App\Modules\Business\Models\Business;
 use App\Modules\Courier\Models\Courier;
@@ -22,6 +23,7 @@ class UserManagementService
     public function __construct(
         private readonly UserManagementPresenter $presenter,
         private readonly ActivityLogService $activityLog,
+        private readonly UserNotificationService $userNotifications,
     ) {}
 
     /**
@@ -154,7 +156,10 @@ class UserManagementService
                 description: "{$user->name} kullanıcısı oluşturuldu.",
             );
 
-            return $user->fresh(['roles', 'profileable']);
+            $user = $user->fresh(['roles', 'profileable']);
+            $this->userNotifications->notifyCreated($user, $actor);
+
+            return $user;
         });
     }
 
