@@ -3,6 +3,7 @@
 namespace App\Modules\Finance\Controllers;
 
 use App\Core\Http\Concerns\DownloadsListExport;
+use App\Core\Http\Concerns\DownloadsPdfExport;
 use App\Http\Controllers\Controller;
 use App\Modules\Finance\Data\ExpenseFormData;
 use App\Modules\Finance\Exports\FinanceListExportSheets;
@@ -12,12 +13,14 @@ use App\Modules\Finance\Services\ExpensePresenter;
 use App\Modules\Finance\Services\ExpenseService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class FinanceExpenseController extends Controller
 {
     use DownloadsListExport;
+    use DownloadsPdfExport;
 
     public function __construct(
         private readonly ExpenseService $service,
@@ -91,6 +94,59 @@ class FinanceExpenseController extends Controller
             FinanceListExportSheets::expenses($filters),
             'Giderler',
         );
+    }
+
+    public function exportPdf(Request $request): Response
+    {
+        $filters = [
+            'expense_type' => $request->string('expense_type')->toString() ?: 'all',
+            'courier_id' => $request->string('courier_id')->toString() ?: 'all',
+            'agency_id' => $request->string('agency_id')->toString() ?: 'all',
+            'date_range' => $request->string('date_range')->toString() ?: 'all',
+            'payment_status' => $request->string('payment_status')->toString() ?: 'all',
+        ];
+
+        $summary = $this->service->summarize($filters);
+
+        return $this->downloadPdfTable(
+            'Giderler',
+            FinanceListExportSheets::expenses($filters),
+            'giderler',
+            [
+                'Toplam' => number_format((float) $summary['total_expense'], 2).' ₺',
+                'Ödenen' => number_format((float) $summary['paid_amount'], 2).' ₺',
+                'Bekleyen' => number_format((float) $summary['pending_payment'], 2).' ₺',
+            ],
+        );
+    }
+
+    public function pdf(int $id): Response
+    {
+        $expense = $this->service->find($id);
+
+        abort_if($expense === null, 404);
+
+        $row = $this->presenter->showRow($expense);
+
+        return $this->streamPdf('exports.pdf.document', [
+            'title' => 'Gider '.$row['reference'],
+            'subtitle' => $row['expense_type_label'],
+            'fields' => [
+                'Gider No' => $row['reference'],
+                'Gider Türü' => $row['expense_type_label'],
+                'Kurye / Acente' => $row['payee_display'],
+                'Belge No' => $row['document_no'] ?? '—',
+                'Ödeme Durumu' => $row['payment_status_label'],
+                'Ödeme Tarihi' => $row['payment_date_formatted'],
+                'Gider Tarihi' => $row['expense_date_formatted'],
+                'Açıklama' => $row['description'] ?? '—',
+            ],
+            'totals' => [
+                'Tutar' => $row['amount_formatted'],
+                'KDV' => $row['vat_amount_formatted'],
+                'Genel Toplam' => $row['gross_amount_formatted'],
+            ],
+        ], 'gider-'.$row['reference']);
     }
 
     public function show(int $id): View

@@ -3,6 +3,7 @@
 namespace App\Modules\Finance\Controllers;
 
 use App\Core\Http\Concerns\DownloadsListExport;
+use App\Core\Http\Concerns\DownloadsPdfExport;
 use App\Http\Controllers\Controller;
 use App\Modules\Finance\Data\PaymentFormData;
 use App\Modules\Finance\Exports\FinanceListExportSheets;
@@ -13,12 +14,14 @@ use App\Modules\Finance\Services\PaymentPresenter;
 use App\Modules\Finance\Services\PaymentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class FinancePaymentController extends Controller
 {
     use DownloadsListExport;
+    use DownloadsPdfExport;
 
     public function __construct(
         private readonly PaymentService $service,
@@ -120,6 +123,37 @@ class FinancePaymentController extends Controller
             FinanceListExportSheets::payments($filters),
             'Ödemeler',
         );
+    }
+
+    public function pdf(int $id): Response
+    {
+        $payment = $this->service->find($id);
+
+        abort_if($payment === null, 404);
+
+        $row = $this->presenter->showRow($payment);
+
+        return $this->streamPdf('exports.pdf.document', [
+            'title' => 'Ödeme '.$row['reference'],
+            'subtitle' => $row['status_label'],
+            'fields' => [
+                'Ödeme No' => $row['reference'],
+                'Alıcı Tipi' => $row['recipient_type_label'],
+                'Alıcı' => $row['recipient_name'],
+                'Hakediş No' => $row['earning_reference_display'],
+                'Planlanan Tarih' => $row['scheduled_date_formatted'],
+                'Ödeme Tarihi' => $row['payment_date_formatted'],
+                'Ödeme Yöntemi' => $row['payment_method_label'],
+                'Ödeme Referansı' => $row['payment_reference'] ?? '—',
+                'Banka Hesabı' => $row['bank_account'] ?? '—',
+                'Durum' => $row['status_label'],
+            ],
+            'totals' => [
+                'Toplam Tutar' => $row['total_amount_formatted'],
+                'Ödenen' => $row['paid_amount_formatted'],
+                'Kalan' => $row['remaining_amount_formatted'],
+            ],
+        ], 'odeme-'.$row['reference']);
     }
 
     public function show(int $id): View

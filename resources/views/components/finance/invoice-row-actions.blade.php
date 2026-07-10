@@ -8,9 +8,8 @@
         RowActions::link('Görüntüle', route('finance.invoices.show', $id)),
     ];
 
-    if ($invoice['pdf_filename'] ?? false) {
-        $items[] = RowActions::run('PDF Görüntüle', 'view-pdf', message: 'Fatura PDF görüntüleniyor.');
-        $items[] = RowActions::run('İndir', 'download', message: 'Fatura indiriliyor.');
+    if ($invoice['invoice_status'] !== 'draft') {
+        $items[] = RowActions::link('PDF Görüntüle', route('finance.invoices.pdf', $id));
     }
 
     if ($invoice['can_update'] ?? false) {

@@ -43,7 +43,7 @@
                 <x-ui.button type="submit">Filtrele</x-ui.button>
                 <x-ui.button href="{{ route('finance.profitability.index') }}" variant="secondary">Temizle</x-ui.button>
                 <x-ui.export-button :href="route('finance.profitability.export', request()->query())" />
-                <x-ui.button type="button" variant="secondary">PDF Raporu</x-ui.button>
+                <x-ui.export-button :href="route('finance.profitability.export-pdf', request()->query())" label="PDF Raporu" />
             </div>
         </form>
     </x-ui.card>

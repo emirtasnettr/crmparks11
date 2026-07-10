@@ -29,9 +29,12 @@
                         Güncel Bakiye:
                         <span class="font-semibold text-gray-900 dark:text-white" x-text="selected.balance_formatted"></span>
                     </div>
-                    <x-ui.button type="button" size="sm" variant="secondary">
+                    <a
+                        :href="`{{ url('/finans/cari-hesaplar') }}/${selected.id}/pdf`"
+                        class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                    >
                         PDF İndir
-                    </x-ui.button>
+                    </a>
                 </div>
 
                 <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-slate-700">

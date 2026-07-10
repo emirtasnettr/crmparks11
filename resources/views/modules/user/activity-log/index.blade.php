@@ -58,7 +58,7 @@
                 <x-ui.button type="submit">Filtrele</x-ui.button>
                 <x-ui.button href="{{ route('users.activity-log.index') }}" variant="secondary">Temizle</x-ui.button>
                 <x-ui.export-button :href="route('users.activity-log.export', request()->query())" />
-                <x-ui.button type="button" variant="secondary">PDF'e Aktar</x-ui.button>
+                <x-ui.export-button :href="route('users.activity-log.export-pdf', request()->query())" label="PDF'e Aktar" />
             </div>
         </form>
     </x-ui.card>

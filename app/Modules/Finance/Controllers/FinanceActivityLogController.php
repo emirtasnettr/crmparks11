@@ -3,17 +3,20 @@
 namespace App\Modules\Finance\Controllers;
 
 use App\Core\Http\Concerns\DownloadsListExport;
+use App\Core\Http\Concerns\DownloadsPdfExport;
 use App\Http\Controllers\Controller;
 use App\Modules\Finance\Data\FinanceActivityLogFormData;
 use App\Modules\Finance\Exports\FinanceListExportSheets;
 use App\Modules\Finance\Services\FinanceActivityLogService;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class FinanceActivityLogController extends Controller
 {
     use DownloadsListExport;
+    use DownloadsPdfExport;
 
     public function __construct(
         private readonly FinanceActivityLogService $activityLogService,
@@ -67,6 +70,24 @@ class FinanceActivityLogController extends Controller
             'finans-hareket-gecmisi',
             FinanceListExportSheets::activityLog($filters),
             'Finans Hareket Geçmişi',
+        );
+    }
+
+    public function exportPdf(Request $request): Response
+    {
+        $filters = [
+            'action_type' => $request->string('action_type')->toString() ?: 'all',
+            'module' => $request->string('module')->toString() ?: 'all',
+            'user_id' => $request->string('user_id')->toString() ?: 'all',
+            'date_range' => $request->string('date_range')->toString() ?: 'all',
+            'current_account' => $request->string('current_account')->toString() ?: 'all',
+            'reference' => $request->string('reference')->toString() ?: '',
+        ];
+
+        return $this->downloadPdfTable(
+            'Finans Hareket Geçmişi',
+            FinanceListExportSheets::activityLog($filters),
+            'finans-hareket-gecmisi',
         );
     }
 }

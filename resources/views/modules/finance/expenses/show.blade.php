@@ -33,7 +33,7 @@
                 <x-ui.button href="#edit">Düzenle</x-ui.button>
             @endif
             <x-ui.button variant="secondary">Ödeme Yap</x-ui.button>
-            <x-ui.button variant="secondary">PDF Oluştur</x-ui.button>
+            <x-ui.button href="{{ route('finance.expenses.pdf', $expense['id']) }}" variant="secondary">PDF Oluştur</x-ui.button>
         </div>
     </div>
 

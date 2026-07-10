@@ -3,6 +3,7 @@
 namespace App\Modules\Agency\Controllers;
 
 use App\Core\Http\Concerns\DownloadsListExport;
+use App\Core\Http\Concerns\DownloadsPdfExport;
 use App\Http\Controllers\Controller;
 use App\Modules\Agency\Data\AgencyEarningFormData;
 use App\Modules\Agency\Exports\AgencyListExportSheets;
@@ -12,12 +13,14 @@ use App\Modules\Business\Requests\ImportBusinessEarningRequest;
 use App\Modules\Business\Services\BusinessEarningImportService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class AgencyEarningController extends Controller
 {
     use DownloadsListExport;
+    use DownloadsPdfExport;
 
     public function __construct(
         private readonly AgencyEarningService $earnings,
@@ -130,5 +133,42 @@ class AgencyEarningController extends Controller
         return view('modules.agency.earnings.show', [
             'earning' => $earning,
         ]);
+    }
+
+    public function pdf(int $id): Response|RedirectResponse
+    {
+        if (! AgencyFeatures::earningsEnabled()) {
+            return redirect()->route('agencies.index');
+        }
+
+        $row = $this->earnings->find($id);
+
+        abort_if($row === null, 404);
+
+        $paymentStatusLabel = AgencyEarningFormData::paymentStatuses()[$row['payment_status']] ?? $row['payment_status'];
+        $statusLabel = AgencyEarningFormData::earningStatuses()[$row['status']] ?? $row['status'];
+
+        return $this->streamPdf('exports.pdf.document', [
+            'title' => 'Hakediş '.$row['reference'],
+            'subtitle' => $row['period_label'],
+            'fields' => [
+                'Hakediş No' => $row['reference'],
+                'Acente' => $row['agency_name'],
+                'Şehir' => $row['agency_city'],
+                'Telefon' => $row['agency_phone'],
+                'Dönem' => $row['period_label'],
+                'Dönem Tipi' => $row['period_type_label'],
+                'Kurye Sayısı' => $row['courier_count'],
+                'Paket Sayısı' => $row['package_count'],
+                'Ödeme Durumu' => $paymentStatusLabel,
+                'Durum' => $statusLabel,
+                'Ödeme Tarihi' => $row['payment_date_formatted'],
+            ],
+            'totals' => [
+                'Brüt Hakediş' => money_excl_vat($row['gross_amount']),
+                'Kesinti' => money_excl_vat($row['deduction']),
+                'Net Ödeme' => money_excl_vat($row['net_payment']),
+            ],
+        ], 'acente-hakedis-'.$row['reference']);
     }
 }

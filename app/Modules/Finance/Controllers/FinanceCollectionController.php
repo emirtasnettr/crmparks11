@@ -3,6 +3,7 @@
 namespace App\Modules\Finance\Controllers;
 
 use App\Core\Http\Concerns\DownloadsListExport;
+use App\Core\Http\Concerns\DownloadsPdfExport;
 use App\Http\Controllers\Controller;
 use App\Modules\Finance\Data\CollectionFormData;
 use App\Modules\Finance\Exports\FinanceListExportSheets;
@@ -13,12 +14,14 @@ use App\Modules\Finance\Services\CollectionPresenter;
 use App\Modules\Finance\Services\CollectionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class FinanceCollectionController extends Controller
 {
     use DownloadsListExport;
+    use DownloadsPdfExport;
 
     public function __construct(
         private readonly CollectionService $service,
@@ -110,6 +113,37 @@ class FinanceCollectionController extends Controller
             FinanceListExportSheets::collections($filters),
             'Tahsilatlar',
         );
+    }
+
+    public function pdf(int $id): Response
+    {
+        $collection = $this->service->find($id);
+
+        abort_if($collection === null, 404);
+
+        $row = $this->presenter->showRow($collection);
+
+        return $this->streamPdf('exports.pdf.document', [
+            'title' => 'Tahsilat '.$row['reference'],
+            'subtitle' => $row['status_label'],
+            'fields' => [
+                'Tahsilat No' => $row['reference'],
+                'İşletme' => $row['business_name'],
+                'Gelir No' => $row['revenue_reference_display'],
+                'Fatura No' => $row['invoice_no_display'],
+                'Vade Tarihi' => $row['due_date_formatted'],
+                'Tahsilat Tarihi' => $row['collection_date_formatted'],
+                'Ödeme Yöntemi' => $row['payment_method_label'],
+                'Ödeme Referansı' => $row['payment_reference'] ?? '—',
+                'Banka' => $row['bank'] ?? '—',
+                'Durum' => $row['status_label'],
+            ],
+            'totals' => [
+                'Toplam Tutar' => $row['total_amount_formatted'],
+                'Tahsil Edilen' => $row['collected_amount_formatted'],
+                'Kalan' => $row['remaining_amount_formatted'],
+            ],
+        ], 'tahsilat-'.$row['reference']);
     }
 
     public function show(int $id): View

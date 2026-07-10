@@ -25,7 +25,7 @@
         </div>
         <div class="flex shrink-0 flex-wrap gap-2">
             <x-ui.button variant="secondary">Düzenle</x-ui.button>
-            <x-ui.button variant="secondary">PDF Oluştur</x-ui.button>
+            <x-ui.button href="{{ route('agencies.earnings.pdf', $earning['id']) }}" variant="secondary">PDF Oluştur</x-ui.button>
         </div>
     </div>
 

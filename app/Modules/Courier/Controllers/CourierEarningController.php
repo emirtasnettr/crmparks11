@@ -3,6 +3,7 @@
 namespace App\Modules\Courier\Controllers;
 
 use App\Core\Http\Concerns\DownloadsListExport;
+use App\Core\Http\Concerns\DownloadsPdfExport;
 use App\Http\Controllers\Controller;
 use App\Modules\Business\Requests\ImportBusinessEarningRequest;
 use App\Modules\Business\Services\BusinessEarningImportService;
@@ -13,12 +14,14 @@ use App\Modules\Courier\Services\CourierEarningService;
 use App\Modules\Courier\Support\CourierFeatures;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class CourierEarningController extends Controller
 {
     use DownloadsListExport;
+    use DownloadsPdfExport;
 
     public function __construct(
         private readonly CourierEarningService $earnings,
@@ -145,5 +148,43 @@ class CourierEarningController extends Controller
         return view('modules.courier.earnings.show', [
             'earning' => $this->presenter->showRow($earning),
         ]);
+    }
+
+    public function pdf(int $id): Response|RedirectResponse
+    {
+        if (! CourierFeatures::earningsEnabled()) {
+            return redirect()->route('couriers.index');
+        }
+
+        $earning = $this->earnings->find($id);
+
+        abort_if($earning === null, 404);
+
+        $row = $this->presenter->showRow($earning);
+        $reference = sprintf('KHK-%d-%04d', $row['period_year'], $row['id']);
+        $paymentStatusLabel = CourierEarningFormData::paymentStatuses()[$row['payment_status']] ?? $row['payment_status'];
+        $courierTypeLabel = CourierEarningFormData::courierTypes()[$row['courier_type']] ?? $row['courier_type'];
+
+        return $this->streamPdf('exports.pdf.document', [
+            'title' => 'Hakediş '.$reference,
+            'subtitle' => $row['period_label'],
+            'fields' => [
+                'Hakediş No' => $reference,
+                'Kurye' => $row['courier_name'],
+                'Kurye Tipi' => $courierTypeLabel,
+                'İşletme' => $row['business_name'],
+                'Acente' => $row['agency_name'],
+                'Dönem' => $row['period_label'],
+                'Paket Sayısı' => $row['package_count'],
+                'Ödeme Durumu' => $paymentStatusLabel,
+                'Ödeme Tarihi' => $row['payment_date_formatted'],
+                'Açıklama' => $row['description'] ?? '—',
+            ],
+            'totals' => [
+                'Hakediş' => $row['earning_amount_formatted'],
+                'Kesinti' => money_excl_vat($row['deduction']),
+                'Net Ödeme' => $row['net_payment_formatted'],
+            ],
+        ], 'kurye-hakedis-'.$reference);
     }
 }

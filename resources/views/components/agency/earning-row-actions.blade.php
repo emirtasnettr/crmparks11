@@ -9,7 +9,7 @@
     $items = [
         RowActions::link('Görüntüle', route('agencies.earnings.show', $id)),
         RowActions::run('Düzenle', 'edit', message: 'Hakediş düzenleme için açıldı.'),
-        RowActions::run('PDF İndir', 'download', message: 'Hakediş PDF indiriliyor.'),
+        RowActions::link('PDF İndir', route('agencies.earnings.pdf', $id)),
         RowActions::link('Acenteye Git', route('agencies.earnings.index', ['agency_id' => $agencyId])),
         RowActions::divider(),
         RowActions::run('Sil', 'delete', confirm: 'Hakediş silinsin mi?', message: 'Hakediş silindi.', tone: 'danger', id: $id),

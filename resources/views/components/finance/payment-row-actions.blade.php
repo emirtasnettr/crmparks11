@@ -14,7 +14,7 @@
     }
 
     $items = array_merge($items, [
-        RowActions::run('Ödeme Dekontu', 'download', message: 'Ödeme dekontu indiriliyor.'),
+        RowActions::link('Ödeme Dekontu', route('finance.payments.pdf', $id)),
         RowActions::link('Cari Kartına Git', route('finance.current-accounts.index', ['search' => $payment['current_account_code'] ?? ''])),
         RowActions::link('Hakedişe Git', route('businesses.earnings.index')),
     ]);

@@ -136,6 +136,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/hakedisler/ice-aktar', [CourierEarningController::class, 'import'])
             ->middleware('permission:earning.create')
             ->name('earnings.import');
+        Route::get('/hakedisler/{id}/pdf', [CourierEarningController::class, 'pdf'])->name('earnings.pdf');
         Route::get('/hakedisler/{id}', [CourierEarningController::class, 'show'])->name('earnings.show');
         Route::get('/calisma-gecmisi', [CourierWorkHistoryController::class, 'index'])->name('work-history.index');
         Route::get('/calisma-gecmisi/{id}', [CourierWorkHistoryController::class, 'show'])->name('work-history.show');
@@ -159,42 +160,53 @@ Route::middleware('auth')->group(function () {
         Route::put('/cari-hesaplar/{id}', [FinanceCurrentAccountController::class, 'update'])->name('current-accounts.update');
         Route::post('/cari-hesaplar/hareketler', [FinanceCurrentAccountController::class, 'storeMovement'])->name('current-accounts.movements.store');
         Route::get('/cari-hesaplar/export', [FinanceCurrentAccountController::class, 'export'])->name('current-accounts.export');
+        Route::get('/cari-hesaplar/{id}/pdf', [FinanceCurrentAccountController::class, 'statementPdf'])->name('current-accounts.pdf');
         Route::get('/gelirler', [FinanceRevenueController::class, 'index'])->name('revenues.index');
         Route::post('/gelirler', [FinanceRevenueController::class, 'store'])->name('revenues.store');
         Route::put('/gelirler/{id}', [FinanceRevenueController::class, 'update'])->name('revenues.update');
         Route::get('/gelirler/export', [FinanceRevenueController::class, 'export'])->name('revenues.export');
+        Route::get('/gelirler/pdf', [FinanceRevenueController::class, 'exportPdf'])->name('revenues.export-pdf');
+        Route::get('/gelirler/{id}/pdf', [FinanceRevenueController::class, 'pdf'])->name('revenues.pdf');
         Route::get('/gelirler/{id}', [FinanceRevenueController::class, 'show'])->name('revenues.show');
         Route::get('/giderler', [FinanceExpenseController::class, 'index'])->name('expenses.index');
         Route::post('/giderler', [FinanceExpenseController::class, 'store'])->name('expenses.store');
         Route::put('/giderler/{id}', [FinanceExpenseController::class, 'update'])->name('expenses.update');
         Route::get('/giderler/export', [FinanceExpenseController::class, 'export'])->name('expenses.export');
+        Route::get('/giderler/pdf', [FinanceExpenseController::class, 'exportPdf'])->name('expenses.export-pdf');
+        Route::get('/giderler/{id}/pdf', [FinanceExpenseController::class, 'pdf'])->name('expenses.pdf');
         Route::get('/giderler/{id}', [FinanceExpenseController::class, 'show'])->name('expenses.show');
         Route::get('/tahsilatlar', [FinanceCollectionController::class, 'index'])->name('collections.index');
         Route::post('/tahsilatlar', [FinanceCollectionController::class, 'store'])->name('collections.store');
         Route::post('/tahsilatlar/toplu', [FinanceCollectionController::class, 'bulk'])->name('collections.bulk');
         Route::put('/tahsilatlar/{id}', [FinanceCollectionController::class, 'update'])->name('collections.update');
         Route::get('/tahsilatlar/export', [FinanceCollectionController::class, 'export'])->name('collections.export');
+        Route::get('/tahsilatlar/{id}/pdf', [FinanceCollectionController::class, 'pdf'])->name('collections.pdf');
         Route::get('/tahsilatlar/{id}', [FinanceCollectionController::class, 'show'])->name('collections.show');
         Route::get('/odemeler', [FinancePaymentController::class, 'index'])->name('payments.index');
         Route::post('/odemeler', [FinancePaymentController::class, 'store'])->name('payments.store');
         Route::post('/odemeler/toplu', [FinancePaymentController::class, 'bulk'])->name('payments.bulk');
         Route::put('/odemeler/{id}', [FinancePaymentController::class, 'update'])->name('payments.update');
         Route::get('/odemeler/export', [FinancePaymentController::class, 'export'])->name('payments.export');
+        Route::get('/odemeler/{id}/pdf', [FinancePaymentController::class, 'pdf'])->name('payments.pdf');
         Route::get('/odemeler/{id}', [FinancePaymentController::class, 'show'])->name('payments.show');
         Route::get('/faturalar', [FinanceInvoiceController::class, 'index'])->name('invoices.index');
         Route::post('/faturalar', [FinanceInvoiceController::class, 'store'])->name('invoices.store');
         Route::post('/faturalar/toplu', [FinanceInvoiceController::class, 'bulk'])->name('invoices.bulk');
         Route::put('/faturalar/{id}', [FinanceInvoiceController::class, 'update'])->name('invoices.update');
         Route::get('/faturalar/export', [FinanceInvoiceController::class, 'export'])->name('invoices.export');
+        Route::get('/faturalar/pdf', [FinanceInvoiceController::class, 'exportPdf'])->name('invoices.export-pdf');
+        Route::get('/faturalar/{id}/pdf', [FinanceInvoiceController::class, 'pdf'])->name('invoices.pdf');
         Route::get('/faturalar/{id}', [FinanceInvoiceController::class, 'show'])->name('invoices.show');
         Route::get('/karlilik-analizi', [FinanceProfitabilityController::class, 'index'])->name('profitability.index');
         Route::get('/karlilik-analizi/export', [FinanceProfitabilityController::class, 'export'])->name('profitability.export');
+        Route::get('/karlilik-analizi/pdf', [FinanceProfitabilityController::class, 'exportPdf'])->name('profitability.export-pdf');
         Route::get('/nakit-akisi', [FinanceCashFlowController::class, 'index'])->name('cash-flow.index');
     });
 
     Route::prefix('finans')->name('finance.')->middleware('role:super_admin|general_manager')->group(function () {
         Route::get('/hareket-gecmisi', [FinanceActivityLogController::class, 'index'])->name('activity-log.index');
         Route::get('/hareket-gecmisi/export', [FinanceActivityLogController::class, 'export'])->name('activity-log.export');
+        Route::get('/hareket-gecmisi/pdf', [FinanceActivityLogController::class, 'exportPdf'])->name('activity-log.export-pdf');
     });
 
     Route::prefix('kullanici-yonetimi')->middleware('permission:user.view')->group(function () {
@@ -254,6 +266,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('kullanici-yonetimi')->middleware('role:super_admin|general_manager')->group(function () {
         Route::get('/aktivite-kayitlari', [UserActivityLogController::class, 'index'])->name('users.activity-log.index');
         Route::get('/aktivite-kayitlari/export', [UserActivityLogController::class, 'export'])->name('users.activity-log.export');
+        Route::get('/aktivite-kayitlari/pdf', [UserActivityLogController::class, 'exportPdf'])->name('users.activity-log.export-pdf');
     });
 
     Route::prefix('sistem-ayarlari')->middleware('role:super_admin')->name('settings.')->group(function () {
@@ -311,6 +324,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/hakedisler/ice-aktar', [AgencyEarningController::class, 'import'])
             ->middleware('permission:earning.create')
             ->name('earnings.import');
+        Route::get('/hakedisler/{id}/pdf', [AgencyEarningController::class, 'pdf'])->name('earnings.pdf');
         Route::get('/hakedisler/{id}', [AgencyEarningController::class, 'show'])->name('earnings.show');
         Route::get('/evraklar', [AgencyDocumentController::class, 'index'])->name('documents.index');
         Route::post('/evraklar', [AgencyDocumentController::class, 'store'])->middleware('permission:agency.update')->name('documents.store');

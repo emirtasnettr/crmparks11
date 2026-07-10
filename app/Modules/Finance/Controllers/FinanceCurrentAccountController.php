@@ -3,6 +3,7 @@
 namespace App\Modules\Finance\Controllers;
 
 use App\Core\Http\Concerns\DownloadsListExport;
+use App\Core\Http\Concerns\DownloadsPdfExport;
 use App\Http\Controllers\Controller;
 use App\Modules\Finance\Data\CurrentAccountFormData;
 use App\Modules\Finance\Exports\FinanceListExportSheets;
@@ -13,12 +14,14 @@ use App\Modules\Finance\Services\CurrentAccountPresenter;
 use App\Modules\Finance\Services\CurrentAccountService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class FinanceCurrentAccountController extends Controller
 {
     use DownloadsListExport;
+    use DownloadsPdfExport;
 
     public function __construct(
         private readonly CurrentAccountService $service,
@@ -111,6 +114,36 @@ class FinanceCurrentAccountController extends Controller
             'cari-hesaplar',
             FinanceListExportSheets::currentAccounts($filters),
             'Cari Hesaplar',
+        );
+    }
+
+    public function statementPdf(int $id): Response
+    {
+        $account = $this->service->find($id);
+
+        abort_if($account === null, 404);
+
+        $row = $this->presenter->detailRow($account);
+        $movements = $row['movements'] ?? [];
+
+        return $this->downloadPdfTable(
+            'Cari Ekstresi — '.$row['title'],
+            [
+                'headings' => ['Tarih', 'Belge No', 'Tür', 'Borç', 'Alacak', 'Açıklama'],
+                'rows' => collect($movements)->map(fn (array $movement) => [
+                    $movement['date_formatted'] ?? $movement['date'] ?? '—',
+                    $movement['document_no'] ?? '—',
+                    $movement['type_label'] ?? $movement['type'] ?? '—',
+                    $movement['debit_formatted'] ?? '—',
+                    $movement['credit_formatted'] ?? '—',
+                    $movement['description'] ?? '—',
+                ])->all(),
+            ],
+            'cari-ekstre-'.$row['code'],
+            [
+                'Cari Kod' => $row['code'],
+                'Bakiye' => $row['balance_formatted'] ?? number_format((float) ($row['balance'] ?? 0), 2).' ₺',
+            ],
         );
     }
 }

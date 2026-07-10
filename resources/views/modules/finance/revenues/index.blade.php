@@ -28,12 +28,7 @@
                 Yeni Gelir
             </x-ui.button>
             <x-ui.export-button :href="route('finance.revenues.export', request()->query())" />
-            <x-ui.button type="button" variant="secondary">
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-                </svg>
-                PDF Raporu
-            </x-ui.button>
+            <x-ui.export-button :href="route('finance.revenues.export-pdf', request()->query())" label="PDF Raporu" />
         </div>
     </div>
 

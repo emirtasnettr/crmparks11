@@ -14,7 +14,7 @@
     }
 
     $items = array_merge($items, [
-        RowActions::run('Tahsilat Makbuzu', 'download', message: 'Tahsilat makbuzu indiriliyor.'),
+        RowActions::link('Tahsilat Makbuzu', route('finance.collections.pdf', $id)),
         RowActions::run('Dekont Yükle', 'upload', message: 'Dekont yükleme ekranı açıldı.'),
         RowActions::link('Cari Kartına Git', route('finance.current-accounts.index', ['search' => $collection['current_account_code'] ?? ''])),
         RowActions::link('Gelire Git', route('finance.revenues.show', $collection['revenue_id'] ?? $id)),

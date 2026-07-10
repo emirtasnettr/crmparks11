@@ -3,6 +3,7 @@
 namespace App\Modules\Finance\Controllers;
 
 use App\Core\Http\Concerns\DownloadsListExport;
+use App\Core\Http\Concerns\DownloadsPdfExport;
 use App\Http\Controllers\Controller;
 use App\Modules\Finance\Data\RevenueFormData;
 use App\Modules\Finance\Exports\FinanceListExportSheets;
@@ -12,12 +13,14 @@ use App\Modules\Finance\Services\RevenuePresenter;
 use App\Modules\Finance\Services\RevenueService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class FinanceRevenueController extends Controller
 {
     use DownloadsListExport;
+    use DownloadsPdfExport;
 
     public function __construct(
         private readonly RevenueService $service,
@@ -91,6 +94,61 @@ class FinanceRevenueController extends Controller
             FinanceListExportSheets::revenues($filters),
             'Gelirler',
         );
+    }
+
+    public function exportPdf(Request $request): Response
+    {
+        $filters = [
+            'business_id' => $request->string('business_id')->toString() ?: 'all',
+            'revenue_type' => $request->string('revenue_type')->toString() ?: 'all',
+            'date_range' => $request->string('date_range')->toString() ?: 'all',
+            'collection_status' => $request->string('collection_status')->toString() ?: 'all',
+            'invoice_status' => $request->string('invoice_status')->toString() ?: 'all',
+        ];
+
+        $summary = $this->service->summarize($filters);
+
+        return $this->downloadPdfTable(
+            'Gelirler',
+            FinanceListExportSheets::revenues($filters),
+            'gelirler',
+            [
+                'Toplam' => number_format((float) $summary['total_revenue'], 2).' ₺',
+                'Tahsil Edilen' => number_format((float) $summary['collected_amount'], 2).' ₺',
+                'Bekleyen' => number_format((float) $summary['pending_collection'], 2).' ₺',
+            ],
+        );
+    }
+
+    public function pdf(int $id): Response
+    {
+        $revenue = $this->service->find($id);
+
+        abort_if($revenue === null, 404);
+
+        $row = $this->presenter->showRow($revenue);
+
+        return $this->streamPdf('exports.pdf.document', [
+            'title' => 'Gelir '.$row['reference'],
+            'subtitle' => $row['revenue_type_label'],
+            'fields' => [
+                'Gelir No' => $row['reference'],
+                'İşletme' => $row['business_name'],
+                'Gelir Türü' => $row['revenue_type_label'],
+                'Hakediş Dönemi' => $row['period_display'],
+                'Fatura No' => $row['invoice_no_display'],
+                'Fatura Durumu' => $row['invoice_status_label'],
+                'Tahsil Durumu' => $row['collection_status_label'],
+                'Tahsil Tarihi' => $row['collection_date_formatted'],
+                'Gelir Tarihi' => $row['revenue_date_formatted'],
+                'Açıklama' => $row['description'] ?? '—',
+            ],
+            'totals' => [
+                'Tutar' => $row['amount_formatted'],
+                'KDV' => $row['vat_amount_formatted'],
+                'Genel Toplam' => $row['gross_amount_formatted'],
+            ],
+        ], 'gelir-'.$row['reference']);
     }
 
     public function show(int $id): View
