@@ -8,8 +8,15 @@
 
     $items = [
         RowActions::dispatch('Kurye Profili', 'agency-courier-detail', $record),
-        RowActions::run('Düzenle', 'edit', message: 'Kurye ataması düzenleme için açıldı.'),
-        RowActions::run('Acenteden Ayrılmasını Sağla', 'detach', confirm: 'Kurye acenteden ayrılsın mı?', message: 'Kurye acenteden ayrıldı.', tone: 'warning'),
+        RowActions::link('Düzenle', route('couriers.edit', $courierId)),
+        RowActions::run(
+            'Acenteden Ayrılmasını Sağla',
+            'detach',
+            confirm: 'Kurye acenteden ayrılsın mı?',
+            tone: 'warning',
+            id: $courierId,
+            url: route('agencies.couriers.detach', $courierId),
+        ),
         RowActions::link('Çalışma Geçmişi', route('couriers.work-history.index', ['courier_id' => $courierId])),
         RowActions::link('Hakedişleri Gör', route('couriers.earnings.index', ['courier_id' => $courierId])),
         RowActions::link('Belgeleri Gör', route('couriers.documents.index', ['courier_id' => $courierId])),

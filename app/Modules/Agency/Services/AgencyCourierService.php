@@ -132,6 +132,44 @@ class AgencyCourierService
         });
     }
 
+    public function find(int $id): ?Courier
+    {
+        return Courier::query()
+            ->with(['agency', 'vehicleType'])
+            ->find($id);
+    }
+
+    public function detach(Courier $courier, User $user): Courier
+    {
+        return DB::transaction(function () use ($courier): Courier {
+            $courier->loadMissing('agency');
+
+            if ($courier->agency_id === null) {
+                return $courier;
+            }
+
+            $agencyId = $courier->agency_id;
+            $agencyName = $courier->agency?->company_name ?? 'acente';
+
+            $courier->update([
+                'agency_id' => null,
+                'courier_type' => 'independent',
+            ]);
+
+            $courier = $courier->fresh(['agency', 'vehicleType']);
+
+            $this->activityLog->log(
+                'courier_detached',
+                $courier,
+                oldValues: ['agency_id' => $agencyId],
+                newValues: ['agency_id' => null],
+                description: "{$courier->full_name} kuryesi {$agencyName} acentesinden ayrıldı.",
+            );
+
+            return $courier;
+        });
+    }
+
     /**
      * @return array<int, string>
      */

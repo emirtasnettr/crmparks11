@@ -108,6 +108,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/atanan-kuryeler/export', [BusinessAssignmentController::class, 'export'])->name('assignments.export');
         Route::post('/atanan-kuryeler', [BusinessAssignmentController::class, 'store'])->middleware('permission:business.update')->name('assignments.store');
         Route::put('/atanan-kuryeler/{id}', [BusinessAssignmentController::class, 'update'])->middleware('permission:business.update')->name('assignments.update');
+        Route::post('/atanan-kuryeler/{id}/sonlandir', [BusinessAssignmentController::class, 'terminate'])
+            ->middleware('permission:business.update')
+            ->name('assignments.terminate');
         Route::get('/atanan-kuryeler/{id}', [BusinessAssignmentController::class, 'show'])->name('assignments.show');
         Route::get('/hakedisler', [BusinessEarningController::class, 'index'])->name('earnings.index');
         Route::get('/hakedisler/export', [BusinessEarningController::class, 'export'])->name('earnings.export');
@@ -352,6 +355,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/kuryeler', [AgencyCourierController::class, 'index'])->name('couriers.index');
         Route::get('/kuryeler/export', [AgencyCourierController::class, 'export'])->name('couriers.export');
         Route::post('/kuryeler', [AgencyCourierController::class, 'store'])->middleware('permission:agency.update')->name('couriers.store');
+        Route::post('/kuryeler/{id}/ayril', [AgencyCourierController::class, 'detach'])
+            ->middleware('permission:agency.update')
+            ->name('couriers.detach');
         Route::get('/sozlesmeler', [AgencyContractController::class, 'index'])->name('contracts.index');
         Route::get('/sozlesmeler/export', [AgencyContractController::class, 'export'])->name('contracts.export');
         Route::post('/sozlesmeler', [AgencyContractController::class, 'store'])->middleware('permission:agency.update')->name('contracts.store');

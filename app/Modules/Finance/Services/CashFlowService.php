@@ -224,7 +224,28 @@ class CashFlowService
             'amount_in_formatted' => $row['amount_in'] > 0 ? MoneyCalculator::format($row['amount_in']) : '—',
             'amount_out_formatted' => $row['amount_out'] > 0 ? MoneyCalculator::format($row['amount_out']) : '—',
             'balance_formatted' => MoneyCalculator::format($row['balance']),
+            'related_url' => $this->resolveRelatedUrl($row),
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function resolveRelatedUrl(array $row): ?string
+    {
+        $sourceId = $row['source_id'] ?? null;
+
+        if ($sourceId === null) {
+            return null;
+        }
+
+        return match ($row['source_module'] ?? null) {
+            'collections' => route('finance.collections.show', $sourceId),
+            'payments' => route('finance.payments.show', $sourceId),
+            'revenues' => route('finance.revenues.show', $sourceId),
+            'expenses' => route('finance.expenses.show', $sourceId),
+            default => null,
+        };
     }
 
     /**

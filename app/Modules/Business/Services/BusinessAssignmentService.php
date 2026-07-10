@@ -149,6 +149,18 @@ class BusinessAssignmentService
         });
     }
 
+    public function terminate(BusinessCourierAssignment $assignment): BusinessCourierAssignment
+    {
+        return DB::transaction(function () use ($assignment): BusinessCourierAssignment {
+            $assignment->update([
+                'end_date' => now()->subDay()->toDateString(),
+                'status' => 'inactive',
+            ]);
+
+            return $assignment->fresh(['business', 'courier.agency']);
+        });
+    }
+
     /**
      * @param  array<string, mixed>  $filters
      */

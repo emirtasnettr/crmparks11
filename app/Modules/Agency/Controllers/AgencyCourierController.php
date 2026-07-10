@@ -85,4 +85,19 @@ class AgencyCourierController extends Controller
             ->route('agencies.couriers.index', ['agency_id' => $courier->agency_id])
             ->with('success', 'Kurye acenteye başarıyla atandı.');
     }
+
+    public function detach(Request $request, int $id): RedirectResponse
+    {
+        abort_unless($request->user()?->can('agency.update'), 403);
+
+        $courier = $this->couriers->find($id);
+        abort_if($courier === null || $courier->agency_id === null, 404);
+
+        $agencyId = $courier->agency_id;
+        $this->couriers->detach($courier, $request->user());
+
+        return redirect()
+            ->route('agencies.couriers.index', ['agency_id' => $agencyId])
+            ->with('success', 'Kurye acenteden ayrıldı.');
+    }
 }

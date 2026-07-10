@@ -116,4 +116,18 @@ class BusinessAssignmentController extends Controller
             ->back()
             ->with('success', 'Atama bilgileri güncellendi.');
     }
+
+    public function terminate(Request $request, int $id): RedirectResponse
+    {
+        abort_unless($request->user()?->can('business.update'), 403);
+
+        $assignment = $this->assignments->find($id);
+        abort_if($assignment === null, 404);
+
+        $this->assignments->terminate($assignment);
+
+        return redirect()
+            ->route('businesses.assignments.index', ['business_id' => $assignment->business_id])
+            ->with('success', 'Atama sonlandırıldı.');
+    }
 }
