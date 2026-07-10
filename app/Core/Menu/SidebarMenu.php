@@ -88,7 +88,6 @@ class SidebarMenu
                 'icon' => 'earning',
                 'permission' => 'dashboard.financial',
                 'active' => ['finance.*'],
-                'disabled' => true,
                 'children' => [
                     ['label' => 'Dashboard', 'route' => 'finance.dashboard.index', 'active' => ['finance.dashboard.*']],
                     ['label' => 'Cari Hesaplar', 'route' => 'finance.current-accounts.index', 'active' => ['finance.current-accounts.*']],
