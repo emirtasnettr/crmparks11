@@ -60,6 +60,8 @@ class RoleManagementPresenter
             'updated_at' => $role->updated_at?->toDateTimeString(),
             'created_at_formatted' => $role->created_at?->format('d.m.Y') ?? '—',
             'updated_at_formatted' => $role->updated_at?->format('d.m.Y H:i') ?? '—',
+            'can_update' => auth()->user()?->can('user.update') ?? false,
+            'can_delete' => (auth()->user()?->can('user.delete') ?? false) && $meta['is_deletable'] && $userCount === 0,
         ];
     }
 

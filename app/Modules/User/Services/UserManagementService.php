@@ -3,7 +3,9 @@
 namespace App\Modules\User\Services;
 
 use App\Core\Enums\Status;
+use App\Core\Enums\UserType;
 use App\Models\User;
+use App\Modules\ActivityLog\Services\ActivityLogService;
 use App\Modules\Agency\Models\Agency;
 use App\Modules\Business\Models\Business;
 use App\Modules\Courier\Models\Courier;
@@ -11,11 +13,15 @@ use App\Modules\User\Data\UserManagementFormData;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 class UserManagementService
 {
     public function __construct(
         private readonly UserManagementPresenter $presenter,
+        private readonly ActivityLogService $activityLog,
     ) {}
 
     /**
@@ -119,6 +125,170 @@ class UserManagementService
                 'name' => $agency->company_name,
             ])
             ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function create(array $data, User $actor): User
+    {
+        return DB::transaction(function () use ($data, $actor): User {
+            [$userType, $profileableType, $profileableId] = $this->resolveProfile($data);
+
+            $user = User::query()->create([
+                'name' => trim($data['first_name'].' '.$data['last_name']),
+                'email' => $data['email'],
+                'phone' => $data['phone'],
+                'password' => Hash::make($data['password']),
+                'user_type' => $userType,
+                'profileable_type' => $profileableType,
+                'profileable_id' => $profileableId,
+                'status' => Status::from($data['status']),
+            ]);
+
+            $user->syncRoles($data['roles']);
+
+            $this->activityLog->log(
+                'user_created',
+                $user,
+                description: "{$user->name} kullanıcısı oluşturuldu.",
+            );
+
+            return $user->fresh(['roles', 'profileable']);
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function update(int $id, array $data, User $actor): User
+    {
+        return DB::transaction(function () use ($id, $data, $actor): User {
+            $user = User::query()->withTrashed()->find($id);
+
+            if ($user === null) {
+                abort(404);
+            }
+
+            if (! $this->canUpdate($user, $actor)) {
+                throw ValidationException::withMessages([
+                    'user' => 'Bu kullanıcı güncellenemez.',
+                ]);
+            }
+
+            [$userType, $profileableType, $profileableId] = $this->resolveProfile($data);
+            $status = Status::from($data['status']);
+
+            $oldValues = $user->only(['name', 'email', 'phone', 'status', 'user_type']);
+
+            $updates = [
+                'name' => trim($data['first_name'].' '.$data['last_name']),
+                'email' => $data['email'],
+                'phone' => $data['phone'],
+                'user_type' => $userType,
+                'profileable_type' => $profileableType,
+                'profileable_id' => $profileableId,
+                'status' => $status,
+            ];
+
+            if (! empty($data['password'])) {
+                $updates['password'] = Hash::make($data['password']);
+            }
+
+            if ($user->trashed()) {
+                $user->restore();
+            }
+
+            $user->update($updates);
+            $user->syncRoles($data['roles']);
+
+            if ($status === Status::Inactive) {
+                $user->delete();
+            }
+
+            $this->activityLog->log(
+                'user_updated',
+                $user,
+                description: "{$user->name} kullanıcısı güncellendi.",
+                oldValues: $oldValues,
+                newValues: $user->fresh()->only(array_keys($oldValues)),
+            );
+
+            return $user->fresh(['roles', 'profileable']);
+        });
+    }
+
+    public function delete(int $id, User $actor): void
+    {
+        DB::transaction(function () use ($id, $actor): void {
+            $user = User::query()->find($id);
+
+            if ($user === null) {
+                abort(404);
+            }
+
+            if (! $this->canDelete($user, $actor)) {
+                throw ValidationException::withMessages([
+                    'user' => 'Bu kullanıcı silinemez.',
+                ]);
+            }
+
+            $user->update(['status' => Status::Inactive]);
+            $user->delete();
+
+            $this->activityLog->log(
+                'user_deleted',
+                $user,
+                description: "{$user->name} kullanıcısı pasife alındı.",
+            );
+        });
+    }
+
+    public function canUpdate(User $user, User $actor): bool
+    {
+        return $actor->can('user.update');
+    }
+
+    public function canDelete(User $user, User $actor): bool
+    {
+        if ($actor->id === $user->id) {
+            return false;
+        }
+
+        if ($user->hasRole('super_admin') && User::role('super_admin')->count() <= 1) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array{0: UserType, 1: ?string, 2: ?int}
+     */
+    private function resolveProfile(array $data): array
+    {
+        $roles = $data['roles'] ?? [];
+
+        if (! empty($data['linked_business_id']) || in_array('business', $roles, true)) {
+            $businessId = ! empty($data['linked_business_id']) ? (int) $data['linked_business_id'] : null;
+
+            return [UserType::Business, $businessId ? Business::class : null, $businessId];
+        }
+
+        if (! empty($data['linked_courier_id']) || in_array('courier', $roles, true)) {
+            $courierId = ! empty($data['linked_courier_id']) ? (int) $data['linked_courier_id'] : null;
+
+            return [UserType::Courier, $courierId ? Courier::class : null, $courierId];
+        }
+
+        if (! empty($data['linked_agency_id']) || in_array('agency', $roles, true)) {
+            $agencyId = ! empty($data['linked_agency_id']) ? (int) $data['linked_agency_id'] : null;
+
+            return [UserType::Agency, $agencyId ? Agency::class : null, $agencyId];
+        }
+
+        return [UserType::Internal, null, null];
     }
 
     /**

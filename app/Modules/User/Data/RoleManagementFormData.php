@@ -2,6 +2,8 @@
 
 namespace App\Modules\User\Data;
 
+use App\Modules\User\Models\RoleProfile;
+
 class RoleManagementFormData
 {
     /**
@@ -132,12 +134,7 @@ class RoleManagementFormData
     public static function meta(string $name): array
     {
         $definitions = self::definitions();
-
-        if (isset($definitions[$name])) {
-            return $definitions[$name];
-        }
-
-        return [
+        $base = $definitions[$name] ?? [
             'display_name' => ucwords(str_replace('_', ' ', $name)),
             'description' => 'Özel oluşturulmuş rol.',
             'status' => 'active',
@@ -147,5 +144,19 @@ class RoleManagementFormData
             'icon' => 'shield',
             'color' => 'gray',
         ];
+
+        $profile = RoleProfile::query()->where('role_name', $name)->first();
+
+        if ($profile === null) {
+            return $base;
+        }
+
+        return array_merge($base, [
+            'display_name' => $profile->display_name,
+            'description' => $profile->description ?? $base['description'],
+            'status' => $profile->status,
+            'is_system' => $profile->is_system,
+            'is_deletable' => $profile->is_system ? $base['is_deletable'] : true,
+        ]);
     }
 }

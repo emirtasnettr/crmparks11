@@ -6,7 +6,10 @@ use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
 use App\Modules\User\Data\UserManagementFormData;
 use App\Modules\User\Exports\UserListExportSheets;
+use App\Modules\User\Requests\StoreUserRequest;
+use App\Modules\User\Requests\UpdateUserRequest;
 use App\Modules\User\Services\UserManagementService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -50,6 +53,35 @@ class UserManagementController extends Controller
         ]);
     }
 
+    public function store(StoreUserRequest $request): RedirectResponse
+    {
+        $user = $this->userService->create($request->validated(), $request->user());
+
+        return redirect()
+            ->route('users.show', $user->id)
+            ->with('success', 'Kullanıcı başarıyla oluşturuldu.');
+    }
+
+    public function update(UpdateUserRequest $request, int $id): RedirectResponse
+    {
+        $user = $this->userService->update($id, $request->validated(), $request->user());
+
+        return redirect()
+            ->route('users.show', $user->id)
+            ->with('success', 'Kullanıcı başarıyla güncellendi.');
+    }
+
+    public function destroy(Request $request, int $id): RedirectResponse
+    {
+        abort_unless($request->user()?->can('user.delete'), 403);
+
+        $this->userService->delete($id, $request->user());
+
+        return redirect()
+            ->route('users.index')
+            ->with('success', 'Kullanıcı pasife alındı.');
+    }
+
     public function export(Request $request): BinaryFileResponse
     {
         $filters = [
@@ -75,6 +107,10 @@ class UserManagementController extends Controller
         return view('modules.user.users.show', [
             'user' => $user,
             'roles' => $this->userService->roles(),
+            'statuses' => UserManagementFormData::statuses(),
+            'businesses' => $this->userService->businesses(),
+            'couriers' => $this->userService->couriers(),
+            'agencies' => $this->userService->agencies(),
         ]);
     }
 }

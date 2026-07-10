@@ -8,19 +8,14 @@
 
     $items = [
         RowActions::link('Görüntüle', route('roles.show', $id)),
-        RowActions::modal('Düzenle', 'role-row-action', 'create', $id),
-        RowActions::link('Yetkileri Yönet', route('permissions.index', ['role' => $role['name']])),
-        RowActions::link('Kullanıcıları Gör', route('users.index', ['role' => $role['name']])),
     ];
 
-    if ($role['can_deactivate'] ?? false) {
-        $items[] = RowActions::divider();
-        $items[] = RowActions::run('Pasife Al', 'deactivate', confirm: "{$name} pasife alınsın mı?", message: 'Rol pasife alındı.', tone: 'warning', id: $id);
+    if ($role['can_update'] ?? false) {
+        $items[] = RowActions::link('Düzenle', route('roles.show', $id).'#edit');
     }
 
-    if ($role['is_deletable'] ?? false) {
-        $items[] = RowActions::run('Sil', 'delete', confirm: "{$name} silinsin mi?", message: 'Rol silindi.', tone: 'danger', id: $id);
-    }
+    $items[] = RowActions::link('Yetkileri Yönet', route('permissions.index', ['role' => $role['name']]));
+    $items[] = RowActions::link('Kullanıcıları Gör', route('users.index', ['role' => $role['name']]));
 @endphp
 
 <x-ui.action-menu :items="$items" width="w-52" />

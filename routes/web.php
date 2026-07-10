@@ -162,13 +162,31 @@ Route::middleware('auth')->group(function () {
     Route::prefix('kullanici-yonetimi')->middleware('permission:user.view')->group(function () {
         Route::name('users.')->group(function () {
             Route::get('/kullanicilar', [UserManagementController::class, 'index'])->name('index');
+            Route::post('/kullanicilar', [UserManagementController::class, 'store'])
+                ->middleware('permission:user.create')
+                ->name('store');
             Route::get('/kullanicilar/export', [UserManagementController::class, 'export'])->name('export');
             Route::get('/kullanicilar/{id}', [UserManagementController::class, 'show'])->name('show');
+            Route::put('/kullanicilar/{id}', [UserManagementController::class, 'update'])
+                ->middleware('permission:user.update')
+                ->name('update');
+            Route::delete('/kullanicilar/{id}', [UserManagementController::class, 'destroy'])
+                ->middleware('permission:user.delete')
+                ->name('destroy');
         });
 
         Route::name('roles.')->group(function () {
             Route::get('/roller', [RoleManagementController::class, 'index'])->name('index');
+            Route::post('/roller', [RoleManagementController::class, 'store'])
+                ->middleware('permission:user.create')
+                ->name('store');
             Route::get('/roller/{id}', [RoleManagementController::class, 'show'])->name('show');
+            Route::put('/roller/{id}', [RoleManagementController::class, 'update'])
+                ->middleware('permission:user.update')
+                ->name('update');
+            Route::delete('/roller/{id}', [RoleManagementController::class, 'destroy'])
+                ->middleware('permission:user.delete')
+                ->name('destroy');
         });
 
         Route::name('permissions.')->group(function () {

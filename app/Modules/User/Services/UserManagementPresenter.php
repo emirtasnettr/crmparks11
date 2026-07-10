@@ -86,6 +86,8 @@ class UserManagementPresenter
             'created_at' => $user->created_at?->toDateTimeString(),
             'created_at_formatted' => $user->created_at?->format('d.m.Y') ?? '—',
             'email_verified_at' => $user->email_verified_at?->toDateTimeString(),
+            'can_update' => auth()->user()?->can('user.update') ?? false,
+            'can_delete' => (auth()->user()?->can('user.delete') ?? false) && auth()->id() !== $user->id,
         ];
     }
 

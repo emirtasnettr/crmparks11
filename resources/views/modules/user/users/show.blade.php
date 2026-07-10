@@ -33,9 +33,10 @@
             </div>
         </div>
         <div class="flex shrink-0 flex-wrap gap-2">
-            <x-ui.button variant="secondary">Düzenle</x-ui.button>
-            <x-ui.button variant="secondary">Rolleri Yönet</x-ui.button>
-            <x-ui.button variant="secondary">Şifre Sıfırla</x-ui.button>
+            @if ($user['can_update'] ?? false)
+                <x-ui.button href="#edit">Düzenle</x-ui.button>
+            @endif
+            <x-ui.button href="{{ route('permissions.index') }}" variant="secondary">Rolleri Yönet</x-ui.button>
         </div>
     </div>
 
@@ -183,5 +184,7 @@
             </div>
         </x-ui.card>
     </div>
+
+    @include('modules.user.users.partials.edit-form')
 </div>
 @endsection
