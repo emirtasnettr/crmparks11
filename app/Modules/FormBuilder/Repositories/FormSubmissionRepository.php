@@ -2,36 +2,26 @@
 
 namespace App\Modules\FormBuilder\Repositories;
 
-use Illuminate\Support\Facades\Storage;
+use App\Modules\FormBuilder\Models\FormSubmission;
 
 class FormSubmissionRepository
 {
-  private const DISK = 'local';
-
-  private function path(int $formId): string
-  {
-    return 'form-builder/submissions/'.$formId.'.json';
-  }
-
   /**
    * @return array<int, array<string, mixed>>
    */
   public function all(int $formId): array
   {
-    $path = $this->path($formId);
-
-    if (! Storage::disk(self::DISK)->exists($path)) {
-      return [];
-    }
-
-    $decoded = json_decode(Storage::disk(self::DISK)->get($path), true);
-
-    return is_array($decoded) ? $decoded : [];
+    return FormSubmission::query()
+      ->where('form_id', $formId)
+      ->orderBy('id')
+      ->get()
+      ->map(fn (FormSubmission $submission) => $submission->toRecordArray())
+      ->all();
   }
 
   public function count(int $formId): int
   {
-    return count($this->all($formId));
+    return FormSubmission::query()->where('form_id', $formId)->count();
   }
 
   /**
@@ -39,7 +29,12 @@ class FormSubmissionRepository
    */
   public function find(int $formId, int $submissionId): ?array
   {
-    return collect($this->all($formId))->firstWhere('id', $submissionId);
+    $submission = FormSubmission::query()
+      ->where('form_id', $formId)
+      ->whereKey($submissionId)
+      ->first();
+
+    return $submission?->toRecordArray();
   }
 
   /**
@@ -47,33 +42,27 @@ class FormSubmissionRepository
    */
   public function save(int $formId, array $submission): void
   {
-    $submissions = collect($this->all($formId));
-    $index = $submissions->search(fn (array $item) => (int) $item['id'] === (int) $submission['id']);
-
-    if ($index === false) {
-      $submissions->push($submission);
-    } else {
-      $submissions[$index] = $submission;
-    }
-
-    $this->write($formId, $submissions->values()->all());
+    FormSubmission::query()->updateOrCreate(
+      [
+        'id' => (int) $submission['id'],
+        'form_id' => $formId,
+      ],
+      [
+        'landing_page_id' => $submission['landing_page_id'] ?? null,
+        'landing_page_slug' => $submission['landing_page_slug'] ?? null,
+        'landing_page_name' => $submission['landing_page_name'] ?? null,
+        'data' => $submission['data'] ?? [],
+        'ip_address' => $submission['ip_address'] ?? null,
+        'user_agent' => $submission['user_agent'] ?? null,
+        'submitted_at' => $submission['submitted_at'] ?? now(),
+      ],
+    );
   }
 
   public function nextId(int $formId): int
   {
-    $max = collect($this->all($formId))->max('id');
+    $max = FormSubmission::query()->where('form_id', $formId)->max('id');
 
-    return ($max ?? 0) + 1;
-  }
-
-  /**
-   * @param  array<int, array<string, mixed>>  $submissions
-   */
-  private function write(int $formId, array $submissions): void
-  {
-    Storage::disk(self::DISK)->put(
-      $this->path($formId),
-      json_encode($submissions, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-    );
+    return (int) ($max ?? 0) + 1;
   }
 }

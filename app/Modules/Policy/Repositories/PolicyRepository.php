@@ -3,30 +3,21 @@
 namespace App\Modules\Policy\Repositories;
 
 use App\Modules\Policy\Data\PolicyDefinitions;
-use Illuminate\Support\Facades\Storage;
+use App\Modules\Policy\Models\Policy;
 
 class PolicyRepository
 {
-  private const DISK = 'local';
-
-  private const PATH = 'policy-settings/policies.json';
-
   /**
    * @return array<string, array<string, mixed>>
    */
   public function all(): array
   {
-    if (! Storage::disk(self::DISK)->exists(self::PATH)) {
-      return $this->defaults();
-    }
+    $stored = Policy::query()
+      ->get()
+      ->mapWithKeys(fn (Policy $policy) => [$policy->key => $policy->toRecordArray()])
+      ->all();
 
-    $decoded = json_decode(Storage::disk(self::DISK)->get(self::PATH), true);
-
-    if (! is_array($decoded)) {
-      return $this->defaults();
-    }
-
-    return array_merge($this->defaults(), $decoded);
+    return array_merge($this->defaults(), $stored);
   }
 
   /**
@@ -64,10 +55,19 @@ class PolicyRepository
    */
   public function write(array $policies): void
   {
-    Storage::disk(self::DISK)->put(
-      self::PATH,
-      json_encode($policies, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-    );
+    foreach ($policies as $key => $policy) {
+      Policy::query()->updateOrCreate(
+        ['key' => $key],
+        [
+          'slug' => $policy['slug'] ?? PolicyDefinitions::all()[$key]['slug'],
+          'title' => $policy['title'] ?? PolicyDefinitions::all()[$key]['title'],
+          'content' => $policy['content'] ?? '',
+          'meta_title' => $policy['meta_title'] ?? PolicyDefinitions::all()[$key]['title'],
+          'meta_description' => $policy['meta_description'] ?? '',
+          'updated_at' => $policy['updated_at'] ?? now(),
+        ],
+      );
+    }
   }
 
   /**

@@ -2,26 +2,20 @@
 
 namespace App\Modules\FormBuilder\Repositories;
 
-use Illuminate\Support\Facades\Storage;
+use App\Modules\FormBuilder\Models\Form;
 
 class FormBuilderRepository
 {
-  private const DISK = 'local';
-
-  private const PATH = 'form-builder/forms.json';
-
   /**
    * @return array<int, array<string, mixed>>
    */
   public function all(): array
   {
-    if (! Storage::disk(self::DISK)->exists(self::PATH)) {
-      return [];
-    }
-
-    $decoded = json_decode(Storage::disk(self::DISK)->get(self::PATH), true);
-
-    return is_array($decoded) ? $decoded : [];
+    return Form::query()
+      ->orderBy('id')
+      ->get()
+      ->map(fn (Form $form) => $form->toRecordArray())
+      ->all();
   }
 
   /**
@@ -29,7 +23,9 @@ class FormBuilderRepository
    */
   public function find(int $id): ?array
   {
-    return collect($this->all())->firstWhere('id', $id);
+    $form = Form::query()->find($id);
+
+    return $form?->toRecordArray();
   }
 
   /**
@@ -37,42 +33,28 @@ class FormBuilderRepository
    */
   public function save(array $form): void
   {
-    $forms = collect($this->all());
-    $index = $forms->search(fn (array $item) => (int) $item['id'] === (int) $form['id']);
-
-    if ($index === false) {
-      $forms->push($form);
-    } else {
-      $forms[$index] = $form;
-    }
-
-    $this->write($forms->values()->all());
+    Form::query()->updateOrCreate(
+      ['id' => (int) $form['id']],
+      [
+        'uuid' => $form['uuid'],
+        'name' => $form['name'],
+        'slug' => $form['slug'],
+        'description' => $form['description'] ?? '',
+        'status' => $form['status'] ?? 'draft',
+        'fields' => $form['fields'] ?? [],
+        'created_at' => $form['created_at'] ?? now(),
+        'updated_at' => $form['updated_at'] ?? now(),
+      ],
+    );
   }
 
   public function delete(int $id): bool
   {
-    $forms = collect($this->all())->reject(fn (array $item) => (int) $item['id'] === $id)->values()->all();
-    $deleted = count($forms) < count($this->all());
-    $this->write($forms);
-
-    return $deleted;
+    return (bool) Form::query()->whereKey($id)->delete();
   }
 
   public function nextId(): int
   {
-    $max = collect($this->all())->max('id');
-
-    return ($max ?? 0) + 1;
-  }
-
-  /**
-   * @param  array<int, array<string, mixed>>  $forms
-   */
-  private function write(array $forms): void
-  {
-    Storage::disk(self::DISK)->put(
-      self::PATH,
-      json_encode($forms, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-    );
+    return (int) (Form::query()->max('id') ?? 0) + 1;
   }
 }

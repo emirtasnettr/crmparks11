@@ -427,6 +427,9 @@ class CrmLogInstallCommand extends Command
         $this->callSilent('migrate', ['--force' => true]);
         $this->components->twoColumnDetail('Migration', '<fg=green>TAMAM</>');
 
+        $this->callSilent('crmlog:import-json-storage');
+        $this->components->twoColumnDetail('JSON depo aktarımı', '<fg=green>TAMAM</>');
+
         $this->applyRuntimeConfiguration($config);
 
         $this->callSilent('db:seed', ['--force' => true]);

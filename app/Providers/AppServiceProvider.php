@@ -5,7 +5,7 @@ namespace App\Providers;
 use App\Modules\ActivityLog\Services\ActivityLogService;
 use App\Modules\Dashboard\Services\DashboardService;
 use App\Modules\Setting\Contracts\SettingsGroupRepositoryInterface;
-use App\Modules\Setting\Repositories\FileSettingsGroupRepository;
+use App\Modules\Setting\Repositories\DatabaseSettingsGroupRepository;
 use App\Modules\Setting\Services\AppBrandingService;
 use App\Modules\Setting\Services\SettingsManager;
 use Illuminate\Support\Facades\Artisan;
@@ -21,7 +21,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(DashboardService::class);
         $this->app->singleton(SettingsManager::class);
         $this->app->singleton(AppBrandingService::class);
-        $this->app->bind(SettingsGroupRepositoryInterface::class, FileSettingsGroupRepository::class);
+        $this->app->bind(SettingsGroupRepositoryInterface::class, DatabaseSettingsGroupRepository::class);
     }
 
     public function boot(): void

@@ -19,8 +19,6 @@ class LandingPageBuilderTest extends TestCase
 
     $this->seed(RoleAndPermissionSeeder::class);
     Storage::fake('public');
-    Storage::disk('local')->delete('form-builder/forms.json');
-    Storage::disk('local')->delete('landing-page-builder/pages.json');
   }
 
   public function test_landing_page_builder_index_requires_authentication(): void

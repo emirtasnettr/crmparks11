@@ -19,9 +19,6 @@ class FormSubmissionTest extends TestCase
 
     $this->seed(RoleAndPermissionSeeder::class);
     Storage::fake('public');
-    Storage::disk('local')->delete('form-builder/forms.json');
-    Storage::disk('local')->delete('landing-page-builder/pages.json');
-    Storage::disk('local')->delete('form-builder/submissions/1.json');
   }
 
   public function test_public_landing_form_submission_is_stored(): void

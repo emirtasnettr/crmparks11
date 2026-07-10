@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class FormBuilderTest extends TestCase
@@ -17,8 +16,6 @@ class FormBuilderTest extends TestCase
     parent::setUp();
 
     $this->seed(RoleAndPermissionSeeder::class);
-    Storage::disk('local')->delete('form-builder/forms.json');
-    Storage::disk('local')->delete('form-builder/submissions/1.json');
   }
 
   public function test_form_builder_index_requires_authentication(): void

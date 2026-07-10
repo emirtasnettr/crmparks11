@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Modules\LandingPage\Models\LandingPage;
 use App\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class PolicySettingsTest extends TestCase
@@ -17,7 +17,6 @@ class PolicySettingsTest extends TestCase
     parent::setUp();
 
     $this->seed(RoleAndPermissionSeeder::class);
-    Storage::disk('local')->delete('policy-settings/policies.json');
   }
 
   public function test_policy_settings_index_redirects_to_settings_section(): void
@@ -94,22 +93,18 @@ class PolicySettingsTest extends TestCase
     $admin = User::factory()->create();
     $admin->assignRole('super_admin');
 
-    Storage::disk('local')->put('landing-page-builder/pages.json', json_encode([
-      [
-        'id' => 1,
-        'name' => 'Test LP',
-        'slug' => 'test-lp',
-        'status' => 'active',
-        'title' => 'Test',
-        'content' => '',
-        'form_id' => null,
-        'meta_title' => 'Test',
-        'meta_description' => '',
-        'hero_image_path' => null,
-        'created_at' => now()->toDateTimeString(),
-        'updated_at' => now()->toDateTimeString(),
-      ],
-    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    LandingPage::query()->create([
+      'uuid' => 'lp-test-1',
+      'name' => 'Test LP',
+      'slug' => 'test-lp',
+      'status' => 'active',
+      'title' => 'Test',
+      'content' => '',
+      'form_id' => null,
+      'meta_title' => 'Test',
+      'meta_description' => '',
+      'hero_image_path' => null,
+    ]);
 
     $response = $this->get(route('landing.show', 'test-lp'));
 
