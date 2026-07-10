@@ -44,6 +44,7 @@ class AgencyUpdateTest extends TestCase
 
         $response = $this->actingAs($user)->put(route('agencies.update', $agency->id), [
             'company_name' => 'Hızlı Kurye Acentesi Ltd. Şti.',
+            'brand_name' => 'Hızlı Kurye',
             'phone' => '0212 555 00 01',
             'tax_number' => '1234567890',
             'city' => 'İstanbul',
@@ -82,6 +83,7 @@ class AgencyUpdateTest extends TestCase
 
         $response = $this->actingAs($user)->put(route('agencies.update', $agency->id), [
             'company_name' => 'Konya Merkez Lojistik',
+            'brand_name' => 'Konya Merkez',
             'phone' => '0332 555 90 09',
             'tax_number' => '9012345678',
             'city' => 'Konya',

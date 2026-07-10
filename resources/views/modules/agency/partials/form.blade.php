@@ -81,9 +81,9 @@
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div class="space-y-1.5">
                 <label for="city" class="block text-sm font-medium text-gray-700 dark:text-slate-300">İl *</label>
+                <input type="hidden" name="city" :value="form.city">
                 <select
                     id="city"
-                    name="city"
                     x-model="form.city"
                     @change="onCityChange"
                     class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
@@ -99,9 +99,9 @@
 
             <div class="space-y-1.5">
                 <label for="district" class="block text-sm font-medium text-gray-700 dark:text-slate-300">İlçe *</label>
+                <input type="hidden" name="district" :value="form.district">
                 <select
                     id="district"
-                    name="district"
                     x-model="form.district"
                     :disabled="!form.city"
                     class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:disabled:bg-slate-700/50"
@@ -109,7 +109,7 @@
                 >
                     <option value="" x-text="form.city ? 'İlçe seçin' : 'Önce il seçin'"></option>
                     <template x-for="district in districts" :key="district">
-                        <option :value="district" x-text="district"></option>
+                        <option :value="district" x-text="district" :selected="form.district === district"></option>
                     </template>
                 </select>
                 <p x-show="errors.district" x-cloak class="text-sm text-red-600 dark:text-red-400" x-text="errors.district"></p>

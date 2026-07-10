@@ -2,12 +2,39 @@
 
 namespace App\Modules\Business\Data;
 
+use App\Models\City;
+use Illuminate\Support\Facades\Schema;
+
 class BusinessFormData
 {
     /**
      * @return array<string, array<int, string>>
      */
     public static function districtsByCity(): array
+    {
+        if (Schema::hasTable('cities') && Schema::hasTable('districts')) {
+            $fromDb = City::query()
+                ->with(['districts' => fn ($query) => $query->orderBy('name')])
+                ->orderBy('name')
+                ->get()
+                ->mapWithKeys(fn (City $city) => [
+                    $city->name => $city->districts->pluck('name')->values()->all(),
+                ])
+                ->filter(fn (array $districts) => $districts !== [])
+                ->all();
+
+            if ($fromDb !== []) {
+                return $fromDb;
+            }
+        }
+
+        return self::fallbackDistrictsByCity();
+    }
+
+    /**
+     * @return array<string, array<int, string>>
+     */
+    private static function fallbackDistrictsByCity(): array
     {
         return [
             'İstanbul' => ['Kadıköy', 'Beşiktaş', 'Şişli', 'Ümraniye', 'Ataşehir', 'Bakırköy', 'Fatih', 'Maltepe'],

@@ -138,7 +138,9 @@ class BusinessService
 
   private function resolveCityId(?string $cityName): ?int
   {
-    if ($cityName === null || $cityName === '') {
+    $cityName = trim((string) $cityName);
+
+    if ($cityName === '') {
       return null;
     }
 
@@ -147,7 +149,10 @@ class BusinessService
 
   private function resolveDistrictId(?string $cityName, ?string $districtName): ?int
   {
-    if ($cityName === null || $cityName === '' || $districtName === null || $districtName === '') {
+    $cityName = trim((string) $cityName);
+    $districtName = trim((string) $districtName);
+
+    if ($cityName === '' || $districtName === '') {
       return null;
     }
 

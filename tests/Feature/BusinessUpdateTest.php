@@ -150,6 +150,38 @@ class BusinessUpdateTest extends TestCase
         $indexResponse->assertSee('Beklemede');
     }
 
+    public function test_business_district_change_is_persisted(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+
+        $this->assertSame('Kadıköy', $business->fresh()->district?->name);
+
+        $response = $this->actingAs($user)->put(route('businesses.update', $business->id), [
+            'company_name' => $business->company_name,
+            'brand_name' => $business->brand_name,
+            'phone' => $business->phone,
+            'city' => 'İstanbul',
+            'district' => 'Beşiktaş',
+            'pricing_model' => 'per_package',
+            'earning_period' => 'weekly',
+            'planned_courier_count' => 4,
+            'status' => 'active',
+            'tax_number' => $business->tax_number,
+        ]);
+
+        $response->assertRedirect(route('businesses.show', $business->id));
+        $response->assertSessionHas('success');
+
+        $business->refresh()->load('district');
+        $this->assertSame('Beşiktaş', $business->district?->name);
+
+        $showResponse = $this->actingAs($user)->get(route('businesses.show', $business->id));
+        $showResponse->assertOk();
+        $showResponse->assertSee('Beşiktaş');
+    }
+
     public function test_inactive_status_requires_contract_end_date(): void
     {
         $user = User::factory()->create();
