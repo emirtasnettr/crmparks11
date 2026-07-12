@@ -6,6 +6,7 @@ use App\Core\Traits\HasUuid;
 use App\Models\City;
 use App\Models\District;
 use App\Models\User;
+use App\Modules\ShiftPlanning\Models\BusinessShift;
 use App\Support\HasBrandDisplayName;
 use Database\Factories\BusinessFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -82,6 +83,11 @@ class Business extends Model
     public function assignments(): HasMany
     {
         return $this->hasMany(BusinessCourierAssignment::class);
+    }
+
+    public function shifts(): HasMany
+    {
+        return $this->hasMany(BusinessShift::class);
     }
 
     public function contacts(): HasMany

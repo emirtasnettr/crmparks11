@@ -23,6 +23,10 @@ class LandingPageMediaService
     $filename = 'hero-'.$pageId.'-'.time().'.'.$extension;
     $path = $file->storeAs(self::PATH_PREFIX.'/'.$pageId, $filename, self::DISK);
 
+    if ($path === false || $path === '') {
+      throw new \InvalidArgumentException('Hero görseli kaydedilemedi. Depolama izinlerini kontrol edin.');
+    }
+
     return [
       'path' => $path,
       'url' => $this->url($path),

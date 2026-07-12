@@ -134,8 +134,14 @@ class LandingPageService
     $validated = $this->validateMeta($data, $id);
 
     if ($heroImage !== null && $heroImage->isValid()) {
-      $stored = $this->media->store($heroImage, $id);
-      $page['hero_image_path'] = $stored['path'];
+      try {
+        $stored = $this->media->store($heroImage, $id);
+        $page['hero_image_path'] = $stored['path'];
+      } catch (\InvalidArgumentException $e) {
+        throw ValidationException::withMessages([
+          'hero_image' => $e->getMessage(),
+        ]);
+      }
     }
 
     $page['name'] = $validated['name'];

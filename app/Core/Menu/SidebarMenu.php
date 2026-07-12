@@ -39,12 +39,13 @@ class SidebarMenu
                 'label' => 'İşletmeler',
                 'icon' => 'building',
                 'permission' => 'business.view',
-                'active' => ['businesses.*'],
+                'active' => ['businesses.*', 'shift-planning.*'],
                 'children' => array_values(array_filter([
                     ['label' => 'İşletmeler', 'route' => 'businesses.index', 'active' => ['businesses.index', 'businesses.create']],
                     ['label' => 'Yetkililer', 'route' => 'businesses.contacts.index', 'active' => ['businesses.contacts.*']],
                     ['label' => 'Sözleşmeler', 'route' => 'businesses.contracts.index', 'active' => ['businesses.contracts.*']],
                     ['label' => 'Atanan Kuryeler', 'route' => 'businesses.assignments.index', 'active' => ['businesses.assignments.*']],
+                    ['label' => 'Vardiya Planlama', 'route' => 'shift-planning.index', 'active' => ['shift-planning.*'], 'permission' => 'shift_planning.view'],
                     BusinessFeatures::earningsEnabled()
                         ? ['label' => 'Hakedişler', 'route' => 'businesses.earnings.index', 'active' => ['businesses.earnings.*']]
                         : null,

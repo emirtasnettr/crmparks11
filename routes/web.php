@@ -48,6 +48,7 @@ use App\Modules\User\Controllers\UserManagementController;
 use App\Modules\Notification\Controllers\NotificationController;
 use App\Modules\Report\Controllers\ReportController;
 use App\Modules\Search\Controllers\SearchController;
+use App\Modules\ShiftPlanning\Controllers\ShiftPlanningController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -67,6 +68,14 @@ Route::middleware('auth')->group(function () {
         ->name('dashboard');
 
     Route::get('/arama', SearchController::class)->name('search');
+
+    Route::prefix('vardiya-planlama')->name('shift-planning.')->middleware('permission:shift_planning.view')->group(function () {
+        Route::get('/', [ShiftPlanningController::class, 'index'])->name('index');
+        Route::post('/', [ShiftPlanningController::class, 'store'])->middleware('permission:shift_planning.create')->name('store');
+        Route::put('/{id}', [ShiftPlanningController::class, 'update'])->middleware('permission:shift_planning.update')->name('update');
+        Route::put('/{id}/kuryeler', [ShiftPlanningController::class, 'assignCouriers'])->middleware('permission:shift_planning.update')->name('assign-couriers');
+        Route::delete('/{id}', [ShiftPlanningController::class, 'destroy'])->middleware('permission:shift_planning.delete')->name('destroy');
+    });
 
     Route::prefix('raporlar')->middleware('permission:report.view')->name('reports.')->group(function () {
         Route::get('/', [ReportController::class, 'index'])->name('index');

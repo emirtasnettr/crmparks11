@@ -4036,6 +4036,152 @@ Alpine.data('policySettingsPage', (policies = {}) => ({
     },
 }));
 
+Alpine.data('shiftPlanningPage', (config = {}) => ({
+    openShiftModal: false,
+    openCourierModal: false,
+    openActionsModal: false,
+    openDeleteModal: false,
+    shiftMode: 'create',
+    selectedBusinessId: config.selectedBusinessId,
+    shifts: config.shifts || [],
+    week: config.week || { week_start: '', days: [] },
+    availableCouriers: config.availableCouriers || [],
+    weekDayOptions: config.weekDayOptions || [],
+    defaultStartDate: config.defaultStartDate || '',
+    defaultEndDate: config.defaultEndDate || '',
+    canCreate: config.canCreate,
+    canUpdate: config.canUpdate,
+    canDelete: config.canDelete,
+    storeUrl: config.storeUrl,
+    updateUrlTemplate: config.updateUrlTemplate,
+    assignUrlTemplate: config.assignUrlTemplate,
+    destroyUrlTemplate: config.destroyUrlTemplate,
+    actionsShift: null,
+    actionsWorkDate: null,
+    shiftForm: {
+        id: null,
+        name: '',
+        start_time: '09:00',
+        end_time: '17:00',
+        start_date: '',
+        end_date: '',
+        days_of_week: ['1', '2', '3', '4', '5', '6', '7'],
+        notes: '',
+        is_active: true,
+        courier_ids: [],
+    },
+    courierForm: {
+        id: null,
+        shift_name: '',
+        work_date: '',
+        courier_ids: [],
+    },
+    openCreate() {
+        this.shiftMode = 'create';
+        this.shiftForm = {
+            id: null,
+            name: '',
+            start_time: '09:00',
+            end_time: '17:00',
+            start_date: this.defaultStartDate,
+            end_date: this.defaultEndDate,
+            days_of_week: ['1', '2', '3', '4', '5', '6', '7'],
+            notes: '',
+            is_active: true,
+            courier_ids: [],
+        };
+        this.openShiftModal = true;
+    },
+    openEdit(id) {
+        const shift = this.shifts.find((item) => item.id === id);
+        if (!shift) return;
+        this.shiftMode = 'edit';
+        this.shiftForm = {
+            id: shift.id,
+            name: shift.name,
+            start_time: shift.start_time,
+            end_time: shift.end_time,
+            start_date: shift.start_date,
+            end_date: shift.end_date,
+            days_of_week: [...(shift.days_of_week || [])].map(String),
+            notes: shift.notes || '',
+            is_active: !!shift.is_active,
+            courier_ids: [],
+        };
+        this.openActionsModal = false;
+        this.openShiftModal = true;
+    },
+    openAssign(id, workDate) {
+        const shift = this.shifts.find((item) => item.id === id);
+        if (!shift || !workDate) return;
+        const dayCouriers = shift.couriers_by_date?.[workDate] || [];
+        this.courierForm = {
+            id: shift.id,
+            shift_name: shift.name,
+            work_date: workDate,
+            courier_ids: dayCouriers.map((courier) => String(courier.id)),
+        };
+        this.openActionsModal = false;
+        this.openCourierModal = true;
+    },
+    openShiftActions(id, workDate) {
+        this.actionsShift = this.shifts.find((item) => item.id === id) || null;
+        this.actionsWorkDate = workDate || null;
+        if (!this.actionsShift || !this.actionsWorkDate) return;
+        this.openActionsModal = true;
+    },
+    dayCouriers() {
+        if (!this.actionsShift || !this.actionsWorkDate) return [];
+        return this.actionsShift.couriers_by_date?.[this.actionsWorkDate] || [];
+    },
+    dayCourierCount() {
+        return this.dayCouriers().length;
+    },
+    formatWorkDate(value) {
+        if (!value) return '';
+        const parts = String(value).split('-');
+        if (parts.length !== 3) return value;
+        return `${parts[2]}.${parts[1]}.${parts[0]}`;
+    },
+    editFromActions() {
+        if (!this.actionsShift) return;
+        this.openEdit(this.actionsShift.id);
+    },
+    assignFromActions() {
+        if (!this.actionsShift || !this.actionsWorkDate) return;
+        this.openAssign(this.actionsShift.id, this.actionsWorkDate);
+    },
+    openDeleteConfirm() {
+        if (!this.actionsShift || !this.actionsWorkDate) return;
+        this.openActionsModal = false;
+        this.openDeleteModal = true;
+    },
+    closeShiftModal() {
+        this.openShiftModal = false;
+    },
+    closeCourierModal() {
+        this.openCourierModal = false;
+    },
+    closeActionsModal() {
+        this.openActionsModal = false;
+    },
+    closeDeleteModal() {
+        this.openDeleteModal = false;
+    },
+    shiftFormAction() {
+        if (this.shiftMode === 'edit' && this.shiftForm.id) {
+            return this.updateUrlTemplate.replace('__ID__', this.shiftForm.id);
+        }
+        return this.storeUrl;
+    },
+    courierFormAction() {
+        return this.assignUrlTemplate.replace('__ID__', this.courierForm.id);
+    },
+    destroyFormAction() {
+        return this.destroyUrlTemplate.replace('__ID__', this.actionsShift?.id);
+    },
+}));
+
 Alpine.data('globalSearch', (endpoint) => ({
     query: '',
     panelOpen: false,

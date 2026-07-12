@@ -36,16 +36,25 @@ class BusinessFormData
      */
     private static function fallbackDistrictsByCity(): array
     {
-        return [
-            'İstanbul' => ['Kadıköy', 'Beşiktaş', 'Şişli', 'Ümraniye', 'Ataşehir', 'Bakırköy', 'Fatih', 'Maltepe'],
-            'Ankara' => ['Çankaya', 'Keçiören', 'Yenimahalle', 'Mamak', 'Etimesgut'],
-            'İzmir' => ['Konak', 'Karşıyaka', 'Bornova', 'Buca', 'Bayraklı'],
-            'Bursa' => ['Osmangazi', 'Nilüfer', 'Yıldırım', 'Gemlik'],
-            'Antalya' => ['Muratpaşa', 'Kepez', 'Konyaaltı', 'Alanya'],
-            'Adana' => ['Seyhan', 'Çukurova', 'Yüreğir', 'Sarıçam'],
-            'Konya' => ['Selçuklu', 'Meram', 'Karatay'],
-            'Gaziantep' => ['Şahinbey', 'Şehitkamil', 'Oğuzeli'],
-        ];
+        $path = database_path('data/turkey_cities_districts.json');
+
+        if (! is_file($path)) {
+            return [];
+        }
+
+        try {
+            /** @var array<int, array{name: string, districts?: array<int, string>}> $cities */
+            $cities = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return [];
+        }
+
+        return collect($cities)
+            ->mapWithKeys(fn (array $city) => [
+                $city['name'] => array_values($city['districts'] ?? []),
+            ])
+            ->filter(fn (array $districts) => $districts !== [])
+            ->all();
     }
 
     /**

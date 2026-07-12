@@ -15,6 +15,8 @@ class LandingPageContentSanitizer
     $config->set('HTML.TargetBlank', true);
     $config->set('Attr.AllowedFrameTargets', ['_blank']);
     $config->set('AutoFormat.AutoParagraph', false);
+    // vendor içindeki varsayılan cache production'da yazılamaz → 500.
+    $config->set('Cache.DefinitionImpl', null);
 
     $html = (new \HTMLPurifier($config))->purify($html);
 

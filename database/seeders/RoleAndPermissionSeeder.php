@@ -21,6 +21,7 @@ class RoleAndPermissionSeeder extends Seeder
             'courier.view', 'courier.create', 'courier.update', 'courier.delete', 'courier.view_own',
             'agency.view', 'agency.create', 'agency.update', 'agency.delete', 'agency.view_own',
             'assignment.view', 'assignment.create', 'assignment.update', 'assignment.delete',
+            'shift_planning.view', 'shift_planning.create', 'shift_planning.update', 'shift_planning.delete',
             'contract.view', 'contract.create', 'contract.update', 'contract.delete', 'contract.view_own',
             'earning.view', 'earning.create', 'earning.update', 'earning.delete', 'earning.approve', 'earning.view_own',
             'report.view', 'report.export',
@@ -49,6 +50,7 @@ class RoleAndPermissionSeeder extends Seeder
                 'courier.view', 'courier.create', 'courier.update',
                 'agency.view', 'agency.create', 'agency.update',
                 'assignment.view', 'assignment.create', 'assignment.update',
+                'shift_planning.view', 'shift_planning.create', 'shift_planning.update', 'shift_planning.delete',
                 'contract.view', 'contract.create', 'contract.update',
                 'earning.view', 'earning.create', 'earning.update',
                 'notification.view', 'notification.update',
@@ -61,6 +63,7 @@ class RoleAndPermissionSeeder extends Seeder
             'operations_staff' => [
                 'dashboard.view',
                 'business.view', 'courier.view', 'agency.view', 'assignment.view',
+                'shift_planning.view',
             ],
             'business' => [
                 'dashboard.view',
@@ -86,7 +89,7 @@ class RoleAndPermissionSeeder extends Seeder
             ],
             'regional_coordinator' => [
                 'dashboard.view',
-                'business.view', 'courier.view', 'agency.view', 'assignment.view', 'report.view',
+                'business.view', 'courier.view', 'agency.view', 'assignment.view', 'shift_planning.view', 'report.view',
             ],
             'reporting_analyst' => [
                 'dashboard.view', 'dashboard.financial', 'report.view', 'report.export', 'earning.view',
