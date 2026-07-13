@@ -4048,33 +4048,28 @@ Alpine.data('policySettingsPage', (policies = {}) => ({
 Alpine.data('shiftPlanningPage', (config = {}) => ({
     openShiftModal: false,
     openCourierModal: false,
-    openActionsModal: false,
+    openJokerModal: false,
     openDeleteModal: false,
     shiftMode: 'create',
     selectedBusinessId: config.selectedBusinessId,
     shifts: config.shifts || [],
-    week: config.week || { week_start: '', days: [] },
     availableCouriers: config.availableCouriers || [],
-    weekDayOptions: config.weekDayOptions || [],
-    defaultStartDate: config.defaultStartDate || '',
-    defaultEndDate: config.defaultEndDate || '',
+    jokerReasons: config.jokerReasons || {},
     canCreate: config.canCreate,
     canUpdate: config.canUpdate,
     canDelete: config.canDelete,
     storeUrl: config.storeUrl,
     updateUrlTemplate: config.updateUrlTemplate,
     assignUrlTemplate: config.assignUrlTemplate,
+    jokerUrlTemplate: config.jokerUrlTemplate,
     destroyUrlTemplate: config.destroyUrlTemplate,
-    actionsShift: null,
-    actionsWorkDate: null,
+    deleteShiftId: null,
     shiftForm: {
         id: null,
         name: '',
         start_time: '09:00',
         end_time: '17:00',
-        start_date: '',
-        end_date: '',
-        days_of_week: ['1', '2', '3', '4', '5', '6', '7'],
+        required_headcount: 1,
         notes: '',
         is_active: true,
         courier_ids: [],
@@ -4082,8 +4077,18 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
     courierForm: {
         id: null,
         shift_name: '',
-        work_date: '',
+        required_headcount: 1,
         courier_ids: [],
+    },
+    jokerForm: {
+        id: null,
+        shift_name: '',
+        work_date: '',
+        absent_courier_id: '',
+        joker_courier_id: '',
+        reason: 'izin',
+        notes: '',
+        roster: [],
     },
     openCreate() {
         this.shiftMode = 'create';
@@ -4092,9 +4097,7 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
             name: '',
             start_time: '09:00',
             end_time: '17:00',
-            start_date: this.defaultStartDate,
-            end_date: this.defaultEndDate,
-            days_of_week: ['1', '2', '3', '4', '5', '6', '7'],
+            required_headcount: 1,
             notes: '',
             is_active: true,
             courier_ids: [],
@@ -4110,59 +4113,41 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
             name: shift.name,
             start_time: shift.start_time,
             end_time: shift.end_time,
-            start_date: shift.start_date,
-            end_date: shift.end_date,
-            days_of_week: [...(shift.days_of_week || [])].map(String),
+            required_headcount: shift.required_headcount || 1,
             notes: shift.notes || '',
             is_active: !!shift.is_active,
-            courier_ids: [],
+            courier_ids: [...(shift.courier_ids || [])].map(String),
         };
-        this.openActionsModal = false;
         this.openShiftModal = true;
     },
-    openAssign(id, workDate) {
+    openAssign(id) {
         const shift = this.shifts.find((item) => item.id === id);
-        if (!shift || !workDate) return;
-        const dayCouriers = shift.couriers_by_date?.[workDate] || [];
+        if (!shift) return;
         this.courierForm = {
             id: shift.id,
             shift_name: shift.name,
-            work_date: workDate,
-            courier_ids: dayCouriers.map((courier) => String(courier.id)),
+            required_headcount: shift.required_headcount || 1,
+            courier_ids: [...(shift.courier_ids || [])].map(String),
         };
-        this.openActionsModal = false;
         this.openCourierModal = true;
     },
-    openShiftActions(id, workDate) {
-        this.actionsShift = this.shifts.find((item) => item.id === id) || null;
-        this.actionsWorkDate = workDate || null;
-        if (!this.actionsShift || !this.actionsWorkDate) return;
-        this.openActionsModal = true;
+    openJoker(id) {
+        const shift = this.shifts.find((item) => item.id === id);
+        if (!shift) return;
+        this.jokerForm = {
+            id: shift.id,
+            shift_name: shift.name,
+            work_date: '',
+            absent_courier_id: '',
+            joker_courier_id: '',
+            reason: 'izin',
+            notes: '',
+            roster: shift.couriers || [],
+        };
+        this.openJokerModal = true;
     },
-    dayCouriers() {
-        if (!this.actionsShift || !this.actionsWorkDate) return [];
-        return this.actionsShift.couriers_by_date?.[this.actionsWorkDate] || [];
-    },
-    dayCourierCount() {
-        return this.dayCouriers().length;
-    },
-    formatWorkDate(value) {
-        if (!value) return '';
-        const parts = String(value).split('-');
-        if (parts.length !== 3) return value;
-        return `${parts[2]}.${parts[1]}.${parts[0]}`;
-    },
-    editFromActions() {
-        if (!this.actionsShift) return;
-        this.openEdit(this.actionsShift.id);
-    },
-    assignFromActions() {
-        if (!this.actionsShift || !this.actionsWorkDate) return;
-        this.openAssign(this.actionsShift.id, this.actionsWorkDate);
-    },
-    openDeleteConfirm() {
-        if (!this.actionsShift || !this.actionsWorkDate) return;
-        this.openActionsModal = false;
+    openDeleteConfirm(id) {
+        this.deleteShiftId = id;
         this.openDeleteModal = true;
     },
     closeShiftModal() {
@@ -4171,11 +4156,20 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
     closeCourierModal() {
         this.openCourierModal = false;
     },
-    closeActionsModal() {
-        this.openActionsModal = false;
+    closeJokerModal() {
+        this.openJokerModal = false;
     },
     closeDeleteModal() {
         this.openDeleteModal = false;
+        this.deleteShiftId = null;
+    },
+    jokerPool() {
+        const absentId = String(this.jokerForm.absent_courier_id || '');
+        const rosterIds = (this.jokerForm.roster || []).map((c) => String(c.id));
+        return (this.availableCouriers || []).filter((courier) => {
+            const id = String(courier.id);
+            return id !== absentId && !rosterIds.includes(id);
+        });
     },
     shiftFormAction() {
         if (this.shiftMode === 'edit' && this.shiftForm.id) {
@@ -4186,8 +4180,11 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
     courierFormAction() {
         return this.assignUrlTemplate.replace('__ID__', this.courierForm.id);
     },
+    jokerFormAction() {
+        return this.jokerUrlTemplate.replace('__ID__', this.jokerForm.id);
+    },
     destroyFormAction() {
-        return this.destroyUrlTemplate.replace('__ID__', this.actionsShift?.id);
+        return this.destroyUrlTemplate.replace('__ID__', this.deleteShiftId);
     },
 }));
 

@@ -9,8 +9,8 @@ use App\Modules\Business\Models\Business;
 use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\ShiftPlanning\Models\BusinessShift;
-use App\Modules\ShiftPlanning\Models\BusinessShiftDayCourier;
-use Carbon\Carbon;
+use App\Modules\ShiftPlanning\Models\BusinessShiftCourier;
+use App\Modules\ShiftPlanning\Models\BusinessShiftJokerAssignment;
 use Database\Seeders\CitySeeder;
 use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
@@ -55,13 +55,248 @@ class ShiftPlanningTest extends TestCase
         $response->assertSee('Demo Market');
     }
 
-    public function test_can_create_shift_with_optional_couriers_for_all_days(): void
+    public function test_can_create_fixed_shift_with_roster(): void
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
         $business = $this->createBusiness($user);
         $courier = $this->createCourier($user, ['full_name' => 'Zeynep Ak']);
 
+        $this->assignCourier($business, $courier, $user);
+
+        $response = $this->actingAs($user)->post(route('shift-planning.store'), [
+            'business_id' => $business->id,
+            'name' => 'Sabah',
+            'start_time' => '09:00',
+            'end_time' => '17:00',
+            'required_headcount' => 2,
+            'courier_ids' => [$courier->id],
+            'is_active' => '1',
+        ]);
+
+        $shift = BusinessShift::query()->first();
+        $this->assertNotNull($shift);
+        $response->assertRedirect(route('shift-planning.index', ['business_id' => $business->id]));
+        $this->assertSame(2, $shift->required_headcount);
+        $this->assertDatabaseHas('business_shift_couriers', [
+            'business_shift_id' => $shift->id,
+            'courier_id' => $courier->id,
+        ]);
+    }
+
+    public function test_roster_cannot_exceed_headcount(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('operations_specialist');
+        $business = $this->createBusiness($user);
+        $c1 = $this->createCourier($user, ['full_name' => 'Kurye 1']);
+        $c2 = $this->createCourier($user, ['full_name' => 'Kurye 2']);
+        $this->assignCourier($business, $c1, $user);
+        $this->assignCourier($business, $c2, $user);
+
+        $shift = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'name' => 'Akşam',
+            'start_time' => '17:00',
+            'end_time' => '01:00',
+            'required_headcount' => 1,
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        $this->actingAs($user)
+            ->from(route('shift-planning.index', ['business_id' => $business->id]))
+            ->put(route('shift-planning.assign-couriers', $shift->id), [
+                'courier_ids' => [$c1->id, $c2->id],
+            ])
+            ->assertRedirect()
+            ->assertSessionHasErrors('courier_ids');
+
+        $this->assertDatabaseCount('business_shift_couriers', 0);
+    }
+
+    public function test_can_assign_joker_for_absent_roster_courier(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $roster = $this->createCourier($user, ['full_name' => 'Kadrolu Kurye']);
+        $joker = $this->createCourier($user, ['full_name' => 'Joker Kurye']);
+        $this->assignCourier($business, $roster, $user);
+        $this->assignCourier($business, $joker, $user);
+
+        $shift = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'name' => 'Öğlen',
+            'start_time' => '12:00',
+            'end_time' => '20:00',
+            'required_headcount' => 1,
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+        BusinessShiftCourier::query()->create([
+            'business_shift_id' => $shift->id,
+            'courier_id' => $roster->id,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('shift-planning.jokers.store', $shift->id), [
+                'work_date' => '2026-07-20',
+                'absent_courier_id' => $roster->id,
+                'joker_courier_id' => $joker->id,
+                'reason' => 'hasta',
+                'notes' => 'Ateş',
+            ])
+            ->assertRedirect(route('shift-planning.index', ['business_id' => $business->id]));
+
+        $this->assertTrue(
+            BusinessShiftJokerAssignment::query()
+                ->where('business_shift_id', $shift->id)
+                ->whereDate('work_date', '2026-07-20')
+                ->where('absent_courier_id', $roster->id)
+                ->where('joker_courier_id', $joker->id)
+                ->where('reason', 'hasta')
+                ->exists()
+        );
+
+        $this->actingAs($user)
+            ->get(route('shift-planning.index', [
+                'business_id' => $business->id,
+                'week' => '2026-07-20',
+            ]))
+            ->assertOk()
+            ->assertSee('Joker Kurye')
+            ->assertSee('Kadrolu Kurye');
+    }
+
+    public function test_joker_cannot_be_existing_roster_member(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $c1 = $this->createCourier($user, ['full_name' => 'A']);
+        $c2 = $this->createCourier($user, ['full_name' => 'B']);
+        $this->assignCourier($business, $c1, $user);
+        $this->assignCourier($business, $c2, $user);
+
+        $shift = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'name' => 'Sabah',
+            'start_time' => '09:00',
+            'end_time' => '17:00',
+            'required_headcount' => 2,
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+        BusinessShiftCourier::query()->insert([
+            ['business_shift_id' => $shift->id, 'courier_id' => $c1->id, 'created_at' => now(), 'updated_at' => now()],
+            ['business_shift_id' => $shift->id, 'courier_id' => $c2->id, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+
+        $this->actingAs($user)
+            ->from(route('shift-planning.index', ['business_id' => $business->id]))
+            ->post(route('shift-planning.jokers.store', $shift->id), [
+                'work_date' => '2026-07-21',
+                'absent_courier_id' => $c1->id,
+                'joker_courier_id' => $c2->id,
+                'reason' => 'izin',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasErrors('joker_courier_id');
+    }
+
+    public function test_can_delete_shift(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+
+        $shift = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'name' => 'Gece',
+            'start_time' => '22:00',
+            'end_time' => '06:00',
+            'required_headcount' => 1,
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        $this->actingAs($user)
+            ->delete(route('shift-planning.destroy', $shift->id))
+            ->assertRedirect(route('shift-planning.index', ['business_id' => $business->id]));
+
+        $this->assertSoftDeleted('business_shifts', ['id' => $shift->id]);
+    }
+
+    public function test_can_remove_joker_assignment(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $roster = $this->createCourier($user, ['full_name' => 'Kadrolu']);
+        $joker = $this->createCourier($user, ['full_name' => 'Joker']);
+        $this->assignCourier($business, $roster, $user);
+        $this->assignCourier($business, $joker, $user);
+
+        $shift = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'name' => 'Sabah',
+            'start_time' => '09:00',
+            'end_time' => '17:00',
+            'required_headcount' => 1,
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+        BusinessShiftCourier::query()->create([
+            'business_shift_id' => $shift->id,
+            'courier_id' => $roster->id,
+        ]);
+        $assignment = BusinessShiftJokerAssignment::query()->create([
+            'business_shift_id' => $shift->id,
+            'work_date' => '2026-07-22',
+            'absent_courier_id' => $roster->id,
+            'joker_courier_id' => $joker->id,
+            'reason' => 'izin',
+            'created_by' => $user->id,
+        ]);
+
+        $this->actingAs($user)
+            ->delete(route('shift-planning.jokers.destroy', $assignment->id))
+            ->assertRedirect();
+
+        $this->assertDatabaseMissing('business_shift_joker_assignments', ['id' => $assignment->id]);
+    }
+
+    private function createBusiness(User $user, array $overrides = []): Business
+    {
+        $city = City::query()->where('name', 'İstanbul')->firstOrFail();
+        $district = District::query()->where('city_id', $city->id)->where('name', 'Kadıköy')->firstOrFail();
+
+        return Business::factory()->create(array_merge([
+            'created_by' => $user->id,
+            'city_id' => $city->id,
+            'district_id' => $district->id,
+            'brand_name' => 'Test Market',
+            'company_name' => 'Test Market A.Ş.',
+            'status' => 'active',
+        ], $overrides));
+    }
+
+    private function createCourier(User $user, array $overrides = []): Courier
+    {
+        $city = City::query()->where('name', 'İstanbul')->firstOrFail();
+        $district = District::query()->where('city_id', $city->id)->where('name', 'Kadıköy')->firstOrFail();
+
+        return Courier::factory()->create(array_merge([
+            'created_by' => $user->id,
+            'city_id' => $city->id,
+            'district_id' => $district->id,
+            'status' => 'active',
+        ], $overrides));
+    }
+
+    private function assignCourier(Business $business, Courier $courier, User $user): void
+    {
         BusinessCourierAssignment::factory()->create([
             'business_id' => $business->id,
             'courier_id' => $courier->id,
@@ -70,311 +305,5 @@ class ShiftPlanningTest extends TestCase
             'end_date' => null,
             'assigned_by' => $user->id,
         ]);
-
-        $response = $this->actingAs($user)->post(route('shift-planning.store'), [
-            'business_id' => $business->id,
-            'name' => 'Tam Gün',
-            'start_time' => '09:00',
-            'end_time' => '17:00',
-            'start_date' => '2026-07-06',
-            'end_date' => '2026-07-15',
-            'days_of_week' => [1, 2, 3, 4, 5, 6, 7],
-            'courier_ids' => [$courier->id],
-            'is_active' => '1',
-        ]);
-
-        $shift = BusinessShift::query()->first();
-        $this->assertNotNull($shift);
-        $response->assertRedirect(route('shift-planning.index', ['business_id' => $business->id]));
-
-        $occurrenceCount = count($shift->occurrenceDates());
-        $this->assertSame(10, $occurrenceCount);
-        $this->assertSame(
-            $occurrenceCount,
-            BusinessShiftDayCourier::query()
-                ->where('business_shift_id', $shift->id)
-                ->where('courier_id', $courier->id)
-                ->count()
-        );
-    }
-
-    public function test_can_create_shift_with_date_range(): void
-    {
-        $user = User::factory()->create();
-        $user->assignRole('super_admin');
-        $business = $this->createBusiness($user);
-        $weekStart = now()->startOfWeek(Carbon::MONDAY);
-
-        $response = $this->actingAs($user)->post(route('shift-planning.store'), [
-            'business_id' => $business->id,
-            'name' => 'Sabah',
-            'start_time' => '09:00',
-            'end_time' => '17:00',
-            'start_date' => $weekStart->toDateString(),
-            'end_date' => $weekStart->copy()->addDays(6)->toDateString(),
-            'days_of_week' => [1, 2, 3, 4, 5, 6, 7],
-            'is_active' => '1',
-        ]);
-
-        $shift = BusinessShift::query()->first();
-
-        $this->assertNotNull($shift);
-        $response->assertRedirect(route('shift-planning.index', ['business_id' => $business->id]));
-        $this->assertSame('Sabah', $shift->name);
-        $this->assertSame($weekStart->toDateString(), $shift->start_date->toDateString());
-        $this->assertSame(0, $shift->dayCouriers()->count());
-
-        $index = $this->actingAs($user)->get(route('shift-planning.index', [
-            'business_id' => $business->id,
-            'week' => $weekStart->toDateString(),
-        ]));
-        $index->assertOk();
-        $index->assertSee('Sabah');
-        $index->assertSee('Kurye yok');
-    }
-
-    public function test_can_assign_different_couriers_per_day(): void
-    {
-        $user = User::factory()->create();
-        $user->assignRole('super_admin');
-        $business = $this->createBusiness($user);
-        $courierA = $this->createCourier($user, ['full_name' => 'Ayşe Demir']);
-        $courierB = $this->createCourier($user, ['full_name' => 'Mehmet Kaya']);
-        $weekStart = now()->startOfWeek(Carbon::MONDAY);
-        $monday = $weekStart->toDateString();
-        $tuesday = $weekStart->copy()->addDay()->toDateString();
-
-        foreach ([$courierA, $courierB] as $courier) {
-            BusinessCourierAssignment::factory()->create([
-                'business_id' => $business->id,
-                'courier_id' => $courier->id,
-                'status' => 'active',
-                'start_date' => '2026-01-01',
-                'end_date' => null,
-                'assigned_by' => $user->id,
-            ]);
-        }
-
-        $shift = BusinessShift::query()->create([
-            'business_id' => $business->id,
-            'name' => 'Gündüz',
-            'start_time' => '09:00',
-            'end_time' => '17:00',
-            'start_date' => $weekStart->toDateString(),
-            'end_date' => $weekStart->copy()->addDays(6)->toDateString(),
-            'days_of_week' => [1, 2, 3, 4, 5, 6, 7],
-            'is_active' => true,
-            'created_by' => $user->id,
-        ]);
-
-        $this->actingAs($user)->put(route('shift-planning.assign-couriers', $shift->id), [
-            'work_date' => $monday,
-            'courier_ids' => [$courierA->id],
-            'week' => $weekStart->toDateString(),
-        ])->assertRedirect();
-
-        $this->actingAs($user)->put(route('shift-planning.assign-couriers', $shift->id), [
-            'work_date' => $tuesday,
-            'courier_ids' => [$courierB->id],
-            'week' => $weekStart->toDateString(),
-        ])->assertRedirect();
-
-        $this->assertTrue(
-            BusinessShiftDayCourier::query()
-                ->where('business_shift_id', $shift->id)
-                ->whereDate('work_date', $monday)
-                ->where('courier_id', $courierA->id)
-                ->exists()
-        );
-        $this->assertTrue(
-            BusinessShiftDayCourier::query()
-                ->where('business_shift_id', $shift->id)
-                ->whereDate('work_date', $tuesday)
-                ->where('courier_id', $courierB->id)
-                ->exists()
-        );
-        $this->assertFalse(
-            BusinessShiftDayCourier::query()
-                ->where('business_shift_id', $shift->id)
-                ->whereDate('work_date', $monday)
-                ->where('courier_id', $courierB->id)
-                ->exists()
-        );
-
-        $index = $this->actingAs($user)->get(route('shift-planning.index', [
-            'business_id' => $business->id,
-            'week' => $weekStart->toDateString(),
-        ]));
-        $index->assertSee('Ayşe Demir');
-        $index->assertSee('Mehmet Kaya');
-    }
-
-    public function test_cannot_assign_courier_outside_shift_date_range(): void
-    {
-        $user = User::factory()->create();
-        $user->assignRole('super_admin');
-        $business = $this->createBusiness($user);
-        $courier = $this->createCourier($user);
-
-        BusinessCourierAssignment::factory()->create([
-            'business_id' => $business->id,
-            'courier_id' => $courier->id,
-            'status' => 'active',
-            'start_date' => '2026-01-01',
-            'assigned_by' => $user->id,
-        ]);
-
-        $shift = BusinessShift::query()->create([
-            'business_id' => $business->id,
-            'name' => 'Kısa',
-            'start_time' => '09:00',
-            'end_time' => '17:00',
-            'start_date' => '2026-07-13',
-            'end_date' => '2026-07-17',
-            'days_of_week' => [1, 2, 3, 4, 5],
-            'is_active' => true,
-            'created_by' => $user->id,
-        ]);
-
-        $response = $this->actingAs($user)->put(route('shift-planning.assign-couriers', $shift->id), [
-            'work_date' => '2026-07-20',
-            'courier_ids' => [$courier->id],
-        ]);
-
-        $response->assertSessionHasErrors('work_date');
-        $this->assertDatabaseCount('business_shift_day_couriers', 0);
-    }
-
-    public function test_cannot_assign_courier_not_linked_to_business(): void
-    {
-        $user = User::factory()->create();
-        $user->assignRole('super_admin');
-        $business = $this->createBusiness($user);
-        $courier = $this->createCourier($user);
-        $weekStart = now()->startOfWeek(Carbon::MONDAY);
-
-        $shift = BusinessShift::query()->create([
-            'business_id' => $business->id,
-            'name' => 'Akşam',
-            'start_time' => '16:00',
-            'end_time' => '00:00',
-            'start_date' => $weekStart->toDateString(),
-            'end_date' => $weekStart->copy()->addDays(6)->toDateString(),
-            'days_of_week' => [1, 2, 3, 4, 5, 6, 7],
-            'is_active' => true,
-            'created_by' => $user->id,
-        ]);
-
-        $response = $this->actingAs($user)->put(route('shift-planning.assign-couriers', $shift->id), [
-            'work_date' => $weekStart->toDateString(),
-            'courier_ids' => [$courier->id],
-        ]);
-
-        $response->assertSessionHasErrors('courier_ids.0');
-        $this->assertDatabaseCount('business_shift_day_couriers', 0);
-    }
-
-    public function test_can_delete_only_selected_day_or_entire_shift(): void
-    {
-        $user = User::factory()->create();
-        $user->assignRole('super_admin');
-        $business = $this->createBusiness($user);
-
-        $shift = BusinessShift::query()->create([
-            'business_id' => $business->id,
-            'name' => 'Sabah',
-            'start_time' => '09:00',
-            'end_time' => '17:00',
-            'start_date' => '2026-07-06',
-            'end_date' => '2026-07-10',
-            'days_of_week' => [1, 2, 3, 4, 5],
-            'is_active' => true,
-            'created_by' => $user->id,
-        ]);
-
-        $this->actingAs($user)->delete(route('shift-planning.destroy', $shift->id), [
-            'scope' => 'day',
-            'work_date' => '2026-07-07',
-        ])->assertRedirect();
-
-        $this->assertNotSoftDeleted('business_shifts', ['id' => $shift->id]);
-        $this->assertContains('2026-07-07', $shift->fresh()->excluded_dates);
-        $this->assertFalse($shift->fresh()->runsOnDate('2026-07-07'));
-        $this->assertTrue($shift->fresh()->runsOnDate('2026-07-08'));
-
-        $this->actingAs($user)->delete(route('shift-planning.destroy', $shift->id), [
-            'scope' => 'all',
-            'work_date' => '2026-07-08',
-        ])->assertRedirect();
-
-        $this->assertSoftDeleted('business_shifts', ['id' => $shift->id]);
-    }
-
-    public function test_can_update_and_delete_shift(): void
-    {
-        $user = User::factory()->create();
-        $user->assignRole('super_admin');
-        $business = $this->createBusiness($user);
-        $weekStart = now()->startOfWeek(Carbon::MONDAY);
-
-        $shift = BusinessShift::query()->create([
-            'business_id' => $business->id,
-            'name' => 'Öğle',
-            'start_time' => '12:00',
-            'end_time' => '18:00',
-            'start_date' => $weekStart->toDateString(),
-            'end_date' => $weekStart->copy()->addDays(6)->toDateString(),
-            'days_of_week' => [1, 2, 3, 4, 5],
-            'is_active' => true,
-            'created_by' => $user->id,
-        ]);
-
-        $update = $this->actingAs($user)->put(route('shift-planning.update', $shift->id), [
-            'name' => 'Öğleden Sonra',
-            'start_time' => '13:00',
-            'end_time' => '21:00',
-            'start_date' => $weekStart->toDateString(),
-            'end_date' => $weekStart->copy()->addDays(13)->toDateString(),
-            'days_of_week' => [1, 3, 5],
-            'is_active' => '1',
-        ]);
-
-        $update->assertRedirect(route('shift-planning.index', ['business_id' => $business->id]));
-        $this->assertSame('Öğleden Sonra', $shift->fresh()->name);
-        $this->assertSame([1, 3, 5], $shift->fresh()->days_of_week);
-
-        $delete = $this->actingAs($user)->delete(route('shift-planning.destroy', $shift->id), [
-            'scope' => 'all',
-        ]);
-        $delete->assertRedirect(route('shift-planning.index', ['business_id' => $business->id]));
-        $this->assertSoftDeleted('business_shifts', ['id' => $shift->id]);
-    }
-
-    /**
-     * @param  array<string, mixed>  $overrides
-     */
-    private function createBusiness(User $user, array $overrides = []): Business
-    {
-        $city = City::query()->where('name', 'İstanbul')->firstOrFail();
-        $district = District::query()
-            ->where('city_id', $city->id)
-            ->where('name', 'Kadıköy')
-            ->firstOrFail();
-
-        return Business::factory()->create(array_merge([
-            'city_id' => $city->id,
-            'district_id' => $district->id,
-            'created_by' => $user->id,
-        ], $overrides));
-    }
-
-    /**
-     * @param  array<string, mixed>  $overrides
-     */
-    private function createCourier(User $user, array $overrides = []): Courier
-    {
-        return Courier::factory()->create(array_merge([
-            'created_by' => $user->id,
-        ], $overrides));
     }
 }

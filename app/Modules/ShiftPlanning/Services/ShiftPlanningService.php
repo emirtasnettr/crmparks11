@@ -8,7 +8,8 @@ use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\ShiftPlanning\Data\ShiftPlanningFormData;
 use App\Modules\ShiftPlanning\Models\BusinessShift;
-use App\Modules\ShiftPlanning\Models\BusinessShiftDayCourier;
+use App\Modules\ShiftPlanning\Models\BusinessShiftCourier;
+use App\Modules\ShiftPlanning\Models\BusinessShiftJokerAssignment;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -44,15 +45,11 @@ class ShiftPlanningService
     /**
      * @return Collection<int, BusinessShift>
      */
-    public function forBusiness(int $businessId, ?string $weekStart = null, ?string $weekEnd = null): Collection
+    public function forBusiness(int $businessId): Collection
     {
         return BusinessShift::query()
             ->where('business_id', $businessId)
-            ->when($weekStart && $weekEnd, function ($query) use ($weekStart, $weekEnd): void {
-                $query->whereDate('start_date', '<=', $weekEnd)
-                    ->whereDate('end_date', '>=', $weekStart);
-            })
-            ->with(['dayCouriers.courier'])
+            ->with(['rosterCouriers'])
             ->orderBy('start_time')
             ->orderBy('name')
             ->get();
@@ -61,7 +58,7 @@ class ShiftPlanningService
     public function find(int $id): ?BusinessShift
     {
         return BusinessShift::query()
-            ->with(['business', 'dayCouriers.courier'])
+            ->with(['business', 'rosterCouriers', 'jokerAssignments.absentCourier', 'jokerAssignments.jokerCourier'])
             ->find($id);
     }
 
@@ -85,12 +82,12 @@ class ShiftPlanningService
             ->currentlyActive()
             ->pluck('courier_id');
 
-        $onShiftIds = BusinessShiftDayCourier::query()
+        $onRosterIds = BusinessShiftCourier::query()
             ->whereHas('shift', fn ($query) => $query->where('business_id', $businessId))
             ->pluck('courier_id');
 
         $courierIds = $assignedIds
-            ->merge($onShiftIds)
+            ->merge($onRosterIds)
             ->map(fn ($id) => (int) $id)
             ->unique()
             ->values()
@@ -123,9 +120,7 @@ class ShiftPlanningService
                 'name' => $data['name'],
                 'start_time' => $data['start_time'],
                 'end_time' => $data['end_time'],
-                'start_date' => $data['start_date'],
-                'end_date' => $data['end_date'],
-                'days_of_week' => $this->normalizeDays($data['days_of_week'] ?? null),
+                'required_headcount' => max(1, (int) ($data['required_headcount'] ?? 1)),
                 'notes' => $data['notes'] ?? null,
                 'is_active' => array_key_exists('is_active', $data)
                     ? (bool) $data['is_active']
@@ -136,36 +131,11 @@ class ShiftPlanningService
             $courierIds = $this->normalizeCourierIds($data['courier_ids'] ?? []);
             if ($courierIds !== []) {
                 $this->assertCouriersBelongToBusiness((int) $shift->business_id, $courierIds);
-                $this->assignCouriersToAllOccurrences($shift, $courierIds);
+                $shift->rosterCouriers()->sync($courierIds);
             }
 
-            return $shift->fresh(['dayCouriers.courier']);
+            return $shift->fresh(['rosterCouriers']);
         });
-    }
-
-    /**
-     * @param  array<int, int>  $courierIds
-     */
-    private function assignCouriersToAllOccurrences(BusinessShift $shift, array $courierIds): void
-    {
-        $rows = [];
-        $now = now();
-
-        foreach ($shift->occurrenceDates() as $date) {
-            foreach ($courierIds as $courierId) {
-                $rows[] = [
-                    'business_shift_id' => $shift->id,
-                    'work_date' => $date,
-                    'courier_id' => $courierId,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ];
-            }
-        }
-
-        if ($rows !== []) {
-            BusinessShiftDayCourier::query()->insert($rows);
-        }
     }
 
     /**
@@ -173,143 +143,129 @@ class ShiftPlanningService
      */
     public function update(BusinessShift $shift, array $data): BusinessShift
     {
-        return DB::transaction(function () use ($shift, $data): BusinessShift {
-            $shift->update([
-                'name' => $data['name'],
-                'start_time' => $data['start_time'],
-                'end_time' => $data['end_time'],
-                'start_date' => $data['start_date'],
-                'end_date' => $data['end_date'],
-                'days_of_week' => $this->normalizeDays($data['days_of_week'] ?? null),
-                'notes' => $data['notes'] ?? null,
-                'is_active' => array_key_exists('is_active', $data)
-                    ? (bool) $data['is_active']
-                    : $shift->is_active,
-            ]);
+        $shift->update([
+            'name' => $data['name'],
+            'start_time' => $data['start_time'],
+            'end_time' => $data['end_time'],
+            'required_headcount' => max(1, (int) ($data['required_headcount'] ?? $shift->required_headcount)),
+            'notes' => $data['notes'] ?? null,
+            'is_active' => array_key_exists('is_active', $data)
+                ? (bool) $data['is_active']
+                : $shift->is_active,
+        ]);
 
-            $validDates = $shift->fresh()->occurrenceDates();
-
-            BusinessShiftDayCourier::query()
-                ->where('business_shift_id', $shift->id)
-                ->whereNotIn('work_date', $validDates)
-                ->delete();
-
-            return $shift->fresh(['dayCouriers.courier']);
-        });
+        return $shift->fresh(['rosterCouriers']);
     }
 
     /**
      * @param  array<int, mixed>  $courierIds
      */
-    public function syncDayCouriers(BusinessShift $shift, string $workDate, array $courierIds): BusinessShift
+    public function syncRoster(BusinessShift $shift, array $courierIds): BusinessShift
     {
-        $date = Carbon::parse($workDate)->toDateString();
+        $normalized = $this->normalizeCourierIds($courierIds);
+        $existing = $shift->rosterCouriers()->pluck('couriers.id')->all();
+        $this->assertCouriersBelongToBusiness($shift->business_id, $normalized, $existing);
 
-        if (! $shift->runsOnDate($date)) {
+        if (count($normalized) > max(1, (int) $shift->required_headcount)) {
             throw ValidationException::withMessages([
-                'work_date' => 'Seçilen tarih bu vardiyanın tarih aralığında değil.',
+                'courier_ids' => "Bu vardiyada en fazla {$shift->required_headcount} kişi çalışabilir.",
             ]);
         }
 
-        $normalized = $this->normalizeCourierIds($courierIds);
-        $existing = BusinessShiftDayCourier::query()
-            ->where('business_shift_id', $shift->id)
-            ->whereDate('work_date', $date)
-            ->pluck('courier_id')
-            ->all();
+        DB::transaction(function () use ($shift, $normalized): void {
+            $shift->rosterCouriers()->sync($normalized);
 
-        $this->assertCouriersBelongToBusiness($shift->business_id, $normalized, $existing);
-
-        DB::transaction(function () use ($shift, $date, $normalized): void {
-            BusinessShiftDayCourier::query()
+            // Kadrodan çıkan kuryelerin gelecekteki joker kayıtlarını temizle.
+            BusinessShiftJokerAssignment::query()
                 ->where('business_shift_id', $shift->id)
-                ->whereDate('work_date', $date)
+                ->whereDate('work_date', '>=', now()->toDateString())
+                ->whereNotIn('absent_courier_id', $normalized)
                 ->delete();
-
-            foreach ($normalized as $courierId) {
-                BusinessShiftDayCourier::query()->create([
-                    'business_shift_id' => $shift->id,
-                    'work_date' => $date,
-                    'courier_id' => $courierId,
-                ]);
-            }
         });
 
-        return $shift->fresh(['dayCouriers.courier']);
+        return $shift->fresh(['rosterCouriers']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function assignJoker(BusinessShift $shift, array $data, User $user): BusinessShiftJokerAssignment
+    {
+        $workDate = Carbon::parse($data['work_date'])->toDateString();
+        $absentId = (int) $data['absent_courier_id'];
+        $jokerId = (int) $data['joker_courier_id'];
+
+        if ($absentId === $jokerId) {
+            throw ValidationException::withMessages([
+                'joker_courier_id' => 'Joker personel, izinli kurye ile aynı olamaz.',
+            ]);
+        }
+
+        $rosterIds = $shift->rosterCouriers()->pluck('couriers.id')->map(fn ($id) => (int) $id)->all();
+        if (! in_array($absentId, $rosterIds, true)) {
+            throw ValidationException::withMessages([
+                'absent_courier_id' => 'İzinli kurye bu vardiyanın kadrosunda olmalıdır.',
+            ]);
+        }
+
+        if (in_array($jokerId, $rosterIds, true)) {
+            throw ValidationException::withMessages([
+                'joker_courier_id' => 'Joker personel zaten bu vardiyanın kadrosunda olmamalıdır.',
+            ]);
+        }
+
+        $this->assertCouriersBelongToBusiness($shift->business_id, [$jokerId]);
+
+        return BusinessShiftJokerAssignment::query()->updateOrCreate(
+            [
+                'business_shift_id' => $shift->id,
+                'work_date' => $workDate,
+                'absent_courier_id' => $absentId,
+            ],
+            [
+                'joker_courier_id' => $jokerId,
+                'reason' => $data['reason'] ?? 'izin',
+                'notes' => $data['notes'] ?? null,
+                'created_by' => $user->id,
+            ],
+        );
+    }
+
+    public function deleteJoker(BusinessShiftJokerAssignment $assignment): void
+    {
+        $assignment->delete();
+    }
+
+    public function findJoker(int $id): ?BusinessShiftJokerAssignment
+    {
+        return BusinessShiftJokerAssignment::query()
+            ->with(['shift', 'absentCourier', 'jokerCourier'])
+            ->find($id);
+    }
+
+    /**
+     * @return Collection<int, BusinessShiftJokerAssignment>
+     */
+    public function jokersForBusiness(int $businessId, ?string $from = null, ?string $to = null): Collection
+    {
+        return BusinessShiftJokerAssignment::query()
+            ->whereHas('shift', fn ($q) => $q->where('business_id', $businessId))
+            ->with(['shift', 'absentCourier', 'jokerCourier'])
+            ->when($from, fn ($q) => $q->whereDate('work_date', '>=', $from))
+            ->when($to, fn ($q) => $q->whereDate('work_date', '<=', $to))
+            ->orderBy('work_date')
+            ->orderBy('id')
+            ->get();
     }
 
     public function delete(BusinessShift $shift): void
     {
         DB::transaction(function () use ($shift): void {
+            $shift->jokerAssignments()->delete();
+            $shift->shiftCouriers()->delete();
             $shift->dayCouriers()->delete();
             $shift->delete();
         });
-    }
-
-    public function deleteDay(BusinessShift $shift, string $workDate): string
-    {
-        $date = Carbon::parse($workDate)->toDateString();
-
-        if (! $this->dateWithinShiftWindow($shift, $date)) {
-            throw ValidationException::withMessages([
-                'work_date' => 'Seçilen tarih bu vardiyaya ait değil.',
-            ]);
-        }
-
-        return DB::transaction(function () use ($shift, $date): string {
-            $excluded = $shift->excludedDateList();
-            if (! in_array($date, $excluded, true)) {
-                $excluded[] = $date;
-            }
-
-            $shift->update(['excluded_dates' => array_values($excluded)]);
-
-            BusinessShiftDayCourier::query()
-                ->where('business_shift_id', $shift->id)
-                ->whereDate('work_date', $date)
-                ->delete();
-
-            if ($shift->fresh()->occurrenceDates() === []) {
-                $shift->dayCouriers()->delete();
-                $shift->delete();
-
-                return 'all';
-            }
-
-            return 'day';
-        });
-    }
-
-    private function dateWithinShiftWindow(BusinessShift $shift, string $date): bool
-    {
-        $day = Carbon::parse($date)->startOfDay();
-
-        if ($shift->start_date && $day->lt($shift->start_date->copy()->startOfDay())) {
-            return false;
-        }
-
-        if ($shift->end_date && $day->gt($shift->end_date->copy()->startOfDay())) {
-            return false;
-        }
-
-        return in_array((int) $day->dayOfWeekIso, $shift->activeWeekDays(), true);
-    }
-
-    /**
-     * @param  array<int, mixed>|null  $days
-     * @return array<int, int>
-     */
-    private function normalizeDays(?array $days): array
-    {
-        $normalized = collect($days ?? [])
-            ->map(fn ($day) => (int) $day)
-            ->filter(fn (int $day) => $day >= 1 && $day <= 7)
-            ->unique()
-            ->sort()
-            ->values()
-            ->all();
-
-        return $normalized !== [] ? $normalized : ShiftPlanningFormData::defaultDays();
     }
 
     /**

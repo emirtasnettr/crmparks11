@@ -85,6 +85,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/', [ShiftPlanningController::class, 'store'])->middleware('permission:shift_planning.create')->name('store');
         Route::put('/{id}', [ShiftPlanningController::class, 'update'])->middleware('permission:shift_planning.update')->name('update');
         Route::put('/{id}/kuryeler', [ShiftPlanningController::class, 'assignCouriers'])->middleware('permission:shift_planning.update')->name('assign-couriers');
+        Route::post('/{id}/joker', [ShiftPlanningController::class, 'storeJoker'])->middleware('permission:shift_planning.update')->name('jokers.store');
+        Route::delete('/joker/{jokerId}', [ShiftPlanningController::class, 'destroyJoker'])->middleware('permission:shift_planning.update')->name('jokers.destroy');
         Route::delete('/{id}', [ShiftPlanningController::class, 'destroy'])->middleware('permission:shift_planning.delete')->name('destroy');
     });
 

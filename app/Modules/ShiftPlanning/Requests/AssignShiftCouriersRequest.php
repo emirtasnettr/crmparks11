@@ -4,7 +4,6 @@ namespace App\Modules\ShiftPlanning\Requests;
 
 use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\ShiftPlanning\Models\BusinessShift;
-use App\Modules\ShiftPlanning\Models\BusinessShiftDayCourier;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -33,14 +32,10 @@ class AssignShiftCouriersRequest extends FormRequest
         /** @var BusinessShift|null $shift */
         $shift = BusinessShift::query()->find((int) $this->route('id'));
         $businessId = $shift?->business_id;
-        $workDate = $this->input('work_date');
+        $headcount = max(1, (int) ($shift?->required_headcount ?? 1));
 
-        $existing = ($shift && $workDate)
-            ? BusinessShiftDayCourier::query()
-                ->where('business_shift_id', $shift->id)
-                ->whereDate('work_date', $workDate)
-                ->pluck('courier_id')
-                ->all()
+        $existing = $shift
+            ? $shift->rosterCouriers()->pluck('couriers.id')->all()
             : [];
 
         $allowedCourierIds = $businessId
@@ -54,8 +49,7 @@ class AssignShiftCouriersRequest extends FormRequest
             : [];
 
         return [
-            'work_date' => ['required', 'date'],
-            'courier_ids' => ['nullable', 'array'],
+            'courier_ids' => ['nullable', 'array', 'max:'.$headcount],
             'courier_ids.*' => ['integer', Rule::in($allowedCourierIds)],
         ];
     }
@@ -66,7 +60,7 @@ class AssignShiftCouriersRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'work_date.required' => 'Çalışma tarihi zorunludur.',
+            'courier_ids.max' => 'Atanan kurye sayısı vardiya kişi sayısını aşamaz.',
             'courier_ids.*.in' => 'Seçilen kuryeler bu işletmeye atanmış olmalıdır.',
         ];
     }

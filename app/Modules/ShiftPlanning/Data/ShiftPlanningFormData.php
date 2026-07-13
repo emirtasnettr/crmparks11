@@ -39,14 +39,6 @@ class ShiftPlanningFormData
     }
 
     /**
-     * @return array<int, int>
-     */
-    public static function defaultDays(): array
-    {
-        return [1, 2, 3, 4, 5, 6, 7];
-    }
-
-    /**
      * @return array<string, string>
      */
     public static function statuses(): array
@@ -54,6 +46,18 @@ class ShiftPlanningFormData
         return [
             '1' => 'Aktif',
             '0' => 'Pasif',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function jokerReasons(): array
+    {
+        return [
+            'izin' => 'İzinli',
+            'hasta' => 'Hasta',
+            'diger' => 'Diğer',
         ];
     }
 }

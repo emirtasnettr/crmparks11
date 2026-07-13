@@ -9,36 +9,31 @@
         'name' => $shift['name'],
         'start_time' => $shift['start_time_raw'],
         'end_time' => $shift['end_time_raw'],
-        'start_date' => $shift['start_date'],
-        'end_date' => $shift['end_date'],
         'time_range' => $shift['time_range'],
-        'date_range_label' => $shift['date_range_label'],
-        'days_of_week' => $shift['days_of_week'],
+        'required_headcount' => $shift['required_headcount'],
+        'assigned_count' => $shift['assigned_count'],
+        'staffing_label' => $shift['staffing_label'],
         'notes' => $shift['notes'] ?? '',
         'is_active' => $shift['is_active'],
-        'couriers_by_date' => $shift['couriers_by_date'],
+        'couriers' => $shift['couriers'],
+        'courier_ids' => $shift['courier_ids'],
         'color' => $shift['color'],
     ])->values()->all();
-
-    $defaultStart = $week['week_start'];
-    $defaultEnd = $week['week_end'];
 @endphp
 
 <div
     x-data="shiftPlanningPage({
         selectedBusinessId: @js($selectedBusinessId),
         shifts: @js($shiftsForJs),
-        week: @js($week),
         availableCouriers: @js($availableCouriers),
-        weekDayOptions: @js(collect(\App\Modules\ShiftPlanning\Data\ShiftPlanningFormData::weekDays())->map(fn ($label, $iso) => ['iso' => (int) $iso, 'label' => $label])->values()->all()),
-        defaultStartDate: @js($defaultStart),
-        defaultEndDate: @js($defaultEnd),
+        jokerReasons: @js($jokerReasons),
         canCreate: @js($canCreate),
         canUpdate: @js($canUpdate),
         canDelete: @js($canDelete),
         storeUrl: @js(route('shift-planning.store')),
         updateUrlTemplate: @js(url('/vardiya-planlama/__ID__')),
         assignUrlTemplate: @js(url('/vardiya-planlama/__ID__/kuryeler')),
+        jokerUrlTemplate: @js(url('/vardiya-planlama/__ID__/joker')),
         destroyUrlTemplate: @js(url('/vardiya-planlama/__ID__')),
     })"
 >
@@ -46,16 +41,13 @@
         <div>
             <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Vardiya Planlama</h1>
             <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">
-                Tarih aralığıyla vardiya ekleyin; takvimde her güne ayrı kurye atayın.
+                İşletmenin sabit vardiyalarını ve kadrosunu tanımlayın; izin/hastalık günlerinde joker atayın.
             </p>
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
             <template x-if="canCreate && selectedBusinessId">
-                <x-ui.button type="button" @click="openCreate()">
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                    </svg>
+                <x-ui.button type="button" x-on:click="openCreate()">
                     Yeni Vardiya
                 </x-ui.button>
             </template>
@@ -79,105 +71,125 @@
         <x-ui.card class="mt-6">
             <div class="py-12 text-center">
                 <p class="text-sm text-gray-500 dark:text-slate-400">
-                    Haftalık takvimi görmek için önce bir işletme seçin.
+                    Vardiya yapısını görmek için önce bir işletme seçin.
                 </p>
             </div>
         </x-ui.card>
     @else
-        <x-ui.card :padding="false" class="mt-6 overflow-hidden">
-            <div class="flex flex-col gap-3 border-b border-gray-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 sm:px-6">
-                <div>
-                    <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $selectedBusinessName }}</p>
-                    <p class="text-xs text-gray-500 dark:text-slate-400">
-                        {{ count($shifts) }} vardiya · {{ $activeCourierCount }} atanmış kurye
-                    </p>
-                </div>
+        @if ($activeCourierCount === 0)
+            <x-ui.card class="mt-6 border-l-4 border-l-amber-500">
+                <p class="text-sm text-gray-700 dark:text-slate-300">
+                    Bu işletmeye henüz aktif kurye ataması yok.
+                    <a href="{{ route('businesses.assignments.index') }}" class="font-medium text-primary-600 hover:underline">Atanan Kuryeler</a>
+                    üzerinden kadro oluşturun.
+                </p>
+            </x-ui.card>
+        @endif
 
-                <div class="flex flex-wrap items-center gap-2">
-                    <a
-                        href="{{ route('shift-planning.index', ['business_id' => $selectedBusinessId, 'week' => $week['prev_week']]) }}"
-                        class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                    >
-                        ← Önceki
-                    </a>
-                    <span class="min-w-[11rem] text-center text-sm font-semibold text-gray-900 dark:text-white">
-                        {{ $week['label'] }}
-                    </span>
-                    <a
-                        href="{{ route('shift-planning.index', ['business_id' => $selectedBusinessId, 'week' => $week['next_week']]) }}"
-                        class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                    >
-                        Sonraki →
-                    </a>
-                    @unless ($week['is_current'])
-                        <a
-                            href="{{ route('shift-planning.index', ['business_id' => $selectedBusinessId]) }}"
-                            class="inline-flex items-center justify-center rounded-lg bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200 dark:bg-slate-700 dark:text-slate-200"
-                        >
-                            Bu hafta
-                        </a>
-                    @endunless
-                </div>
+        <div class="mt-6 mb-2 flex items-end justify-between gap-3">
+            <div>
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Vardiya Şablonları</h2>
+                <p class="text-sm text-gray-500 dark:text-slate-400">
+                    {{ $selectedBusinessName }} · {{ count($shifts) }} vardiya · {{ $activeCourierCount }} atanmış kurye
+                </p>
             </div>
+        </div>
 
-            @if ($activeCourierCount === 0)
-                <div class="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200 sm:px-6">
-                    Bu işletmeye henüz aktif kurye atanmamış. Vardiyaları oluşturabilirsiniz; kurye atamak için önce
-                    <a href="{{ route('businesses.assignments.index', ['business_id' => $selectedBusinessId]) }}" class="font-medium underline">Atanan Kuryeler</a>
-                    sayfasından atama yapın.
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            @forelse ($shifts as $shift)
+                <x-ui.card :padding="false">
+                    <div class="border-b border-gray-200 px-4 py-4 dark:border-slate-700 sm:px-6">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <p class="text-base font-semibold text-gray-900 dark:text-white">{{ $shift['name'] }}</p>
+                                <p class="mt-0.5 text-sm text-gray-500 dark:text-slate-400">{{ $shift['time_range'] }}</p>
+                            </div>
+                            <span @class([
+                                'inline-flex rounded-md px-2 py-0.5 text-xs font-medium',
+                                'bg-emerald-50 text-emerald-700' => $shift['is_active'] && ! $shift['is_understaffed'],
+                                'bg-amber-50 text-amber-700' => $shift['is_active'] && $shift['is_understaffed'],
+                                'bg-gray-100 text-gray-600' => ! $shift['is_active'],
+                            ])>
+                                {{ $shift['staffing_label'] }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="space-y-3 px-4 py-4 sm:px-6">
+                        @if (count($shift['couriers']))
+                            <div class="flex flex-wrap gap-2">
+                                @foreach ($shift['couriers'] as $courier)
+                                    <span class="inline-flex rounded-md bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 dark:bg-slate-700 dark:text-slate-200">
+                                        {{ $courier['name'] }}
+                                    </span>
+                                @endforeach
+                            </div>
+                        @else
+                            <p class="text-sm text-gray-500 dark:text-slate-400">Henüz kadro atanmadı.</p>
+                        @endif
+
+                        <div class="flex flex-wrap gap-2 pt-1">
+                            @if ($canUpdate)
+                                <x-ui.button type="button" size="sm" variant="secondary" x-on:click="openAssign({{ $shift['id'] }})">Kadro</x-ui.button>
+                                <x-ui.button type="button" size="sm" variant="secondary" x-on:click="openJoker({{ $shift['id'] }})">Joker Ata</x-ui.button>
+                                <x-ui.button type="button" size="sm" variant="secondary" x-on:click="openEdit({{ $shift['id'] }})">Düzenle</x-ui.button>
+                            @endif
+                            @if ($canDelete)
+                                <x-ui.button type="button" size="sm" variant="danger" x-on:click="openDeleteConfirm({{ $shift['id'] }})">Sil</x-ui.button>
+                            @endif
+                        </div>
+                    </div>
+                </x-ui.card>
+            @empty
+                <x-ui.card class="lg:col-span-2">
+                    <p class="py-8 text-center text-sm text-gray-500 dark:text-slate-400">
+                        Bu işletme için henüz vardiya tanımlanmamış. Sabit saatli vardiya ekleyerek başlayın.
+                    </p>
+                </x-ui.card>
+            @endforelse
+        </div>
+
+        <div class="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-5">
+            <div class="xl:col-span-3">
+                <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Haftalık Görünüm</h2>
+                        <p class="text-sm text-gray-500 dark:text-slate-400">Sabit kadro + o güne ait joker atamaları</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <a href="{{ route('shift-planning.index', ['business_id' => $selectedBusinessId, 'week' => $week['prev_week']]) }}" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-slate-600">← Önceki</a>
+                        <span class="min-w-[10rem] text-center text-sm font-semibold text-gray-900 dark:text-white">{{ $week['label'] }}</span>
+                        <a href="{{ route('shift-planning.index', ['business_id' => $selectedBusinessId, 'week' => $week['next_week']]) }}" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-slate-600">Sonraki →</a>
+                    </div>
                 </div>
-            @endif
 
-            <div class="overflow-x-auto">
-                <div class="grid min-w-[980px] grid-cols-7 divide-x divide-gray-200 dark:divide-slate-700">
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     @foreach ($calendarDays as $day)
                         <div @class([
-                            'min-h-[28rem] bg-white dark:bg-slate-900',
-                            'bg-primary-50/40 dark:bg-primary-600/5' => $day['is_today'],
+                            'rounded-xl border p-3',
+                            'border-primary-300 bg-primary-50/40' => $day['is_today'],
+                            'border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-800' => ! $day['is_today'],
                         ])>
-                            <div @class([
-                                'border-b border-gray-200 px-3 py-3 text-center dark:border-slate-700',
-                                'bg-primary-50 dark:bg-primary-600/10' => $day['is_today'],
-                            ])>
-                                <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-slate-400">
-                                    {{ $day['label_short'] }}
-                                </p>
-                                <p @class([
-                                    'mt-1 text-lg font-semibold',
-                                    'text-primary-700 dark:text-primary-300' => $day['is_today'],
-                                    'text-gray-900 dark:text-white' => ! $day['is_today'],
-                                ])>
-                                    {{ $day['day_number'] }}
-                                    <span class="text-xs font-normal text-gray-500 dark:text-slate-400">{{ $day['month_short'] }}</span>
-                                </p>
-                            </div>
-
-                            <div class="space-y-2 p-2">
-                                @forelse ($day['shifts'] as $shift)
-                                    <button
-                                        type="button"
-                                        @click="openShiftActions({{ $shift['id'] }}, '{{ $day['date'] }}')"
-                                        class="w-full rounded-lg border px-2.5 py-2 text-left transition hover:shadow-sm {{ $shift['color'] }}"
-                                    >
-                                        <p class="text-xs font-semibold leading-tight">{{ $shift['name'] }}</p>
-                                        <p class="mt-0.5 text-[11px] opacity-80">{{ $shift['time_range'] }}</p>
-                                        @if ($shift['courier_count'] > 0)
-                                            <div class="mt-1.5 space-y-0.5">
-                                                @foreach (array_slice($shift['couriers'], 0, 3) as $courier)
-                                                    <p class="truncate text-[11px] font-medium opacity-90">{{ $courier['name'] }}</p>
-                                                @endforeach
-                                                @if ($shift['courier_count'] > 3)
-                                                    <p class="text-[11px] opacity-70">+{{ $shift['courier_count'] - 3 }}</p>
+                            <p class="text-xs font-medium text-gray-500 dark:text-slate-400">{{ $day['label_short'] }}</p>
+                            <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $day['day_number'] }} {{ $day['month_short'] }}</p>
+                            <div class="mt-2 space-y-2">
+                                @forelse ($day['shifts'] as $occurrence)
+                                    <div class="rounded-lg border px-2 py-1.5 text-xs {{ $occurrence['color'] }}">
+                                        <p class="font-semibold">{{ $occurrence['name'] }}</p>
+                                        <p class="opacity-80">{{ $occurrence['time_range'] }}</p>
+                                        @foreach ($occurrence['working_couriers'] as $courier)
+                                            <p class="mt-0.5 {{ ! empty($courier['is_joker']) ? 'font-medium text-amber-800' : '' }}">
+                                                {{ $courier['name'] }}
+                                                @if (! empty($courier['is_joker']))
+                                                    <span class="opacity-80">(joker → {{ $courier['covers'] }})</span>
                                                 @endif
-                                            </div>
-                                        @else
-                                            <p class="mt-1.5 text-[11px] italic opacity-70">Kurye yok</p>
+                                            </p>
+                                        @endforeach
+                                        @if ($occurrence['working_couriers'] === [])
+                                            <p class="mt-0.5 opacity-70">Kadro boş</p>
                                         @endif
-                                    </button>
+                                    </div>
                                 @empty
-                                    <p class="px-1 py-6 text-center text-[11px] text-gray-400 dark:text-slate-500">
-                                        Vardiya yok
-                                    </p>
+                                    <p class="text-xs text-gray-400">Vardiya yok</p>
                                 @endforelse
                             </div>
                         </div>
@@ -185,15 +197,38 @@
                 </div>
             </div>
 
-            @if (count($shifts) === 0)
-                <div class="border-t border-gray-200 px-6 py-8 text-center text-sm text-gray-500 dark:border-slate-700 dark:text-slate-400">
-                    Bu haftada görünen vardiya yok. Tarih aralığı seçerek yeni vardiya ekleyin.
-                </div>
-            @endif
-        </x-ui.card>
+            <div class="xl:col-span-2">
+                <h2 class="mb-3 text-lg font-semibold text-gray-900 dark:text-white">Joker Atamaları</h2>
+                <x-ui.card :padding="false">
+                    <div class="divide-y divide-gray-100 dark:divide-slate-700">
+                        @forelse ($jokers as $joker)
+                            <div class="flex items-start justify-between gap-3 px-4 py-3 sm:px-6">
+                                <div class="min-w-0">
+                                    <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $joker['work_date_formatted'] }} · {{ $joker['shift_name'] }}</p>
+                                    <p class="text-xs text-gray-500 dark:text-slate-400">
+                                        {{ $joker['absent_courier_name'] }} ({{ $joker['reason_label'] }}) → {{ $joker['joker_courier_name'] }}
+                                    </p>
+                                </div>
+                                @if ($canUpdate)
+                                    <form method="POST" action="{{ route('shift-planning.jokers.destroy', $joker['id']) }}" onsubmit="return confirm('Joker ataması kaldırılsın mı?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <input type="hidden" name="week" value="{{ $week['week_start'] }}">
+                                        <button type="submit" class="text-xs font-medium text-rose-600 hover:underline">Kaldır</button>
+                                    </form>
+                                @endif
+                            </div>
+                        @empty
+                            <p class="px-4 py-10 text-center text-sm text-gray-500 dark:text-slate-400 sm:px-6">
+                                Yaklaşan joker ataması yok.
+                            </p>
+                        @endforelse
+                    </div>
+                </x-ui.card>
+            </div>
+        </div>
     @endif
 
     @include('modules.shift-planning.partials.modal')
-    @include('modules.shift-planning.partials.actions-modal')
 </div>
 @endsection

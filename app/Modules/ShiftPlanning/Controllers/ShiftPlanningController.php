@@ -7,6 +7,7 @@ use App\Modules\ShiftPlanning\Data\ShiftPlanningFormData;
 use App\Modules\ShiftPlanning\Requests\AssignShiftCouriersRequest;
 use App\Modules\ShiftPlanning\Requests\DestroyBusinessShiftRequest;
 use App\Modules\ShiftPlanning\Requests\StoreBusinessShiftRequest;
+use App\Modules\ShiftPlanning\Requests\StoreShiftJokerRequest;
 use App\Modules\ShiftPlanning\Requests\UpdateBusinessShiftRequest;
 use App\Modules\ShiftPlanning\Services\ShiftPlanningPresenter;
 use App\Modules\ShiftPlanning\Services\ShiftPlanningService;
@@ -33,20 +34,38 @@ class ShiftPlanningController extends Controller
         $week = $this->shifts->weekMeta($request->string('week')->toString() ?: null);
 
         $shiftRows = $business
-            ? $this->shifts->forBusiness($business->id, $week['week_start'], $week['week_end'])
+            ? $this->shifts->forBusiness($business->id)
                 ->map(fn ($shift) => $this->presenter->indexRow($shift))
+                ->values()
+                ->all()
+            : [];
+
+        $jokerRows = $business
+            ? $this->shifts->jokersForBusiness($business->id, $week['week_start'], $week['week_end'])
+                ->map(fn ($joker) => $this->presenter->jokerRow($joker))
+                ->values()
+                ->all()
+            : [];
+
+        $upcomingJokers = $business
+            ? $this->shifts->jokersForBusiness($business->id, now()->toDateString())
+                ->take(20)
+                ->map(fn ($joker) => $this->presenter->jokerRow($joker))
                 ->values()
                 ->all()
             : [];
 
         $calendarDays = [];
         foreach ($week['days'] as $day) {
+            $dayJokers = collect($jokerRows)->where('work_date', $day['date'])->values()->all();
             $occurrences = [];
+
             foreach ($shiftRows as $shiftRow) {
-                $occurrence = $this->presenter->occurrenceForDate($shiftRow, $day['date']);
-                if ($occurrence !== null) {
-                    $occurrences[] = $occurrence;
+                if (! ($shiftRow['is_active'] ?? false)) {
+                    continue;
                 }
+
+                $occurrences[] = $this->presenter->dayOccurrence($shiftRow, $day['date'], $dayJokers);
             }
 
             usort($occurrences, fn ($a, $b) => strcmp($a['start_time_raw'], $b['start_time_raw']));
@@ -72,9 +91,11 @@ class ShiftPlanningController extends Controller
             'shifts' => $shiftRows,
             'week' => $week,
             'calendarDays' => $calendarDays,
+            'jokers' => $upcomingJokers,
+            'weekJokers' => $jokerRows,
             'availableCouriers' => $availableCouriers,
             'activeCourierCount' => $activeCourierCount,
-            'weekDays' => ShiftPlanningFormData::weekDayShort(),
+            'jokerReasons' => ShiftPlanningFormData::jokerReasons(),
             'canCreate' => $request->user()?->can('shift_planning.create') ?? false,
             'canUpdate' => $request->user()?->can('shift_planning.update') ?? false,
             'canDelete' => $request->user()?->can('shift_planning.delete') ?? false,
@@ -113,19 +134,47 @@ class ShiftPlanningController extends Controller
         $shift = $this->shifts->find($id);
         abort_if($shift === null, 404);
 
-        $validated = $request->validated();
-        $this->shifts->syncDayCouriers(
-            $shift,
-            $validated['work_date'],
-            $validated['courier_ids'] ?? [],
-        );
+        $this->shifts->syncRoster($shift, $request->validated('courier_ids') ?? []);
 
         return redirect()
             ->route('shift-planning.index', array_filter([
                 'business_id' => $shift->business_id,
                 'week' => $request->input('week'),
             ]))
-            ->with('success', 'Günün kuryeleri güncellendi.');
+            ->with('success', 'Vardiya kadrosu güncellendi.');
+    }
+
+    public function storeJoker(StoreShiftJokerRequest $request, int $id): RedirectResponse
+    {
+        $shift = $this->shifts->find($id);
+        abort_if($shift === null, 404);
+
+        $this->shifts->assignJoker($shift, $request->validated(), $request->user());
+
+        return redirect()
+            ->route('shift-planning.index', array_filter([
+                'business_id' => $shift->business_id,
+                'week' => $request->input('week'),
+            ]))
+            ->with('success', 'Joker personel atandı.');
+    }
+
+    public function destroyJoker(Request $request, int $jokerId): RedirectResponse
+    {
+        abort_unless($request->user()?->can('shift_planning.update'), 403);
+
+        $joker = $this->shifts->findJoker($jokerId);
+        abort_if($joker === null, 404);
+
+        $businessId = $joker->shift?->business_id;
+        $this->shifts->deleteJoker($joker);
+
+        return redirect()
+            ->route('shift-planning.index', array_filter([
+                'business_id' => $businessId,
+                'week' => $request->input('week'),
+            ]))
+            ->with('success', 'Joker ataması kaldırıldı.');
     }
 
     public function destroy(DestroyBusinessShiftRequest $request, int $id): RedirectResponse
@@ -134,23 +183,13 @@ class ShiftPlanningController extends Controller
         abort_if($shift === null, 404);
 
         $businessId = $shift->business_id;
-        $scope = $request->validated('scope');
-
-        if ($scope === 'day') {
-            $result = $this->shifts->deleteDay($shift, $request->validated('work_date'));
-            $message = $result === 'all'
-                ? 'Son gün silindiği için vardiyanın tamamı kaldırıldı.'
-                : 'Seçilen günün vardiyası silindi.';
-        } else {
-            $this->shifts->delete($shift);
-            $message = 'Aynı saatteki vardiyanın tamamı silindi.';
-        }
+        $this->shifts->delete($shift);
 
         return redirect()
             ->route('shift-planning.index', array_filter([
                 'business_id' => $businessId,
                 'week' => $request->input('week'),
             ]))
-            ->with('success', $message);
+            ->with('success', 'Vardiya silindi.');
     }
 }
