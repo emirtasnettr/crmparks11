@@ -3700,7 +3700,16 @@ Alpine.data('financeActivityLogPage', (logsMap = {}) => ({
     },
 }));
 
-Alpine.data('formBuilderListPage', () => ({
+Alpine.data('formBuilderListPage', (config = {}) => ({
+    openStatusModal: !!config.openStatusModal,
+    closeStatusModal() {
+        this.openStatusModal = false;
+        const url = new URL(window.location.href);
+        if (url.searchParams.has('statuses')) {
+            url.searchParams.delete('statuses');
+            window.history.replaceState({}, '', url.pathname + (url.search ? url.search : '') + url.hash);
+        }
+    },
     handleDelete(detail) {
         if (detail?.action !== 'delete' || !detail?.id) {
             return;

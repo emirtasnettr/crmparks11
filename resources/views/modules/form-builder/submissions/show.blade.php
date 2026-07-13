@@ -9,7 +9,9 @@
         <div>
             <div class="flex flex-wrap items-center gap-3">
                 <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Başvuru #{{ $submission['id'] }}</h1>
-                <x-form-builder.status-badge :status="$form['status']" />
+                @if (! empty($submission['status']))
+                    <x-form-builder.status-badge :status="$submission['status']" />
+                @endif
             </div>
             <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">
                 {{ $form['name'] }} · {{ $submission['submitted_at_formatted'] }}
@@ -85,6 +87,26 @@
             <x-ui.card>
                 <h2 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">Özet</h2>
                 <dl class="space-y-3 text-sm">
+                    <div>
+                        <dt class="mb-1.5 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-slate-400">Başvuru Statüsü</dt>
+                        <dd>
+                            <form method="POST" action="{{ route('form-builder.submissions.status.update', [$form['id'], $submission['id']]) }}" class="space-y-2">
+                                @csrf
+                                @method('PUT')
+                                <select
+                                    name="form_submission_status_id"
+                                    onchange="this.form.submit()"
+                                    class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                                >
+                                    @foreach ($statuses as $status)
+                                        <option value="{{ $status['id'] }}" @selected((int) ($submission['form_submission_status_id'] ?? 0) === (int) $status['id'])>
+                                            {{ $status['name'] }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </form>
+                        </dd>
+                    </div>
                     <div>
                         <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-slate-400">Gönderim</dt>
                         <dd class="mt-1 text-gray-900 dark:text-white">{{ $submission['submitted_at_formatted'] }}</dd>

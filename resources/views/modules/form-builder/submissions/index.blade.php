@@ -36,6 +36,12 @@
     <form method="GET" action="{{ route('form-builder.submissions.index', $form['id']) }}" class="p-4 sm:p-6">
         <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
             <x-ui.input name="search" label="Ara" placeholder="Alan değeri veya landing page" :value="$filters['search']" />
+            <x-ui.select
+                name="status_id"
+                label="Başvuru Statüsü"
+                :selected="$filters['status_id']"
+                :options="$statusFilterOptions"
+            />
             <x-ui.input type="date" name="date_from" label="Başlangıç Tarihi" :value="$filters['date_from']" />
             <x-ui.input type="date" name="date_to" label="Bitiş Tarihi" :value="$filters['date_to']" />
         </div>
@@ -52,6 +58,7 @@
             <thead>
                 <tr class="border-b border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-800/50">
                     <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 sm:px-6">#</th>
+                    <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Statü</th>
                     <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Gönderim Tarihi</th>
                     <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Landing Page</th>
                     @foreach ($exportableFields as $field)
@@ -65,6 +72,13 @@
                 @forelse ($submissions as $submission)
                     <tr class="transition-colors hover:bg-gray-50 dark:hover:bg-slate-800/50">
                         <td class="px-4 py-3 font-medium text-gray-900 dark:text-white sm:px-6">{{ $submission['id'] }}</td>
+                        <td class="px-4 py-3">
+                            @if (! empty($submission['status']))
+                                <x-form-builder.status-badge :status="$submission['status']" />
+                            @else
+                                —
+                            @endif
+                        </td>
                         <td class="px-4 py-3 text-gray-600 dark:text-slate-400">{{ $submission['submitted_at_formatted'] }}</td>
                         <td class="px-4 py-3 text-gray-600 dark:text-slate-400">
                             {{ $submission['landing_page_name'] ?? $submission['landing_page_slug'] ?? '—' }}
@@ -95,7 +109,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="{{ 5 + count($exportableFields) }}" class="px-6 py-16 text-center">
+                        <td colspan="{{ 6 + count($exportableFields) }}" class="px-6 py-16 text-center">
                             <div class="mx-auto flex max-w-sm flex-col items-center">
                                 <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-50 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400">
                                     <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">

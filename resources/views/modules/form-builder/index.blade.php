@@ -4,7 +4,10 @@
 
 
 @section('content')
-<div x-data="formBuilderListPage()" @crmlog-action.window="handleDelete($event.detail)">
+<div
+    x-data="formBuilderListPage({ openStatusModal: @js($openStatusSettings) })"
+    @crmlog-action.window="handleDelete($event.detail)"
+>
 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
     <div>
         <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Form Builder</h1>
@@ -13,14 +16,19 @@
         </p>
     </div>
 
-    @can('form_builder.manage')
-        <x-ui.button href="{{ route('form-builder.create') }}">
-            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-            </svg>
-            Yeni Form
-        </x-ui.button>
-    @endcan
+    <div class="flex flex-wrap gap-2">
+        @can('form_builder.manage')
+            <x-ui.button type="button" variant="secondary" @click="openStatusModal = true">
+                Statü Ayarları
+            </x-ui.button>
+            <x-ui.button href="{{ route('form-builder.create') }}">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Yeni Form
+            </x-ui.button>
+        @endcan
+    </div>
 </div>
 
 <x-ui.card :padding="false" class="mb-6">
@@ -107,5 +115,9 @@
         </table>
     </div>
 </x-ui.card>
+
+@can('form_builder.manage')
+    @include('modules.form-builder.partials.status-settings-modal', ['statuses' => $submissionStatuses])
+@endcan
 </div>
 @endsection

@@ -12,6 +12,7 @@ class FormSubmissionRepository
   public function all(int $formId): array
   {
     return FormSubmission::query()
+      ->with('status')
       ->where('form_id', $formId)
       ->orderBy('id')
       ->get()
@@ -30,6 +31,7 @@ class FormSubmissionRepository
   public function find(int $formId, int $submissionId): ?array
   {
     $submission = FormSubmission::query()
+      ->with('status')
       ->where('form_id', $formId)
       ->whereKey($submissionId)
       ->first();
@@ -48,6 +50,7 @@ class FormSubmissionRepository
         'form_id' => $formId,
       ],
       [
+        'form_submission_status_id' => $submission['form_submission_status_id'] ?? null,
         'landing_page_id' => $submission['landing_page_id'] ?? null,
         'landing_page_slug' => $submission['landing_page_slug'] ?? null,
         'landing_page_name' => $submission['landing_page_name'] ?? null,
@@ -57,6 +60,14 @@ class FormSubmissionRepository
         'submitted_at' => $submission['submitted_at'] ?? now(),
       ],
     );
+  }
+
+  public function updateStatus(int $formId, int $submissionId, int $statusId): bool
+  {
+    return FormSubmission::query()
+      ->where('form_id', $formId)
+      ->whereKey($submissionId)
+      ->update(['form_submission_status_id' => $statusId]) > 0;
   }
 
   public function nextId(int $formId): int

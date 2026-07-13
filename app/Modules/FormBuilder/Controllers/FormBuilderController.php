@@ -5,13 +5,17 @@ namespace App\Modules\FormBuilder\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\FormBuilder\Data\FormFieldTypes;
 use App\Modules\FormBuilder\Services\FormBuilderService;
+use App\Modules\FormBuilder\Services\FormSubmissionStatusService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class FormBuilderController extends Controller
 {
-  public function __construct(private readonly FormBuilderService $service) {}
+  public function __construct(
+    private readonly FormBuilderService $service,
+    private readonly FormSubmissionStatusService $statusService,
+  ) {}
 
   public function index(Request $request): View
   {
@@ -23,6 +27,8 @@ class FormBuilderController extends Controller
     return view('modules.form-builder.index', [
       'forms' => $this->service->list($filters),
       'filters' => $filters,
+      'submissionStatuses' => $this->statusService->list(),
+      'openStatusSettings' => $request->boolean('statuses'),
     ]);
   }
 

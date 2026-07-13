@@ -13,6 +13,7 @@ class FormSubmission extends Model
 
     protected $fillable = [
         'form_id',
+        'form_submission_status_id',
         'landing_page_id',
         'landing_page_slug',
         'landing_page_name',
@@ -35,6 +36,11 @@ class FormSubmission extends Model
         return $this->belongsTo(Form::class);
     }
 
+    public function status(): BelongsTo
+    {
+        return $this->belongsTo(FormSubmissionStatus::class, 'form_submission_status_id');
+    }
+
     public function landingPage(): BelongsTo
     {
         return $this->belongsTo(LandingPage::class);
@@ -50,9 +56,19 @@ class FormSubmission extends Model
      */
     public function toRecordArray(): array
     {
+        $status = $this->relationLoaded('status') ? $this->status : $this->status()->first();
+
         return [
             'id' => $this->id,
             'form_id' => $this->form_id,
+            'form_submission_status_id' => $this->form_submission_status_id,
+            'status' => $status ? [
+                'id' => $status->id,
+                'name' => $status->name,
+                'slug' => $status->slug,
+                'color' => $status->color ?? 'muted',
+                'is_default' => (bool) $status->is_default,
+            ] : null,
             'landing_page_id' => $this->landing_page_id,
             'landing_page_slug' => $this->landing_page_slug,
             'landing_page_name' => $this->landing_page_name,

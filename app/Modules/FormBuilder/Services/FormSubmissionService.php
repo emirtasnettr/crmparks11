@@ -17,6 +17,7 @@ class FormSubmissionService
     private readonly FormSubmissionRepository $repository,
     private readonly FormBuilderRepository $formRepository,
     private readonly FormSubmissionMediaService $media,
+    private readonly FormSubmissionStatusService $statusService,
   ) {}
 
   /**
@@ -37,11 +38,17 @@ class FormSubmissionService
         if (! empty($filters['search'])) {
           $search = mb_strtolower($filters['search']);
           $haystack = mb_strtolower(implode(' ', array_merge(
-            [$submission['landing_page_slug'] ?? ''],
+            [$submission['landing_page_slug'] ?? '', $submission['status']['name'] ?? ''],
             array_values($submission['data'] ?? [])
           )));
 
           if (! str_contains($haystack, $search)) {
+            return false;
+          }
+        }
+
+        if (! empty($filters['status_id']) && $filters['status_id'] !== 'all') {
+          if ((int) ($submission['form_submission_status_id'] ?? 0) !== (int) $filters['status_id']) {
             return false;
           }
         }
@@ -122,6 +129,25 @@ class FormSubmissionService
     return $note->toRecordArray();
   }
 
+  public function updateStatus(int $formId, int $submissionId, int $statusId): void
+  {
+    $submission = $this->repository->find($formId, $submissionId);
+
+    if ($submission === null) {
+      abort(404);
+    }
+
+    $valid = collect($this->statusService->list())->contains(fn (array $status) => (int) $status['id'] === $statusId);
+
+    if (! $valid) {
+      throw ValidationException::withMessages([
+        'form_submission_status_id' => 'Geçersiz başvuru statüsü.',
+      ]);
+    }
+
+    $this->repository->updateStatus($formId, $submissionId, $statusId);
+  }
+
   /**
    * @return array<string, mixed>
    */
@@ -172,9 +198,12 @@ class FormSubmissionService
       $data[$name] = $validated[$name] ?? null;
     }
 
+    $defaultStatus = $this->statusService->defaultStatus();
+
     $submission = [
       'id' => $submissionId,
       'form_id' => $formId,
+      'form_submission_status_id' => (int) $defaultStatus['id'],
       'landing_page_id' => $landingPage['id'] ?? null,
       'landing_page_slug' => $landingPage['slug'] ?? null,
       'landing_page_name' => $landingPage['name'] ?? null,
@@ -182,6 +211,13 @@ class FormSubmissionService
       'ip_address' => $request->ip(),
       'user_agent' => (string) $request->userAgent(),
       'submitted_at' => Carbon::now()->toDateTimeString(),
+      'status' => [
+        'id' => $defaultStatus['id'],
+        'name' => $defaultStatus['name'],
+        'slug' => $defaultStatus['slug'],
+        'color' => $defaultStatus['color'],
+        'is_default' => true,
+      ],
     ];
 
     $this->repository->save($formId, $submission);
