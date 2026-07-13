@@ -71,7 +71,7 @@ class PasswordResetTest extends TestCase
         Notification::fake();
 
         $actor = User::factory()->create();
-        $actor->assignRole('operations_staff');
+        $actor->assignRole('operations_specialist');
 
         $user = User::factory()->create();
 

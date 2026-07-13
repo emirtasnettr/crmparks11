@@ -17,9 +17,9 @@ use Illuminate\Notifications\DatabaseNotification;
 
 class ScheduledReminderService
 {
-    private const CONTRACT_ROLES = ['super_admin', 'general_manager', 'operations_manager'];
+    private const CONTRACT_ROLES = ['super_admin', 'general_manager', 'operations_specialist'];
 
-    private const FINANCE_ROLES = ['super_admin', 'general_manager', 'finance_officer'];
+    private const FINANCE_ROLES = ['super_admin', 'general_manager'];
 
     public function __construct(
         private readonly NotificationDispatcher $dispatcher,

@@ -30,9 +30,9 @@ class AdminUserSeeder extends Seeder
                 'role' => 'general_manager',
             ],
             [
-                'name' => 'Operasyon Yöneticisi',
+                'name' => 'Operasyon Uzmanı',
                 'email' => 'operasyon@crmlog.com',
-                'role' => 'operations_manager',
+                'role' => 'operations_specialist',
             ],
         ];
 
@@ -48,7 +48,7 @@ class AdminUserSeeder extends Seeder
                 ]
             );
 
-            $user->assignRole($data['role']);
+            $user->syncRoles([$data['role']]);
         }
     }
 

@@ -70,7 +70,7 @@ class UserActivityLogService
             ->orderBy('name')
             ->get()
             ->map(function (User $user): array {
-                $roleSlug = $user->roles->first()?->name ?? 'operations_staff';
+                $roleSlug = $user->roles->first()?->name ?? 'operations_specialist';
 
                 return [
                     'id' => $user->id,

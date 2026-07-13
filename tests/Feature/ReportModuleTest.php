@@ -30,7 +30,7 @@ class ReportModuleTest extends TestCase
     public function test_reports_index_requires_permission(): void
     {
         $user = User::factory()->create();
-        $user->assignRole('operations_staff');
+        $user->assignRole('operations_specialist');
 
         $this->actingAs($user)->get(route('reports.index'))->assertForbidden();
     }
@@ -132,7 +132,7 @@ class ReportModuleTest extends TestCase
     public function test_user_without_financial_permission_cannot_open_collections_report(): void
     {
         $user = User::factory()->create();
-        $user->assignRole('regional_coordinator');
+        $user->assignRole('sales_manager');
 
         $this->actingAs($user)->get(route('reports.index'))->assertOk();
         $this->actingAs($user)->get(route('reports.collections'))->assertForbidden();

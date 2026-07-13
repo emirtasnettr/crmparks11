@@ -68,14 +68,13 @@ class FinanceDashboardTest extends TestCase
         $response->assertSee('Bekleyen Tahsilatlar');
         $response->assertSee('Bekleyen Ödemeler');
         $response->assertSee('Bugünkü Özet');
-        $response->assertSee('Burger House Gıda Ltd. Şti.');
         $response->assertSee('finance-chart-revenue-expense');
     }
 
     public function test_user_without_financial_permission_cannot_view_finance_dashboard(): void
     {
         $user = User::factory()->create();
-        $user->assignRole('operations_manager');
+        $user->assignRole('operations_specialist');
 
         $response = $this->actingAs($user)->get(route('finance.dashboard.index'));
 

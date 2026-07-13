@@ -81,7 +81,7 @@ class BusinessEarningWorkflowTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('general_manager');
         $financeOfficer = User::factory()->create();
-        $financeOfficer->assignRole('finance_officer');
+        $financeOfficer->assignRole('general_manager');
         $business = $this->createBusiness($user);
         $courier = $this->createCourier($user);
         $line = $this->createEarning($business, $courier, $user, 'pending_review');

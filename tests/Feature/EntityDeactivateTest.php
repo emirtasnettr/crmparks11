@@ -60,7 +60,7 @@ class EntityDeactivateTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('super_admin');
         $target = User::factory()->create(['status' => Status::Active]);
-        $target->assignRole('operations_staff');
+        $target->assignRole('operations_specialist');
 
         $this->actingAs($admin)->post(route('users.suspend', $target->id))
             ->assertRedirect(route('users.index'))

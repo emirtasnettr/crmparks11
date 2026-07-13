@@ -18,7 +18,7 @@ class EarningNotificationService
         $period = $this->periodLabel($earning);
 
         $this->dispatcher->notifyRoles(
-            ['super_admin', 'general_manager', 'finance_officer', 'operations_manager'],
+            ['super_admin', 'general_manager', 'operations_specialist'],
             new SystemNotification(
                 type: 'earning_created',
                 title: 'Yeni Hakediş Kaydı',
@@ -40,7 +40,7 @@ class EarningNotificationService
         $period = $this->periodLabel($earning);
 
         $this->dispatcher->notifyRoles(
-            ['super_admin', 'general_manager', 'finance_officer'],
+            ['super_admin', 'general_manager'],
             new SystemNotification(
                 type: 'earning_approved',
                 title: 'Hakediş Onaylandı',

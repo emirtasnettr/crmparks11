@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Modules\User\Models\RoleProfile;
 use App\Modules\User\Services\RoleManagementService;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -45,19 +46,22 @@ class RoleManagementTest extends TestCase
         $response->assertSee('rol kaydı listeleniyor');
         $response->assertSee('Süper Admin');
         $response->assertSee('Genel Müdür');
-        $response->assertSee('Operasyon Yöneticisi');
-        $response->assertSee('Finans Sorumlusu');
-        $response->assertSee('Operasyon Personeli');
+        $response->assertSee('Satış Müdürü');
+        $response->assertSee('Operasyon Uzmanı');
         $response->assertSee('İşletme');
         $response->assertSee('Kurye');
         $response->assertSee('Acente');
         $response->assertSee('Sistem Rolü');
+        $response->assertDontSee('Finans Sorumlusu');
+        $response->assertDontSee('Operasyon Yöneticisi');
+        $response->assertDontSee('Operasyon Personeli');
+        $response->assertDontSee('Raporlama Analisti');
     }
 
     public function test_user_without_permission_cannot_view_roles_index(): void
     {
         $user = User::factory()->create();
-        $user->assignRole('operations_manager');
+        $user->assignRole('operations_specialist');
 
         $response = $this->actingAs($user)->get(route('roles.index'));
 
@@ -68,18 +72,32 @@ class RoleManagementTest extends TestCase
     {
         $roles = app(RoleManagementService::class)->index([])['roles'];
 
-        $this->assertGreaterThanOrEqual(8, count($roles));
+        $this->assertCount(7, $roles);
 
         $superAdmin = collect($roles)->firstWhere('name', 'super_admin');
         $this->assertNotNull($superAdmin);
         $this->assertFalse($superAdmin['is_deletable']);
         $this->assertFalse($superAdmin['can_deactivate']);
         $this->assertTrue($superAdmin['is_system']);
+
+        $this->assertNotNull(collect($roles)->firstWhere('name', 'operations_specialist'));
     }
 
     public function test_custom_role_is_deletable(): void
     {
-        $role = app(RoleManagementService::class)->findByName('regional_coordinator');
+        Role::query()->create([
+            'name' => 'ozel_rol',
+            'guard_name' => 'web',
+        ]);
+
+        RoleProfile::query()->create([
+            'role_name' => 'ozel_rol',
+            'display_name' => 'Özel Rol',
+            'status' => 'active',
+            'is_system' => false,
+        ]);
+
+        $role = app(RoleManagementService::class)->findByName('ozel_rol');
 
         $this->assertNotNull($role);
         $this->assertTrue($role['is_deletable']);
@@ -91,10 +109,22 @@ class RoleManagementTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('super_admin');
 
+        Role::query()->create([
+            'name' => 'pasif_ozel_rol',
+            'guard_name' => 'web',
+        ]);
+
+        RoleProfile::query()->create([
+            'role_name' => 'pasif_ozel_rol',
+            'display_name' => 'Pasif Özel Rol',
+            'status' => 'inactive',
+            'is_system' => false,
+        ]);
+
         $response = $this->actingAs($user)->get(route('roles.index', ['status' => 'inactive']));
 
         $response->assertOk();
-        $response->assertSee('Raporlama Analisti');
+        $response->assertSee('Pasif Özel Rol');
     }
 
     public function test_authenticated_user_can_view_role_detail(): void

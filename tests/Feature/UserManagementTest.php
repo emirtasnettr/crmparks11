@@ -39,7 +39,7 @@ class UserManagementTest extends TestCase
         $user->assignRole('super_admin');
 
         User::factory()->withRole('general_manager')->create(['name' => 'Genel Müdür Kullanıcı']);
-        User::factory()->withRole('operations_manager')->create(['name' => 'Operasyon Yöneticisi Kullanıcı']);
+        User::factory()->withRole('operations_specialist')->create(['name' => 'Operasyon Uzmanı Kullanıcı']);
         User::factory()->withRole('courier')->create(['name' => 'Kurye Kullanıcı', 'user_type' => UserType::Courier]);
 
         $response = $this->actingAs($user)->get(route('users.index'));
@@ -57,14 +57,16 @@ class UserManagementTest extends TestCase
         $response->assertSee('kullanıcı kaydı listeleniyor');
         $response->assertSee('Süper Admin');
         $response->assertSee('Genel Müdür');
-        $response->assertSee('Operasyon Yöneticisi');
-        $response->assertSee('Finans Sorumlusu');
+        $response->assertSee('Operasyon Uzmanı');
+        $response->assertSee('Kurye');
+        $response->assertDontSee('Finans Sorumlusu');
+        $response->assertDontSee('Operasyon Yöneticisi');
     }
 
     public function test_user_without_permission_cannot_view_users_index(): void
     {
         $user = User::factory()->create();
-        $user->assignRole('operations_manager');
+        $user->assignRole('operations_specialist');
 
         $response = $this->actingAs($user)->get(route('users.index'));
 

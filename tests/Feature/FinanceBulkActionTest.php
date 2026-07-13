@@ -93,7 +93,7 @@ class FinanceBulkActionTest extends TestCase
     public function test_courier_earning_template_requires_create_permission(): void
     {
         $user = User::factory()->create();
-        $user->assignRole('operations_staff');
+        $user->assignRole('operations_specialist');
 
         $this->actingAs($user)
             ->get(route('couriers.earnings.template'))

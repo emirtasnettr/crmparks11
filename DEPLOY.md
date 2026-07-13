@@ -307,7 +307,7 @@ https://crm.alanadiniz.com/login
 |-----|---------|
 | Süper Admin | `admin@crmlog.com` |
 | Genel Müdür | `mudur@crmlog.com` |
-| Operasyon Yöneticisi | `operasyon@crmlog.com` |
+| Operasyon Uzmanı | `operasyon@crmlog.com` |
 
 **Şifre:** Kurulum sihirbazında belirlediğiniz admin şifresi.
 

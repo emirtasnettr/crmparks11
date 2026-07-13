@@ -85,10 +85,10 @@ class FinanceActivityLogTest extends TestCase
         $response->assertSee('Finans Hareket Geçmişi');
     }
 
-    public function test_operations_manager_cannot_view_activity_log(): void
+    public function test_operations_specialist_cannot_view_activity_log(): void
     {
         $user = User::factory()->create();
-        $user->assignRole('operations_manager');
+        $user->assignRole('operations_specialist');
 
         $response = $this->actingAs($user)->get(route('finance.activity-log.index'));
 

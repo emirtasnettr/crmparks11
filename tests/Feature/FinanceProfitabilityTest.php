@@ -69,7 +69,7 @@ class FinanceProfitabilityTest extends TestCase
     public function test_user_without_financial_permission_cannot_view_profitability(): void
     {
         $user = User::factory()->create();
-        $user->assignRole('operations_manager');
+        $user->assignRole('operations_specialist');
 
         $response = $this->actingAs($user)->get(route('finance.profitability.index'));
 

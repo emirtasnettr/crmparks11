@@ -55,7 +55,18 @@ class RoleCrudTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('super_admin');
 
-        $role = Role::query()->where('name', 'regional_coordinator')->firstOrFail();
+        $role = Role::query()->create([
+            'name' => 'bolge_koordinatoru',
+            'guard_name' => 'web',
+        ]);
+
+        RoleProfile::query()->create([
+            'role_name' => 'bolge_koordinatoru',
+            'display_name' => 'Bölge Koordinatörü',
+            'description' => 'Özel rol',
+            'status' => 'active',
+            'is_system' => false,
+        ]);
 
         $response = $this->actingAs($admin)->put(route('roles.update', $role->id), [
             'display_name' => 'Bölge Koordinatörü Güncel',
@@ -67,7 +78,7 @@ class RoleCrudTest extends TestCase
         $response->assertSessionHas('success');
 
         $this->assertDatabaseHas('role_profiles', [
-            'role_name' => 'regional_coordinator',
+            'role_name' => 'bolge_koordinatoru',
             'display_name' => 'Bölge Koordinatörü Güncel',
             'description' => 'Güncellenmiş açıklama',
         ]);
@@ -136,7 +147,7 @@ class RoleCrudTest extends TestCase
     public function test_user_without_permission_cannot_create_role(): void
     {
         $user = User::factory()->create();
-        $user->assignRole('operations_manager');
+        $user->assignRole('operations_specialist');
 
         $response = $this->actingAs($user)->post(route('roles.store'), [
             'display_name' => 'Yetkisiz Rol',

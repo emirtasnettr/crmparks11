@@ -111,10 +111,10 @@ class DashboardTest extends TestCase
         $response->assertSee('Açılış Aşamasındakiler');
     }
 
-    public function test_operations_staff_does_not_see_finance_overview(): void
+    public function test_operations_specialist_does_not_see_finance_overview(): void
     {
         $user = User::factory()->create();
-        $user->assignRole('operations_staff');
+        $user->assignRole('operations_specialist');
 
         $response = $this->actingAs($user)->get(route('dashboard'));
 

@@ -34,7 +34,7 @@ class ReminderCommandTest extends TestCase
     public function test_contract_expiry_reminder_command_queues_notifications(): void
     {
         $manager = User::factory()->create();
-        $manager->assignRole('operations_manager');
+        $manager->assignRole('operations_specialist');
 
         Contract::factory()->create([
             'start_date' => now()->subMonths(6)->toDateString(),
@@ -52,7 +52,7 @@ class ReminderCommandTest extends TestCase
     public function test_collection_reminder_command_queues_notifications(): void
     {
         $financeOfficer = User::factory()->create();
-        $financeOfficer->assignRole('finance_officer');
+        $financeOfficer->assignRole('general_manager');
 
         FinanceCollection::factory()->overdue()->create([
             'due_date' => now()->subDay()->toDateString(),
@@ -68,7 +68,7 @@ class ReminderCommandTest extends TestCase
     public function test_reminder_is_not_sent_twice_on_same_day(): void
     {
         $financeOfficer = User::factory()->create();
-        $financeOfficer->assignRole('finance_officer');
+        $financeOfficer->assignRole('general_manager');
 
         FinanceCollection::factory()->overdue()->create([
             'due_date' => now()->subDay()->toDateString(),
@@ -88,7 +88,7 @@ class ReminderCommandTest extends TestCase
         Queue::fake();
 
         $user = User::factory()->create();
-        $user->assignRole('finance_officer');
+        $user->assignRole('general_manager');
 
         app(NotificationDispatcher::class)->notifyUser(
             $user,
@@ -109,7 +109,7 @@ class ReminderCommandTest extends TestCase
         Queue::fake();
 
         $user = User::factory()->create();
-        $user->assignRole('finance_officer');
+        $user->assignRole('general_manager');
 
         app(SettingsGroupRepositoryInterface::class)->put('notifications', array_merge(
             SettingsDefaults::notifications(),

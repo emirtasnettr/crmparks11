@@ -97,10 +97,10 @@ class FormBuilderTest extends TestCase
     $response->assertSee('Form Builder');
   }
 
-  public function test_operations_manager_cannot_access_form_builder(): void
+  public function test_operations_specialist_cannot_access_form_builder(): void
   {
     $user = User::factory()->create();
-    $user->assignRole('operations_manager');
+    $user->assignRole('operations_specialist');
 
     $response = $this->actingAs($user)->get(route('form-builder.index'));
 

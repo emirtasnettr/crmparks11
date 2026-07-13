@@ -51,10 +51,10 @@ class SidebarMenuTest extends TestCase
         $response->assertDontSee('Yakında');
     }
 
-    public function test_finance_officer_sees_finance_module_links(): void
+    public function test_general_manager_sees_finance_module_links(): void
     {
         $user = User::factory()->create();
-        $user->assignRole('finance_officer');
+        $user->assignRole('general_manager');
 
         $response = $this->actingAs($user)->get(route('dashboard'));
 
@@ -65,10 +65,10 @@ class SidebarMenuTest extends TestCase
         $response->assertDontSee(route('settings.index'), false);
     }
 
-    public function test_operations_manager_does_not_see_settings_link(): void
+    public function test_operations_specialist_does_not_see_settings_link(): void
     {
         $user = User::factory()->create();
-        $user->assignRole('operations_manager');
+        $user->assignRole('operations_specialist');
 
         $response = $this->actingAs($user)->get(route('dashboard'));
 

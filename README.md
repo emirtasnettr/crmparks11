@@ -47,7 +47,7 @@ Sihirbaz sizi APP_URL, veritabanı ve admin şifresi için yönlendirir. Güncel
 |-----|---------|-------|
 | Süper Admin | admin@crmlog.com | password |
 | Genel Müdür | mudur@crmlog.com | password |
-| Operasyon Yöneticisi | operasyon@crmlog.com | password |
+| Operasyon Uzmanı | operasyon@crmlog.com | password |
 
 > Production ortamında `ADMIN_INITIAL_PASSWORD` ile güçlü şifre tanımlayın.
 

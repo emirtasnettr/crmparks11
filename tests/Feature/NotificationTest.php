@@ -31,7 +31,7 @@ class NotificationTest extends TestCase
     public function test_user_with_permission_can_view_notifications_index(): void
     {
         $user = User::factory()->create();
-        $user->assignRole('finance_officer');
+        $user->assignRole('general_manager');
 
         $response = $this->actingAs($user)->get(route('notifications.index'));
 
@@ -43,7 +43,6 @@ class NotificationTest extends TestCase
     public function test_user_without_permission_cannot_view_notifications_index(): void
     {
         $user = User::factory()->create();
-        $user->assignRole('operations_staff');
 
         $response = $this->actingAs($user)->get(route('notifications.index'));
 
@@ -55,7 +54,7 @@ class NotificationTest extends TestCase
         Queue::fake();
 
         $user = User::factory()->create();
-        $user->assignRole('finance_officer');
+        $user->assignRole('general_manager');
 
         app(SettingsGroupRepositoryInterface::class)->put('notifications', array_merge(
             SettingsDefaults::notifications(),
@@ -77,7 +76,7 @@ class NotificationTest extends TestCase
     public function test_user_can_mark_notification_as_read(): void
     {
         $user = User::factory()->create();
-        $user->assignRole('finance_officer');
+        $user->assignRole('general_manager');
 
         $user->notify(new SystemNotification(
             type: 'system',
@@ -97,7 +96,7 @@ class NotificationTest extends TestCase
     public function test_user_can_mark_all_notifications_as_read(): void
     {
         $user = User::factory()->create();
-        $user->assignRole('finance_officer');
+        $user->assignRole('general_manager');
 
         $user->notify(new SystemNotification(type: 'system', title: 'Bir', message: 'Mesaj 1'));
         $user->notify(new SystemNotification(type: 'system', title: 'İki', message: 'Mesaj 2'));
@@ -112,7 +111,7 @@ class NotificationTest extends TestCase
     public function test_user_can_delete_notification(): void
     {
         $user = User::factory()->create();
-        $user->assignRole('finance_officer');
+        $user->assignRole('general_manager');
 
         $user->notify(new SystemNotification(type: 'system', title: 'Silinecek', message: 'Mesaj'));
 
@@ -128,7 +127,7 @@ class NotificationTest extends TestCase
     public function test_header_preview_returns_unread_count(): void
     {
         $user = User::factory()->create();
-        $user->assignRole('finance_officer');
+        $user->assignRole('general_manager');
 
         $user->notify(new SystemNotification(type: 'system', title: 'Önizleme', message: 'Header test'));
 

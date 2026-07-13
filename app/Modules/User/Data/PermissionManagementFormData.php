@@ -15,9 +15,7 @@ class PermissionManagementFormData
             'super_admin' => 'Süper Admin',
             'general_manager' => 'Genel Müdür',
             'sales_manager' => 'Satış Müdürü',
-            'operations_manager' => 'Operasyon Yöneticisi',
-            'finance_officer' => 'Finans Sorumlusu',
-            'operations_staff' => 'Operasyon Personeli',
+            'operations_specialist' => 'Operasyon Uzmanı',
             'business' => 'İşletme',
             'courier' => 'Kurye',
             'agency' => 'Acente',
@@ -141,21 +139,11 @@ class PermissionManagementFormData
                 self::slugsWithActions(self::slugsMatching(['report.']), ['view', 'export', 'print']),
                 self::slugsWithActions(self::slugsMatching(['notification.']), ['view', 'update']),
             ))),
-            'operations_manager' => array_values(array_unique(array_merge(
+            'operations_specialist' => array_values(array_unique(array_merge(
                 self::slugsWithActions($operational, ['view', 'create', 'update', 'export', 'print']),
                 self::slugsWithActions($finance, ['view', 'export']),
                 self::slugsWithActions($reports, ['view', 'export', 'print']),
                 ['dashboard.view', 'form_application.view'],
-            ))),
-            'finance_officer' => array_values(array_unique(array_merge(
-                ['dashboard.view', 'dashboard.financial'],
-                self::slugsWithActions($finance, ['view', 'create', 'update', 'delete', 'export', 'print', 'approve']),
-                self::slugsWithActions($reports, ['view', 'export', 'print']),
-                self::slugsMatching(['earning.view', 'earning.approve']),
-            ))),
-            'operations_staff' => array_values(array_unique(array_merge(
-                ['dashboard.view', 'form_application.view'],
-                self::slugsWithActions($operational, ['view', 'export']),
             ))),
             'business' => [
                 'dashboard.view',

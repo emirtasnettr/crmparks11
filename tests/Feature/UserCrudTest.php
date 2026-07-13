@@ -34,7 +34,7 @@ class UserCrudTest extends TestCase
             'phone' => '05551234567',
             'password' => 'password123',
             'password_confirmation' => 'password123',
-            'roles' => ['operations_manager'],
+            'roles' => ['operations_specialist'],
             'status' => 'active',
         ]);
 
@@ -48,7 +48,7 @@ class UserCrudTest extends TestCase
         ]);
 
         $created = User::query()->where('email', 'yeni.kullanici@example.com')->firstOrFail();
-        $this->assertTrue($created->hasRole('operations_manager'));
+        $this->assertTrue($created->hasRole('operations_specialist'));
 
         $this->assertDatabaseHas('activity_logs', [
             'action' => 'user_created',
@@ -62,7 +62,7 @@ class UserCrudTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('super_admin');
 
-        $managed = User::factory()->withRole('operations_manager')->create([
+        $managed = User::factory()->withRole('operations_specialist')->create([
             'name' => 'Eski Ad',
             'email' => 'eski@example.com',
             'phone' => '05559876543',
@@ -101,7 +101,7 @@ class UserCrudTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('super_admin');
 
-        $managed = User::factory()->withRole('operations_manager')->create();
+        $managed = User::factory()->withRole('operations_specialist')->create();
 
         $response = $this->actingAs($admin)->delete(route('users.destroy', $managed->id));
 
@@ -122,7 +122,7 @@ class UserCrudTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('super_admin');
 
-        $managed = User::factory()->withRole('operations_manager')->create([
+        $managed = User::factory()->withRole('operations_specialist')->create([
             'email' => 'silinecek@example.com',
         ]);
 
@@ -146,7 +146,7 @@ class UserCrudTest extends TestCase
         $manager = User::factory()->create();
         $manager->assignRole('general_manager');
 
-        $managed = User::factory()->withRole('operations_manager')->create();
+        $managed = User::factory()->withRole('operations_specialist')->create();
 
         $response = $this->actingAs($manager)->delete(route('users.force-destroy', $managed->id));
 
@@ -179,7 +179,7 @@ class UserCrudTest extends TestCase
     public function test_user_without_permission_cannot_create_user(): void
     {
         $user = User::factory()->create();
-        $user->assignRole('operations_manager');
+        $user->assignRole('operations_specialist');
 
         $response = $this->actingAs($user)->post(route('users.store'), [
             'first_name' => 'Yetkisiz',
@@ -188,7 +188,7 @@ class UserCrudTest extends TestCase
             'phone' => '05554443322',
             'password' => 'password123',
             'password_confirmation' => 'password123',
-            'roles' => ['operations_manager'],
+            'roles' => ['operations_specialist'],
             'status' => 'active',
         ]);
 

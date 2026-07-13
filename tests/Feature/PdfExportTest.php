@@ -57,7 +57,7 @@ class PdfExportTest extends TestCase
     public function test_revenue_list_pdf_requires_financial_permission(): void
     {
         $user = User::factory()->create();
-        $user->assignRole('operations_staff');
+        $user->assignRole('operations_specialist');
 
         $this->actingAs($user)
             ->get(route('finance.revenues.export-pdf'))

@@ -23,7 +23,7 @@ class FormApplicationTest extends TestCase
     public function test_operations_roles_can_access_form_applications_without_form_builder(): void
     {
         $manager = User::factory()->create();
-        $manager->assignRole('operations_manager');
+        $manager->assignRole('operations_specialist');
 
         $dashboard = $this->actingAs($manager)->get(route('dashboard'));
         $dashboard->assertOk();
@@ -38,7 +38,7 @@ class FormApplicationTest extends TestCase
         $index->assertDontSee('Yeni Form');
 
         $staff = User::factory()->create();
-        $staff->assignRole('operations_staff');
+        $staff->assignRole('operations_specialist');
         $this->actingAs($staff)->get(route('form-applications.index'))->assertOk();
     }
 
@@ -57,14 +57,14 @@ class FormApplicationTest extends TestCase
         }
     }
 
-    public function test_operations_staff_can_view_forms_and_submissions_but_not_edit_forms(): void
+    public function test_operations_specialist_can_view_forms_and_submissions_but_not_edit_forms(): void
     {
         $admin = User::factory()->create();
         $admin->assignRole('super_admin');
         $this->createActiveFormLandingAndSubmission($admin, 'Ops Aday', 'ops-landing');
 
         $staff = User::factory()->create();
-        $staff->assignRole('operations_staff');
+        $staff->assignRole('operations_specialist');
 
         $this->actingAs($staff)->get(route('form-builder.index'))->assertForbidden();
         $this->actingAs($staff)->get(route('form-builder.edit', 1))->assertForbidden();
@@ -88,10 +88,10 @@ class FormApplicationTest extends TestCase
         $show->assertDontSee('IP Adresi');
     }
 
-    public function test_finance_officer_cannot_access_form_applications(): void
+    public function test_courier_cannot_access_form_applications(): void
     {
         $user = User::factory()->create();
-        $user->assignRole('finance_officer');
+        $user->assignRole('courier');
 
         $this->actingAs($user)->get(route('form-applications.index'))->assertForbidden();
     }

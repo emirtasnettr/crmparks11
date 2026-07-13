@@ -67,7 +67,7 @@ class PermissionManagementTest extends TestCase
     public function test_user_without_permission_cannot_view_permissions_index(): void
     {
         $user = User::factory()->create();
-        $user->assignRole('operations_manager');
+        $user->assignRole('operations_specialist');
 
         $response = $this->actingAs($user)->get(route('permissions.index'));
 
@@ -79,11 +79,11 @@ class PermissionManagementTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('super_admin');
 
-        $response = $this->actingAs($user)->get(route('permissions.index', ['role' => 'finance_officer']));
+        $response = $this->actingAs($user)->get(route('permissions.index', ['role' => 'general_manager']));
 
         $response->assertOk();
-        $response->assertSee('Finans Sorumlusu', false);
-        $response->assertSee('finance_officer', false);
+        $response->assertSee('Genel Müdür', false);
+        $response->assertSee('general_manager', false);
     }
 
     public function test_super_admin_role_is_locked_in_payload(): void
@@ -101,9 +101,11 @@ class PermissionManagementTest extends TestCase
         $this->assertArrayHasKey('super_admin', $roles);
         $this->assertArrayHasKey('general_manager', $roles);
         $this->assertArrayHasKey('sales_manager', $roles);
-        $this->assertArrayHasKey('finance_officer', $roles);
+        $this->assertArrayHasKey('operations_specialist', $roles);
         $this->assertArrayHasKey('courier', $roles);
-        $this->assertCount(9, $roles);
+        $this->assertArrayHasKey('business', $roles);
+        $this->assertArrayHasKey('agency', $roles);
+        $this->assertCount(7, $roles);
     }
 
     public function test_sales_manager_has_business_and_report_permissions(): void
@@ -125,10 +127,10 @@ class PermissionManagementTest extends TestCase
         $this->assertFalse($users['actions']['view']['granted']);
     }
 
-    public function test_finance_officer_has_finance_module_permissions(): void
+    public function test_general_manager_has_finance_module_permissions(): void
     {
         $payload = app(PermissionManagementService::class)->rolesPayload();
-        $matrix = collect($payload['finance_officer']['matrix']);
+        $matrix = collect($payload['general_manager']['matrix']);
 
         $financeDashboard = $matrix->firstWhere('key', 'finance_dashboard');
         $this->assertNotNull($financeDashboard);
@@ -182,10 +184,10 @@ class PermissionManagementTest extends TestCase
     public function test_permission_matrix_update_requires_user_update_permission(): void
     {
         $user = User::factory()->create();
-        $user->assignRole('operations_manager');
+        $user->assignRole('operations_specialist');
 
         $response = $this->actingAs($user)->putJson(route('permissions.update'), [
-            'role' => 'finance_officer',
+            'role' => 'general_manager',
             'permissions' => ['dashboard.view'],
         ]);
 
@@ -198,7 +200,7 @@ class PermissionManagementTest extends TestCase
         $user->assignRole('super_admin');
 
         $response = $this->actingAs($user)->putJson(route('permissions.update'), [
-            'role' => 'finance_officer',
+            'role' => 'general_manager',
             'permissions' => [
                 'dashboard.view',
                 'dashboard.financial',
@@ -210,10 +212,10 @@ class PermissionManagementTest extends TestCase
         ]);
 
         $response->assertOk();
-        $response->assertJsonPath('role', 'finance_officer');
+        $response->assertJsonPath('role', 'general_manager');
         $response->assertJsonPath('message', 'Yetki değişiklikleri kaydedildi.');
 
-        $role = Role::findByName('finance_officer');
+        $role = Role::findByName('general_manager');
         $this->assertTrue($role->hasPermissionTo('report.export'));
         $this->assertTrue($role->hasPermissionTo('earning.approve'));
     }
@@ -238,7 +240,7 @@ class PermissionManagementTest extends TestCase
         $user->assignRole('super_admin');
 
         $this->actingAs($user)->putJson(route('permissions.update'), [
-            'role' => 'operations_staff',
+            'role' => 'operations_specialist',
             'permissions' => [
                 'dashboard.view',
                 'business.view',
@@ -255,7 +257,7 @@ class PermissionManagementTest extends TestCase
 
         $this->assertNotNull($log);
         $this->assertSame($user->id, $log->user_id);
-        $this->assertStringContainsString('Operasyon Personeli', $log->description ?? '');
-        $this->assertSame('operations_staff', $log->new_values['role'] ?? null);
+        $this->assertStringContainsString('Operasyon Uzmanı', $log->description ?? '');
+        $this->assertSame('operations_specialist', $log->new_values['role'] ?? null);
     }
 }

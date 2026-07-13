@@ -142,10 +142,10 @@ class LandingPageBuilderTest extends TestCase
     $response->assertSee('Landing Page Builder');
   }
 
-  public function test_operations_manager_cannot_access_landing_page_builder(): void
+  public function test_operations_specialist_cannot_access_landing_page_builder(): void
   {
     $user = User::factory()->create();
-    $user->assignRole('operations_manager');
+    $user->assignRole('operations_specialist');
 
     $response = $this->actingAs($user)->get(route('landing-page-builder.index'));
 
