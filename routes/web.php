@@ -335,6 +335,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/', [FormBuilderController::class, 'store'])->middleware('permission:form_builder.manage')->name('store');
         Route::get('/{id}/basvurular', [FormSubmissionController::class, 'index'])->name('submissions.index');
         Route::get('/{id}/basvurular/export', [FormSubmissionController::class, 'export'])->name('submissions.export');
+        Route::get('/{id}/basvurular/{submissionId}', [FormSubmissionController::class, 'show'])->name('submissions.show');
+        Route::post('/{id}/basvurular/{submissionId}/notlar', [FormSubmissionController::class, 'storeNote'])->name('submissions.notes.store');
         Route::get('/{id}/duzenle', [FormBuilderController::class, 'edit'])->middleware('permission:form_builder.manage')->name('edit');
         Route::put('/{id}', [FormBuilderController::class, 'update'])->middleware('permission:form_builder.manage')->name('update');
         Route::delete('/{id}', [FormBuilderController::class, 'destroy'])->middleware('permission:form_builder.manage')->name('destroy');

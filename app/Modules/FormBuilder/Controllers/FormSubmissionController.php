@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\FormBuilder\Exports\FormSubmissionsExport;
 use App\Modules\FormBuilder\Services\FormBuilderService;
 use App\Modules\FormBuilder\Services\FormSubmissionService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
@@ -42,6 +43,53 @@ class FormSubmissionController extends Controller
       'filters' => $filters,
       'submissionCount' => $this->submissionService->countForForm($id),
     ]);
+  }
+
+  public function show(int $id, int $submissionId): View
+  {
+    $form = $this->formService->find($id);
+
+    if ($form === null) {
+      abort(404);
+    }
+
+    $submission = $this->submissionService->findForForm($id, $submissionId);
+
+    if ($submission === null) {
+      abort(404);
+    }
+
+    return view('modules.form-builder.submissions.show', [
+      'form' => $form,
+      'submission' => $submission,
+      'notes' => $this->submissionService->notesForSubmission($submissionId),
+    ]);
+  }
+
+  public function storeNote(Request $request, int $id, int $submissionId): RedirectResponse
+  {
+    $validated = $request->validate([
+      'body' => ['required', 'string', 'max:5000'],
+    ], [
+      'body.required' => 'Not metni zorunludur.',
+    ]);
+
+    $submission = $this->submissionService->findForForm($id, $submissionId);
+
+    if ($submission === null) {
+      abort(404);
+    }
+
+    $this->submissionService->addNote(
+      $id,
+      $submissionId,
+      $validated['body'],
+      $request->user()?->id,
+    );
+
+    return redirect()
+      ->route('form-builder.submissions.show', [$id, $submissionId])
+      ->with('success', 'Not kaydedildi.');
   }
 
   public function export(Request $request, int $id): BinaryFileResponse

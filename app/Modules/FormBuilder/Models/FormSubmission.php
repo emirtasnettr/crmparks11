@@ -5,6 +5,7 @@ namespace App\Modules\FormBuilder\Models;
 use App\Modules\LandingPage\Models\LandingPage;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class FormSubmission extends Model
 {
@@ -37,6 +38,11 @@ class FormSubmission extends Model
     public function landingPage(): BelongsTo
     {
         return $this->belongsTo(LandingPage::class);
+    }
+
+    public function notes(): HasMany
+    {
+        return $this->hasMany(FormSubmissionNote::class)->latest();
     }
 
     /**

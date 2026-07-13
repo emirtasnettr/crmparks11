@@ -2,6 +2,7 @@
 
 namespace App\Modules\FormBuilder\Services;
 
+use App\Modules\FormBuilder\Models\FormSubmissionNote;
 use App\Modules\FormBuilder\Repositories\FormBuilderRepository;
 use App\Modules\FormBuilder\Repositories\FormSubmissionRepository;
 use Carbon\Carbon;
@@ -67,6 +68,58 @@ class FormSubmissionService
   public function countForForm(int $formId): int
   {
     return $this->repository->count($formId);
+  }
+
+  /**
+   * @return array<string, mixed>|null
+   */
+  public function findForForm(int $formId, int $submissionId): ?array
+  {
+    $form = $this->formRepository->find($formId);
+
+    if ($form === null) {
+      return null;
+    }
+
+    $submission = $this->repository->find($formId, $submissionId);
+
+    return $submission ? $this->enrich($submission, $form) : null;
+  }
+
+  /**
+   * @return array<int, array<string, mixed>>
+   */
+  public function notesForSubmission(int $submissionId): array
+  {
+    return FormSubmissionNote::query()
+      ->with('user:id,name')
+      ->where('form_submission_id', $submissionId)
+      ->latest()
+      ->get()
+      ->map(fn (FormSubmissionNote $note) => $note->toRecordArray())
+      ->all();
+  }
+
+  /**
+   * @return array<string, mixed>
+   */
+  public function addNote(int $formId, int $submissionId, string $body, ?int $userId): array
+  {
+    $submission = $this->repository->find($formId, $submissionId);
+
+    if ($submission === null) {
+      abort(404);
+    }
+
+    $note = FormSubmissionNote::query()->create([
+      'form_submission_id' => $submissionId,
+      'user_id' => $userId,
+      'body' => trim($body),
+    ]);
+
+    $note->load('user:id,name');
+
+    return $note->toRecordArray();
   }
 
   /**
@@ -230,14 +283,21 @@ class FormSubmissionService
       ->filter(fn (array $field) => ($field['type'] ?? '') !== 'heading')
       ->keyBy('name');
 
-    $values = collect($submission['data'] ?? [])->map(function ($value, $key) use ($fieldMap) {
+    $data = $submission['data'] ?? [];
+
+    $values = collect($data)->map(function ($value, $key) use ($fieldMap, $data) {
       if (str_ends_with((string) $key, '_url')) {
         return null;
       }
 
+      $field = $fieldMap->get($key);
+
       return [
-        'label' => $fieldMap->get($key)['label'] ?? $key,
+        'name' => $key,
+        'label' => $field['label'] ?? $key,
+        'type' => $field['type'] ?? 'text',
         'value' => is_array($value) ? implode(', ', $value) : (string) ($value ?? ''),
+        'url' => $data[$key.'_url'] ?? null,
       ];
     })->filter()->all();
 

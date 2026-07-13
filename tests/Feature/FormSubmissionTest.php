@@ -159,4 +159,89 @@ class FormSubmissionTest extends TestCase
     $response->assertOk();
     $response->assertSee(route('form-builder.submissions.index', 1), false);
   }
+
+  public function test_admin_can_view_submission_and_add_notes(): void
+  {
+    $user = User::factory()->create(['name' => 'Operasyon Admin']);
+    $user->assignRole('super_admin');
+
+    $this->actingAs($user)->post(route('form-builder.store'), [
+      'name' => 'Not Formu',
+      'status' => 'active',
+    ]);
+
+    $this->actingAs($user)->put(route('form-builder.update', 1), [
+      'name' => 'Not Formu',
+      'status' => 'active',
+      'fields_json' => json_encode([
+        [
+          'id' => 'field_1',
+          'type' => 'text',
+          'label' => 'Ad Soyad',
+          'name' => 'ad_soyad',
+          'placeholder' => '',
+          'help_text' => '',
+          'required' => true,
+          'width' => 'full',
+          'options' => [],
+        ],
+      ]),
+    ]);
+
+    $this->actingAs($user)->post(route('landing-page-builder.store'), [
+      'name' => 'Not Landing',
+      'slug' => 'not-landing',
+      'status' => 'active',
+      'form_id' => 1,
+    ]);
+
+    $this->actingAs($user)->put(route('landing-page-builder.update', 1), [
+      'name' => 'Not Landing',
+      'slug' => 'not-landing',
+      'status' => 'active',
+      'form_id' => 1,
+    ]);
+
+    $this->post(route('landing.submit', 'not-landing'), [
+      'ad_soyad' => 'Ayşe Yılmaz',
+    ]);
+
+    $list = $this->actingAs($user)->get(route('form-builder.submissions.index', 1));
+    $list->assertOk();
+    $list->assertSee('Görüntüle');
+    $list->assertSee(route('form-builder.submissions.show', [1, 1]), false);
+
+    $show = $this->actingAs($user)->get(route('form-builder.submissions.show', [1, 1]));
+    $show->assertOk();
+    $show->assertSee('Ayşe Yılmaz');
+    $show->assertSee('Notlar');
+    $show->assertSee('Henüz not yok');
+
+    $storeNote = $this->actingAs($user)->post(route('form-builder.submissions.notes.store', [1, 1]), [
+      'body' => 'Aday arandı, dönüş bekleniyor.',
+    ]);
+
+    $storeNote->assertRedirect(route('form-builder.submissions.show', [1, 1]));
+    $storeNote->assertSessionHas('success');
+
+    $this->assertDatabaseCount('form_submission_notes', 1);
+    $this->assertDatabaseHas('form_submission_notes', [
+      'form_submission_id' => 1,
+      'user_id' => $user->id,
+      'body' => 'Aday arandı, dönüş bekleniyor.',
+    ]);
+
+    $secondNote = $this->actingAs($user)->post(route('form-builder.submissions.notes.store', [1, 1]), [
+      'body' => 'İkinci görüşme planlandı.',
+    ]);
+    $secondNote->assertRedirect(route('form-builder.submissions.show', [1, 1]));
+    $this->assertDatabaseCount('form_submission_notes', 2);
+
+    $updatedShow = $this->actingAs($user)->get(route('form-builder.submissions.show', [1, 1]));
+    $updatedShow->assertOk();
+    $updatedShow->assertSee('Aday arandı, dönüş bekleniyor.');
+    $updatedShow->assertSee('İkinci görüşme planlandı.');
+    $updatedShow->assertSee('Operasyon Admin');
+    $updatedShow->assertDontSee('Henüz not yok');
+  }
 }
