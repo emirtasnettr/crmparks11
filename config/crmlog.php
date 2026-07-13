@@ -26,6 +26,7 @@ return [
     'roles' => [
         'super_admin' => 'Süper Admin',
         'general_manager' => 'Genel Müdür',
+        'sales_manager' => 'Satış Müdürü',
         'operations_manager' => 'Operasyon Yöneticisi',
         'courier' => 'Kurye',
         'business' => 'İşletme',

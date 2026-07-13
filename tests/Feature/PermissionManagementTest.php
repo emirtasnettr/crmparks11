@@ -100,9 +100,29 @@ class PermissionManagementTest extends TestCase
 
         $this->assertArrayHasKey('super_admin', $roles);
         $this->assertArrayHasKey('general_manager', $roles);
+        $this->assertArrayHasKey('sales_manager', $roles);
         $this->assertArrayHasKey('finance_officer', $roles);
         $this->assertArrayHasKey('courier', $roles);
-        $this->assertCount(8, $roles);
+        $this->assertCount(9, $roles);
+    }
+
+    public function test_sales_manager_has_business_and_report_permissions(): void
+    {
+        $payload = app(PermissionManagementService::class)->rolesPayload();
+        $matrix = collect($payload['sales_manager']['matrix']);
+
+        $businesses = $matrix->firstWhere('key', 'businesses');
+        $this->assertNotNull($businesses);
+        $this->assertTrue($businesses['actions']['view']['granted']);
+        $this->assertTrue($businesses['actions']['create']['granted']);
+
+        $reports = $matrix->firstWhere('key', 'reports');
+        $this->assertNotNull($reports);
+        $this->assertTrue($reports['actions']['view']['granted']);
+
+        $users = $matrix->firstWhere('key', 'users');
+        $this->assertNotNull($users);
+        $this->assertFalse($users['actions']['view']['granted']);
     }
 
     public function test_finance_officer_has_finance_module_permissions(): void

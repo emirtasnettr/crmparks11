@@ -14,6 +14,7 @@ class PermissionManagementFormData
         return [
             'super_admin' => 'Süper Admin',
             'general_manager' => 'Genel Müdür',
+            'sales_manager' => 'Satış Müdürü',
             'operations_manager' => 'Operasyon Yöneticisi',
             'finance_officer' => 'Finans Sorumlusu',
             'operations_staff' => 'Operasyon Personeli',
@@ -127,6 +128,19 @@ class PermissionManagementFormData
         return match ($roleSlug) {
             'super_admin' => $all,
             'general_manager' => array_values(array_diff($all, self::slugsMatching(['user.', 'permission.']))),
+            'sales_manager' => array_values(array_unique(array_merge(
+                ['dashboard.view'],
+                self::slugsWithActions(
+                    self::slugsMatching(['business.', 'business_contact.', 'contract.', 'document.']),
+                    ['view', 'create', 'update', 'export', 'print']
+                ),
+                self::slugsWithActions(
+                    self::slugsMatching(['courier.', 'agency.', 'assignment.']),
+                    ['view', 'export']
+                ),
+                self::slugsWithActions(self::slugsMatching(['report.']), ['view', 'export', 'print']),
+                self::slugsWithActions(self::slugsMatching(['notification.']), ['view', 'update']),
+            ))),
             'operations_manager' => array_values(array_unique(array_merge(
                 self::slugsWithActions($operational, ['view', 'create', 'update', 'export', 'print']),
                 self::slugsWithActions($finance, ['view', 'export']),

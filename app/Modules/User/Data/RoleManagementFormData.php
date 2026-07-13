@@ -45,6 +45,16 @@ class RoleManagementFormData
                 'icon' => 'briefcase',
                 'color' => 'violet',
             ],
+            'sales_manager' => [
+                'display_name' => 'Satış Müdürü',
+                'description' => 'İşletme, sözleşme, form ve landing page satış süreçlerini yönetir.',
+                'status' => 'active',
+                'is_system' => true,
+                'is_deletable' => false,
+                'can_deactivate' => true,
+                'icon' => 'chart',
+                'color' => 'amber',
+            ],
             'operations_manager' => [
                 'display_name' => 'Operasyon Yöneticisi',
                 'description' => 'İşletme, kurye, acente ve atama süreçlerini yönetir.',

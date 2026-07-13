@@ -44,6 +44,18 @@ class RoleAndPermissionSeeder extends Seeder
                 $permissions,
                 fn (string $permission) => ! str_starts_with($permission, 'user.') && ! str_starts_with($permission, 'setting.')
             )),
+            'sales_manager' => [
+                'dashboard.view',
+                'business.view', 'business.create', 'business.update',
+                'courier.view',
+                'agency.view',
+                'assignment.view',
+                'contract.view', 'contract.create', 'contract.update',
+                'report.view', 'report.export',
+                'form_builder.view', 'form_builder.manage',
+                'landing_page.view', 'landing_page.manage',
+                'notification.view', 'notification.update',
+            ],
             'operations_manager' => [
                 'dashboard.view',
                 'business.view', 'business.create', 'business.update',

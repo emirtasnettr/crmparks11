@@ -14,6 +14,7 @@ class UserManagementFormData
         return [
             'super_admin' => 'Süper Admin',
             'general_manager' => 'Genel Müdür',
+            'sales_manager' => 'Satış Müdürü',
             'operations_manager' => 'Operasyon Yöneticisi',
             'finance_officer' => 'Finans Sorumlusu',
             'operations_staff' => 'Operasyon Personeli',
