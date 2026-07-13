@@ -141,6 +141,40 @@ class EntityShowPageTest extends TestCase
     $response->assertDontSee('Hakediş Periyodu');
   }
 
+  public function test_business_show_uses_pricing_model_labels_for_hourly(): void
+  {
+    $user = User::factory()->create();
+    $user->assignRole('super_admin');
+    $business = $this->createBusiness($user, [
+      'company_name' => 'Saatlik Lojistik A.Ş.',
+      'brand_name' => 'Saatlik Lojistik',
+    ]);
+
+    $pricingModel = PricingModelType::query()->where('code', 'hourly')->firstOrFail();
+
+    BusinessPricing::query()->where('business_id', $business->id)->update(['is_active' => false]);
+    BusinessPricing::query()->create([
+      'business_id' => $business->id,
+      'pricing_model_type_id' => $pricingModel->id,
+      'customer_unit_price' => 290.00,
+      'courier_unit_price' => 250.00,
+      'effective_from' => now()->toDateString(),
+      'is_active' => true,
+      'created_by' => $user->id,
+    ]);
+
+    $response = $this->actingAs($user)->get(route('businesses.show', $business->id));
+
+    $response->assertOk();
+    $response->assertSee('Saatlik Alınan');
+    $response->assertSee('Saatlik Kuryeye Verilen');
+    $response->assertSee('Saatlik Net Kazanç');
+    $response->assertSee('saatlik göstergeler');
+    $response->assertSee('İşletmeden Saatlik Ücret');
+    $response->assertSee('Kuryeye Saatlik Ücret');
+    $response->assertDontSee('Paket Başı Alınan');
+  }
+
   public function test_courier_show_page_displays_profile_card(): void
   {
     $user = User::factory()->create();

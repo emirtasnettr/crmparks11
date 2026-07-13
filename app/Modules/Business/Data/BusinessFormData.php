@@ -104,6 +104,58 @@ class BusinessFormData
     }
 
     /**
+     * İşletme detay özet kartları için model bazlı kısa etiketler.
+     *
+     * @return array{received: string, courier: string, net: string, subtitle: string, customer_detail: string, courier_detail: string}
+     */
+    public static function overviewPricingLabels(?string $pricingModel): array
+    {
+        $model = match ($pricingModel) {
+            'fixed', 'monthly_fixed' => 'monthly_fixed',
+            'hourly' => 'hourly',
+            'daily' => 'daily',
+            default => 'per_package',
+        };
+
+        $fieldLabels = self::pricingFieldLabels()[$model];
+
+        return match ($model) {
+            'monthly_fixed' => [
+                'received' => 'Aylık Alınan',
+                'courier' => 'Aylık Kuryeye Verilen',
+                'net' => 'Aylık Net Kazanç',
+                'subtitle' => 'aylık sabit göstergeler',
+                'customer_detail' => trim(str_replace('(₺)', '', $fieldLabels['customer'])),
+                'courier_detail' => trim(str_replace('(₺)', '', $fieldLabels['courier'])),
+            ],
+            'hourly' => [
+                'received' => 'Saatlik Alınan',
+                'courier' => 'Saatlik Kuryeye Verilen',
+                'net' => 'Saatlik Net Kazanç',
+                'subtitle' => 'saatlik göstergeler',
+                'customer_detail' => trim(str_replace('(₺)', '', $fieldLabels['customer'])),
+                'courier_detail' => trim(str_replace('(₺)', '', $fieldLabels['courier'])),
+            ],
+            'daily' => [
+                'received' => 'Günlük Alınan',
+                'courier' => 'Günlük Kuryeye Verilen',
+                'net' => 'Günlük Net Kazanç',
+                'subtitle' => 'günlük göstergeler',
+                'customer_detail' => trim(str_replace('(₺)', '', $fieldLabels['customer'])),
+                'courier_detail' => trim(str_replace('(₺)', '', $fieldLabels['courier'])),
+            ],
+            default => [
+                'received' => 'Paket Başı Alınan',
+                'courier' => 'Paket Başı Kuryeye Verilen',
+                'net' => 'Paket Başı Net Kazanç',
+                'subtitle' => 'paket bazlı göstergeler',
+                'customer_detail' => trim(str_replace('(₺)', '', $fieldLabels['customer'])),
+                'courier_detail' => trim(str_replace('(₺)', '', $fieldLabels['courier'])),
+            ],
+        };
+    }
+
+    /**
      * @return array<string, string>
      */
     public static function earningPeriods(): array

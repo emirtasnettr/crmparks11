@@ -47,7 +47,7 @@
                 <div>
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Operasyon Özeti</h2>
                     <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">
-                        {{ $dateFilters['range_label'] }} dönemi için paket bazlı göstergeler
+                        {{ $dateFilters['range_label'] }} dönemi için {{ $overviewStats['labels']['subtitle'] }}
                     </p>
                 </div>
 
@@ -77,10 +77,10 @@
             </div>
 
             <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <x-ui.finance-stat-card title="Paket Başı Alınan" :value="\App\Core\Helpers\MoneyCalculator::formatVatAmount($overviewStats['received_per_package'])" icon="earning" accent="success" />
-                <x-ui.finance-stat-card title="Paket Başı Kuryeye Verilen" :value="\App\Core\Helpers\MoneyCalculator::formatVatAmount($overviewStats['courier_per_package'])" icon="courier" accent="warning" />
+                <x-ui.finance-stat-card :title="$overviewStats['labels']['received']" :value="\App\Core\Helpers\MoneyCalculator::formatVatAmount($overviewStats['received_per_package'])" icon="earning" accent="success" />
+                <x-ui.finance-stat-card :title="$overviewStats['labels']['courier']" :value="\App\Core\Helpers\MoneyCalculator::formatVatAmount($overviewStats['courier_per_package'])" icon="courier" accent="warning" />
                 <x-ui.finance-stat-card title="Aktif Kurye Sayısı" :value="number_format($overviewStats['active_couriers'])" icon="courier" accent="blue" />
-                <x-ui.finance-stat-card title="Paket Başı Net Kazanç" :value="\App\Core\Helpers\MoneyCalculator::formatVatAmount($overviewStats['net_per_package'])" icon="chart" accent="primary" />
+                <x-ui.finance-stat-card :title="$overviewStats['labels']['net']" :value="\App\Core\Helpers\MoneyCalculator::formatVatAmount($overviewStats['net_per_package'])" icon="chart" accent="primary" />
             </div>
 
             <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -122,8 +122,8 @@
 
                 <x-ui.card title="Fiyatlandırma">
                     <dl class="space-y-3 text-sm">
-                        <x-entity.detail-row label="Müşteri Fiyatı" :value="$business['customer_price']" />
-                        <x-entity.detail-row label="Kurye Fiyatı" :value="$business['courier_price']" />
+                        <x-entity.detail-row :label="$overviewStats['labels']['customer_detail']" :value="$business['customer_price']" />
+                        <x-entity.detail-row :label="$overviewStats['labels']['courier_detail']" :value="$business['courier_price']" />
                     </dl>
                 </x-ui.card>
 

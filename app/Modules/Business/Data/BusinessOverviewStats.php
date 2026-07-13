@@ -57,25 +57,35 @@ class BusinessOverviewStats
 
         $presenter = app(BusinessPresenter::class);
         $unitPrices = $presenter->unitPrices($business);
+        $pricingModel = $business->activePricing?->pricingModelType?->code ?? 'per_package';
+        if ($pricingModel === 'fixed') {
+            $pricingModel = 'monthly_fixed';
+        }
         $lines = self::earningLinesInPeriod($businessId, $start, $end);
         $totalPackages = (int) $lines->sum('package_count');
         $totalRevenue = round((float) $lines->sum('revenue_total'), 2);
         $totalCourier = round((float) $lines->sum('courier_total'), 2);
 
-        if ($totalPackages > 0) {
+        if ($pricingModel === 'per_package' && $totalPackages > 0) {
             $receivedPerPackage = round($totalRevenue / $totalPackages, 2);
             $courierPerPackage = round($totalCourier / $totalPackages, 2);
         } elseif ($unitPrices['from_profile']) {
             $receivedPerPackage = $unitPrices['revenue_unit'];
             $courierPerPackage = $unitPrices['courier_unit'];
-        } else {
+        } elseif ($pricingModel === 'per_package') {
             $receivedPerPackage = 0.0;
             $courierPerPackage = 0.0;
+        } else {
+            $receivedPerPackage = $totalRevenue;
+            $courierPerPackage = $totalCourier;
         }
 
         $netPerPackage = round($receivedPerPackage - $courierPerPackage, 2);
+        $labels = BusinessFormData::overviewPricingLabels($pricingModel);
 
         return [
+            'pricing_model' => $pricingModel,
+            'labels' => $labels,
             'received_per_package' => $receivedPerPackage,
             'courier_per_package' => $courierPerPackage,
             'active_couriers' => self::currentActiveCouriers($businessId),
@@ -136,7 +146,11 @@ class BusinessOverviewStats
      */
     private static function emptyStats(): array
     {
+        $labels = BusinessFormData::overviewPricingLabels('per_package');
+
         return [
+            'pricing_model' => 'per_package',
+            'labels' => $labels,
             'received_per_package' => 0,
             'courier_per_package' => 0,
             'active_couriers' => 0,
