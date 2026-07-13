@@ -150,7 +150,7 @@
             </x-ui.card>
         </x-entity.tab-panel>
 
-        <x-entity.tab-panel name="documents" x-data="courierDocumentPage(@js(['courierId' => $courier['id']]))">
+        <x-entity.tab-panel name="documents" alpine-page="courierDocumentPage" :alpine-config="['courierId' => $courier['id']]">
             <x-ui.card title="Belgeler">
                 <x-slot:actions>
                     <x-entity.tab-add-button label="Belge Yükle" @click="openModal = true" />
@@ -196,7 +196,7 @@
             ])
         </x-entity.tab-panel>
 
-        <x-entity.tab-panel name="bank_accounts" x-data="courierBankAccountPage(@js(['courierId' => $courier['id']]))">
+        <x-entity.tab-panel name="bank_accounts" alpine-page="courierBankAccountPage" :alpine-config="['courierId' => $courier['id']]">
             <x-ui.card title="Banka Bilgileri">
                 <x-slot:actions>
                     <x-entity.tab-add-button label="Yeni Hesap" @click="openModal = true" />
@@ -245,7 +245,7 @@
             ])
         </x-entity.tab-panel>
 
-        <x-entity.tab-panel name="vehicles" x-data="courierVehiclePage(@js(['courierId' => $courier['id']]))">
+        <x-entity.tab-panel name="vehicles" alpine-page="courierVehiclePage" :alpine-config="['courierId' => $courier['id']]">
             <x-ui.card title="Araç Bilgileri">
                 <x-slot:actions>
                     <x-entity.tab-add-button label="Yeni Araç" @click="openModal = true" />

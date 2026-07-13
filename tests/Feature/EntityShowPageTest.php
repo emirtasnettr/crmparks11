@@ -220,6 +220,10 @@ class EntityShowPageTest extends TestCase
     $response->assertSee('Yeni Araç');
     $response->assertSee('Belgeler');
     $response->assertSee('0532 100 10 01');
+    $response->assertSee("courierDocumentPage(JSON.parse('{\\u0022courierId\\u0022:{$courier->id}}'))", false);
+    $response->assertSee("courierBankAccountPage(JSON.parse('{\\u0022courierId\\u0022:{$courier->id}}'))", false);
+    $response->assertSee("courierVehiclePage(JSON.parse('{\\u0022courierId\\u0022:{$courier->id}}'))", false);
+    $response->assertDontSee('courierDocumentPage(@js(', false);
   }
 
   public function test_agency_show_page_displays_profile_card(): void
@@ -240,6 +244,8 @@ class EntityShowPageTest extends TestCase
     $response->assertSee('Kuryeler');
     $response->assertSee('Serkan Yılmaz');
     $response->assertDontSee('Aylık Hakediş');
+    $response->assertSee("agencyContactPage(JSON.parse('{\\u0022agencyId\\u0022:{$agency->id}}'))", false);
+    $response->assertDontSee('agencyContactPage(@js(', false);
   }
 
   public function test_agency_show_lists_unassigned_couriers_in_assign_modal(): void

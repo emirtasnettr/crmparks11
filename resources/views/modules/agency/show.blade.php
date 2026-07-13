@@ -89,7 +89,7 @@
             </div>
         </x-entity.tab-panel>
 
-        <x-entity.tab-panel name="contacts" x-data="agencyContactPage(@js(['agencyId' => $agency['id']]))">
+        <x-entity.tab-panel name="contacts" alpine-page="agencyContactPage" :alpine-config="['agencyId' => $agency['id']]">
             <x-ui.card title="Yetkililer">
                 <x-slot:actions>
                     <x-entity.tab-add-button label="Yeni Yetkili" @click="openModal = true" />
@@ -135,7 +135,12 @@
             ])
         </x-entity.tab-panel>
 
-        <x-entity.tab-panel name="couriers" x-data="agencyCourierPage(@js(['agencyId' => $agency['id']]))" @agency-courier-detail.window="openDetail($event.detail)">
+        <x-entity.tab-panel
+            name="couriers"
+            alpine-page="agencyCourierPage"
+            :alpine-config="['agencyId' => $agency['id']]"
+            @agency-courier-detail.window="openDetail($event.detail)"
+        >
             <x-ui.card title="Kuryeler">
                 <x-slot:actions>
                     <x-entity.tab-add-button label="Kurye Ata" @click="openAssignModal = true" />
@@ -182,7 +187,7 @@
             @include('modules.agency.couriers.partials.detail-modal')
         </x-entity.tab-panel>
 
-        <x-entity.tab-panel name="contracts" x-data="agencyContractPage(@js(['agencyId' => $agency['id']]))">
+        <x-entity.tab-panel name="contracts" alpine-page="agencyContractPage" :alpine-config="['agencyId' => $agency['id']]">
             <x-ui.card title="Sözleşmeler">
                 <x-slot:actions>
                     <x-entity.tab-add-button label="Yeni Sözleşme" @click="openModal = true" />
@@ -228,7 +233,7 @@
             ])
         </x-entity.tab-panel>
 
-        <x-entity.tab-panel name="documents" x-data="agencyDocumentPage(@js(['agencyId' => $agency['id']]))">
+        <x-entity.tab-panel name="documents" alpine-page="agencyDocumentPage" :alpine-config="['agencyId' => $agency['id']]">
             <x-ui.card title="Evraklar">
                 <x-slot:actions>
                     <x-entity.tab-add-button label="Evrak Yükle" @click="openModal = true" />

@@ -156,7 +156,7 @@
         </x-entity.tab-panel>
 
         @if ($canViewRestrictedTabs)
-        <x-entity.tab-panel name="contacts" x-data="contactPage(@js(['businessId' => $business['id']]))">
+        <x-entity.tab-panel name="contacts" alpine-page="contactPage" :alpine-config="['businessId' => $business['id']]">
             <x-ui.card title="Yetkililer">
                 <x-slot:actions>
                     <x-entity.tab-add-button label="Yeni Yetkili" @click="openModal = true" />
@@ -202,7 +202,7 @@
             ])
         </x-entity.tab-panel>
 
-        <x-entity.tab-panel name="contracts" x-data="contractPage(@js(['businessId' => $business['id']]))">
+        <x-entity.tab-panel name="contracts" alpine-page="contractPage" :alpine-config="['businessId' => $business['id']]">
             <x-ui.card title="Sözleşmeler">
                 <x-slot:actions>
                     <x-entity.tab-add-button label="Yeni Sözleşme" @click="openModal = true" />
@@ -253,7 +253,7 @@
         </x-entity.tab-panel>
         @endif
 
-        <x-entity.tab-panel name="assignments" x-data="assignmentPage(@js(['businessId' => $business['id']]))">
+        <x-entity.tab-panel name="assignments" alpine-page="assignmentPage" :alpine-config="['businessId' => $business['id']]">
             <x-ui.card title="Atanan Kuryeler">
                 <x-slot:actions>
                     <x-entity.tab-add-button label="Yeni Atama" @click="openModal = true" />
@@ -305,7 +305,7 @@
         </x-entity.tab-panel>
 
         @if ($canViewRestrictedTabs)
-        <x-entity.tab-panel name="documents" x-data="documentPage(@js(['businessId' => $business['id']]))">
+        <x-entity.tab-panel name="documents" alpine-page="documentPage" :alpine-config="['businessId' => $business['id']]">
             <x-ui.card title="Evraklar">
                 <x-slot:actions>
                     <x-entity.tab-add-button label="Evrak Yükle" @click="openModal = true" />
