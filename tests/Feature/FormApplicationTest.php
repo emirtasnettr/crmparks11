@@ -55,6 +55,11 @@ class FormApplicationTest extends TestCase
 
             $this->actingAs($user)->get(route('form-applications.index'))->assertOk();
         }
+
+        $sales = User::factory()->create();
+        $sales->assignRole('sales_manager');
+        $this->actingAs($sales)->get(route('form-builder.index'))->assertForbidden();
+        $this->actingAs($sales)->get(route('landing-page-builder.index'))->assertForbidden();
     }
 
     public function test_operations_specialist_can_view_forms_and_submissions_but_not_edit_forms(): void

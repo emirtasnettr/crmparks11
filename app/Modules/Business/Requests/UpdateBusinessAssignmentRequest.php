@@ -10,7 +10,7 @@ class UpdateBusinessAssignmentRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('business.update') ?? false;
+        return $this->user()?->can('assignment.update') ?? false;
     }
 
     /**

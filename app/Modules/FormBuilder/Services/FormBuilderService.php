@@ -5,9 +5,11 @@ namespace App\Modules\FormBuilder\Services;
 use App\Modules\FormBuilder\Data\FormFieldTypes;
 use App\Modules\FormBuilder\Repositories\FormBuilderRepository;
 use App\Modules\FormBuilder\Repositories\FormSubmissionRepository;
+use App\Modules\User\Data\UserManagementFormData;
 use Carbon\Carbon;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class FormBuilderService
@@ -75,6 +77,8 @@ class FormBuilderService
       'description' => $validated['description'] ?? '',
       'status' => $validated['status'] ?? 'draft',
       'fields' => [],
+      'notify_user_ids' => $validated['notify_user_ids'],
+      'notify_roles' => $validated['notify_roles'],
       'created_at' => $now,
       'updated_at' => $now,
     ];
@@ -103,6 +107,8 @@ class FormBuilderService
     $form['description'] = $validated['description'] ?? '';
     $form['status'] = $validated['status'] ?? $form['status'];
     $form['fields'] = $fields;
+    $form['notify_user_ids'] = $validated['notify_user_ids'];
+    $form['notify_roles'] = $validated['notify_roles'];
     $form['updated_at'] = Carbon::now()->toDateTimeString();
 
     if (($validated['slug'] ?? null) && $validated['slug'] !== $form['slug']) {
@@ -148,20 +154,39 @@ class FormBuilderService
    */
   private function validateMeta(array $data, ?int $ignoreId = null): array
   {
+    $allowedRoles = array_keys(UserManagementFormData::roleLabels());
+
     $validator = Validator::make($data, [
       'name' => 'required|string|max:120',
       'description' => 'nullable|string|max:500',
       'status' => 'nullable|in:draft,active,archived',
       'slug' => 'nullable|string|max:120',
+      'notify_user_ids' => 'nullable|array',
+      'notify_user_ids.*' => ['integer', Rule::exists('users', 'id')],
+      'notify_roles' => 'nullable|array',
+      'notify_roles.*' => ['string', Rule::in($allowedRoles), Rule::exists('roles', 'name')],
     ], [
       'name.required' => 'Form adı zorunludur.',
+      'notify_user_ids.*.exists' => 'Seçilen bildirim kullanıcısı geçersiz.',
+      'notify_roles.*.in' => 'Seçilen bildirim rolü geçersiz.',
+      'notify_roles.*.exists' => 'Seçilen bildirim rolü bulunamadı.',
     ]);
 
     if ($validator->fails()) {
       throw new ValidationException($validator);
     }
 
-    return $validator->validated();
+    $validated = $validator->validated();
+    $validated['notify_user_ids'] = array_values(array_unique(array_map(
+      'intval',
+      $validated['notify_user_ids'] ?? []
+    )));
+    $validated['notify_roles'] = array_values(array_unique(array_map(
+      'strval',
+      $validated['notify_roles'] ?? []
+    )));
+
+    return $validated;
   }
 
   /**

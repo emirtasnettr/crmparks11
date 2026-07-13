@@ -3,8 +3,10 @@
 namespace App\Modules\Report\Services;
 
 use App\Core\Helpers\MoneyCalculator;
+use App\Models\Contract;
 use App\Models\EarningLine;
 use App\Modules\Agency\Models\Agency;
+use App\Modules\Business\Data\BusinessFormData;
 use App\Modules\Business\Models\Business;
 use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\Courier\Models\Courier;
@@ -379,6 +381,181 @@ class ReportService
                 $row['revenue'],
                 $row['agency_payment'],
             ])->all(),
+        ];
+    }
+
+    /**
+     * @param  array<string, string>  $filters
+     * @return array<string, mixed>
+     */
+    public function businessPipelineSummary(array $filters): array
+    {
+        $statusFilter = ($filters['status'] ?? 'all') === 'all' ? null : (string) $filters['status'];
+        $statusLabels = BusinessFormData::statuses();
+        $total = Business::query()->count();
+        $counts = Business::query()
+            ->selectRaw('status, COUNT(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+
+        $distribution = collect($statusLabels)
+            ->map(function (string $label, string $key) use ($total, $counts): array {
+                $count = (int) ($counts[$key] ?? 0);
+
+                return [
+                    'key' => $key,
+                    'label' => $label,
+                    'count' => $count,
+                    'percentage' => $total > 0 ? round(($count / $total) * 100, 1) : 0.0,
+                ];
+            })
+            ->values()
+            ->all();
+
+        $rows = Business::query()
+            ->with(['city:id,name', 'district:id,name'])
+            ->when($statusFilter !== null, fn ($q) => $q->where('status', $statusFilter))
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function (Business $business) use ($statusLabels): array {
+                $city = $business->city?->name;
+                $district = $business->district?->name;
+                $location = match (true) {
+                    $city !== null && $district !== null => $city.' / '.$district,
+                    $city !== null => $city,
+                    $district !== null => $district,
+                    default => '—',
+                };
+
+                return [
+                    'id' => $business->id,
+                    'name' => $business->displayName(),
+                    'location' => $location,
+                    'status' => $business->status,
+                    'status_label' => $statusLabels[$business->status] ?? $business->status,
+                    'created_at_formatted' => $business->created_at?->format('d.m.Y') ?? '—',
+                    'url' => route('businesses.show', $business->id),
+                ];
+            })
+            ->all();
+
+        return [
+            'filters' => [
+                'status' => $statusFilter ?? 'all',
+            ],
+            'summary' => [
+                'total' => $total,
+                'filtered_count' => count($rows),
+            ],
+            'distribution' => $distribution,
+            'rows' => $rows,
+            'status_options' => array_merge(['all' => 'Tümü'], $statusLabels),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function openingStageReport(): array
+    {
+        $today = Carbon::today();
+
+        $rows = Business::query()
+            ->with(['city:id,name', 'district:id,name', 'activePricing'])
+            ->where('status', 'opening_stage')
+            ->orderByRaw('CASE WHEN start_date IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('start_date')
+            ->orderBy('brand_name')
+            ->get()
+            ->map(function (Business $business) use ($today): array {
+                $planned = (int) ($business->planned_courier_count ?? 0);
+                $completed = $business->activeCourierCount();
+                $startDate = $business->start_date;
+                $daysUntil = $startDate !== null
+                    ? (int) $today->diffInDays($startDate, false)
+                    : null;
+
+                $city = $business->city?->name;
+                $district = $business->district?->name;
+                $location = match (true) {
+                    $city !== null && $district !== null => $city.' / '.$district,
+                    $city !== null => $city,
+                    $district !== null => $district,
+                    default => '—',
+                };
+
+                return [
+                    'id' => $business->id,
+                    'name' => $business->displayName(),
+                    'location' => $location,
+                    'planned_courier_count' => $planned,
+                    'completed_courier_count' => $completed,
+                    'start_date_formatted' => $startDate?->format('d.m.Y') ?? '—',
+                    'days_until_opening' => $daysUntil,
+                    'is_opening_overdue' => $daysUntil !== null && $daysUntil < 0,
+                    'delay_label' => match (true) {
+                        $daysUntil === null => 'Tarih yok',
+                        $daysUntil < 0 => abs($daysUntil).' gün gecikti',
+                        $daysUntil === 0 => 'Bugün açılıyor',
+                        default => $daysUntil.' gün kaldı',
+                    },
+                    'url' => route('businesses.show', $business->id),
+                ];
+            })
+            ->values();
+
+        return [
+            'summary' => [
+                'total' => $rows->count(),
+                'overdue' => $rows->where('is_opening_overdue', true)->count(),
+            ],
+            'rows' => $rows->all(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function contractExpiryReport(): array
+    {
+        $today = Carbon::today();
+        $horizon = $today->copy()->addDays(30);
+
+        $rows = Contract::query()
+            ->with(['contractable'])
+            ->where('contractable_type', Business::class)
+            ->where('status', 'active')
+            ->whereNotNull('end_date')
+            ->whereDate('end_date', '<=', $horizon->toDateString())
+            ->orderBy('end_date')
+            ->get()
+            ->map(function (Contract $contract) use ($today): array {
+                $business = $contract->contractable instanceof Business ? $contract->contractable : null;
+                $daysUntil = $contract->end_date !== null
+                    ? (int) $today->diffInDays($contract->end_date, false)
+                    : 0;
+
+                return [
+                    'id' => $contract->id,
+                    'title' => $contract->title ?: ($contract->contract_number ?? 'Sözleşme'),
+                    'business_name' => $business?->displayName() ?? '—',
+                    'end_date_formatted' => $contract->end_date?->format('d.m.Y') ?? '—',
+                    'is_overdue' => $daysUntil < 0,
+                    'delay_label' => $daysUntil < 0
+                        ? abs($daysUntil).' gün gecikmiş'
+                        : ($daysUntil === 0 ? 'Bugün bitiyor' : $daysUntil.' gün kaldı'),
+                    'url' => route('businesses.contracts.show', $contract->id),
+                ];
+            })
+            ->values();
+
+        return [
+            'summary' => [
+                'total' => $rows->count(),
+                'overdue' => $rows->where('is_overdue', true)->count(),
+                'expiring_soon' => $rows->where('is_overdue', false)->count(),
+            ],
+            'rows' => $rows->all(),
         ];
     }
 }

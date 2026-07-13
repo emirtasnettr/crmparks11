@@ -1,5 +1,8 @@
 @php
     use App\Modules\Business\Support\BusinessFeatures;
+    use App\Modules\Business\Support\BusinessPricingVisibility;
+
+    $canViewCustomerPricing = BusinessPricingVisibility::canViewCustomerAndNetPricing();
 @endphp
 
 @php
@@ -121,17 +124,19 @@
         <p x-show="errors.pricing_model" x-cloak class="mb-4 text-sm text-red-600 dark:text-red-400" x-text="errors.pricing_model"></p>
 
         <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div x-show="form.pricing_model === 'per_package'" x-cloak>
-                <x-ui.input
-                    name="customer_price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    label="{{ $pricingFieldLabels['per_package']['customer'] }}"
-                    x-model="form.customer_price"
-                    ::disabled="form.pricing_model !== 'per_package'"
-                />
-            </div>
+            @if ($canViewCustomerPricing)
+                <div x-show="form.pricing_model === 'per_package'" x-cloak>
+                    <x-ui.input
+                        name="customer_price"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        label="{{ $pricingFieldLabels['per_package']['customer'] }}"
+                        x-model="form.customer_price"
+                        ::disabled="form.pricing_model !== 'per_package'"
+                    />
+                </div>
+            @endif
             <div x-show="form.pricing_model === 'per_package'" x-cloak>
                 <x-ui.input
                     name="courier_price"
@@ -144,17 +149,19 @@
                 />
             </div>
 
-            <div x-show="form.pricing_model === 'monthly_fixed'" x-cloak>
-                <x-ui.input
-                    name="customer_price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    label="{{ $pricingFieldLabels['monthly_fixed']['customer'] }}"
-                    x-model="form.customer_price"
-                    ::disabled="form.pricing_model !== 'monthly_fixed'"
-                />
-            </div>
+            @if ($canViewCustomerPricing)
+                <div x-show="form.pricing_model === 'monthly_fixed'" x-cloak>
+                    <x-ui.input
+                        name="customer_price"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        label="{{ $pricingFieldLabels['monthly_fixed']['customer'] }}"
+                        x-model="form.customer_price"
+                        ::disabled="form.pricing_model !== 'monthly_fixed'"
+                    />
+                </div>
+            @endif
             <div x-show="form.pricing_model === 'monthly_fixed'" x-cloak>
                 <x-ui.input
                     name="courier_price"
@@ -167,17 +174,19 @@
                 />
             </div>
 
-            <div x-show="form.pricing_model === 'hourly'" x-cloak>
-                <x-ui.input
-                    name="customer_price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    label="{{ $pricingFieldLabels['hourly']['customer'] }}"
-                    x-model="form.customer_price"
-                    ::disabled="form.pricing_model !== 'hourly'"
-                />
-            </div>
+            @if ($canViewCustomerPricing)
+                <div x-show="form.pricing_model === 'hourly'" x-cloak>
+                    <x-ui.input
+                        name="customer_price"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        label="{{ $pricingFieldLabels['hourly']['customer'] }}"
+                        x-model="form.customer_price"
+                        ::disabled="form.pricing_model !== 'hourly'"
+                    />
+                </div>
+            @endif
             <div x-show="form.pricing_model === 'hourly'" x-cloak>
                 <x-ui.input
                     name="courier_price"
@@ -190,17 +199,19 @@
                 />
             </div>
 
-            <div x-show="form.pricing_model === 'daily'" x-cloak>
-                <x-ui.input
-                    name="customer_price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    label="{{ $pricingFieldLabels['daily']['customer'] }}"
-                    x-model="form.customer_price"
-                    ::disabled="form.pricing_model !== 'daily'"
-                />
-            </div>
+            @if ($canViewCustomerPricing)
+                <div x-show="form.pricing_model === 'daily'" x-cloak>
+                    <x-ui.input
+                        name="customer_price"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        label="{{ $pricingFieldLabels['daily']['customer'] }}"
+                        x-model="form.customer_price"
+                        ::disabled="form.pricing_model !== 'daily'"
+                    />
+                </div>
+            @endif
             <div x-show="form.pricing_model === 'daily'" x-cloak>
                 <x-ui.input
                     name="courier_price"

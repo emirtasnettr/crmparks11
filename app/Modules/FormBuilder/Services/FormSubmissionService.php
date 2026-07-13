@@ -18,6 +18,7 @@ class FormSubmissionService
     private readonly FormBuilderRepository $formRepository,
     private readonly FormSubmissionMediaService $media,
     private readonly FormSubmissionStatusService $statusService,
+    private readonly FormSubmissionNotificationService $notifications,
   ) {}
 
   /**
@@ -307,6 +308,8 @@ class FormSubmissionService
     ];
 
     $this->repository->save($formId, $submission);
+
+    $this->notifications->notifyCreated($form, $submission, $landingPage);
 
     return $this->enrich($submission, $form);
   }

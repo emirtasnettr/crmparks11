@@ -35,6 +35,11 @@
                 :options="['draft' => 'Taslak', 'active' => 'Yayında', 'archived' => 'Arşiv']"
             />
 
+            @include('modules.form-builder.partials.notification-recipients', [
+                'selectedUserIds' => old('notify_user_ids', []),
+                'selectedRoles' => old('notify_roles', []),
+            ])
+
             <div class="flex flex-wrap gap-2 pt-2">
                 <x-ui.button type="submit">Oluştur ve Düzenle</x-ui.button>
                 <x-ui.button href="{{ route('form-builder.index') }}" variant="secondary">İptal</x-ui.button>

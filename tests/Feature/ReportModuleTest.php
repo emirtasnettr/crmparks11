@@ -54,6 +54,9 @@ class ReportModuleTest extends TestCase
         $this->actingAs($user)->get(route('reports.index'))
             ->assertOk()
             ->assertSee('Raporlar')
+            ->assertSee('İşletme Pipeline')
+            ->assertSee('Açılış Aşaması')
+            ->assertSee('Sözleşme Vadeleri')
             ->assertSee('Hakediş Özeti')
             ->assertSee('Tahsilat Yaşlandırma')
             ->assertSee('Operasyon Özeti')
@@ -136,5 +139,56 @@ class ReportModuleTest extends TestCase
 
         $this->actingAs($user)->get(route('reports.index'))->assertOk();
         $this->actingAs($user)->get(route('reports.collections'))->assertForbidden();
+    }
+
+    public function test_sales_manager_sees_sales_reports_and_cannot_open_ops_reports(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('sales_manager');
+
+        $business = Business::factory()->create([
+            'created_by' => $user->id,
+            'status' => 'opening_stage',
+            'start_date' => now()->subDays(3)->toDateString(),
+        ]);
+
+        \App\Models\Contract::factory()->create([
+            'contractable_type' => Business::class,
+            'contractable_id' => $business->id,
+            'status' => 'active',
+            'end_date' => now()->addDays(10)->toDateString(),
+            'created_by' => $user->id,
+        ]);
+
+        $this->actingAs($user)->get(route('reports.index'))
+            ->assertOk()
+            ->assertSee('Satış raporlarını görüntüleyin.')
+            ->assertSee('İşletme Pipeline')
+            ->assertSee('Açılış Aşaması')
+            ->assertSee('Sözleşme Vadeleri')
+            ->assertDontSee('Hakediş Özeti')
+            ->assertDontSee('Operasyon Özeti')
+            ->assertDontSee('Kurye Performansı')
+            ->assertDontSee('Acente Payı');
+
+        $this->actingAs($user)->get(route('reports.business-pipeline'))
+            ->assertOk()
+            ->assertSee('İşletme Pipeline')
+            ->assertSee($business->displayName());
+
+        $this->actingAs($user)->get(route('reports.opening-stage'))
+            ->assertOk()
+            ->assertSee('Açılış Aşaması')
+            ->assertSee($business->displayName());
+
+        $this->actingAs($user)->get(route('reports.contract-expiry'))
+            ->assertOk()
+            ->assertSee('Sözleşme Vadeleri')
+            ->assertSee($business->displayName());
+
+        $this->actingAs($user)->get(route('reports.earnings'))->assertForbidden();
+        $this->actingAs($user)->get(route('reports.courier-performance'))->assertForbidden();
+        $this->actingAs($user)->get(route('reports.operations'))->assertForbidden();
+        $this->actingAs($user)->get(route('reports.agency-share'))->assertForbidden();
     }
 }

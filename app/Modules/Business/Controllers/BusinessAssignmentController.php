@@ -122,7 +122,7 @@ class BusinessAssignmentController extends Controller
 
     public function terminate(Request $request, int $id): RedirectResponse
     {
-        abort_unless($request->user()?->can('business.update'), 403);
+        abort_unless($request->user()?->can('assignment.update'), 403);
 
         $assignment = $this->assignments->find($id);
         abort_if($assignment === null, 404);

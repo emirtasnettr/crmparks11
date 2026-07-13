@@ -2,13 +2,17 @@
 
 namespace App\Modules\FormBuilder\Controllers;
 
+use App\Core\Enums\Status;
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use App\Modules\FormBuilder\Data\FormFieldTypes;
 use App\Modules\FormBuilder\Services\FormBuilderService;
 use App\Modules\FormBuilder\Services\FormSubmissionStatusService;
+use App\Modules\User\Data\UserManagementFormData;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Spatie\Permission\Models\Role;
 
 class FormBuilderController extends Controller
 {
@@ -34,12 +38,18 @@ class FormBuilderController extends Controller
 
   public function create(): View
   {
-    return view('modules.form-builder.create');
+    return view('modules.form-builder.create', $this->recipientOptions());
   }
 
   public function store(Request $request): RedirectResponse
   {
-    $form = $this->service->create($request->only(['name', 'description', 'status']));
+    $form = $this->service->create($request->only([
+      'name',
+      'description',
+      'status',
+      'notify_user_ids',
+      'notify_roles',
+    ]));
 
     return redirect()
       ->route('form-builder.edit', $form['id'])
@@ -54,11 +64,11 @@ class FormBuilderController extends Controller
       abort(404);
     }
 
-    return view('modules.form-builder.edit', [
+    return view('modules.form-builder.edit', array_merge([
       'form' => $form,
       'fieldTypes' => FormFieldTypes::palette(),
       'fieldTypeLabels' => FormFieldTypes::labels(),
-    ]);
+    ], $this->recipientOptions()));
   }
 
   public function update(Request $request, int $id): RedirectResponse
@@ -77,5 +87,30 @@ class FormBuilderController extends Controller
     return redirect()
       ->route('form-builder.index')
       ->with('success', 'Form silindi.');
+  }
+
+  /**
+   * @return array{notifyUsers: array<int, string>, notifyRoles: array<string, string>}
+   */
+  private function recipientOptions(): array
+  {
+    $roleLabels = UserManagementFormData::roleLabels();
+
+    return [
+      'notifyUsers' => User::query()
+        ->where('status', Status::Active)
+        ->orderBy('name')
+        ->get(['id', 'name', 'email'])
+        ->mapWithKeys(fn (User $user) => [
+          $user->id => $user->name.' ('.$user->email.')',
+        ])
+        ->all(),
+      'notifyRoles' => Role::query()
+        ->orderBy('name')
+        ->pluck('name')
+        ->filter(fn (string $name) => isset($roleLabels[$name]))
+        ->mapWithKeys(fn (string $name) => [$name => $roleLabels[$name]])
+        ->all(),
+    ];
   }
 }

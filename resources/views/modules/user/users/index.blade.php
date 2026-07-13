@@ -33,10 +33,10 @@
     </div>
 
     <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <x-ui.finance-stat-card title="Toplam Kullanıcı" :value="number_format($summary['total'])" icon="courier" accent="blue" />
-        <x-ui.finance-stat-card title="Aktif Kullanıcı" :value="number_format($summary['active'])" icon="courier" accent="success" />
-        <x-ui.finance-stat-card title="Pasif Kullanıcı" :value="number_format($summary['inactive'])" icon="courier" accent="danger" />
-        <x-ui.finance-stat-card title="Bugün Giriş Yapan" :value="number_format($summary['logged_in_today'])" icon="chart" accent="primary" />
+        <x-ui.finance-stat-card title="Toplam Kullanıcı" :value="number_format($summary['total'])" icon="users" accent="blue" />
+        <x-ui.finance-stat-card title="Aktif Kullanıcı" :value="number_format($summary['active'])" icon="users" accent="success" />
+        <x-ui.finance-stat-card title="Pasif Kullanıcı" :value="number_format($summary['inactive'])" icon="users" accent="danger" />
+        <x-ui.finance-stat-card title="Bugün Giriş Yapan" :value="number_format($summary['logged_in_today'])" icon="clock" accent="primary" />
     </div>
 
     <x-ui.card :padding="false">

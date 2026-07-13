@@ -7,7 +7,11 @@
 <div class="mb-6">
     <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Raporlar</h1>
     <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">
-        Operasyon ve finans raporlarını görüntüleyin.
+        @if (auth()->user()?->hasRole('sales_manager'))
+            Satış raporlarını görüntüleyin.
+        @else
+            Operasyon ve finans raporlarını görüntüleyin.
+        @endif
     </p>
 </div>
 

@@ -47,6 +47,12 @@
                 <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Açıklama</label>
                 <input type="text" name="description" x-model="meta.description" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-slate-600 dark:bg-slate-900 dark:text-white">
             </div>
+            <div class="md:col-span-3">
+                @include('modules.form-builder.partials.notification-recipients', [
+                    'selectedUserIds' => old('notify_user_ids', $form['notify_user_ids'] ?? []),
+                    'selectedRoles' => old('notify_roles', $form['notify_roles'] ?? []),
+                ])
+            </div>
         </div>
 
         <div class="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-12">

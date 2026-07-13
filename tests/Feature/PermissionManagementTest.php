@@ -125,6 +125,14 @@ class PermissionManagementTest extends TestCase
         $users = $matrix->firstWhere('key', 'users');
         $this->assertNotNull($users);
         $this->assertFalse($users['actions']['view']['granted']);
+
+        $couriers = $matrix->firstWhere('key', 'couriers');
+        $this->assertNotNull($couriers);
+        $this->assertFalse($couriers['actions']['view']['granted']);
+
+        $agencies = $matrix->firstWhere('key', 'agencies');
+        $this->assertNotNull($agencies);
+        $this->assertFalse($agencies['actions']['view']['granted']);
     }
 
     public function test_general_manager_has_finance_module_permissions(): void

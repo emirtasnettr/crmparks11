@@ -141,6 +141,32 @@ class EntityShowPageTest extends TestCase
     $response->assertDontSee('Hakediş Periyodu');
   }
 
+  public function test_operations_specialist_cannot_open_business_pages(): void
+  {
+    $user = User::factory()->create();
+    $user->assignRole('operations_specialist');
+    $business = $this->createBusiness($user, [
+      'company_name' => 'Ops Gizli Fiyat Ltd.',
+      'brand_name' => 'Ops Gizli',
+    ]);
+
+    $show = $this->actingAs($user)->get(route('businesses.show', $business->id));
+    $show->assertOk();
+    $show->assertSee('Atanan Kuryeler');
+    $this->assertStringNotContainsString("setTab('contracts')", $show->getContent());
+    $this->assertStringNotContainsString("setTab('documents')", $show->getContent());
+    $this->assertStringNotContainsString("setTab('contacts')", $show->getContent());
+    $this->assertStringNotContainsString("setTab('activities')", $show->getContent());
+
+    $this->actingAs($user)->get(route('businesses.index'))->assertOk();
+    $this->actingAs($user)->get(route('businesses.contracts.index'))->assertForbidden();
+    $this->actingAs($user)->get(route('businesses.documents.index'))->assertForbidden();
+    $this->actingAs($user)->get(route('businesses.contacts.index'))->assertForbidden();
+    $this->actingAs($user)->get(route('businesses.activities.index'))->assertForbidden();
+    $this->actingAs($user)->get(route('reports.contract-expiry'))->assertForbidden();
+    $this->actingAs($user)->get(route('businesses.assignments.index'))->assertOk();
+  }
+
   public function test_business_show_uses_pricing_model_labels_for_hourly(): void
   {
     $user = User::factory()->create();

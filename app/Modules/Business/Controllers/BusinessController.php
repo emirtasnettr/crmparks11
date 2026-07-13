@@ -33,6 +33,8 @@ class BusinessController extends Controller
 
   public function index(Request $request): View
   {
+    abort_unless(\App\Modules\Business\Support\BusinessCardVisibility::canBrowseBusinesses($request->user()), 403);
+
     $filters = [
       'search' => $request->string('search')->toString(),
       'status' => RequestFilter::valueOrAll($request, 'status'),
@@ -116,40 +118,48 @@ class BusinessController extends Controller
       ->with('success', 'İşletme başarıyla oluşturuldu.');
   }
 
-  public function show(Request $request, int $id): View
-  {
-    $business = $this->businesses->find($id);
+    public function show(Request $request, int $id): View|RedirectResponse
+    {
+        $business = $this->businesses->find($id);
 
-    if ($business === null) {
-      abort(404);
+        if ($business === null) {
+            abort(404);
+        }
+
+        if ($request->user()?->hasRole('operations_specialist')) {
+            $tab = $request->string('tab')->toString();
+
+            if (in_array($tab, ['contacts', 'contracts', 'documents', 'activities'], true)) {
+                return redirect()->route('businesses.show', ['id' => $id, 'tab' => 'assignments']);
+            }
+        }
+
+        $dateRange = BusinessOverviewStats::resolveDateRange(
+            $request->string('start_date')->toString() ?: null,
+            $request->string('end_date')->toString() ?: null,
+        );
+
+        $overviewStats = BusinessOverviewStats::forBusiness(
+            $id,
+            $dateRange['start'],
+            $dateRange['end'],
+        );
+
+        return view('modules.business.show', [
+            'business' => $this->presenter->showPayload($business),
+            'overviewStats' => $overviewStats,
+            'dateFilters' => [
+                'start_date' => $dateRange['start_date'],
+                'end_date' => $dateRange['end_date'],
+                'range_label' => $dateRange['range_label'],
+            ],
+            'contactTitles' => BusinessContactFormData::titles(),
+            'contractTypes' => BusinessContractFormData::contractTypes(),
+            'documentTypes' => BusinessDocumentFormData::documentTypes(),
+            'assignmentCouriers' => $this->assignments->couriers(),
+            'assignmentAgencies' => $this->assignments->agencies(),
+        ]);
     }
-
-    $dateRange = BusinessOverviewStats::resolveDateRange(
-      $request->string('start_date')->toString() ?: null,
-      $request->string('end_date')->toString() ?: null,
-    );
-
-    $overviewStats = BusinessOverviewStats::forBusiness(
-      $id,
-      $dateRange['start'],
-      $dateRange['end'],
-    );
-
-    return view('modules.business.show', [
-      'business' => $this->presenter->showPayload($business),
-      'overviewStats' => $overviewStats,
-      'dateFilters' => [
-        'start_date' => $dateRange['start_date'],
-        'end_date' => $dateRange['end_date'],
-        'range_label' => $dateRange['range_label'],
-      ],
-      'contactTitles' => BusinessContactFormData::titles(),
-      'contractTypes' => BusinessContractFormData::contractTypes(),
-      'documentTypes' => BusinessDocumentFormData::documentTypes(),
-      'assignmentCouriers' => $this->assignments->couriers(),
-      'assignmentAgencies' => $this->assignments->agencies(),
-    ]);
-  }
 
   public function edit(int $id): View
   {

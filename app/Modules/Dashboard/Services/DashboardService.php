@@ -3,9 +3,11 @@
 namespace App\Modules\Dashboard\Services;
 
 use App\Core\Helpers\MoneyCalculator;
+use App\Models\Contract;
 use App\Models\EarningLine;
 use App\Models\EarningStatus;
 use App\Modules\Agency\Models\Agency;
+use App\Modules\Business\Data\BusinessFormData;
 use App\Modules\Business\Models\Business;
 use App\Modules\Business\Services\BusinessPresenter;
 use App\Modules\Courier\Data\CourierFormData;
@@ -15,6 +17,7 @@ use App\Modules\Finance\Models\FinanceCollection;
 use App\Modules\Finance\Models\FinanceExpense;
 use App\Modules\Finance\Models\FinancePayment;
 use App\Modules\Finance\Models\FinanceRevenue;
+use App\Modules\FormBuilder\Models\FormSubmission;
 use Carbon\Carbon;
 
 class DashboardService
@@ -32,6 +35,126 @@ class DashboardService
             'total_agencies' => Agency::query()->count(),
             'active_couriers' => Courier::query()->where('status', 'active')->count(),
         ];
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    public function getSalesStats(): array
+    {
+        $monthStart = Carbon::today()->startOfMonth();
+
+        return [
+            'total_businesses' => Business::query()->count(),
+            'active_businesses' => Business::query()->where('status', 'active')->count(),
+            'contract_stage_businesses' => Business::query()->where('status', 'contract_stage')->count(),
+            'businesses_added_this_month' => Business::query()
+                ->where('created_at', '>=', $monthStart)
+                ->count(),
+        ];
+    }
+
+    /**
+     * @return array{total: int, items: array<int, array<string, mixed>>}
+     */
+    public function getBusinessStatusDistribution(): array
+    {
+        $total = Business::query()->count();
+        $counts = Business::query()
+            ->selectRaw('status, COUNT(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+
+        $items = collect(BusinessFormData::statuses())
+            ->map(function (string $label, string $key) use ($total, $counts) {
+                $count = (int) ($counts[$key] ?? 0);
+
+                return [
+                    'key' => $key,
+                    'label' => $label,
+                    'count' => $count,
+                    'percentage' => $total > 0 ? round(($count / $total) * 100, 1) : 0.0,
+                ];
+            })
+            ->values()
+            ->all();
+
+        return [
+            'total' => $total,
+            'items' => $items,
+        ];
+    }
+
+    /**
+     * Active business contracts ending within 30 days or already overdue.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getExpiringContracts(int $limit = 5): array
+    {
+        $today = Carbon::today();
+        $horizon = $today->copy()->addDays(30);
+
+        return Contract::query()
+            ->with(['contractable'])
+            ->where('contractable_type', Business::class)
+            ->where('status', 'active')
+            ->whereNotNull('end_date')
+            ->whereDate('end_date', '<=', $horizon->toDateString())
+            ->orderBy('end_date')
+            ->limit($limit)
+            ->get()
+            ->map(function (Contract $contract) use ($today): array {
+                $business = $contract->contractable instanceof Business ? $contract->contractable : null;
+                $daysUntil = $contract->end_date !== null
+                    ? (int) $today->diffInDays($contract->end_date, false)
+                    : 0;
+
+                return [
+                    'id' => $contract->id,
+                    'title' => $contract->title ?: ($contract->contract_number ?? 'Sözleşme'),
+                    'business_name' => $business?->displayName() ?? '—',
+                    'end_date_formatted' => $contract->end_date?->format('d.m.Y') ?? '—',
+                    'is_overdue' => $daysUntil < 0,
+                    'delay_label' => $daysUntil < 0
+                        ? abs($daysUntil).' gün gecikmiş'
+                        : ($daysUntil === 0 ? 'Bugün bitiyor' : $daysUntil.' gün kaldı'),
+                    'url' => route('businesses.contracts.show', $contract->id),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getLatestFormSubmissions(int $limit = 5): array
+    {
+        return FormSubmission::query()
+            ->with(['form:id,name', 'status'])
+            ->orderByDesc('submitted_at')
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get()
+            ->map(function (FormSubmission $submission): array {
+                $status = $submission->status;
+
+                return [
+                    'id' => $submission->id,
+                    'form_id' => $submission->form_id,
+                    'form_name' => $submission->form?->name ?? 'Form',
+                    'status' => $status ? [
+                        'id' => $status->id,
+                        'name' => $status->name,
+                        'color' => $status->color ?? 'muted',
+                    ] : null,
+                    'submitted_at_formatted' => $submission->submitted_at?->format('d.m.Y H:i') ?? '—',
+                    'url' => route('form-applications.show', [$submission->form_id, $submission->id]),
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     /**
@@ -84,6 +207,7 @@ class DashboardService
                     'start_date_formatted' => $startDate?->format('d.m.Y') ?? '—',
                     'days_until_opening' => $daysUntil,
                     'is_opening_soon' => $daysUntil === 1,
+                    'is_opening_overdue' => $daysUntil !== null && $daysUntil < 0,
                     'url' => route('businesses.show', $business->id),
                 ];
             })

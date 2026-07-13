@@ -89,6 +89,9 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('raporlar')->middleware('permission:report.view')->name('reports.')->group(function () {
         Route::get('/', [ReportController::class, 'index'])->name('index');
+        Route::get('/isletme-pipeline', [ReportController::class, 'businessPipeline'])->name('business-pipeline');
+        Route::get('/acilis-asamasi', [ReportController::class, 'openingStage'])->name('opening-stage');
+        Route::get('/sozlesme-vadeleri', [ReportController::class, 'contractExpiry'])->name('contract-expiry');
         Route::get('/hakedis-ozeti', [ReportController::class, 'earnings'])->name('earnings');
         Route::get('/hakedis-ozeti/export', [ReportController::class, 'earningsExport'])
             ->middleware('permission:report.export')
@@ -108,51 +111,56 @@ Route::middleware('auth')->group(function () {
             ->name('agency-share.export');
     });
 
-    Route::prefix('isletmeler')->name('businesses.')->middleware('permission:business.view')->group(function () {
-        Route::get('/', [BusinessController::class, 'index'])->name('index');
-        Route::get('/export', [BusinessController::class, 'export'])->name('export');
-        Route::get('/yeni', [BusinessController::class, 'create'])->name('create');
-        Route::post('/', [BusinessController::class, 'store'])->middleware('permission:business.create')->name('store');
-        Route::get('/yetkililer', [BusinessContactController::class, 'index'])->name('contacts.index');
-        Route::get('/yetkililer/export', [BusinessContactController::class, 'export'])->name('contacts.export');
-        Route::post('/yetkililer', [BusinessContactController::class, 'store'])->middleware('permission:business.update')->name('contacts.store');
-        Route::put('/yetkililer/{id}', [BusinessContactController::class, 'update'])->middleware('permission:business.update')->name('contacts.update');
-        Route::post('/yetkililer/{id}/pasife-al', [BusinessContactController::class, 'deactivate'])->middleware('permission:business.update')->name('contacts.deactivate');
-        Route::get('/sozlesmeler', [BusinessContractController::class, 'index'])->name('contracts.index');
-        Route::get('/sozlesmeler/export', [BusinessContractController::class, 'export'])->name('contracts.export');
-        Route::post('/sozlesmeler', [BusinessContractController::class, 'store'])->middleware('permission:business.update')->name('contracts.store');
-        Route::get('/sozlesmeler/{id}', [BusinessContractController::class, 'show'])->name('contracts.show');
-        Route::post('/sozlesmeler/{id}/pasife-al', [BusinessContractController::class, 'deactivate'])->middleware('permission:business.update')->name('contracts.deactivate');
-        Route::get('/atanan-kuryeler', [BusinessAssignmentController::class, 'index'])->name('assignments.index');
-        Route::get('/atanan-kuryeler/export', [BusinessAssignmentController::class, 'export'])->name('assignments.export');
-        Route::post('/atanan-kuryeler', [BusinessAssignmentController::class, 'store'])->middleware('permission:business.update')->name('assignments.store');
-        Route::put('/atanan-kuryeler/{id}', [BusinessAssignmentController::class, 'update'])->middleware('permission:business.update')->name('assignments.update');
-        Route::post('/atanan-kuryeler/{id}/sonlandir', [BusinessAssignmentController::class, 'terminate'])
-            ->middleware('permission:business.update')
-            ->name('assignments.terminate');
-        Route::get('/atanan-kuryeler/{id}', [BusinessAssignmentController::class, 'show'])->name('assignments.show');
-        Route::get('/hakedisler', [BusinessEarningController::class, 'index'])->name('earnings.index');
-        Route::get('/hakedisler/export', [BusinessEarningController::class, 'export'])->name('earnings.export');
-        Route::get('/hakedisler/sablon', [BusinessEarningController::class, 'template'])
-            ->middleware('permission:earning.create')
-            ->name('earnings.template');
-        Route::post('/hakedisler/ice-aktar', [BusinessEarningController::class, 'import'])
-            ->middleware('permission:earning.create')
-            ->name('earnings.import');
-        Route::post('/hakedisler', [BusinessEarningController::class, 'store'])->middleware('permission:earning.create')->name('earnings.store');
-        Route::put('/hakedisler/{id}', [BusinessEarningController::class, 'update'])->middleware('permission:earning.update')->name('earnings.update');
-        Route::post('/hakedisler/{id}/onayla', [BusinessEarningController::class, 'approve'])->middleware('permission:earning.approve')->name('earnings.approve');
-        Route::delete('/hakedisler/{id}', [BusinessEarningController::class, 'destroy'])->middleware('permission:earning.delete')->name('earnings.destroy');
-        Route::get('/hakedisler/{id}', [BusinessEarningController::class, 'show'])->name('earnings.show');
-        Route::get('/evraklar', [BusinessDocumentController::class, 'index'])->name('documents.index');
-        Route::post('/evraklar', [BusinessDocumentController::class, 'store'])->middleware('permission:business.update')->name('documents.store');
-        Route::get('/evraklar/{id}/indir', [BusinessDocumentController::class, 'download'])->name('documents.download');
-        Route::delete('/evraklar/{id}', [BusinessDocumentController::class, 'destroy'])->middleware('permission:business.update')->name('documents.destroy');
-        Route::get('/hareket-gecmisi', [BusinessActivityController::class, 'index'])->name('activities.index');
-        Route::get('/{id}/duzenle', [BusinessController::class, 'edit'])->name('edit');
-        Route::put('/{id}', [BusinessController::class, 'update'])->middleware('permission:business.update')->name('update');
-        Route::post('/{id}/pasife-al', [BusinessController::class, 'deactivate'])->middleware('permission:business.update')->name('deactivate');
-        Route::get('/{id}', [BusinessController::class, 'show'])->name('show');
+    Route::prefix('isletmeler')->name('businesses.')->group(function () {
+        Route::middleware('permission:assignment.view')->group(function () {
+            Route::get('/atanan-kuryeler', [BusinessAssignmentController::class, 'index'])->name('assignments.index');
+            Route::get('/atanan-kuryeler/export', [BusinessAssignmentController::class, 'export'])->name('assignments.export');
+            Route::post('/atanan-kuryeler', [BusinessAssignmentController::class, 'store'])->middleware('permission:assignment.create')->name('assignments.store');
+            Route::put('/atanan-kuryeler/{id}', [BusinessAssignmentController::class, 'update'])->middleware('permission:assignment.update')->name('assignments.update');
+            Route::post('/atanan-kuryeler/{id}/sonlandir', [BusinessAssignmentController::class, 'terminate'])
+                ->middleware('permission:assignment.update')
+                ->name('assignments.terminate');
+            Route::get('/atanan-kuryeler/{id}', [BusinessAssignmentController::class, 'show'])->name('assignments.show');
+        });
+
+        Route::middleware('permission:business.view')->group(function () {
+            Route::get('/', [BusinessController::class, 'index'])->name('index');
+            Route::get('/export', [BusinessController::class, 'export'])->name('export');
+            Route::get('/yeni', [BusinessController::class, 'create'])->name('create');
+            Route::post('/', [BusinessController::class, 'store'])->middleware('permission:business.create')->name('store');
+            Route::get('/yetkililer', [BusinessContactController::class, 'index'])->name('contacts.index');
+            Route::get('/yetkililer/export', [BusinessContactController::class, 'export'])->name('contacts.export');
+            Route::post('/yetkililer', [BusinessContactController::class, 'store'])->middleware('permission:business.update')->name('contacts.store');
+            Route::put('/yetkililer/{id}', [BusinessContactController::class, 'update'])->middleware('permission:business.update')->name('contacts.update');
+            Route::post('/yetkililer/{id}/pasife-al', [BusinessContactController::class, 'deactivate'])->middleware('permission:business.update')->name('contacts.deactivate');
+            Route::get('/sozlesmeler', [BusinessContractController::class, 'index'])->name('contracts.index');
+            Route::get('/sozlesmeler/export', [BusinessContractController::class, 'export'])->name('contracts.export');
+            Route::post('/sozlesmeler', [BusinessContractController::class, 'store'])->middleware('permission:business.update')->name('contracts.store');
+            Route::get('/sozlesmeler/{id}', [BusinessContractController::class, 'show'])->name('contracts.show');
+            Route::post('/sozlesmeler/{id}/pasife-al', [BusinessContractController::class, 'deactivate'])->middleware('permission:business.update')->name('contracts.deactivate');
+            Route::get('/hakedisler', [BusinessEarningController::class, 'index'])->name('earnings.index');
+            Route::get('/hakedisler/export', [BusinessEarningController::class, 'export'])->name('earnings.export');
+            Route::get('/hakedisler/sablon', [BusinessEarningController::class, 'template'])
+                ->middleware('permission:earning.create')
+                ->name('earnings.template');
+            Route::post('/hakedisler/ice-aktar', [BusinessEarningController::class, 'import'])
+                ->middleware('permission:earning.create')
+                ->name('earnings.import');
+            Route::post('/hakedisler', [BusinessEarningController::class, 'store'])->middleware('permission:earning.create')->name('earnings.store');
+            Route::put('/hakedisler/{id}', [BusinessEarningController::class, 'update'])->middleware('permission:earning.update')->name('earnings.update');
+            Route::post('/hakedisler/{id}/onayla', [BusinessEarningController::class, 'approve'])->middleware('permission:earning.approve')->name('earnings.approve');
+            Route::delete('/hakedisler/{id}', [BusinessEarningController::class, 'destroy'])->middleware('permission:earning.delete')->name('earnings.destroy');
+            Route::get('/hakedisler/{id}', [BusinessEarningController::class, 'show'])->name('earnings.show');
+            Route::get('/evraklar', [BusinessDocumentController::class, 'index'])->name('documents.index');
+            Route::post('/evraklar', [BusinessDocumentController::class, 'store'])->middleware('permission:business.update')->name('documents.store');
+            Route::get('/evraklar/{id}/indir', [BusinessDocumentController::class, 'download'])->name('documents.download');
+            Route::delete('/evraklar/{id}', [BusinessDocumentController::class, 'destroy'])->middleware('permission:business.update')->name('documents.destroy');
+            Route::get('/hareket-gecmisi', [BusinessActivityController::class, 'index'])->name('activities.index');
+            Route::get('/{id}/duzenle', [BusinessController::class, 'edit'])->name('edit');
+            Route::put('/{id}', [BusinessController::class, 'update'])->middleware('permission:business.update')->name('update');
+            Route::post('/{id}/pasife-al', [BusinessController::class, 'deactivate'])->middleware('permission:business.update')->name('deactivate');
+            Route::get('/{id}', [BusinessController::class, 'show'])->name('show');
+        });
     });
 
     Route::prefix('kuryeler')->name('couriers.')->middleware('permission:courier.view')->group(function () {

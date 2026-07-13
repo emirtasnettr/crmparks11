@@ -8,11 +8,12 @@ use App\Models\PricingModelType;
 use App\Models\User;
 use App\Modules\Business\Models\Business;
 use App\Modules\Business\Models\BusinessPricing;
+use App\Modules\Business\Support\BusinessPricingVisibility;
+use App\Modules\Finance\Services\CurrentAccountService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use App\Modules\Finance\Services\CurrentAccountService;
 
 class BusinessService
 {
@@ -184,6 +185,12 @@ class BusinessService
     $customerPrice = $this->normalizePrice($data['customer_price'] ?? null);
     $courierPrice = $this->normalizePrice($data['courier_price'] ?? null);
     $activePricing = $business->activePricing;
+
+    if (! BusinessPricingVisibility::canViewCustomerAndNetPricing($user)) {
+      $customerPrice = $activePricing !== null
+        ? (float) $activePricing->customer_unit_price
+        : 0.0;
+    }
 
     if (
       $activePricing !== null

@@ -27,6 +27,8 @@ class ReportController extends Controller
 
     public function earnings(Request $request): View
     {
+        abort_unless($request->user()?->can('earning.view'), 403);
+
         $filters = [
             'year' => $request->string('year')->toString() ?: (string) now()->year,
             'month' => $request->string('month')->toString() ?: 'all',
@@ -45,7 +47,7 @@ class ReportController extends Controller
 
     public function earningsExport(Request $request): BinaryFileResponse
     {
-        abort_unless($request->user()?->can('report.export'), 403);
+        abort_unless($request->user()?->can('earning.view') && $request->user()?->can('report.export'), 403);
 
         $filters = [
             'year' => $request->string('year')->toString() ?: (string) now()->year,
@@ -83,8 +85,10 @@ class ReportController extends Controller
         );
     }
 
-    public function operations(): View
+    public function operations(Request $request): View
     {
+        abort_unless($request->user()?->can('courier.view'), 403);
+
         return view('modules.report.operations', [
             'stats' => $this->reports->operationsSummary()['stats'],
         ]);
@@ -92,6 +96,8 @@ class ReportController extends Controller
 
     public function courierPerformance(Request $request): View
     {
+        abort_unless($request->user()?->can('courier.view'), 403);
+
         $filters = [
             'year' => $request->string('year')->toString() ?: (string) now()->year,
             'month' => $request->string('month')->toString() ?: 'all',
@@ -110,7 +116,7 @@ class ReportController extends Controller
 
     public function courierPerformanceExport(Request $request): BinaryFileResponse
     {
-        abort_unless($request->user()?->can('report.export'), 403);
+        abort_unless($request->user()?->can('courier.view') && $request->user()?->can('report.export'), 403);
 
         $filters = [
             'year' => $request->string('year')->toString() ?: (string) now()->year,
@@ -126,6 +132,8 @@ class ReportController extends Controller
 
     public function agencyShare(Request $request): View
     {
+        abort_unless($request->user()?->can('agency.view'), 403);
+
         $filters = [
             'year' => $request->string('year')->toString() ?: (string) now()->year,
             'month' => $request->string('month')->toString() ?: 'all',
@@ -144,7 +152,7 @@ class ReportController extends Controller
 
     public function agencyShareExport(Request $request): BinaryFileResponse
     {
-        abort_unless($request->user()?->can('report.export'), 403);
+        abort_unless($request->user()?->can('agency.view') && $request->user()?->can('report.export'), 403);
 
         $filters = [
             'year' => $request->string('year')->toString() ?: (string) now()->year,
@@ -156,6 +164,49 @@ class ReportController extends Controller
             $this->reports->agencyShareExportRows($filters),
             'Acente Payı',
         );
+    }
+
+    public function businessPipeline(Request $request): View
+    {
+        abort_unless($request->user()?->can('business.view'), 403);
+
+        $filters = [
+            'status' => $request->string('status')->toString() ?: 'all',
+        ];
+
+        $data = $this->reports->businessPipelineSummary($filters);
+
+        return view('modules.report.business-pipeline', [
+            'filters' => $data['filters'],
+            'summary' => $data['summary'],
+            'distribution' => $data['distribution'],
+            'rows' => $data['rows'],
+            'statusOptions' => $data['status_options'],
+        ]);
+    }
+
+    public function openingStage(Request $request): View
+    {
+        abort_unless($request->user()?->can('business.view'), 403);
+
+        $data = $this->reports->openingStageReport();
+
+        return view('modules.report.opening-stage', [
+            'summary' => $data['summary'],
+            'rows' => $data['rows'],
+        ]);
+    }
+
+    public function contractExpiry(Request $request): View
+    {
+        abort_unless($request->user()?->can('business.view'), 403);
+
+        $data = $this->reports->contractExpiryReport();
+
+        return view('modules.report.contract-expiry', [
+            'summary' => $data['summary'],
+            'rows' => $data['rows'],
+        ]);
     }
 
     /**

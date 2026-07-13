@@ -101,13 +101,33 @@ class DashboardTest extends TestCase
         $this->assertSame($later->id, $rows[1]['id']);
         $this->assertTrue($rows[0]['is_opening_soon']);
         $this->assertFalse($rows[1]['is_opening_soon']);
+        $this->assertFalse($rows[0]['is_opening_overdue']);
+        $this->assertFalse($rows[1]['is_opening_overdue']);
         $this->assertSame(4, $rows[0]['planned_courier_count']);
+
+        $overdue = Business::factory()->create([
+            'brand_name' => 'Gecikmiş Açılış',
+            'status' => 'opening_stage',
+            'start_date' => now()->subDays(3)->toDateString(),
+            'planned_courier_count' => 2,
+            'created_by' => $user->id,
+        ]);
+
+        $rowsWithOverdue = collect(app(DashboardService::class)->getOpeningStageBusinesses())
+            ->firstWhere('id', $overdue->id);
+
+        $this->assertNotNull($rowsWithOverdue);
+        $this->assertTrue($rowsWithOverdue['is_opening_overdue']);
+        $this->assertFalse($rowsWithOverdue['is_opening_soon']);
 
         $response = $this->actingAs($user)->get(route('dashboard'));
         $response->assertOk();
         $response->assertSee('Yarın Açılacak');
         $response->assertSee('Geç Açılacak');
         $response->assertSee('1 gün kaldı');
+        $response->assertSee('Gecikmiş Açılış');
+        $response->assertSee('3 gün gecikti');
+        $response->assertSee('opening-overdue-blink', false);
         $response->assertSee('Açılış Aşamasındakiler');
     }
 
@@ -123,6 +143,122 @@ class DashboardTest extends TestCase
         $response->assertDontSee('Bekleyen Tahsilatlar');
         $response->assertDontSee('Bekleyen Ödemeler');
         $response->assertDontSee('Onay Bekleyen Hakedişler');
+    }
+
+    public function test_sales_manager_sees_sales_dashboard_not_courier_widgets(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('sales_manager');
+
+        Business::factory()->create([
+            'brand_name' => 'Aktif Satış Markası',
+            'status' => 'active',
+            'created_by' => $user->id,
+        ]);
+
+        Business::factory()->create([
+            'brand_name' => 'Sözleşme Bekleyen',
+            'status' => 'contract_stage',
+            'created_by' => $user->id,
+        ]);
+
+        Business::factory()->create([
+            'brand_name' => 'Açılış Yakın',
+            'status' => 'opening_stage',
+            'start_date' => now()->addDays(3)->toDateString(),
+            'created_by' => $user->id,
+        ]);
+
+        $contractBusiness = Business::factory()->create([
+            'brand_name' => 'Sözleşmesi Bitiyor',
+            'status' => 'active',
+            'created_by' => $user->id,
+        ]);
+
+        \App\Models\Contract::factory()->create([
+            'contractable_type' => Business::class,
+            'contractable_id' => $contractBusiness->id,
+            'title' => 'Yakın Bitiş Sözleşmesi',
+            'end_date' => now()->addDays(10)->toDateString(),
+            'status' => 'active',
+            'created_by' => $user->id,
+        ]);
+
+        $form = \App\Modules\FormBuilder\Models\Form::query()->create([
+            'uuid' => (string) \Illuminate\Support\Str::uuid(),
+            'name' => 'Satış Lead Formu',
+            'slug' => 'satis-lead-formu',
+            'status' => 'active',
+            'fields' => [],
+        ]);
+
+        $status = \App\Modules\FormBuilder\Models\FormSubmissionStatus::query()->firstOrCreate(
+            ['slug' => 'yeni-basvuru'],
+            ['name' => 'Yeni Başvuru', 'color' => 'primary', 'sort_order' => 1, 'is_default' => true],
+        );
+
+        \App\Modules\FormBuilder\Models\FormSubmission::query()->create([
+            'form_id' => $form->id,
+            'form_submission_status_id' => $status->id,
+            'landing_page_slug' => 'lead',
+            'landing_page_name' => 'Lead',
+            'data' => ['ad' => 'Aday'],
+            'submitted_at' => now(),
+        ]);
+
+        $response = $this->actingAs($user)->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertSee('İşte satış özetiniz.');
+        $response->assertSee('Açılış Aşamasındakiler');
+        $response->assertSee('Açılış Yakın');
+        $response->assertSee('Aktif İşletme');
+        $response->assertSee('Sözleşme Aşamasında');
+        $response->assertSee('Bu Ay Yeni');
+        $response->assertSee('İşletme Pipeline');
+        $response->assertSee('Son Eklenen İşletmeler');
+        $response->assertSee('Yakında Bitecek Sözleşmeler');
+        $response->assertSee('Sözleşmesi Bitiyor');
+        $response->assertSee('Son Form Başvuruları');
+        $response->assertSee('Satış Lead Formu');
+        $response->assertDontSee('Son Eklenen Kuryeler');
+        $response->assertDontSee('Kurye Tür Dağılımı');
+        $response->assertDontSee('Toplam Kurye');
+        $response->assertDontSee('İşte operasyon özetiniz.');
+    }
+
+    public function test_dashboard_service_returns_sales_stats_pipeline_and_lists(): void
+    {
+        $user = User::factory()->create();
+
+        Business::factory()->create(['status' => 'active', 'created_by' => $user->id]);
+        Business::factory()->create(['status' => 'contract_stage', 'created_by' => $user->id]);
+        Business::factory()->create([
+            'status' => 'inactive',
+            'created_by' => $user->id,
+            'created_at' => now()->subMonths(2),
+        ]);
+
+        $business = Business::factory()->create(['status' => 'pending', 'created_by' => $user->id]);
+        \App\Models\Contract::factory()->create([
+            'contractable_id' => $business->id,
+            'end_date' => now()->addDays(5)->toDateString(),
+            'status' => 'active',
+            'created_by' => $user->id,
+        ]);
+
+        $service = app(DashboardService::class);
+        $stats = $service->getSalesStats();
+        $pipeline = $service->getBusinessStatusDistribution();
+        $contracts = $service->getExpiringContracts();
+
+        $this->assertSame(4, $stats['total_businesses']);
+        $this->assertSame(1, $stats['active_businesses']);
+        $this->assertSame(1, $stats['contract_stage_businesses']);
+        $this->assertSame(Business::query()->where('created_at', '>=', now()->startOfMonth())->count(), $stats['businesses_added_this_month']);
+        $this->assertSame(4, $pipeline['total']);
+        $this->assertNotEmpty($pipeline['items']);
+        $this->assertCount(1, $contracts);
     }
 
     public function test_dashboard_service_returns_latest_entities_and_distribution(): void

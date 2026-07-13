@@ -24,33 +24,42 @@ final class BusinessListExportSheets
             ->map(fn ($business) => $presenter->indexRow($business))
             ->all();
 
-        return ListExport::sheet(
-            $items,
-            [
-                'Marka Adı',
-                'Firma Ünvanı',
-                'İşletmeden Alınan Ücret',
-                'Kuryeye Verilen Ücret',
-                'Telefon',
-                'İl',
-                'İlçe',
-                'Çalışma Modeli',
-                'Aktif Kurye',
-                'Durum',
-            ],
-            [
-                fn (array $row) => $row['display_name'] ?? $row['brand_name'],
-                fn (array $row) => $row['company_name'],
-                fn (array $row) => $row['customer_price_label'],
-                fn (array $row) => $row['courier_price_label'],
-                fn (array $row) => $row['phone'],
-                fn (array $row) => $row['city'],
-                fn (array $row) => $row['district'],
-                fn (array $row) => $pricingLabels[$row['pricing_model']] ?? $row['pricing_model'],
-                fn (array $row) => $row['active_couriers'],
-                fn (array $row) => $statusLabels[$row['status']] ?? $row['status'],
-            ],
-        );
+        $canViewCustomerPricing = \App\Modules\Business\Support\BusinessPricingVisibility::canViewCustomerAndNetPricing();
+
+        $headings = [
+            'Marka Adı',
+            'Firma Ünvanı',
+        ];
+        $columns = [
+            fn (array $row) => $row['display_name'] ?? $row['brand_name'],
+            fn (array $row) => $row['company_name'],
+        ];
+
+        if ($canViewCustomerPricing) {
+            $headings[] = 'İşletmeden Alınan Ücret';
+            $columns[] = fn (array $row) => $row['customer_price_label'];
+        }
+
+        $headings = array_merge($headings, [
+            'Kuryeye Verilen Ücret',
+            'Telefon',
+            'İl',
+            'İlçe',
+            'Çalışma Modeli',
+            'Aktif Kurye',
+            'Durum',
+        ]);
+        $columns = array_merge($columns, [
+            fn (array $row) => $row['courier_price_label'],
+            fn (array $row) => $row['phone'],
+            fn (array $row) => $row['city'],
+            fn (array $row) => $row['district'],
+            fn (array $row) => $pricingLabels[$row['pricing_model']] ?? $row['pricing_model'],
+            fn (array $row) => $row['active_couriers'],
+            fn (array $row) => $statusLabels[$row['status']] ?? $row['status'],
+        ]);
+
+        return ListExport::sheet($items, $headings, $columns);
     }
 
     /**

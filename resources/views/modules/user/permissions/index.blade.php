@@ -62,8 +62,8 @@
         </div>
 
         <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <x-ui.finance-stat-card title="Toplam Rol" :value="number_format($summary['total_roles'])" icon="courier" accent="blue" />
-            <x-ui.finance-stat-card title="Toplam Yetki" :value="number_format($summary['total_permissions'])" icon="chart" accent="primary" />
+            <x-ui.finance-stat-card title="Toplam Rol" :value="number_format($summary['total_roles'])" icon="users" accent="blue" />
+            <x-ui.finance-stat-card title="Toplam Yetki" :value="number_format($summary['total_permissions'])" icon="key" accent="primary" />
             <div class="rounded-xl border border-gray-200 border-l-4 border-l-emerald-500 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
                 <div class="flex items-start justify-between">
                     <div class="space-y-1">
@@ -71,7 +71,7 @@
                         <p class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white" x-text="activeCountFormatted"></p>
                     </div>
                     <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-600/10 dark:text-emerald-400">
-                        <x-ui.icon name="courier" class="h-5 w-5" />
+                        <x-ui.icon name="shield-check" class="h-5 w-5" />
                     </div>
                 </div>
             </div>
@@ -82,7 +82,7 @@
                         <p class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white" x-text="inactiveCountFormatted"></p>
                     </div>
                     <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50 text-red-600 dark:bg-red-600/10 dark:text-red-400">
-                        <x-ui.icon name="courier" class="h-5 w-5" />
+                        <x-ui.icon name="lock" class="h-5 w-5" />
                     </div>
                 </div>
             </div>

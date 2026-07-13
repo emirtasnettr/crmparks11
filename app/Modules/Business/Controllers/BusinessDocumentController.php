@@ -21,6 +21,8 @@ class BusinessDocumentController extends Controller
 
     public function index(Request $request): View
     {
+        abort_unless(\App\Modules\Business\Support\BusinessCardVisibility::canViewRestrictedTabs($request->user()), 403);
+
         $filters = [
             'business_id' => $request->string('business_id')->toString() ?: 'all',
             'document_type' => $request->string('document_type')->toString() ?: 'all',
@@ -78,6 +80,7 @@ class BusinessDocumentController extends Controller
     public function download(Request $request, int $id): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         abort_unless($request->user()?->can('business.view'), 403);
+        abort_unless(\App\Modules\Business\Support\BusinessCardVisibility::canViewRestrictedTabs($request->user()), 403);
 
         $document = $this->documents->find($id);
         abort_if($document === null, 404);

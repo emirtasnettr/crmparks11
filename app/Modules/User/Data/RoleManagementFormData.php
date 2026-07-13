@@ -47,7 +47,7 @@ class RoleManagementFormData
             ],
             'sales_manager' => [
                 'display_name' => 'Satış Müdürü',
-                'description' => 'İşletme, sözleşme, form ve landing page satış süreçlerini yönetir.',
+                'description' => 'İşletme, sözleşme ve form başvuru satış süreçlerini yönetir.',
                 'status' => 'active',
                 'is_system' => true,
                 'is_deletable' => false,

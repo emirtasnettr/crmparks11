@@ -61,7 +61,7 @@ class BusinessAssignmentTest extends TestCase
         $response->assertSee('Ahmet Yıldız');
         $response->assertSee('Yeni Kurye Ataması');
         $response->assertSee('Aktif Atama');
-        $response->assertSee($business->company_name);
+        $response->assertSee($business->displayName());
     }
 
     public function test_authenticated_user_can_view_assignment_detail(): void

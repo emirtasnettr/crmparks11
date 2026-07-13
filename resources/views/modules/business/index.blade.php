@@ -85,7 +85,9 @@
         <tr class="border-b border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-800/50">
           <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 sm:px-6">Marka Adı</th>
           <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Firma Ünvanı</th>
-          <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">İşletmeden Alınan Ücret</th>
+          @if (\App\Modules\Business\Support\BusinessPricingVisibility::canViewCustomerAndNetPricing())
+            <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">İşletmeden Alınan Ücret</th>
+          @endif
           <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Kuryeye Verilen Ücret</th>
           <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Telefon</th>
           <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">İl / İlçe</th>
@@ -111,9 +113,11 @@
             <td class="px-4 py-3 text-gray-600 dark:text-slate-400">
               {{ $business['company_name'] }}
             </td>
-            <td class="whitespace-nowrap px-4 py-3 text-gray-900 dark:text-white">
-              {{ $business['customer_price_label'] }}
-            </td>
+            @if (\App\Modules\Business\Support\BusinessPricingVisibility::canViewCustomerAndNetPricing())
+              <td class="whitespace-nowrap px-4 py-3 text-gray-900 dark:text-white">
+                {{ $business['customer_price_label'] }}
+              </td>
+            @endif
             <td class="whitespace-nowrap px-4 py-3 text-gray-900 dark:text-white">
               {{ $business['courier_price_label'] }}
             </td>

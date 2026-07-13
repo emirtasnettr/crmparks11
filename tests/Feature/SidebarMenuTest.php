@@ -27,6 +27,7 @@ class SidebarMenuTest extends TestCase
 
         $response->assertOk();
         $response->assertSee(route('businesses.index'), false);
+        $response->assertDontSee('href="'.route('businesses.assignments.index').'"', false);
         $response->assertSee(route('couriers.index'), false);
         $response->assertSee(route('agencies.index'), false);
         $response->assertSee('Finans');
@@ -73,11 +74,68 @@ class SidebarMenuTest extends TestCase
         $response = $this->actingAs($user)->get(route('dashboard'));
 
         $response->assertOk();
-        $response->assertSee(route('businesses.index'), false);
+        $response->assertSee('href="'.route('businesses.index').'"', false);
+        $response->assertDontSee('href="'.route('businesses.contacts.index').'"', false);
+        $response->assertDontSee('href="'.route('businesses.contracts.index').'"', false);
+        $response->assertDontSee('href="'.route('businesses.documents.index').'"', false);
+        $response->assertDontSee('href="'.route('businesses.activities.index').'"', false);
+        $response->assertDontSee('href="'.route('businesses.assignments.index').'"', false);
+        $response->assertSee('href="'.route('shift-planning.index').'"', false);
+        $response->assertSee('İşletmeler');
+        $response->assertDontSee('Atanan Kuryeler');
+        $response->assertSee('Vardiya Planlama');
+        $response->assertDontSee('href="'.route('businesses.earnings.index').'"', false);
+        $response->assertDontSee('href="'.route('couriers.earnings.index').'"', false);
+        $response->assertDontSee('href="'.route('agencies.earnings.index').'"', false);
+        $response->assertDontSee('Hakedişler');
         $response->assertSee('Form Başvuruları');
-        $response->assertSee(route('form-applications.index'), false);
-        $response->assertDontSee(route('settings.index'), false);
-        $response->assertDontSee(route('users.index'), false);
-        $response->assertDontSee(route('form-builder.index'), false);
+        $response->assertSee('href="'.route('form-applications.index').'"', false);
+        $response->assertDontSee('href="'.route('settings.index').'"', false);
+        $response->assertDontSee('Ayarlar');
+        $response->assertDontSee('href="'.route('users.index').'"', false);
+        $response->assertDontSee('href="'.route('form-builder.index').'"', false);
+
+        $this->actingAs($user)->get(route('businesses.index'))->assertOk();
+        $this->actingAs($user)->get(route('businesses.contacts.index'))->assertForbidden();
+        $this->actingAs($user)->get(route('businesses.contracts.index'))->assertForbidden();
+        $this->actingAs($user)->get(route('businesses.documents.index'))->assertForbidden();
+        $this->actingAs($user)->get(route('businesses.activities.index'))->assertForbidden();
+        $this->actingAs($user)->get(route('businesses.assignments.index'))->assertOk();
+        $this->actingAs($user)->get(route('shift-planning.index'))->assertOk();
+    }
+
+    public function test_sales_manager_cannot_see_or_access_couriers_and_agencies(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('sales_manager');
+
+        $dashboard = $this->actingAs($user)->get(route('dashboard'));
+        $dashboard->assertOk();
+        $dashboard->assertSee(route('businesses.index'), false);
+        $dashboard->assertSee(route('businesses.contacts.index'), false);
+        $dashboard->assertSee(route('businesses.contracts.index'), false);
+        $dashboard->assertSee(route('businesses.documents.index'), false);
+        $dashboard->assertSee(route('businesses.activities.index'), false);
+        $dashboard->assertSee(route('reports.index'), false);
+        $dashboard->assertSee(route('form-applications.index'), false);
+        $dashboard->assertSee('Sözleşmeler');
+        $dashboard->assertSee('Evraklar');
+        $dashboard->assertSee('Hareket Geçmişi');
+        $dashboard->assertSee('Raporlar');
+        $dashboard->assertSee('Form Başvuruları');
+        $dashboard->assertDontSee(route('businesses.earnings.index'), false);
+        $dashboard->assertDontSee('Hakedişler');
+        $dashboard->assertDontSee(route('couriers.index'), false);
+        $dashboard->assertDontSee(route('agencies.index'), false);
+        $dashboard->assertDontSee(route('form-builder.index'), false);
+        $dashboard->assertDontSee(route('landing-page-builder.index'), false);
+        $dashboard->assertDontSee(route('settings.index'), false);
+        $dashboard->assertDontSee('Ayarlar');
+        $dashboard->assertDontSee(route('businesses.assignments.index'), false);
+
+        $this->actingAs($user)->get(route('couriers.index'))->assertForbidden();
+        $this->actingAs($user)->get(route('agencies.index'))->assertForbidden();
+        $this->actingAs($user)->get(route('form-builder.index'))->assertForbidden();
+        $this->actingAs($user)->get(route('landing-page-builder.index'))->assertForbidden();
     }
 }

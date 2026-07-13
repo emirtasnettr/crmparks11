@@ -19,6 +19,8 @@ class BusinessActivityController extends Controller
 
     public function index(Request $request): View
     {
+        abort_unless(\App\Modules\Business\Support\BusinessCardVisibility::canViewRestrictedTabs($request->user()), 403);
+
         $filters = [
             'business_id' => RequestFilter::valueOrAll($request, 'business_id'),
             'user_id' => RequestFilter::valueOrAll($request, 'user_id'),

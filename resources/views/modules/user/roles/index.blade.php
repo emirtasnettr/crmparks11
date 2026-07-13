@@ -27,10 +27,10 @@
     </div>
 
     <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <x-ui.finance-stat-card title="Toplam Rol" :value="number_format($summary['total_roles'])" icon="courier" accent="blue" />
-        <x-ui.finance-stat-card title="Aktif Rol" :value="number_format($summary['active_roles'])" icon="courier" accent="success" />
-        <x-ui.finance-stat-card title="Toplam Kullanıcı" :value="number_format($summary['total_users'])" icon="courier" accent="violet" />
-        <x-ui.finance-stat-card title="Toplam Yetki" :value="number_format($summary['total_permissions'])" icon="chart" accent="primary" />
+        <x-ui.finance-stat-card title="Toplam Rol" :value="number_format($summary['total_roles'])" icon="users" accent="blue" />
+        <x-ui.finance-stat-card title="Aktif Rol" :value="number_format($summary['active_roles'])" icon="shield-check" accent="success" />
+        <x-ui.finance-stat-card title="Toplam Kullanıcı" :value="number_format($summary['total_users'])" icon="users" accent="violet" />
+        <x-ui.finance-stat-card title="Toplam Yetki" :value="number_format($summary['total_permissions'])" icon="key" accent="primary" />
     </div>
 
     <x-ui.card :padding="false">

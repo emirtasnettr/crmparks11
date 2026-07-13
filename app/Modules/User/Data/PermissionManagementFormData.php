@@ -112,7 +112,7 @@ class PermissionManagementFormData
 
         $operational = self::slugsMatching([
             'dashboard.view',
-            'business.', 'business_contact.', 'contract.', 'assignment.', 'shift_planning.', 'earning.', 'document.',
+            'assignment.', 'shift_planning.',
             'courier.', 'agency.',
         ]);
 
@@ -132,18 +132,13 @@ class PermissionManagementFormData
                     self::slugsMatching(['business.', 'business_contact.', 'contract.', 'document.']),
                     ['view', 'create', 'update', 'export', 'print']
                 ),
-                self::slugsWithActions(
-                    self::slugsMatching(['courier.', 'agency.', 'assignment.']),
-                    ['view', 'export']
-                ),
                 self::slugsWithActions(self::slugsMatching(['report.']), ['view', 'export', 'print']),
                 self::slugsWithActions(self::slugsMatching(['notification.']), ['view', 'update']),
             ))),
             'operations_specialist' => array_values(array_unique(array_merge(
-                self::slugsWithActions($operational, ['view', 'create', 'update', 'export', 'print']),
-                self::slugsWithActions($finance, ['view', 'export']),
-                self::slugsWithActions($reports, ['view', 'export', 'print']),
-                ['dashboard.view', 'form_application.view'],
+                self::slugsWithActions($operational, ['view', 'create', 'update', 'export', 'print', 'delete']),
+                self::slugsWithActions($notifications, ['view', 'update']),
+                ['dashboard.view', 'form_application.view', 'business.view'],
             ))),
             'business' => [
                 'dashboard.view',

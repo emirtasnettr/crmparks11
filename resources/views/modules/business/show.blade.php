@@ -2,6 +2,12 @@
 
 @section('title', $business['display_name'] ?? $business['brand_name'])
 
+@php
+    use App\Modules\Business\Support\BusinessCardVisibility;
+
+    $canViewRestrictedTabs = BusinessCardVisibility::canViewRestrictedTabs();
+    $defaultTab = $canViewRestrictedTabs ? 'overview' : 'assignments';
+@endphp
 
 @section('content')
 <div class="max-w-6xl">
@@ -27,19 +33,29 @@
             </div>
         </div>
         <div class="flex flex-wrap gap-2">
-            <x-ui.button variant="secondary" href="{{ route('businesses.edit', $business['id']) }}">Düzenle</x-ui.button>
-            <x-ui.button href="{{ route('businesses.index') }}" variant="secondary">Listeye Dön</x-ui.button>
+            @if (BusinessCardVisibility::canManageBusinessProfile())
+                <x-ui.button variant="secondary" href="{{ route('businesses.edit', $business['id']) }}">Düzenle</x-ui.button>
+            @endif
+            @can('business.view')
+                @if (\App\Modules\Business\Support\BusinessCardVisibility::canBrowseBusinesses())
+                    <x-ui.button href="{{ route('businesses.index') }}" variant="secondary">Listeye Dön</x-ui.button>
+                @endif
+            @endcan
         </div>
     </div>
 
-    <x-entity.tabs default="overview">
+    <x-entity.tabs :default="$defaultTab">
         <x-entity.tab-list>
             <x-entity.tab-trigger name="overview" label="Genel Bakış" />
-            <x-entity.tab-trigger name="contacts" label="Yetkililer" />
-            <x-entity.tab-trigger name="contracts" label="Sözleşmeler" />
+            @if ($canViewRestrictedTabs)
+                <x-entity.tab-trigger name="contacts" label="Yetkililer" />
+                <x-entity.tab-trigger name="contracts" label="Sözleşmeler" />
+            @endif
             <x-entity.tab-trigger name="assignments" label="Atanan Kuryeler" />
-            <x-entity.tab-trigger name="documents" label="Evraklar" />
-            <x-entity.tab-trigger name="activities" label="Hareket Geçmişi" />
+            @if ($canViewRestrictedTabs)
+                <x-entity.tab-trigger name="documents" label="Evraklar" />
+                <x-entity.tab-trigger name="activities" label="Hareket Geçmişi" />
+            @endif
         </x-entity.tab-list>
 
         <x-entity.tab-panel name="overview">
@@ -77,10 +93,14 @@
             </div>
 
             <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <x-ui.finance-stat-card :title="$overviewStats['labels']['received']" :value="\App\Core\Helpers\MoneyCalculator::formatVatAmount($overviewStats['received_per_package'])" icon="earning" accent="success" />
+                @if (\App\Modules\Business\Support\BusinessPricingVisibility::canViewCustomerAndNetPricing())
+                    <x-ui.finance-stat-card :title="$overviewStats['labels']['received']" :value="\App\Core\Helpers\MoneyCalculator::formatVatAmount($overviewStats['received_per_package'])" icon="earning" accent="success" />
+                @endif
                 <x-ui.finance-stat-card :title="$overviewStats['labels']['courier']" :value="\App\Core\Helpers\MoneyCalculator::formatVatAmount($overviewStats['courier_per_package'])" icon="courier" accent="warning" />
                 <x-ui.finance-stat-card title="Aktif Kurye Sayısı" :value="number_format($overviewStats['active_couriers'])" icon="courier" accent="blue" />
-                <x-ui.finance-stat-card :title="$overviewStats['labels']['net']" :value="\App\Core\Helpers\MoneyCalculator::formatVatAmount($overviewStats['net_per_package'])" icon="chart" accent="primary" />
+                @if (\App\Modules\Business\Support\BusinessPricingVisibility::canViewCustomerAndNetPricing())
+                    <x-ui.finance-stat-card :title="$overviewStats['labels']['net']" :value="\App\Core\Helpers\MoneyCalculator::formatVatAmount($overviewStats['net_per_package'])" icon="chart" accent="primary" />
+                @endif
             </div>
 
             <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -122,7 +142,9 @@
 
                 <x-ui.card title="Fiyatlandırma">
                     <dl class="space-y-3 text-sm">
-                        <x-entity.detail-row :label="$overviewStats['labels']['customer_detail']" :value="$business['customer_price']" />
+                        @if (\App\Modules\Business\Support\BusinessPricingVisibility::canViewCustomerAndNetPricing())
+                            <x-entity.detail-row :label="$overviewStats['labels']['customer_detail']" :value="$business['customer_price']" />
+                        @endif
                         <x-entity.detail-row :label="$overviewStats['labels']['courier_detail']" :value="$business['courier_price']" />
                     </dl>
                 </x-ui.card>
@@ -133,6 +155,7 @@
             </div>
         </x-entity.tab-panel>
 
+        @if ($canViewRestrictedTabs)
         <x-entity.tab-panel name="contacts" x-data="contactPage(@js(['businessId' => $business['id']]))">
             <x-ui.card title="Yetkililer">
                 <x-slot:actions>
@@ -228,6 +251,7 @@
                 'businesses' => [],
             ])
         </x-entity.tab-panel>
+        @endif
 
         <x-entity.tab-panel name="assignments" x-data="assignmentPage(@js(['businessId' => $business['id']]))">
             <x-ui.card title="Atanan Kuryeler">
@@ -280,6 +304,7 @@
             ])
         </x-entity.tab-panel>
 
+        @if ($canViewRestrictedTabs)
         <x-entity.tab-panel name="documents" x-data="documentPage(@js(['businessId' => $business['id']]))">
             <x-ui.card title="Evraklar">
                 <x-slot:actions>
@@ -347,6 +372,7 @@
                 @endif
             </x-ui.card>
         </x-entity.tab-panel>
+        @endif
     </x-entity.tabs>
 </div>
 @endsection

@@ -79,7 +79,29 @@ class BusinessAssignmentStoreTest extends TestCase
         $indexResponse = $this->actingAs($user)->get(route('businesses.assignments.index'));
         $indexResponse->assertOk();
         $indexResponse->assertSee('Ahmet Yıldız');
-        $indexResponse->assertSee('Point Kurye Market Ltd. Şti.');
+        $indexResponse->assertSee($business->displayName());
+    }
+
+    public function test_operations_specialist_can_create_assignment_and_open_businesses(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('operations_specialist');
+        $business = $this->createBusiness($user);
+        $courier = $this->createCourier($user, [
+            'full_name' => 'Ops Atama Kurye',
+        ]);
+
+        $this->actingAs($user)->get(route('businesses.index'))->assertOk();
+
+        $response = $this->actingAs($user)->post(route('businesses.assignments.store'), [
+            'business_id' => $business->id,
+            'courier_id' => $courier->id,
+            'start_date' => '2026-01-01',
+            'status' => 'active',
+        ]);
+
+        $response->assertRedirect(route('businesses.assignments.index', ['business_id' => $business->id]));
+        $this->assertDatabaseCount('business_courier_assignments', 1);
     }
 
     public function test_business_assignment_can_be_created_from_business_show(): void
@@ -99,7 +121,7 @@ class BusinessAssignmentStoreTest extends TestCase
             'status' => 'active',
         ]);
 
-        $response->assertRedirect(route('businesses.show', $business->id));
+        $response->assertRedirect(route('businesses.show', $business->id).'?tab=assignments');
 
         $showResponse = $this->actingAs($user)->get(route('businesses.show', $business->id));
         $showResponse->assertOk();

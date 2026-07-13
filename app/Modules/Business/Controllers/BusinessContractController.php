@@ -29,6 +29,8 @@ class BusinessContractController extends Controller
 
     public function index(Request $request): View
     {
+        abort_unless(\App\Modules\Business\Support\BusinessCardVisibility::canViewRestrictedTabs($request->user()), 403);
+
         $filters = [
             'search' => $request->string('search')->toString(),
             'business_id' => $request->string('business_id')->toString() ?: 'all',
@@ -63,6 +65,8 @@ class BusinessContractController extends Controller
 
     public function export(Request $request): BinaryFileResponse
     {
+        abort_unless(\App\Modules\Business\Support\BusinessCardVisibility::canViewRestrictedTabs($request->user()), 403);
+
         $filters = [
             'search' => $request->string('search')->toString(),
             'business_id' => $request->string('business_id')->toString() ?: 'all',
@@ -80,6 +84,8 @@ class BusinessContractController extends Controller
 
     public function show(int $id): View
     {
+        abort_unless(\App\Modules\Business\Support\BusinessCardVisibility::canViewRestrictedTabs(request()->user()), 403);
+
         $contract = $this->contracts->find($id);
 
         abort_if($contract === null, 404);

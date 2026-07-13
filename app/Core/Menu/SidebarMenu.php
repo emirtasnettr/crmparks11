@@ -14,21 +14,115 @@ class SidebarMenu
      */
     public static function items(): array
     {
-        return [
+        return array_values(array_filter([
             [
                 'key' => 'dashboard',
                 'type' => 'link',
                 'label' => 'Dashboard',
-                'icon' => 'chart',
+                'icon' => 'chart-bar',
                 'route' => 'dashboard',
                 'active' => ['dashboard'],
                 'permission' => 'dashboard.view',
             ],
             [
+                'key' => 'businesses',
+                'type' => 'link',
+                'label' => 'İşletmeler',
+                'icon' => 'building-office-2',
+                'route' => 'businesses.index',
+                'active' => ['businesses.index', 'businesses.show', 'businesses.assignments.*'],
+                'permission' => 'business.view',
+                'roles' => ['operations_specialist'],
+            ],
+            [
+                'key' => 'businesses',
+                'type' => 'group',
+                'label' => 'İşletmeler',
+                'icon' => 'building-office-2',
+                'permission' => 'business.view',
+                'except_roles' => ['operations_specialist'],
+                'active' => Auth::user()?->hasRole('sales_manager')
+                    ? ['businesses.index', 'businesses.create', 'businesses.show', 'businesses.edit', 'businesses.contacts.*']
+                    : ['businesses.*'],
+                'children' => array_values(array_filter([
+                    ['label' => 'İşletmeler', 'route' => 'businesses.index', 'active' => ['businesses.index', 'businesses.create', 'businesses.show', 'businesses.edit']],
+                    [
+                        'label' => 'Yetkililer',
+                        'route' => 'businesses.contacts.index',
+                        'active' => ['businesses.contacts.*'],
+                    ],
+                    [
+                        'label' => 'Sözleşmeler',
+                        'route' => 'businesses.contracts.index',
+                        'active' => ['businesses.contracts.*'],
+                        'except_roles' => ['sales_manager'],
+                    ],
+                    BusinessFeatures::earningsEnabled()
+                        ? [
+                            'label' => 'Hakedişler',
+                            'route' => 'businesses.earnings.index',
+                            'active' => ['businesses.earnings.*'],
+                            'except_roles' => ['sales_manager'],
+                        ]
+                        : null,
+                    [
+                        'label' => 'Evraklar',
+                        'route' => 'businesses.documents.index',
+                        'active' => ['businesses.documents.*'],
+                        'except_roles' => ['sales_manager'],
+                    ],
+                    [
+                        'label' => 'Hareket Geçmişi',
+                        'route' => 'businesses.activities.index',
+                        'active' => ['businesses.activities.*'],
+                        'except_roles' => ['sales_manager'],
+                    ],
+                ])),
+            ],
+            [
+                'key' => 'shift_planning',
+                'type' => 'link',
+                'label' => 'Vardiya Planlama',
+                'icon' => 'calendar-days',
+                'route' => 'shift-planning.index',
+                'active' => ['shift-planning.*'],
+                'permission' => 'shift_planning.view',
+            ],
+            [
+                'key' => 'business_contracts',
+                'type' => 'link',
+                'label' => 'Sözleşmeler',
+                'icon' => 'document-text',
+                'route' => 'businesses.contracts.index',
+                'active' => ['businesses.contracts.*'],
+                'permission' => 'business.view',
+                'roles' => ['sales_manager'],
+            ],
+            [
+                'key' => 'business_documents',
+                'type' => 'link',
+                'label' => 'Evraklar',
+                'icon' => 'folder',
+                'route' => 'businesses.documents.index',
+                'active' => ['businesses.documents.*'],
+                'permission' => 'business.view',
+                'roles' => ['sales_manager'],
+            ],
+            [
+                'key' => 'business_activities',
+                'type' => 'link',
+                'label' => 'Hareket Geçmişi',
+                'icon' => 'clock',
+                'route' => 'businesses.activities.index',
+                'active' => ['businesses.activities.*'],
+                'permission' => 'business.view',
+                'roles' => ['sales_manager'],
+            ],
+            [
                 'key' => 'reports',
                 'type' => 'link',
                 'label' => 'Raporlar',
-                'icon' => 'report',
+                'icon' => 'document-chart-bar',
                 'route' => 'reports.index',
                 'active' => ['reports.*'],
                 'permission' => 'report.view',
@@ -37,43 +131,28 @@ class SidebarMenu
                 'key' => 'form_applications',
                 'type' => 'link',
                 'label' => 'Form Başvuruları',
-                'icon' => 'form-builder',
+                'icon' => 'clipboard-document-check',
                 'route' => 'form-applications.index',
                 'active' => ['form-applications.*'],
                 'permission' => 'form_application.view',
             ],
             [
-                'key' => 'businesses',
-                'type' => 'group',
-                'label' => 'İşletmeler',
-                'icon' => 'building',
-                'permission' => 'business.view',
-                'active' => ['businesses.*', 'shift-planning.*'],
-                'children' => array_values(array_filter([
-                    ['label' => 'İşletmeler', 'route' => 'businesses.index', 'active' => ['businesses.index', 'businesses.create']],
-                    ['label' => 'Yetkililer', 'route' => 'businesses.contacts.index', 'active' => ['businesses.contacts.*']],
-                    ['label' => 'Sözleşmeler', 'route' => 'businesses.contracts.index', 'active' => ['businesses.contracts.*']],
-                    ['label' => 'Atanan Kuryeler', 'route' => 'businesses.assignments.index', 'active' => ['businesses.assignments.*']],
-                    ['label' => 'Vardiya Planlama', 'route' => 'shift-planning.index', 'active' => ['shift-planning.*'], 'permission' => 'shift_planning.view'],
-                    BusinessFeatures::earningsEnabled()
-                        ? ['label' => 'Hakedişler', 'route' => 'businesses.earnings.index', 'active' => ['businesses.earnings.*']]
-                        : null,
-                    ['label' => 'Evraklar', 'route' => 'businesses.documents.index', 'active' => ['businesses.documents.*']],
-                    ['label' => 'Hareket Geçmişi', 'route' => 'businesses.activities.index', 'active' => ['businesses.activities.*']],
-                ])),
-            ],
-            [
                 'key' => 'couriers',
                 'type' => 'group',
                 'label' => 'Kuryeler',
-                'icon' => 'courier',
+                'icon' => 'truck',
                 'permission' => 'courier.view',
                 'active' => ['couriers.*'],
                 'children' => array_values(array_filter([
                     ['label' => 'Kuryeler', 'route' => 'couriers.index', 'active' => ['couriers.index', 'couriers.create']],
                     ['label' => 'Belgeler', 'route' => 'couriers.documents.index', 'active' => ['couriers.documents.*']],
                     CourierFeatures::earningsEnabled()
-                        ? ['label' => 'Hakedişler', 'route' => 'couriers.earnings.index', 'active' => ['couriers.earnings.*']]
+                        ? [
+                            'label' => 'Hakedişler',
+                            'route' => 'couriers.earnings.index',
+                            'active' => ['couriers.earnings.*'],
+                            'except_roles' => ['operations_specialist'],
+                        ]
                         : null,
                     ['label' => 'Çalışma Geçmişi', 'route' => 'couriers.work-history.index', 'active' => ['couriers.work-history.*']],
                     ['label' => 'Araç Bilgileri', 'route' => 'couriers.vehicles.index', 'active' => ['couriers.vehicles.*']],
@@ -85,7 +164,7 @@ class SidebarMenu
                 'key' => 'agencies',
                 'type' => 'group',
                 'label' => 'Acenteler',
-                'icon' => 'agency',
+                'icon' => 'building-storefront',
                 'permission' => 'agency.view',
                 'active' => ['agencies.*'],
                 'children' => array_values(array_filter([
@@ -94,7 +173,12 @@ class SidebarMenu
                     ['label' => 'Kuryeler', 'route' => 'agencies.couriers.index', 'active' => ['agencies.couriers.*']],
                     ['label' => 'Sözleşmeler', 'route' => 'agencies.contracts.index', 'active' => ['agencies.contracts.*']],
                     AgencyFeatures::earningsEnabled()
-                        ? ['label' => 'Hakedişler', 'route' => 'agencies.earnings.index', 'active' => ['agencies.earnings.*']]
+                        ? [
+                            'label' => 'Hakedişler',
+                            'route' => 'agencies.earnings.index',
+                            'active' => ['agencies.earnings.*'],
+                            'except_roles' => ['operations_specialist'],
+                        ]
                         : null,
                     ['label' => 'Evraklar', 'route' => 'agencies.documents.index', 'active' => ['agencies.documents.*']],
                     ['label' => 'Hareket Geçmişi', 'route' => 'agencies.activities.index', 'active' => ['agencies.activities.*']],
@@ -104,7 +188,7 @@ class SidebarMenu
                 'key' => 'finance',
                 'type' => 'group',
                 'label' => 'Finans',
-                'icon' => 'earning',
+                'icon' => 'banknotes',
                 'permission' => 'dashboard.financial',
                 'active' => ['finance.*'],
                 'children' => [
@@ -129,7 +213,8 @@ class SidebarMenu
                 'key' => 'settings',
                 'type' => 'group',
                 'label' => 'Ayarlar',
-                'icon' => 'settings',
+                'icon' => 'cog-6-tooth',
+                'except_roles' => ['sales_manager', 'operations_specialist'],
                 'active' => [
                     'settings.*',
                     'users.*',
@@ -190,7 +275,7 @@ class SidebarMenu
                     ],
                 ],
             ],
-        ];
+        ]));
     }
 
     /**
@@ -209,6 +294,10 @@ class SidebarMenu
         }
 
         if (! empty($item['role']) && ! $user->hasRole($item['role'])) {
+            return false;
+        }
+
+        if (! empty($item['except_roles']) && $user->hasAnyRole($item['except_roles'])) {
             return false;
         }
 

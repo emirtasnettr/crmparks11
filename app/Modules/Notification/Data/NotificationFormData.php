@@ -18,6 +18,7 @@ class NotificationFormData
             'document_expiry' => 'Evrak Süresi Hatırlatması',
             'collection_reminder' => 'Tahsilat Hatırlatması',
             'payment_reminder' => 'Ödeme Hatırlatması',
+            'form_submission_created' => 'Yeni Form Başvurusu',
             'system' => 'Sistem Bildirimi',
         ];
     }
@@ -35,6 +36,7 @@ class NotificationFormData
             'documents' => 'Evraklar',
             'collections' => 'Tahsilatlar',
             'payments' => 'Ödemeler',
+            'forms' => 'Formlar',
             'system' => 'Sistem',
         ];
     }
@@ -84,6 +86,7 @@ class NotificationFormData
             'document_expiry' => 'documents',
             'collection_reminder' => 'collections',
             'payment_reminder' => 'payments',
+            'form_submission_created' => 'forms',
             default => 'system',
         };
     }
