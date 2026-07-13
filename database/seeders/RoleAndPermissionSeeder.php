@@ -30,6 +30,7 @@ class RoleAndPermissionSeeder extends Seeder
             'setting.view', 'setting.update',
             'form_builder.view', 'form_builder.manage',
             'landing_page.view', 'landing_page.manage',
+            'courier_application.view',
             'policy_settings.view', 'policy_settings.manage',
             'activity_log.view',
         ];
@@ -54,6 +55,7 @@ class RoleAndPermissionSeeder extends Seeder
                 'report.view', 'report.export',
                 'form_builder.view', 'form_builder.manage',
                 'landing_page.view', 'landing_page.manage',
+                'courier_application.view',
                 'notification.view', 'notification.update',
             ],
             'operations_manager' => [
@@ -65,6 +67,7 @@ class RoleAndPermissionSeeder extends Seeder
                 'shift_planning.view', 'shift_planning.create', 'shift_planning.update', 'shift_planning.delete',
                 'contract.view', 'contract.create', 'contract.update',
                 'earning.view', 'earning.create', 'earning.update',
+                'courier_application.view',
                 'notification.view', 'notification.update',
             ],
             'finance_officer' => [
@@ -76,6 +79,7 @@ class RoleAndPermissionSeeder extends Seeder
                 'dashboard.view',
                 'business.view', 'courier.view', 'agency.view', 'assignment.view',
                 'shift_planning.view',
+                'courier_application.view',
             ],
             'business' => [
                 'dashboard.view',

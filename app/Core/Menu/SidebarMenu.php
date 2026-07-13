@@ -59,9 +59,10 @@ class SidebarMenu
                 'label' => 'Kuryeler',
                 'icon' => 'courier',
                 'permission' => 'courier.view',
-                'active' => ['couriers.*'],
+                'active' => ['couriers.*', 'courier-applications.*'],
                 'children' => array_values(array_filter([
                     ['label' => 'Kuryeler', 'route' => 'couriers.index', 'active' => ['couriers.index', 'couriers.create']],
+                    ['label' => 'Kurye Başvuruları', 'route' => 'courier-applications.index', 'active' => ['courier-applications.*'], 'permission' => 'courier_application.view'],
                     ['label' => 'Belgeler', 'route' => 'couriers.documents.index', 'active' => ['couriers.documents.*']],
                     CourierFeatures::earningsEnabled()
                         ? ['label' => 'Hakedişler', 'route' => 'couriers.earnings.index', 'active' => ['couriers.earnings.*']]

@@ -20,9 +20,50 @@ class FormSubmissionRepository
       ->all();
   }
 
+  /**
+   * @return array<int, array<string, mixed>>
+   */
+  public function allAcrossForms(): array
+  {
+    return FormSubmission::query()
+      ->with(['status', 'form'])
+      ->orderByDesc('submitted_at')
+      ->orderByDesc('id')
+      ->get()
+      ->map(function (FormSubmission $submission) {
+        $record = $submission->toRecordArray();
+        $record['form_name'] = $submission->form?->name;
+        $record['form_status'] = $submission->form?->status;
+
+        return $record;
+      })
+      ->all();
+  }
+
   public function count(int $formId): int
   {
     return FormSubmission::query()->where('form_id', $formId)->count();
+  }
+
+  /**
+   * @return array<string, mixed>|null
+   */
+  public function findById(int $submissionId): ?array
+  {
+    $submission = FormSubmission::query()
+      ->with(['status', 'form'])
+      ->whereKey($submissionId)
+      ->first();
+
+    if ($submission === null) {
+      return null;
+    }
+
+    $record = $submission->toRecordArray();
+    $record['form_name'] = $submission->form?->name;
+    $record['form_status'] = $submission->form?->status;
+
+    return $record;
   }
 
   /**

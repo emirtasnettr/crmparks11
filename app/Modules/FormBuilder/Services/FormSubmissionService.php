@@ -78,6 +78,92 @@ class FormSubmissionService
   }
 
   /**
+   * @param  array<string, mixed>  $filters
+   * @return array<int, array<string, mixed>>
+   */
+  public function listAll(array $filters = []): array
+  {
+    return collect($this->repository->allAcrossForms())
+      ->map(function (array $submission) {
+        $form = $this->formRepository->find((int) $submission['form_id']);
+
+        if ($form === null) {
+          return null;
+        }
+
+        return array_merge($this->enrich($submission, $form), [
+          'form_name' => $submission['form_name'] ?? $form['name'],
+        ]);
+      })
+      ->filter()
+      ->filter(function (array $submission) use ($filters) {
+        if (! empty($filters['search'])) {
+          $search = mb_strtolower($filters['search']);
+          $haystack = mb_strtolower(implode(' ', array_merge(
+            [
+              $submission['form_name'] ?? '',
+              $submission['landing_page_slug'] ?? '',
+              $submission['landing_page_name'] ?? '',
+              $submission['status']['name'] ?? '',
+            ],
+            array_values($submission['data'] ?? [])
+          )));
+
+          if (! str_contains($haystack, $search)) {
+            return false;
+          }
+        }
+
+        if (! empty($filters['status_id']) && $filters['status_id'] !== 'all') {
+          if ((int) ($submission['form_submission_status_id'] ?? 0) !== (int) $filters['status_id']) {
+            return false;
+          }
+        }
+
+        if (! empty($filters['date_from'])) {
+          if (Carbon::parse($submission['submitted_at'])->lt(Carbon::parse($filters['date_from'])->startOfDay())) {
+            return false;
+          }
+        }
+
+        if (! empty($filters['date_to'])) {
+          if (Carbon::parse($submission['submitted_at'])->gt(Carbon::parse($filters['date_to'])->endOfDay())) {
+            return false;
+          }
+        }
+
+        return true;
+      })
+      ->values()
+      ->all();
+  }
+
+  /**
+   * @return array{submission: array<string, mixed>, form: array<string, mixed>}|null
+   */
+  public function findWithForm(int $submissionId): ?array
+  {
+    $submission = $this->repository->findById($submissionId);
+
+    if ($submission === null) {
+      return null;
+    }
+
+    $form = $this->formRepository->find((int) $submission['form_id']);
+
+    if ($form === null) {
+      return null;
+    }
+
+    return [
+      'submission' => array_merge($this->enrich($submission, $form), [
+        'form_name' => $submission['form_name'] ?? $form['name'],
+      ]),
+      'form' => $form,
+    ];
+  }
+
+  /**
    * @return array<string, mixed>|null
    */
   public function findForForm(int $formId, int $submissionId): ?array

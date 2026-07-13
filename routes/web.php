@@ -32,6 +32,7 @@ use App\Modules\Finance\Controllers\FinanceExpenseController;
 use App\Modules\Finance\Controllers\FinanceCurrentAccountController;
 use App\Modules\Finance\Controllers\FinanceDashboardController;
 use App\Modules\Finance\Controllers\FinanceRevenueController;
+use App\Modules\FormBuilder\Controllers\CourierApplicationController;
 use App\Modules\FormBuilder\Controllers\FormBuilderController;
 use App\Modules\FormBuilder\Controllers\FormSubmissionController;
 use App\Modules\FormBuilder\Controllers\FormSubmissionStatusController;
@@ -69,6 +70,13 @@ Route::middleware('auth')->group(function () {
         ->name('dashboard');
 
     Route::get('/arama', SearchController::class)->name('search');
+
+    Route::prefix('kurye-basvurulari')->middleware('permission:courier_application.view')->name('courier-applications.')->group(function () {
+        Route::get('/', [CourierApplicationController::class, 'index'])->name('index');
+        Route::get('/{submissionId}', [CourierApplicationController::class, 'show'])->name('show');
+        Route::put('/{submissionId}/statu', [CourierApplicationController::class, 'updateStatus'])->name('status.update');
+        Route::post('/{submissionId}/notlar', [CourierApplicationController::class, 'storeNote'])->name('notes.store');
+    });
 
     Route::prefix('vardiya-planlama')->name('shift-planning.')->middleware('permission:shift_planning.view')->group(function () {
         Route::get('/', [ShiftPlanningController::class, 'index'])->name('index');
