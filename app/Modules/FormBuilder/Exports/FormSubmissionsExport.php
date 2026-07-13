@@ -23,7 +23,7 @@ class FormSubmissionsExport implements FromCollection, ShouldAutoSize, WithHeadi
   public function headings(): array
   {
     return array_merge(
-      ['ID', 'Gönderim Tarihi', 'Landing Page', 'IP Adresi'],
+      ['ID', 'Gönderim Tarihi', 'Landing Page'],
       collect($this->exportableFields)->pluck('label')->all()
     );
   }
@@ -35,7 +35,6 @@ class FormSubmissionsExport implements FromCollection, ShouldAutoSize, WithHeadi
         $submission['id'],
         $submission['submitted_at_formatted'] ?? $submission['submitted_at'] ?? '',
         $submission['landing_page_name'] ?? $submission['landing_page_slug'] ?? '',
-        $submission['ip_address'] ?? '',
       ];
 
       foreach ($this->exportableFields as $field) {

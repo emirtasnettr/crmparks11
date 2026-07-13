@@ -116,10 +116,6 @@
                         <dd class="mt-1 text-gray-900 dark:text-white">{{ $submission['landing_page_name'] ?? $submission['landing_page_slug'] ?? '—' }}</dd>
                     </div>
                     <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-slate-400">IP Adresi</dt>
-                        <dd class="mt-1 text-gray-900 dark:text-white">{{ $submission['ip_address'] ?? '—' }}</dd>
-                    </div>
-                    <div>
                         <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-slate-400">Not sayısı</dt>
                         <dd class="mt-1 text-gray-900 dark:text-white">{{ count($notes) }}</dd>
                     </div>

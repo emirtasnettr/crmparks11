@@ -39,25 +39,21 @@
 
 <x-ui.card :padding="false">
     <div class="overflow-x-auto">
-        <table class="w-full min-w-[800px] text-left text-sm">
+        <table class="w-full min-w-[900px] text-left text-sm">
             <thead>
                 <tr class="border-b border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-800/50">
                     <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 sm:px-6">#</th>
                     <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Statü</th>
-                    <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Özet</th>
+                    <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Gönderim Tarihi</th>
                     <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Landing Page</th>
-                    <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Gönderim</th>
+                    @foreach ($exportableFields as $field)
+                        <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">{{ $field['label'] }}</th>
+                    @endforeach
                     <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 sm:px-6">İşlemler</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-slate-700">
                 @forelse ($submissions as $submission)
-                    @php
-                        $summary = collect($submission['values'] ?? [])
-                            ->take(2)
-                            ->map(fn ($field) => ($field['label'] ?? '').': '.($field['value'] ?: '—'))
-                            ->implode(' · ');
-                    @endphp
                     <tr class="transition-colors hover:bg-gray-50 dark:hover:bg-slate-800/50">
                         <td class="px-4 py-3 font-medium text-gray-900 dark:text-white sm:px-6">{{ $submission['id'] }}</td>
                         <td class="px-4 py-3">
@@ -67,13 +63,23 @@
                                 —
                             @endif
                         </td>
-                        <td class="max-w-xs px-4 py-3 text-gray-600 dark:text-slate-400">
-                            <span class="line-clamp-2">{{ $summary !== '' ? $summary : '—' }}</span>
-                        </td>
+                        <td class="px-4 py-3 text-gray-600 dark:text-slate-400">{{ $submission['submitted_at_formatted'] }}</td>
                         <td class="px-4 py-3 text-gray-600 dark:text-slate-400">
                             {{ $submission['landing_page_name'] ?? $submission['landing_page_slug'] ?? '—' }}
                         </td>
-                        <td class="px-4 py-3 text-gray-600 dark:text-slate-400">{{ $submission['submitted_at_formatted'] }}</td>
+                        @foreach ($exportableFields as $field)
+                            @php
+                                $value = $submission['data'][$field['name']] ?? '—';
+                                $fileUrl = $submission['data'][$field['name'].'_url'] ?? null;
+                            @endphp
+                            <td class="px-4 py-3 text-gray-600 dark:text-slate-400">
+                                @if ($field['type'] === 'file' && $fileUrl)
+                                    <a href="{{ $fileUrl }}" target="_blank" class="text-primary-600 hover:underline dark:text-primary-400">{{ $value }}</a>
+                                @else
+                                    {{ $value ?: '—' }}
+                                @endif
+                            </td>
+                        @endforeach
                         <td class="px-4 py-3 sm:px-6">
                             <x-ui.button
                                 href="{{ route('form-applications.show', [$form['id'], $submission['id']]) }}"
@@ -86,9 +92,16 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="px-6 py-16 text-center">
-                            <p class="font-medium text-gray-900 dark:text-white">Henüz başvuru yok</p>
-                            <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">Bu forma henüz başvuru gelmemiş.</p>
+                        <td colspan="{{ 5 + count($exportableFields) }}" class="px-6 py-16 text-center">
+                            <div class="mx-auto flex max-w-sm flex-col items-center">
+                                <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-50 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400">
+                                    <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                </div>
+                                <p class="font-medium text-gray-900 dark:text-white">Henüz başvuru yok</p>
+                                <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">Bu forma henüz başvuru gelmemiş.</p>
+                            </div>
                         </td>
                     </tr>
                 @endforelse

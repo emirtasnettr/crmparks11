@@ -48,10 +48,12 @@ class FormApplicationController extends Controller
 
         $statuses = $this->statusService->list();
         $submissions = $this->submissionService->listForForm($formId, $filters);
+        $exportableFields = $this->submissionService->exportableFields($form);
 
         return view('modules.form-applications.submissions', [
             'form' => $form,
             'submissions' => $submissions,
+            'exportableFields' => $exportableFields,
             'filters' => $filters,
             'statuses' => $statuses,
             'statusFilterOptions' => collect($statuses)

@@ -77,11 +77,15 @@ class FormApplicationTest extends TestCase
         $submissions = $this->actingAs($staff)->get(route('form-applications.submissions', 1));
         $submissions->assertOk();
         $submissions->assertSee('Ops Aday');
+        $submissions->assertSee('Ad Soyad');
+        $submissions->assertDontSee('IP Adresi');
+        $submissions->assertDontSee('>IP</th>', false);
 
         $show = $this->actingAs($staff)->get(route('form-applications.show', [1, 1]));
         $show->assertOk();
         $show->assertSee('Ops Aday');
         $show->assertSee('Notlar');
+        $show->assertDontSee('IP Adresi');
     }
 
     public function test_finance_officer_cannot_access_form_applications(): void

@@ -64,7 +64,6 @@
                     @foreach ($exportableFields as $field)
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">{{ $field['label'] }}</th>
                     @endforeach
-                    <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">IP</th>
                     <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 sm:px-6">İşlemler</th>
                 </tr>
             </thead>
@@ -96,7 +95,6 @@
                                 @endif
                             </td>
                         @endforeach
-                        <td class="px-4 py-3 text-gray-500 dark:text-slate-500">{{ $submission['ip_address'] ?? '—' }}</td>
                         <td class="px-4 py-3 sm:px-6">
                             <x-ui.button
                                 href="{{ route('form-builder.submissions.show', [$form['id'], $submission['id']]) }}"
@@ -109,7 +107,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="{{ 6 + count($exportableFields) }}" class="px-6 py-16 text-center">
+                        <td colspan="{{ 5 + count($exportableFields) }}" class="px-6 py-16 text-center">
                             <div class="mx-auto flex max-w-sm flex-col items-center">
                                 <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-50 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400">
                                     <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
