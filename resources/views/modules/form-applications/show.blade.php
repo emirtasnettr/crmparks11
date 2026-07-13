@@ -18,7 +18,7 @@
             </p>
         </div>
         <div class="flex flex-wrap gap-2">
-            <x-ui.button href="{{ route('courier-applications.index') }}" variant="secondary">Başvurulara Dön</x-ui.button>
+            <x-ui.button href="{{ route('form-applications.submissions', $form['id']) }}" variant="secondary">Başvurulara Dön</x-ui.button>
         </div>
     </div>
 
@@ -47,7 +47,7 @@
             <x-ui.card>
                 <h2 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">Notlar</h2>
 
-                <form method="POST" action="{{ route('courier-applications.notes.store', $submission['id']) }}" class="mb-6 space-y-3">
+                <form method="POST" action="{{ route('form-applications.notes.store', [$form['id'], $submission['id']]) }}" class="mb-6 space-y-3">
                     @csrf
                     <div>
                         <label for="note-body" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">Yeni not</label>
@@ -90,7 +90,7 @@
                     <div>
                         <dt class="mb-1.5 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-slate-400">Başvuru Statüsü</dt>
                         <dd>
-                            <form method="POST" action="{{ route('courier-applications.status.update', $submission['id']) }}" class="space-y-2">
+                            <form method="POST" action="{{ route('form-applications.status.update', [$form['id'], $submission['id']]) }}" class="space-y-2">
                                 @csrf
                                 @method('PUT')
                                 <select

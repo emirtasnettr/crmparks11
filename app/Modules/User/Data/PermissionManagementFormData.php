@@ -129,7 +129,7 @@ class PermissionManagementFormData
             'super_admin' => $all,
             'general_manager' => array_values(array_diff($all, self::slugsMatching(['user.', 'permission.']))),
             'sales_manager' => array_values(array_unique(array_merge(
-                ['dashboard.view', 'courier_application.view'],
+                ['dashboard.view', 'form_application.view'],
                 self::slugsWithActions(
                     self::slugsMatching(['business.', 'business_contact.', 'contract.', 'document.']),
                     ['view', 'create', 'update', 'export', 'print']
@@ -145,7 +145,7 @@ class PermissionManagementFormData
                 self::slugsWithActions($operational, ['view', 'create', 'update', 'export', 'print']),
                 self::slugsWithActions($finance, ['view', 'export']),
                 self::slugsWithActions($reports, ['view', 'export', 'print']),
-                ['dashboard.view', 'courier_application.view'],
+                ['dashboard.view', 'form_application.view'],
             ))),
             'finance_officer' => array_values(array_unique(array_merge(
                 ['dashboard.view', 'dashboard.financial'],
@@ -154,7 +154,7 @@ class PermissionManagementFormData
                 self::slugsMatching(['earning.view', 'earning.approve']),
             ))),
             'operations_staff' => array_values(array_unique(array_merge(
-                ['dashboard.view', 'courier_application.view'],
+                ['dashboard.view', 'form_application.view'],
                 self::slugsWithActions($operational, ['view', 'export']),
             ))),
             'business' => [
@@ -296,7 +296,7 @@ class PermissionManagementFormData
             self::module('earnings', 'Hakedişler', ['hakediş', 'earning'], self::actions('earning', ['view', 'create', 'update', 'delete', 'export', 'print', 'approve'], ['view' => ['earning.view', 'earning.view_own']])),
             self::module('documents', 'Evraklar', ['evrak', 'document'], self::actions('document', ['view', 'create', 'update', 'delete', 'export', 'print'], ['view' => ['document.view', 'document.view_own']])),
             self::module('couriers', 'Kuryeler', ['kurye', 'courier'], self::actions('courier', ['view', 'create', 'update', 'delete', 'export', 'print'], ['view' => ['courier.view', 'courier.view_own']])),
-            self::module('courier_applications', 'Kurye Başvuruları', ['kurye başvuru', 'başvuru'], self::actions('courier_application', ['view'])),
+            self::module('form_applications', 'Form Başvuruları', ['form başvuru', 'başvuru'], self::actions('form_application', ['view'])),
             self::module('agencies', 'Acenteler', ['acente', 'agency'], self::actions('agency', ['view', 'create', 'update', 'delete', 'export', 'print'], ['view' => ['agency.view', 'agency.view_own']])),
             self::module('finance_dashboard', 'Finans Dashboard', ['finans dashboard'], self::actions('dashboard', ['view'], ['view' => ['dashboard.financial']])),
             self::module('current_accounts', 'Cari Hesaplar', ['cari'], self::actions('finance.current_account', ['view', 'create', 'update', 'delete', 'export', 'print'])),

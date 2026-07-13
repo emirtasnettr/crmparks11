@@ -3,15 +3,17 @@
 namespace App\Modules\FormBuilder\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\FormBuilder\Services\FormBuilderService;
 use App\Modules\FormBuilder\Services\FormSubmissionService;
 use App\Modules\FormBuilder\Services\FormSubmissionStatusService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
-class CourierApplicationController extends Controller
+class FormApplicationController extends Controller
 {
     public function __construct(
+        private readonly FormBuilderService $formService,
         private readonly FormSubmissionService $submissionService,
         private readonly FormSubmissionStatusService $statusService,
     ) {}
@@ -20,15 +22,35 @@ class CourierApplicationController extends Controller
     {
         $filters = [
             'search' => $request->string('search')->toString(),
+            'status' => $request->string('status')->toString() ?: 'all',
+        ];
+
+        return view('modules.form-applications.index', [
+            'forms' => $this->formService->list($filters),
+            'filters' => $filters,
+        ]);
+    }
+
+    public function submissions(Request $request, int $formId): View
+    {
+        $form = $this->formService->find($formId);
+
+        if ($form === null) {
+            abort(404);
+        }
+
+        $filters = [
+            'search' => $request->string('search')->toString(),
             'status_id' => $request->string('status_id')->toString() ?: 'all',
             'date_from' => $request->string('date_from')->toString(),
             'date_to' => $request->string('date_to')->toString(),
         ];
 
         $statuses = $this->statusService->list();
-        $submissions = $this->submissionService->listAll($filters);
+        $submissions = $this->submissionService->listForForm($formId, $filters);
 
-        return view('modules.courier-applications.index', [
+        return view('modules.form-applications.submissions', [
+            'form' => $form,
             'submissions' => $submissions,
             'filters' => $filters,
             'statuses' => $statuses,
@@ -36,27 +58,28 @@ class CourierApplicationController extends Controller
                 ->mapWithKeys(fn (array $status) => [(string) $status['id'] => $status['name']])
                 ->prepend('Tümü', 'all')
                 ->all(),
-            'submissionCount' => count($submissions),
+            'submissionCount' => $this->submissionService->countForForm($formId),
         ]);
     }
 
-    public function show(int $submissionId): View
+    public function show(int $formId, int $submissionId): View
     {
-        $payload = $this->submissionService->findWithForm($submissionId);
+        $form = $this->formService->find($formId);
+        $submission = $this->submissionService->findForForm($formId, $submissionId);
 
-        if ($payload === null) {
+        if ($form === null || $submission === null) {
             abort(404);
         }
 
-        return view('modules.courier-applications.show', [
-            'form' => $payload['form'],
-            'submission' => $payload['submission'],
+        return view('modules.form-applications.show', [
+            'form' => $form,
+            'submission' => $submission,
             'notes' => $this->submissionService->notesForSubmission($submissionId),
             'statuses' => $this->statusService->list(),
         ]);
     }
 
-    public function updateStatus(Request $request, int $submissionId): RedirectResponse
+    public function updateStatus(Request $request, int $formId, int $submissionId): RedirectResponse
     {
         $validated = $request->validate([
             'form_submission_status_id' => ['required', 'integer', 'exists:form_submission_statuses,id'],
@@ -64,24 +87,14 @@ class CourierApplicationController extends Controller
             'form_submission_status_id.required' => 'Statü seçiniz.',
         ]);
 
-        $payload = $this->submissionService->findWithForm($submissionId);
-
-        if ($payload === null) {
-            abort(404);
-        }
-
-        $this->submissionService->updateStatus(
-            (int) $payload['form']['id'],
-            $submissionId,
-            (int) $validated['form_submission_status_id'],
-        );
+        $this->submissionService->updateStatus($formId, $submissionId, (int) $validated['form_submission_status_id']);
 
         return redirect()
-            ->route('courier-applications.show', $submissionId)
+            ->route('form-applications.show', [$formId, $submissionId])
             ->with('success', 'Başvuru statüsü güncellendi.');
     }
 
-    public function storeNote(Request $request, int $submissionId): RedirectResponse
+    public function storeNote(Request $request, int $formId, int $submissionId): RedirectResponse
     {
         $validated = $request->validate([
             'body' => ['required', 'string', 'max:5000'],
@@ -89,21 +102,19 @@ class CourierApplicationController extends Controller
             'body.required' => 'Not metni zorunludur.',
         ]);
 
-        $payload = $this->submissionService->findWithForm($submissionId);
-
-        if ($payload === null) {
+        if ($this->submissionService->findForForm($formId, $submissionId) === null) {
             abort(404);
         }
 
         $this->submissionService->addNote(
-            (int) $payload['form']['id'],
+            $formId,
             $submissionId,
             $validated['body'],
             $request->user()?->id,
         );
 
         return redirect()
-            ->route('courier-applications.show', $submissionId)
+            ->route('form-applications.show', [$formId, $submissionId])
             ->with('success', 'Not kaydedildi.');
     }
 }

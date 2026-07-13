@@ -74,8 +74,8 @@ class SidebarMenuTest extends TestCase
 
         $response->assertOk();
         $response->assertSee(route('businesses.index'), false);
-        $response->assertSee('Kurye Başvuruları');
-        $response->assertSee(route('courier-applications.index'), false);
+        $response->assertSee('Form Başvuruları');
+        $response->assertSee(route('form-applications.index'), false);
         $response->assertDontSee(route('settings.index'), false);
         $response->assertDontSee(route('users.index'), false);
         $response->assertDontSee(route('form-builder.index'), false);

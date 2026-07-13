@@ -8,7 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
-class CourierApplicationTest extends TestCase
+class FormApplicationTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -20,29 +20,29 @@ class CourierApplicationTest extends TestCase
         Storage::fake('public');
     }
 
-    public function test_operations_roles_can_access_courier_applications_menu_and_inbox(): void
+    public function test_operations_roles_can_access_form_applications_without_form_builder(): void
     {
         $manager = User::factory()->create();
         $manager->assignRole('operations_manager');
 
         $dashboard = $this->actingAs($manager)->get(route('dashboard'));
         $dashboard->assertOk();
-        $dashboard->assertSee('Kurye Başvuruları');
-        $dashboard->assertSee(route('courier-applications.index'), false);
+        $dashboard->assertSee('Form Başvuruları');
+        $dashboard->assertSee(route('form-applications.index'), false);
+        $dashboard->assertDontSee('Kurye Başvuruları');
         $dashboard->assertDontSee(route('form-builder.index'), false);
 
-        $index = $this->actingAs($manager)->get(route('courier-applications.index'));
+        $index = $this->actingAs($manager)->get(route('form-applications.index'));
         $index->assertOk();
-        $index->assertSee('Kurye Başvuruları');
+        $index->assertSee('Form Başvuruları');
+        $index->assertDontSee('Yeni Form');
 
         $staff = User::factory()->create();
         $staff->assignRole('operations_staff');
-
-        $staffIndex = $this->actingAs($staff)->get(route('courier-applications.index'));
-        $staffIndex->assertOk();
+        $this->actingAs($staff)->get(route('form-applications.index'))->assertOk();
     }
 
-    public function test_general_and_sales_managers_can_access_courier_applications(): void
+    public function test_general_and_sales_managers_can_access_form_applications(): void
     {
         foreach (['general_manager', 'sales_manager'] as $role) {
             $user = User::factory()->create();
@@ -50,42 +50,46 @@ class CourierApplicationTest extends TestCase
 
             $dashboard = $this->actingAs($user)->get(route('dashboard'));
             $dashboard->assertOk();
-            $dashboard->assertSee('Kurye Başvuruları');
-            $dashboard->assertSee(route('courier-applications.index'), false);
+            $dashboard->assertSee('Form Başvuruları');
+            $dashboard->assertSee(route('form-applications.index'), false);
 
-            $this->actingAs($user)->get(route('courier-applications.index'))->assertOk();
+            $this->actingAs($user)->get(route('form-applications.index'))->assertOk();
         }
     }
 
-    public function test_operations_staff_can_view_submission_but_not_form_builder(): void
+    public function test_operations_staff_can_view_forms_and_submissions_but_not_edit_forms(): void
     {
         $admin = User::factory()->create();
         $admin->assignRole('super_admin');
-
         $this->createActiveFormLandingAndSubmission($admin, 'Ops Aday', 'ops-landing');
 
         $staff = User::factory()->create();
         $staff->assignRole('operations_staff');
 
         $this->actingAs($staff)->get(route('form-builder.index'))->assertForbidden();
+        $this->actingAs($staff)->get(route('form-builder.edit', 1))->assertForbidden();
 
-        $index = $this->actingAs($staff)->get(route('courier-applications.index'));
+        $index = $this->actingAs($staff)->get(route('form-applications.index'));
         $index->assertOk();
-        $index->assertSee('Ops Aday');
-        $index->assertSee('Görüntüle');
+        $index->assertSee('Kurye Başvuru Formu');
+        $index->assertSee('Başvuruları Gör');
 
-        $show = $this->actingAs($staff)->get(route('courier-applications.show', 1));
+        $submissions = $this->actingAs($staff)->get(route('form-applications.submissions', 1));
+        $submissions->assertOk();
+        $submissions->assertSee('Ops Aday');
+
+        $show = $this->actingAs($staff)->get(route('form-applications.show', [1, 1]));
         $show->assertOk();
         $show->assertSee('Ops Aday');
         $show->assertSee('Notlar');
     }
 
-    public function test_finance_officer_cannot_access_courier_applications(): void
+    public function test_finance_officer_cannot_access_form_applications(): void
     {
         $user = User::factory()->create();
         $user->assignRole('finance_officer');
 
-        $this->actingAs($user)->get(route('courier-applications.index'))->assertForbidden();
+        $this->actingAs($user)->get(route('form-applications.index'))->assertForbidden();
     }
 
     private function createActiveFormLandingAndSubmission(User $user, string $name, string $slug): void

@@ -34,6 +34,15 @@ class SidebarMenu
                 'permission' => 'report.view',
             ],
             [
+                'key' => 'form_applications',
+                'type' => 'link',
+                'label' => 'Form Başvuruları',
+                'icon' => 'form-builder',
+                'route' => 'form-applications.index',
+                'active' => ['form-applications.*'],
+                'permission' => 'form_application.view',
+            ],
+            [
                 'key' => 'businesses',
                 'type' => 'group',
                 'label' => 'İşletmeler',
@@ -59,10 +68,9 @@ class SidebarMenu
                 'label' => 'Kuryeler',
                 'icon' => 'courier',
                 'permission' => 'courier.view',
-                'active' => ['couriers.*', 'courier-applications.*'],
+                'active' => ['couriers.*'],
                 'children' => array_values(array_filter([
                     ['label' => 'Kuryeler', 'route' => 'couriers.index', 'active' => ['couriers.index', 'couriers.create']],
-                    ['label' => 'Kurye Başvuruları', 'route' => 'courier-applications.index', 'active' => ['courier-applications.*'], 'permission' => 'courier_application.view'],
                     ['label' => 'Belgeler', 'route' => 'couriers.documents.index', 'active' => ['couriers.documents.*']],
                     CourierFeatures::earningsEnabled()
                         ? ['label' => 'Hakedişler', 'route' => 'couriers.earnings.index', 'active' => ['couriers.earnings.*']]
