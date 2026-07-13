@@ -112,7 +112,7 @@ class PermissionManagementFormData
 
         $operational = self::slugsMatching([
             'dashboard.view',
-            'assignment.', 'shift_planning.',
+            'assignment.', 'shift_planning.', 'stock.',
             'courier.', 'agency.',
         ]);
 
@@ -276,6 +276,7 @@ class PermissionManagementFormData
             self::module('contracts', 'Sözleşmeler', ['sözleşme', 'contract'], self::actions('contract', ['view', 'create', 'update', 'delete', 'export', 'print'], ['view' => ['contract.view', 'contract.view_own']])),
             self::module('assignments', 'Atanan Kuryeler', ['atama', 'assignment'], self::actions('assignment', ['view', 'create', 'update', 'delete', 'export'])),
             self::module('shift_planning', 'Vardiya Planlama', ['vardiya', 'shift'], self::actions('shift_planning', ['view', 'create', 'update', 'delete'])),
+            self::module('stock', 'Stok Yönetimi', ['stok', 'ekipman', 'zimmet', 'stock'], self::actions('stock', ['view', 'create', 'update', 'delete'])),
             self::module('earnings', 'Hakedişler', ['hakediş', 'earning'], self::actions('earning', ['view', 'create', 'update', 'delete', 'export', 'print', 'approve'], ['view' => ['earning.view', 'earning.view_own']])),
             self::module('documents', 'Evraklar', ['evrak', 'document'], self::actions('document', ['view', 'create', 'update', 'delete', 'export', 'print'], ['view' => ['document.view', 'document.view_own']])),
             self::module('couriers', 'Kuryeler', ['kurye', 'courier'], self::actions('courier', ['view', 'create', 'update', 'delete', 'export', 'print'], ['view' => ['courier.view', 'courier.view_own']])),

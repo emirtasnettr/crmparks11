@@ -51,6 +51,7 @@ use App\Modules\Notification\Controllers\NotificationController;
 use App\Modules\Report\Controllers\ReportController;
 use App\Modules\Search\Controllers\SearchController;
 use App\Modules\ShiftPlanning\Controllers\ShiftPlanningController;
+use App\Modules\Stock\Controllers\StockProductController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -85,6 +86,22 @@ Route::middleware('auth')->group(function () {
         Route::put('/{id}', [ShiftPlanningController::class, 'update'])->middleware('permission:shift_planning.update')->name('update');
         Route::put('/{id}/kuryeler', [ShiftPlanningController::class, 'assignCouriers'])->middleware('permission:shift_planning.update')->name('assign-couriers');
         Route::delete('/{id}', [ShiftPlanningController::class, 'destroy'])->middleware('permission:shift_planning.delete')->name('destroy');
+    });
+
+    Route::prefix('stok-yonetimi')->name('stock.')->middleware('permission:stock.view')->group(function () {
+        Route::get('/', [StockProductController::class, 'dashboard'])->name('dashboard');
+        Route::get('/urunler', [StockProductController::class, 'index'])->name('products.index');
+        Route::get('/urunler/yeni', [StockProductController::class, 'create'])->middleware('permission:stock.create')->name('products.create');
+        Route::post('/urunler', [StockProductController::class, 'store'])->middleware('permission:stock.create')->name('products.store');
+        Route::get('/zimmetler', [StockProductController::class, 'assignmentsIndex'])->name('assignments.index');
+        Route::post('/zimmetler/{assignmentId}/iade', [StockProductController::class, 'returnAssignment'])
+            ->middleware('permission:stock.update')
+            ->name('assignments.return');
+        Route::get('/kayit-gecmisi', [StockProductController::class, 'activityIndex'])->name('activity.index');
+        Route::get('/urunler/{id}/duzenle', [StockProductController::class, 'edit'])->middleware('permission:stock.update')->name('products.edit');
+        Route::put('/urunler/{id}', [StockProductController::class, 'update'])->middleware('permission:stock.update')->name('products.update');
+        Route::post('/urunler/{id}/zimmetle', [StockProductController::class, 'assign'])->middleware('permission:stock.update')->name('products.assign');
+        Route::get('/urunler/{id}', [StockProductController::class, 'show'])->name('products.show');
     });
 
     Route::prefix('raporlar')->middleware('permission:report.view')->name('reports.')->group(function () {

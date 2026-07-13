@@ -210,6 +210,20 @@ class SidebarMenu
                 ],
             ],
             [
+                'key' => 'stock',
+                'type' => 'group',
+                'label' => 'Stok Yönetimi',
+                'icon' => 'archive',
+                'permission' => 'stock.view',
+                'active' => ['stock.*'],
+                'children' => [
+                    ['label' => 'Envanter Durumu', 'route' => 'stock.dashboard', 'active' => ['stock.dashboard']],
+                    ['label' => 'Ürünler', 'route' => 'stock.products.index', 'active' => ['stock.products.*']],
+                    ['label' => 'Zimmetler', 'route' => 'stock.assignments.index', 'active' => ['stock.assignments.*']],
+                    ['label' => 'Kayıt Geçmişi', 'route' => 'stock.activity.index', 'active' => ['stock.activity.*']],
+                ],
+            ],
+            [
                 'key' => 'settings',
                 'type' => 'group',
                 'label' => 'Ayarlar',

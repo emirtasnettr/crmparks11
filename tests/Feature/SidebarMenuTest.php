@@ -43,6 +43,8 @@ class SidebarMenuTest extends TestCase
         $response->assertSee(route('settings.index'), false);
         $response->assertSee(route('form-builder.index'), false);
         $response->assertSee(route('landing-page-builder.index'), false);
+        $response->assertSee(route('stock.products.index'), false);
+        $response->assertSee('Stok Yönetimi');
         $response->assertSee('Ayarlar');
         $response->assertSee('Sistem Ayarları');
         $response->assertSee('Kullanıcılar');
@@ -84,6 +86,13 @@ class SidebarMenuTest extends TestCase
         $response->assertSee('İşletmeler');
         $response->assertDontSee('Atanan Kuryeler');
         $response->assertSee('Vardiya Planlama');
+        $response->assertSee('Stok Yönetimi');
+        $response->assertSee('href="'.route('stock.dashboard').'"', false);
+        $response->assertSee('href="'.route('stock.products.index').'"', false);
+        $response->assertSee('href="'.route('stock.assignments.index').'"', false);
+        $response->assertSee('href="'.route('stock.activity.index').'"', false);
+        $response->assertSee('Envanter Durumu');
+        $response->assertSee('Kayıt Geçmişi');
         $response->assertDontSee('href="'.route('businesses.earnings.index').'"', false);
         $response->assertDontSee('href="'.route('couriers.earnings.index').'"', false);
         $response->assertDontSee('href="'.route('agencies.earnings.index').'"', false);
@@ -102,6 +111,11 @@ class SidebarMenuTest extends TestCase
         $this->actingAs($user)->get(route('businesses.activities.index'))->assertForbidden();
         $this->actingAs($user)->get(route('businesses.assignments.index'))->assertOk();
         $this->actingAs($user)->get(route('shift-planning.index'))->assertOk();
+        $this->actingAs($user)->get(route('stock.products.index'))->assertOk();
+        $this->actingAs($user)->get(route('stock.dashboard'))->assertOk();
+        $this->actingAs($user)->get(route('stock.assignments.index'))->assertOk();
+        $this->actingAs($user)->get(route('stock.activity.index'))->assertOk();
+        $this->actingAs($user)->get(route('stock.products.create'))->assertOk();
     }
 
     public function test_sales_manager_cannot_see_or_access_couriers_and_agencies(): void
