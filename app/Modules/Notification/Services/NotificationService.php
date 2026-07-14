@@ -62,6 +62,19 @@ class NotificationService
         $notification->markAsRead();
     }
 
+    public function open(User $user, string $id): string
+    {
+        $notification = $user->notifications()->where('id', $id)->first();
+
+        if ($notification === null) {
+            abort(404);
+        }
+
+        $notification->markAsRead();
+
+        return $this->resolveDestination($notification);
+    }
+
     public function markAllAsRead(User $user): int
     {
         return $user->unreadNotifications()->update(['read_at' => now()]);
@@ -76,6 +89,93 @@ class NotificationService
         }
 
         $notification->delete();
+    }
+
+    private function resolveDestination(DatabaseNotification $notification): string
+    {
+        $data = is_array($notification->data) ? $notification->data : [];
+        $type = (string) ($data['type'] ?? '');
+        $meta = is_array($data['meta'] ?? null) ? $data['meta'] : [];
+
+        if ($type === 'form_submission_created') {
+            return $this->resolveFormSubmissionDestination($notification, $meta);
+        }
+
+        return $this->normalizeStoredActionUrl($data['action_url'] ?? null)
+            ?? route('notifications.index');
+    }
+
+    /**
+     * @param  array<string, mixed>  $meta
+     */
+    private function resolveFormSubmissionDestination(DatabaseNotification $notification, array $meta): string
+    {
+        $formId = (int) ($meta['form_id'] ?? 0);
+        $submissionId = (int) ($meta['submission_id'] ?? 0);
+
+        if ($formId > 0 && $submissionId > 0) {
+            $exists = \App\Modules\FormBuilder\Models\FormSubmission::query()
+                ->where('form_id', $formId)
+                ->whereKey($submissionId)
+                ->exists();
+
+            if ($exists) {
+                return route('form-applications.show', [
+                    'formId' => $formId,
+                    'submissionId' => $submissionId,
+                ]);
+            }
+        }
+
+        if ($formId > 0 && $notification->created_at !== null) {
+            $query = \App\Modules\FormBuilder\Models\FormSubmission::query()
+                ->where('form_id', $formId);
+
+            if (! empty($meta['landing_page_id'])) {
+                $query->where('landing_page_id', (int) $meta['landing_page_id']);
+            }
+
+            $match = $query
+                ->whereBetween('submitted_at', [
+                    $notification->created_at->copy()->subMinutes(15),
+                    $notification->created_at->copy()->addMinutes(15),
+                ])
+                ->orderByDesc('id')
+                ->first();
+
+            if ($match !== null) {
+                return route('form-applications.show', [
+                    'formId' => $formId,
+                    'submissionId' => $match->id,
+                ]);
+            }
+
+            return route('form-applications.submissions', ['formId' => $formId]);
+        }
+
+        return route('form-applications.index');
+    }
+
+    private function normalizeStoredActionUrl(mixed $stored): ?string
+    {
+        if (! is_string($stored) || $stored === '') {
+            return null;
+        }
+
+        if (str_starts_with($stored, '/')) {
+            return $stored;
+        }
+
+        $parts = parse_url($stored);
+        $path = $parts['path'] ?? null;
+
+        if (is_string($path) && $path !== '') {
+            $query = isset($parts['query']) ? '?'.$parts['query'] : '';
+
+            return $path.$query;
+        }
+
+        return $stored;
     }
 
     /**

@@ -343,6 +343,7 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('kullanici-yonetimi')->name('notifications.')->middleware('permission:notification.view')->group(function () {
         Route::get('/bildirimler', [NotificationController::class, 'index'])->name('index');
+        Route::get('/bildirimler/{id}/ac', [NotificationController::class, 'open'])->name('open');
         Route::post('/bildirimler/tumunu-oku', [NotificationController::class, 'markAllRead'])
             ->middleware('permission:notification.update')
             ->name('mark-all-read');

@@ -40,7 +40,10 @@ class FormSubmissionNotificationService
             type: 'form_submission_created',
             title: 'Yeni Form Başvurusu',
             message: $message,
-            actionUrl: route('form-applications.show', [$formId, $submissionId]),
+            actionUrl: route('form-applications.show', [
+                'formId' => $formId,
+                'submissionId' => $submissionId,
+            ], absolute: false),
             meta: [
                 'form_id' => $formId,
                 'submission_id' => $submissionId,

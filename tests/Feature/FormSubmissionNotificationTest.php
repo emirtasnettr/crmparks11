@@ -123,12 +123,73 @@ class FormSubmissionNotificationTest extends TestCase
         $formId = (int) ($notification->data['meta']['form_id'] ?? 0);
 
         $this->assertGreaterThan(1, $submissionId);
-        $this->assertSame(route('form-applications.show', [$formId, $submissionId]), $actionUrl);
+        $this->assertSame(
+            route('form-applications.show', [
+                'formId' => $formId,
+                'submissionId' => $submissionId,
+            ], absolute: false),
+            $actionUrl
+        );
+
+        // UI always opens via notifications.open which resolves the real destination.
+        $openUrl = route('notifications.open', $notification->id, absolute: false);
 
         $this->actingAs($recipient)
-            ->get($actionUrl)
+            ->get($openUrl)
+            ->assertRedirect(route('form-applications.show', [
+                'formId' => $formId,
+                'submissionId' => $submissionId,
+            ]));
+
+        $this->actingAs($recipient)
+            ->get(route('form-applications.show', [
+                'formId' => $formId,
+                'submissionId' => $submissionId,
+            ]))
             ->assertOk()
             ->assertSee('Yeni Aday');
+    }
+
+    public function test_legacy_form_notification_with_wrong_submission_id_is_resolved(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('super_admin');
+
+        $recipient = User::factory()->create();
+        $recipient->assignRole('sales_manager');
+
+        $this->createActiveLandingForm($admin, [
+            'notify_user_ids' => [$recipient->id],
+        ], 'legacy-form', 'legacy-basvuru');
+
+        $this->post(route('landing.submit', 'legacy-basvuru'), [
+            'ad_soyad' => 'Legacy Aday',
+            'email' => 'legacy@example.com',
+        ])->assertRedirect();
+
+        $submission = \App\Modules\FormBuilder\Models\FormSubmission::query()->latest('id')->firstOrFail();
+
+        // Simulate old bug: meta.submission_id is wrong nextId, but real row exists nearby in time.
+        $recipient->notify(new \App\Modules\Notification\Notifications\SystemNotification(
+            type: 'form_submission_created',
+            title: 'Yeni Form Başvurusu',
+            message: 'Legacy',
+            actionUrl: '/form-basvurulari/'.$submission->form_id.'/1',
+            meta: [
+                'form_id' => $submission->form_id,
+                'submission_id' => 1,
+                'landing_page_id' => $submission->landing_page_id,
+            ],
+        ));
+
+        $notification = $recipient->fresh()->notifications()->latest()->firstOrFail();
+
+        $this->actingAs($recipient)
+            ->get(route('notifications.open', $notification->id))
+            ->assertRedirect(route('form-applications.show', [
+                'formId' => $submission->form_id,
+                'submissionId' => $submission->id,
+            ]));
     }
 
     public function test_new_submission_sends_no_notifications_when_recipients_empty(): void

@@ -51,6 +51,13 @@ class NotificationController extends Controller
         return back()->with('success', 'Bildirim okundu olarak işaretlendi.');
     }
 
+    public function open(Request $request, string $id): RedirectResponse
+    {
+        $destination = $this->notificationService->open($request->user(), $id);
+
+        return redirect()->to($destination);
+    }
+
     public function markAllRead(Request $request): RedirectResponse
     {
         abort_unless($request->user()?->can('notification.update'), 403);

@@ -136,5 +136,30 @@ class NotificationTest extends TestCase
         $this->assertSame(1, $preview['unread_count']);
         $this->assertCount(1, $preview['items']);
         $this->assertSame('Önizleme', $preview['items'][0]['title']);
+        $this->assertSame(
+            route('notifications.open', $user->unreadNotifications()->firstOrFail()->id, absolute: false),
+            $preview['items'][0]['action_url']
+        );
+    }
+
+    public function test_user_can_open_notification_and_follow_stored_relative_action(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('general_manager');
+
+        $user->notify(new SystemNotification(
+            type: 'system',
+            title: 'Dashboarda Git',
+            message: 'Test',
+            actionUrl: route('dashboard', absolute: false),
+        ));
+
+        $notification = $user->unreadNotifications()->firstOrFail();
+
+        $this->actingAs($user)
+            ->get(route('notifications.open', $notification->id))
+            ->assertRedirect(route('dashboard'));
+
+        $this->assertNotNull($notification->fresh()->read_at);
     }
 }

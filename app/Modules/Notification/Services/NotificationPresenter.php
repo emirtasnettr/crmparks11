@@ -24,7 +24,7 @@ class NotificationPresenter
             'module_label' => NotificationFormData::moduleLabel($module),
             'title' => (string) ($data['title'] ?? 'Bildirim'),
             'message' => (string) ($data['message'] ?? ''),
-            'action_url' => $data['action_url'] ?? null,
+            'action_url' => route('notifications.open', $notification->id, absolute: false),
             'is_read' => $notification->read_at !== null,
             'read_at' => $notification->read_at?->toDateTimeString(),
             'read_at_formatted' => $notification->read_at?->format('d.m.Y H:i'),
