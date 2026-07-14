@@ -256,7 +256,21 @@ class FormSubmissionService
 
     $validated = $validator->validated();
     $formId = (int) $form['id'];
-    $submissionId = $this->repository->nextId($formId);
+    $defaultStatus = $this->statusService->defaultStatus();
+
+    $submission = $this->repository->create([
+      'form_id' => $formId,
+      'form_submission_status_id' => (int) $defaultStatus['id'],
+      'landing_page_id' => $landingPage['id'] ?? null,
+      'landing_page_slug' => $landingPage['slug'] ?? null,
+      'landing_page_name' => $landingPage['name'] ?? null,
+      'data' => [],
+      'ip_address' => $request->ip(),
+      'user_agent' => (string) $request->userAgent(),
+      'submitted_at' => Carbon::now()->toDateTimeString(),
+    ]);
+
+    $submissionId = (int) $submission['id'];
     $data = [];
 
     foreach ($fields as $field) {
@@ -285,29 +299,9 @@ class FormSubmissionService
       $data[$name] = $validated[$name] ?? null;
     }
 
-    $defaultStatus = $this->statusService->defaultStatus();
-
-    $submission = [
-      'id' => $submissionId,
-      'form_id' => $formId,
-      'form_submission_status_id' => (int) $defaultStatus['id'],
-      'landing_page_id' => $landingPage['id'] ?? null,
-      'landing_page_slug' => $landingPage['slug'] ?? null,
-      'landing_page_name' => $landingPage['name'] ?? null,
+    $submission = $this->repository->update($formId, $submissionId, [
       'data' => $data,
-      'ip_address' => $request->ip(),
-      'user_agent' => (string) $request->userAgent(),
-      'submitted_at' => Carbon::now()->toDateTimeString(),
-      'status' => [
-        'id' => $defaultStatus['id'],
-        'name' => $defaultStatus['name'],
-        'slug' => $defaultStatus['slug'],
-        'color' => $defaultStatus['color'],
-        'is_default' => true,
-      ],
-    ];
-
-    $this->repository->save($formId, $submission);
+    ]) ?? $submission;
 
     $this->notifications->notifyCreated($form, $submission, $landingPage);
 

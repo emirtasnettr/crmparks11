@@ -85,6 +85,52 @@ class FormSubmissionNotificationTest extends TestCase
         );
     }
 
+    public function test_submission_notification_action_url_opens_application_show_page(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('super_admin');
+
+        $recipient = User::factory()->create();
+        $recipient->assignRole('sales_manager');
+
+        // Seed an earlier form/submission so auto-increment IDs no longer start at 1.
+        $this->createActiveLandingForm($admin, [], 'eski-form', 'eski-basvuru');
+        $this->post(route('landing.submit', 'eski-basvuru'), [
+            'ad_soyad' => 'Eski Kayit',
+            'email' => 'eski@example.com',
+        ])->assertRedirect();
+
+        $this->createActiveLandingForm($admin, [
+            'notify_user_ids' => [$recipient->id],
+        ], 'yeni-form', 'yeni-basvuru');
+
+        $this->post(route('landing.submit', 'yeni-basvuru'), [
+            'ad_soyad' => 'Yeni Aday',
+            'email' => 'yeni@example.com',
+        ])->assertRedirect(route('landing.show', 'yeni-basvuru'));
+
+        $notification = $recipient->fresh()->notifications()
+            ->where('data->type', 'form_submission_created')
+            ->latest()
+            ->first();
+
+        $this->assertNotNull($notification);
+
+        $actionUrl = $notification->data['action_url'] ?? null;
+        $this->assertIsString($actionUrl);
+
+        $submissionId = (int) ($notification->data['meta']['submission_id'] ?? 0);
+        $formId = (int) ($notification->data['meta']['form_id'] ?? 0);
+
+        $this->assertGreaterThan(1, $submissionId);
+        $this->assertSame(route('form-applications.show', [$formId, $submissionId]), $actionUrl);
+
+        $this->actingAs($recipient)
+            ->get($actionUrl)
+            ->assertOk()
+            ->assertSee('Yeni Aday');
+    }
+
     public function test_new_submission_sends_no_notifications_when_recipients_empty(): void
     {
         $admin = User::factory()->create();
@@ -107,15 +153,21 @@ class FormSubmissionNotificationTest extends TestCase
     /**
      * @param  array<string, mixed>  $notify
      */
-    private function createActiveLandingForm(User $admin, array $notify = []): void
-    {
+    private function createActiveLandingForm(
+        User $admin,
+        array $notify = [],
+        string $formName = 'Başvuru Formu',
+        string $slug = 'basvuru',
+    ): void {
         $this->actingAs($admin)->post(route('form-builder.store'), array_merge([
-            'name' => 'Başvuru Formu',
+            'name' => $formName,
             'status' => 'active',
         ], $notify))->assertRedirect();
 
-        $this->actingAs($admin)->put(route('form-builder.update', 1), array_merge([
-            'name' => 'Başvuru Formu',
+        $form = Form::query()->latest('id')->firstOrFail();
+
+        $this->actingAs($admin)->put(route('form-builder.update', $form->id), array_merge([
+            'name' => $formName,
             'status' => 'active',
             'fields_json' => json_encode([
                 [
@@ -144,19 +196,21 @@ class FormSubmissionNotificationTest extends TestCase
         ], $notify))->assertRedirect();
 
         $this->actingAs($admin)->post(route('landing-page-builder.store'), [
-            'name' => 'Başvuru Landing Page',
-            'slug' => 'basvuru',
+            'name' => $formName.' Landing',
+            'slug' => $slug,
             'status' => 'active',
-            'form_id' => 1,
+            'form_id' => $form->id,
         ])->assertRedirect();
 
-        $this->actingAs($admin)->put(route('landing-page-builder.update', 1), [
-            'name' => 'Başvuru Landing Page',
-            'slug' => 'basvuru',
+        $landing = \App\Modules\LandingPage\Models\LandingPage::query()->where('slug', $slug)->firstOrFail();
+
+        $this->actingAs($admin)->put(route('landing-page-builder.update', $landing->id), [
+            'name' => $formName.' Landing',
+            'slug' => $slug,
             'status' => 'active',
             'title' => 'Başvuru',
             'content' => '<p>Formu doldurun</p>',
-            'form_id' => 1,
+            'form_id' => $form->id,
         ])->assertRedirect();
     }
 }

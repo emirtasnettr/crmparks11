@@ -12,12 +12,6 @@
 >
     @csrf
 
-    @if (session('form_success'))
-        <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            {{ session('form_success') }}
-        </div>
-    @endif
-
     @if ($errors->any())
         <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             <p class="font-medium">Lütfen formu kontrol edin:</p>
@@ -135,3 +129,7 @@
         Gönder
     </button>
 </form>
+
+@if (session('form_success'))
+    <x-landing-page.form-success-modal :message="session('form_success')" />
+@endif

@@ -52,6 +52,6 @@ class LandingPageController extends Controller
 
     return redirect()
       ->route('landing.show', $slug)
-      ->with('form_success', 'Başvurunuz başarıyla alındı. Teşekkür ederiz.');
+      ->with('form_success', 'Talebiniz alınmıştır, ilgili ekibimiz en kısa süre içerisinde sizlerle iletişime geçecektir.');
   }
 }

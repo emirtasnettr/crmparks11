@@ -82,7 +82,17 @@ class FormSubmissionTest extends TestCase
     ]);
 
     $response->assertRedirect(route('landing.show', 'basvuru'));
-    $response->assertSessionHas('form_success');
+    $response->assertSessionHas(
+      'form_success',
+      'Talebiniz alınmıştır, ilgili ekibimiz en kısa süre içerisinde sizlerle iletişime geçecektir.'
+    );
+
+    $landing = $this->followRedirects($response);
+    $landing->assertOk();
+    $landing->assertSee('Talebiniz alındı');
+    $landing->assertSee('Talebiniz alınmıştır, ilgili ekibimiz en kısa süre içerisinde sizlerle iletişime geçecektir.');
+    $landing->assertSee('Tamam');
+    $landing->assertSee('role="dialog"', false);
 
     $admin = $this->actingAs($user)->get(route('form-builder.submissions.index', 1));
     $admin->assertOk();
