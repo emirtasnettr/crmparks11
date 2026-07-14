@@ -155,4 +155,44 @@ class BusinessStoreTest extends TestCase
         $response->assertSessionHasErrors('first_invoice_date');
         $this->assertDatabaseCount('businesses', 0);
     }
+
+    public function test_multiple_businesses_can_share_company_name_and_tax_number(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $payload = [
+            'company_name' => 'Ortak Ünvan Gıda A.Ş.',
+            'brand_name' => 'Kadıköy Şube',
+            'phone' => '0216 111 22 33',
+            'tax_number' => '9988776655',
+            'city' => 'İstanbul',
+            'district' => 'Kadıköy',
+            'pricing_model' => 'per_package',
+            'earning_period' => 'weekly',
+            'first_invoice_date' => '2026-08-01',
+            'planned_courier_count' => 3,
+            'status' => 'active',
+        ];
+
+        $first = $this->actingAs($user)->post(route('businesses.store'), $payload);
+        $firstBusiness = Business::query()->latest('id')->first();
+        $this->assertNotNull($firstBusiness);
+        $first->assertRedirect(route('businesses.show', $firstBusiness->id));
+
+        $second = $this->actingAs($user)->post(route('businesses.store'), array_merge($payload, [
+            'brand_name' => 'Beşiktaş Şube',
+            'phone' => '0212 222 33 44',
+            'district' => 'Beşiktaş',
+        ]));
+
+        $secondBusiness = Business::query()->latest('id')->first();
+        $this->assertNotNull($secondBusiness);
+        $second->assertRedirect(route('businesses.show', $secondBusiness->id));
+        $second->assertSessionDoesntHaveErrors();
+
+        $this->assertSame(2, Business::query()->where('company_name', 'Ortak Ünvan Gıda A.Ş.')->count());
+        $this->assertSame(2, Business::query()->where('tax_number', '9988776655')->count());
+        $this->assertNotSame($firstBusiness->id, $secondBusiness->id);
+    }
 }

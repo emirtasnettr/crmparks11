@@ -9,37 +9,45 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('business_shifts', function (Blueprint $table) {
-            $table->unsignedInteger('required_headcount')->default(1)->after('end_time');
-        });
+        if (! Schema::hasColumn('business_shifts', 'required_headcount')) {
+            Schema::table('business_shifts', function (Blueprint $table) {
+                $table->unsignedInteger('required_headcount')->default(1)->after('end_time');
+            });
+        }
 
-        Schema::create('business_shift_couriers', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('business_shift_id')->constrained('business_shifts')->cascadeOnDelete();
-            $table->foreignId('courier_id')->constrained('couriers')->cascadeOnDelete();
-            $table->timestamps();
+        if (! Schema::hasTable('business_shift_couriers')) {
+            Schema::create('business_shift_couriers', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('business_shift_id')->constrained('business_shifts')->cascadeOnDelete();
+                $table->foreignId('courier_id')->constrained('couriers')->cascadeOnDelete();
+                $table->timestamps();
 
-            $table->unique(['business_shift_id', 'courier_id']);
-            $table->index('courier_id');
-        });
+                $table->unique(['business_shift_id', 'courier_id'], 'bsc_shift_courier_unique');
+                $table->index('courier_id', 'bsc_courier_idx');
+            });
+        }
 
-        Schema::create('business_shift_joker_assignments', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('business_shift_id')->constrained('business_shifts')->cascadeOnDelete();
-            $table->date('work_date');
-            $table->foreignId('absent_courier_id')->constrained('couriers')->cascadeOnDelete();
-            $table->foreignId('joker_courier_id')->constrained('couriers')->cascadeOnDelete();
-            $table->string('reason')->default('izin');
-            $table->text('notes')->nullable();
-            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->timestamps();
+        if (! Schema::hasTable('business_shift_joker_assignments')) {
+            Schema::create('business_shift_joker_assignments', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('business_shift_id')->constrained('business_shifts')->cascadeOnDelete();
+                $table->date('work_date');
+                $table->foreignId('absent_courier_id')->constrained('couriers')->cascadeOnDelete();
+                $table->foreignId('joker_courier_id')->constrained('couriers')->cascadeOnDelete();
+                $table->string('reason')->default('izin');
+                $table->text('notes')->nullable();
+                $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+                $table->timestamps();
 
-            $table->unique(['business_shift_id', 'work_date', 'absent_courier_id'], 'shift_joker_unique');
-            $table->index(['business_shift_id', 'work_date']);
-        });
+                $table->unique(['business_shift_id', 'work_date', 'absent_courier_id'], 'shift_joker_unique');
+                $table->index(['business_shift_id', 'work_date'], 'shift_joker_date_idx');
+            });
+        } else {
+            $this->ensureJokerDateIndex();
+        }
 
         // Mevcut gün bazlı atamalardan kalıcı kadroya taşı (her vardiyada benzersiz kuryeler).
-        if (Schema::hasTable('business_shift_day_couriers')) {
+        if (Schema::hasTable('business_shift_day_couriers') && Schema::hasTable('business_shift_couriers')) {
             $rows = DB::table('business_shift_day_couriers')
                 ->select('business_shift_id', 'courier_id')
                 ->distinct()
@@ -74,8 +82,26 @@ return new class extends Migration
         Schema::dropIfExists('business_shift_joker_assignments');
         Schema::dropIfExists('business_shift_couriers');
 
-        Schema::table('business_shifts', function (Blueprint $table) {
-            $table->dropColumn('required_headcount');
+        if (Schema::hasColumn('business_shifts', 'required_headcount')) {
+            Schema::table('business_shifts', function (Blueprint $table) {
+                $table->dropColumn('required_headcount');
+            });
+        }
+    }
+
+    private function ensureJokerDateIndex(): void
+    {
+        $indexes = collect(Schema::getIndexes('business_shift_joker_assignments'));
+        $hasDateIndex = $indexes->contains(
+            fn (array $index): bool => ($index['columns'] ?? []) === ['business_shift_id', 'work_date']
+        );
+
+        if ($hasDateIndex) {
+            return;
+        }
+
+        Schema::table('business_shift_joker_assignments', function (Blueprint $table) {
+            $table->index(['business_shift_id', 'work_date'], 'shift_joker_date_idx');
         });
     }
 };

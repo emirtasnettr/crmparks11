@@ -169,6 +169,15 @@ class DashboardTest extends TestCase
             'created_by' => $user->id,
         ]);
 
+        Courier::factory()->create([
+            'status' => 'active',
+            'created_by' => $user->id,
+        ]);
+        Courier::factory()->create([
+            'status' => 'inactive',
+            'created_by' => $user->id,
+        ]);
+
         $contractBusiness = Business::factory()->create([
             'brand_name' => 'Sözleşmesi Bitiyor',
             'status' => 'active',
@@ -215,6 +224,7 @@ class DashboardTest extends TestCase
         $response->assertSee('Aktif İşletme');
         $response->assertSee('Sözleşme Aşamasında');
         $response->assertSee('Bu Ay Yeni');
+        $response->assertSee('Aktif Kurye');
         $response->assertSee('İşletme Pipeline');
         $response->assertSee('Son Eklenen İşletmeler');
         $response->assertSee('Yakında Bitecek Sözleşmeler');
@@ -239,6 +249,9 @@ class DashboardTest extends TestCase
             'created_at' => now()->subMonths(2),
         ]);
 
+        Courier::factory()->count(2)->create(['status' => 'active', 'created_by' => $user->id]);
+        Courier::factory()->create(['status' => 'inactive', 'created_by' => $user->id]);
+
         $business = Business::factory()->create(['status' => 'pending', 'created_by' => $user->id]);
         \App\Models\Contract::factory()->create([
             'contractable_id' => $business->id,
@@ -255,6 +268,7 @@ class DashboardTest extends TestCase
         $this->assertSame(4, $stats['total_businesses']);
         $this->assertSame(1, $stats['active_businesses']);
         $this->assertSame(1, $stats['contract_stage_businesses']);
+        $this->assertSame(2, $stats['active_couriers']);
         $this->assertSame(Business::query()->where('created_at', '>=', now()->startOfMonth())->count(), $stats['businesses_added_this_month']);
         $this->assertSame(4, $pipeline['total']);
         $this->assertNotEmpty($pipeline['items']);

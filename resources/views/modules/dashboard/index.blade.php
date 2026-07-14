@@ -159,11 +159,12 @@
 @endif
 
 @if ($isSalesDashboard ?? false)
-    <div class="mb-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
+    <div class="mb-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-5">
         <x-ui.stat-card title="Toplam İşletme" :value="number_format($salesStats['total_businesses'])" icon="building" color="primary" />
         <x-ui.stat-card title="Aktif İşletme" :value="number_format($salesStats['active_businesses'])" icon="building" color="success" />
         <x-ui.stat-card title="Sözleşme Aşamasında" :value="number_format($salesStats['contract_stage_businesses'])" icon="contract" color="warning" />
         <x-ui.stat-card title="Bu Ay Yeni" :value="number_format($salesStats['businesses_added_this_month'])" icon="chart" color="primary" />
+        <x-ui.stat-card title="Aktif Kurye" :value="number_format($salesStats['active_couriers'])" icon="courier" color="success" />
     </div>
 
     <div class="mb-8 grid grid-cols-1 gap-6 xl:grid-cols-3">

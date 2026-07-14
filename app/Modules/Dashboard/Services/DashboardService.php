@@ -51,6 +51,7 @@ class DashboardService
             'businesses_added_this_month' => Business::query()
                 ->where('created_at', '>=', $monthStart)
                 ->count(),
+            'active_couriers' => Courier::query()->where('status', 'active')->count(),
         ];
     }
 

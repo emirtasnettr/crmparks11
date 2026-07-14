@@ -14,7 +14,7 @@ return new class extends Migration
             $table->string('company_name');
             $table->string('brand_name')->nullable();
             $table->string('tax_office');
-            $table->string('tax_number')->unique();
+            $table->string('tax_number');
             $table->string('phone')->nullable();
             $table->string('email')->nullable();
             $table->foreignId('city_id')->nullable()->constrained()->nullOnDelete();
@@ -29,6 +29,7 @@ return new class extends Migration
 
             $table->index('status');
             $table->index('company_name');
+            $table->index('tax_number');
         });
 
         Schema::create('business_contacts', function (Blueprint $table) {
