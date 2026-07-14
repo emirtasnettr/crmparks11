@@ -294,7 +294,9 @@ Alpine.data('businessForm', (districtsByCity = {}, initial = {}, isEdit = false,
         pricing_model: 'per_package',
         customer_price: '',
         courier_price: '',
+        guaranteed_package_count: '',
         earning_period: '',
+        first_invoice_date: '',
         planned_courier_count: '',
         status: 'active',
         contract_end_date: '',
@@ -305,6 +307,15 @@ Alpine.data('businessForm', (districtsByCity = {}, initial = {}, isEdit = false,
     },
 
     init() {
+        if (!this.form.first_invoice_date) {
+            const next = new Date();
+            next.setDate(1);
+            next.setMonth(next.getMonth() + 1);
+            const year = next.getFullYear();
+            const month = String(next.getMonth() + 1).padStart(2, '0');
+            this.form.first_invoice_date = `${year}-${month}-01`;
+        }
+
         if (this.form.city) {
             this.districts = this.districtsByCity[this.form.city] || [];
         }
@@ -315,10 +326,13 @@ Alpine.data('businessForm', (districtsByCity = {}, initial = {}, isEdit = false,
             this.form.status = presetStatus;
         }
 
-        this.$watch('form.pricing_model', () => {
+        this.$watch('form.pricing_model', (model) => {
             if (!this.isEdit) {
                 this.form.customer_price = '';
                 this.form.courier_price = '';
+            }
+            if (model !== 'per_package') {
+                this.form.guaranteed_package_count = '';
             }
         });
     },
@@ -348,7 +362,11 @@ Alpine.data('businessForm', (districtsByCity = {}, initial = {}, isEdit = false,
         }
 
         if (this.earningsEnabled && !this.form.earning_period) {
-            this.errors.earning_period = 'Hakediş periyodu seçilmelidir.';
+            this.errors.earning_period = 'Fatura periyodu seçilmelidir.';
+        }
+
+        if (this.earningsEnabled && this.form.earning_period && !this.form.first_invoice_date) {
+            this.errors.first_invoice_date = 'İlk fatura tarihi zorunludur.';
         }
 
         const plannedCount = Number(this.form.planned_courier_count);
@@ -990,6 +1008,7 @@ Alpine.data('agencyDocumentPage', (preset = {}) => {
     modalErrors: {},
     submitting: false,
     selectedFileName: '',
+    maxSizeMb: preset.maxSizeMb ?? 250,
     modal: {
         agency_id: lockedAgencyId,
         document_type: '',
@@ -1015,6 +1034,12 @@ Alpine.data('agencyDocumentPage', (preset = {}) => {
         const file = event.target.files[0];
         this.selectedFileName = file ? file.name : '';
         this.modalErrors.file = null;
+
+        if (file && this.maxSizeMb && file.size > this.maxSizeMb * 1024 * 1024) {
+            this.modalErrors.file = `Dosya boyutu en fazla ${this.maxSizeMb} MB olabilir.`;
+            this.selectedFileName = '';
+            event.target.value = '';
+        }
     },
 
     validateModal() {
@@ -1393,6 +1418,7 @@ Alpine.data('documentPage', (preset = {}) => {
     modalErrors: {},
     submitting: false,
     selectedFileName: '',
+    maxSizeMb: preset.maxSizeMb ?? 250,
     modal: {
         business_id: lockedBusinessId,
         document_type: '',
@@ -1416,6 +1442,12 @@ Alpine.data('documentPage', (preset = {}) => {
         const file = event.target.files[0];
         this.selectedFileName = file ? file.name : '';
         this.modalErrors.file = null;
+
+        if (file && this.maxSizeMb && file.size > this.maxSizeMb * 1024 * 1024) {
+            this.modalErrors.file = `Dosya boyutu en fazla ${this.maxSizeMb} MB olabilir.`;
+            this.selectedFileName = '';
+            event.target.value = '';
+        }
     },
 
     validateModal() {
@@ -1575,6 +1607,7 @@ Alpine.data('courierDocumentPage', (preset = {}) => {
     modalErrors: {},
     submitting: false,
     selectedFileName: '',
+    maxSizeMb: preset.maxSizeMb ?? 250,
     modal: {
         courier_id: lockedCourierId,
         document_type: '',
@@ -1604,6 +1637,12 @@ Alpine.data('courierDocumentPage', (preset = {}) => {
         const file = event.target.files[0];
         this.selectedFileName = file ? file.name : '';
         this.modalErrors.file = null;
+
+        if (file && this.maxSizeMb && file.size > this.maxSizeMb * 1024 * 1024) {
+            this.modalErrors.file = `Dosya boyutu en fazla ${this.maxSizeMb} MB olabilir.`;
+            this.selectedFileName = '';
+            event.target.value = '';
+        }
     },
 
     validateModal() {

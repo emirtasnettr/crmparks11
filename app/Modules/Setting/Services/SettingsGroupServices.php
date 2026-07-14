@@ -310,7 +310,7 @@ class FileSettingsService extends AbstractSettingsGroupService
   public function rules(): array
   {
     return [
-      'max_file_size_mb' => 'required|integer|min:1|max:100',
+      'max_file_size_mb' => 'required|integer|min:1|max:250',
       'allowed_pdf' => 'boolean',
       'allowed_docx' => 'boolean',
       'allowed_xlsx' => 'boolean',

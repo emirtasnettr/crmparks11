@@ -41,9 +41,15 @@ class UpdateBusinessRequest extends FormRequest
             'pricing_model' => ['required', Rule::in(array_keys(BusinessFormData::pricingModels()))],
             'customer_price' => ['nullable', 'numeric', 'min:0'],
             'courier_price' => ['nullable', 'numeric', 'min:0'],
+            'guaranteed_package_count' => ['nullable', 'numeric', 'min:0', 'max:9999'],
             'earning_period' => BusinessFeatures::earningsEnabled()
                 ? ['required', Rule::in(array_keys(BusinessFormData::earningPeriods()))]
                 : ['nullable', Rule::in(array_keys(BusinessFormData::earningPeriods()))],
+            'first_invoice_date' => [
+                Rule::requiredIf(fn () => BusinessFeatures::earningsEnabled() && filled($this->input('earning_period'))),
+                'nullable',
+                'date',
+            ],
             'planned_courier_count' => ['required', 'integer', 'min:1', 'max:9999'],
             'status' => ['required', Rule::in(array_keys(BusinessFormData::statuses()))],
             'contract_end_date' => [
@@ -76,7 +82,8 @@ class UpdateBusinessRequest extends FormRequest
             'brand_name.required' => 'Marka adı zorunludur.',
             'phone.required' => 'Telefon numarası zorunludur.',
             'pricing_model.required' => 'Çalışma modeli seçilmelidir.',
-            'earning_period.required' => 'Hakediş periyodu seçilmelidir.',
+            'earning_period.required' => 'Fatura periyodu seçilmelidir.',
+            'first_invoice_date.required' => 'İlk fatura tarihi zorunludur.',
             'planned_courier_count.required' => 'Planlanan kurye sayısı zorunludur.',
             'planned_courier_count.integer' => 'Planlanan kurye sayısı sayı olmalıdır.',
             'planned_courier_count.min' => 'Planlanan kurye sayısı en az 1 olmalıdır.',

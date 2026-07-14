@@ -150,7 +150,7 @@
             </x-ui.card>
         </x-entity.tab-panel>
 
-        <x-entity.tab-panel name="documents" alpine-page="courierDocumentPage" :alpine-config="['courierId' => $courier['id']]">
+        <x-entity.tab-panel name="documents" alpine-page="courierDocumentPage" :alpine-config="['courierId' => $courier['id'], 'maxSizeMb' => config('crmlog.upload.max_size_mb')]">
             <x-ui.card title="Belgeler">
                 <x-slot:actions>
                     <x-entity.tab-add-button label="Belge Yükle" @click="openModal = true" />

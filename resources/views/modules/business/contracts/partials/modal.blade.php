@@ -89,7 +89,13 @@
             </div>
         </div>
 
-        <x-ui.file-upload name="contract_file" label="Dosya Yükle (PDF)" accept="application/pdf,.pdf" />
+        <x-ui.file-upload
+            name="contract_file"
+            label="Dosya Yükle (PDF)"
+            accept="application/pdf,.pdf"
+            :max-size-mb="config('crmlog.upload.max_size_mb')"
+            :hint="'PDF (maks. '.config('crmlog.upload.max_size_mb').'MB)'"
+        />
 
         <x-ui.textarea name="notes" label="Notlar" rows="3" x-model="modal.notes" />
 

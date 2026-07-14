@@ -148,6 +148,18 @@
                     ::disabled="form.pricing_model !== 'per_package'"
                 />
             </div>
+            <div x-show="form.pricing_model === 'per_package'" x-cloak class="md:col-span-2">
+                <x-ui.input
+                    name="guaranteed_package_count"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    label="Garanti Paket Sayısı"
+                    x-model="form.guaranteed_package_count"
+                    ::disabled="form.pricing_model !== 'per_package'"
+                />
+                <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Opsiyonel. Örn. saatlik 2,5 paket garanti.</p>
+            </div>
 
             @if ($canViewCustomerPricing)
                 <div x-show="form.pricing_model === 'monthly_fixed'" x-cloak>
@@ -227,11 +239,11 @@
     </x-ui.card>
 
     @if (BusinessFeatures::earningsEnabled())
-    {{-- Kart 5: Hakediş Bilgisi --}}
-    <x-ui.card title="Hakediş Bilgisi">
+    {{-- Kart 5: Fatura Bilgisi --}}
+    <x-ui.card title="Fatura Bilgisi">
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div class="space-y-1.5">
-                <label for="earning_period" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Hakediş Periyodu *</label>
+                <label for="earning_period" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Fatura Periyodu *</label>
                 <select
                     id="earning_period"
                     name="earning_period"
@@ -245,6 +257,18 @@
                     @endforeach
                 </select>
                 <p x-show="errors.earning_period" x-cloak class="text-sm text-red-600 dark:text-red-400" x-text="errors.earning_period"></p>
+            </div>
+            <div class="space-y-1.5" x-show="form.earning_period" x-cloak>
+                <label for="first_invoice_date" class="block text-sm font-medium text-gray-700 dark:text-slate-300">İlk Fatura Tarihi *</label>
+                <input
+                    type="date"
+                    id="first_invoice_date"
+                    name="first_invoice_date"
+                    x-model="form.first_invoice_date"
+                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                    :class="errors.first_invoice_date ? 'border-red-300 dark:border-red-500' : ''"
+                >
+                <p x-show="errors.first_invoice_date" x-cloak class="text-sm text-red-600 dark:text-red-400" x-text="errors.first_invoice_date"></p>
             </div>
         </div>
     </x-ui.card>

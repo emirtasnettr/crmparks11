@@ -293,8 +293,21 @@ class BusinessService
       $attributes['earning_period'] = $data['earning_period'] ?? null;
     }
 
+    if (Schema::hasColumn('businesses', 'first_invoice_date')) {
+      $attributes['first_invoice_date'] = filled($data['earning_period'] ?? null)
+        ? ($data['first_invoice_date'] ?? null)
+        : null;
+    }
+
     if (Schema::hasColumn('businesses', 'planned_courier_count')) {
       $attributes['planned_courier_count'] = (int) ($data['planned_courier_count'] ?? 0);
+    }
+
+    if (Schema::hasColumn('businesses', 'guaranteed_package_count')) {
+      $attributes['guaranteed_package_count'] = ($data['pricing_model'] ?? null) === 'per_package'
+        && filled($data['guaranteed_package_count'] ?? null)
+          ? round((float) $data['guaranteed_package_count'], 2)
+          : null;
     }
 
     if ($business === null) {

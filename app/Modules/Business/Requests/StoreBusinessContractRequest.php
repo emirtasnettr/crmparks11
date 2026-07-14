@@ -26,7 +26,7 @@ class StoreBusinessContractRequest extends FormRequest
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'status' => ['nullable', Rule::in(array_keys(BusinessContractFormData::storedStatuses()))],
-            'contract_file' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
+            'contract_file' => ['nullable', 'file', 'mimes:pdf', 'max:'.config('crmlog.upload.max_size')],
         ];
     }
 
@@ -41,6 +41,7 @@ class StoreBusinessContractRequest extends FormRequest
             'start_date.required' => 'Başlangıç tarihi zorunludur.',
             'end_date.required' => 'Bitiş tarihi zorunludur.',
             'end_date.after_or_equal' => 'Bitiş tarihi başlangıçtan önce olamaz.',
+            'contract_file.max' => 'Dosya boyutu en fazla '.config('crmlog.upload.max_size_mb').' MB olabilir.',
         ];
     }
 }

@@ -110,6 +110,10 @@
                         <x-entity.detail-row label="Firma Ünvanı" :value="$business['company_name']" />
                         <x-entity.detail-row label="Kayıt No" :value="$business['uuid']" />
                         <x-entity.detail-row label="Çalışma Modeli" :value="$business['pricing_model_label']" />
+                        @if (! empty($business['earning_period_label']))
+                            <x-entity.detail-row label="Fatura Periyodu" :value="$business['earning_period_label']" />
+                            <x-entity.detail-row label="İlk Fatura Tarihi" :value="$business['first_invoice_date_formatted'] ?? '—'" />
+                        @endif
                         <x-entity.detail-row label="Planlanan Kurye" :value="number_format($business['planned_courier_count'] ?? 0)" />
                         <x-entity.detail-row label="Aktif Kurye" :value="$business['active_couriers']" />
                         <x-entity.detail-row label="Kayıt Tarihi" :value="$business['created_at_formatted']" />
@@ -146,6 +150,9 @@
                             <x-entity.detail-row :label="$overviewStats['labels']['customer_detail']" :value="$business['customer_price']" />
                         @endif
                         <x-entity.detail-row :label="$overviewStats['labels']['courier_detail']" :value="$business['courier_price']" />
+                        @if (($business['pricing_model'] ?? '') === 'per_package' && ($business['guaranteed_package_count'] ?? null) !== null)
+                            <x-entity.detail-row label="Garanti Paket Sayısı" :value="$business['guaranteed_package_count_formatted']" />
+                        @endif
                     </dl>
                 </x-ui.card>
 
@@ -305,7 +312,7 @@
         </x-entity.tab-panel>
 
         @if ($canViewRestrictedTabs)
-        <x-entity.tab-panel name="documents" alpine-page="documentPage" :alpine-config="['businessId' => $business['id']]">
+        <x-entity.tab-panel name="documents" alpine-page="documentPage" :alpine-config="['businessId' => $business['id'], 'maxSizeMb' => config('crmlog.upload.max_size_mb')]">
             <x-ui.card title="Evraklar">
                 <x-slot:actions>
                     <x-entity.tab-add-button label="Evrak Yükle" @click="openModal = true" />

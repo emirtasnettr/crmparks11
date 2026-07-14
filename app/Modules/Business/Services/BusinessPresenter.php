@@ -69,7 +69,11 @@ class BusinessPresenter
       'start_date' => $business->start_date?->toDateString(),
       'notes' => $business->notes,
       'earning_period' => $business->earning_period,
+      'first_invoice_date' => $business->first_invoice_date?->toDateString(),
       'planned_courier_count' => (int) ($business->planned_courier_count ?? 0),
+      'guaranteed_package_count' => $business->guaranteed_package_count !== null
+        ? (float) $business->guaranteed_package_count
+        : null,
       'pricing_model' => $this->normalizePricingModelForList($pricingCode),
       'active_couriers' => $business->activeCourierCount(),
       'logo_path' => $business->logo_path,
@@ -151,6 +155,9 @@ class BusinessPresenter
       'address' => $base['address'],
       'customer_price' => $this->formatStoredPrice($unitPrices['revenue_unit'], $pricingModel),
       'courier_price' => $this->formatStoredPrice($unitPrices['courier_unit'], $pricingModel),
+      'pricing_model' => $pricingModel,
+      'guaranteed_package_count' => $base['guaranteed_package_count'],
+      'guaranteed_package_count_formatted' => $this->formatGuaranteedPackageCount($base['guaranteed_package_count'] ?? null),
       'notes' => $base['notes'],
       'contract_end_date_formatted' => $business->contract_end_date?->format('d.m.Y'),
       'estimated_opening_date_formatted' => $business->estimated_opening_date?->format('d.m.Y'),
@@ -183,6 +190,10 @@ class BusinessPresenter
         ->all(),
     ], BusinessFeatures::earningsEnabled() ? [
       'earning_period_label' => $earningPeriods[$base['earning_period'] ?? ''] ?? '—',
+      'first_invoice_date' => $base['first_invoice_date'] ?? null,
+      'first_invoice_date_formatted' => ! empty($base['first_invoice_date'])
+        ? \Carbon\Carbon::parse($base['first_invoice_date'])->format('d.m.Y')
+        : '—',
       'earnings' => $this->earnings
         ->forBusiness($business->id)
         ->map(fn (EarningLine $line) => $this->earningPresenter->showRow($line))
@@ -214,7 +225,13 @@ class BusinessPresenter
       'pricing_model' => $pricingCode === 'monthly_fixed' ? 'monthly_fixed' : $pricingCode,
       'customer_price' => number_format($unitPrices['revenue_unit'], 2, '.', ''),
       'courier_price' => number_format($unitPrices['courier_unit'], 2, '.', ''),
+      'guaranteed_package_count' => $base['guaranteed_package_count'] !== null
+        ? rtrim(rtrim(number_format((float) $base['guaranteed_package_count'], 2, '.', ''), '0'), '.')
+        : '',
       'earning_period' => $base['earning_period'] ?? 'weekly',
+      'first_invoice_date' => ! empty($base['first_invoice_date'])
+        ? $base['first_invoice_date']
+        : BusinessFormData::defaultFirstInvoiceDate(),
       'planned_courier_count' => $base['planned_courier_count'] > 0 ? (string) $base['planned_courier_count'] : '',
       'status' => $base['status'],
       'contract_end_date' => $base['contract_end_date'] ?? '',
@@ -256,6 +273,17 @@ class BusinessPresenter
       'daily' => $formatted.' / gün',
       default => $formatted,
     };
+  }
+
+  public function formatGuaranteedPackageCount(float|int|string|null $count): string
+  {
+    if ($count === null || $count === '') {
+      return '—';
+    }
+
+    $formatted = number_format((float) $count, 2, ',', '.');
+
+    return rtrim(rtrim($formatted, '0'), ',');
   }
 
   private function pricingModelCode(Business $business): string

@@ -246,11 +246,13 @@ server {
         deny all;
     }
 
-    client_max_body_size 20M;
+    client_max_body_size 256M;
 }
 ```
 
 Kaydet: `Ctrl+O` → Enter → `Ctrl+X`
+
+PHP-FPM tarafında da büyük dosya yükleme için `upload_max_filesize` ve `post_max_size` değerlerini en az **256M** yapın (ör. `/etc/php/*/fpm/php.ini`), ardından `sudo systemctl reload php*-fpm` çalıştırın.
 
 Aktifleştirin:
 

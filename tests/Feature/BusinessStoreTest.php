@@ -34,6 +34,7 @@ class BusinessStoreTest extends TestCase
             'phone' => '0212 111 22 33',
             'pricing_model' => 'per_package',
             'earning_period' => 'weekly',
+            'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 4,
             'status' => 'active',
         ]);
@@ -61,7 +62,9 @@ class BusinessStoreTest extends TestCase
             'pricing_model' => 'per_package',
             'customer_price' => '55.00',
             'courier_price' => '40.00',
+            'guaranteed_package_count' => '2.5',
             'earning_period' => 'weekly',
+            'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 6,
             'status' => 'active',
             'notes' => 'Canlı kayıt testi',
@@ -77,12 +80,20 @@ class BusinessStoreTest extends TestCase
         $this->assertSame('Point Market', $business->brand_name);
         $this->assertSame('1234567890', $business->tax_number);
         $this->assertSame(6, (int) $business->planned_courier_count);
+        $this->assertSame(2.5, (float) $business->guaranteed_package_count);
+        $this->assertSame('weekly', $business->earning_period);
+        $this->assertSame('2026-07-14', $business->first_invoice_date?->toDateString());
         $this->assertSame('Canlı kayıt testi', $business->notes);
 
         $indexResponse = $this->actingAs($user)->get(route('businesses.index'));
         $indexResponse->assertOk();
         $indexResponse->assertSee('Point Market');
         $indexResponse->assertSee('Point Kurye Market Ltd. Şti.');
+
+        $showResponse = $this->actingAs($user)->get(route('businesses.show', $business->id));
+        $showResponse->assertOk();
+        $showResponse->assertSee('Garanti Paket Sayısı');
+        $showResponse->assertSee('2,5');
     }
 
     public function test_business_store_requires_brand_name(): void
@@ -95,6 +106,7 @@ class BusinessStoreTest extends TestCase
             'phone' => '0212 111 22 33',
             'pricing_model' => 'per_package',
             'earning_period' => 'weekly',
+            'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 3,
             'status' => 'active',
         ]);
@@ -115,11 +127,32 @@ class BusinessStoreTest extends TestCase
             'phone' => '0212 111 22 33',
             'pricing_model' => 'per_package',
             'earning_period' => 'weekly',
+            'first_invoice_date' => '2026-07-14',
             'status' => 'active',
         ]);
 
         $response->assertRedirect(route('businesses.create'));
         $response->assertSessionHasErrors('planned_courier_count');
+        $this->assertDatabaseCount('businesses', 0);
+    }
+
+    public function test_business_store_requires_first_invoice_date_when_period_selected(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $response = $this->actingAs($user)->from(route('businesses.create'))->post(route('businesses.store'), [
+            'company_name' => 'Faturasız İşletme Ltd.',
+            'brand_name' => 'Faturasız',
+            'phone' => '0212 111 22 33',
+            'pricing_model' => 'per_package',
+            'earning_period' => 'monthly',
+            'planned_courier_count' => 3,
+            'status' => 'active',
+        ]);
+
+        $response->assertRedirect(route('businesses.create'));
+        $response->assertSessionHasErrors('first_invoice_date');
         $this->assertDatabaseCount('businesses', 0);
     }
 }

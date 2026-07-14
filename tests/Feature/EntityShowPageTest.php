@@ -138,7 +138,8 @@ class EntityShowPageTest extends TestCase
     $response->assertSee('Yetkililer');
     $response->assertSee('Mehmet Yılmaz');
     $response->assertSee('SZL-2026-001');
-    $response->assertDontSee('Hakediş Periyodu');
+    $response->assertSee('Fatura Periyodu');
+    $response->assertSee('İlk Fatura Tarihi');
   }
 
   public function test_operations_specialist_cannot_open_business_pages(): void

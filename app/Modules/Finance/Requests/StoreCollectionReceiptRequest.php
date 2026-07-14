@@ -17,7 +17,7 @@ class StoreCollectionReceiptRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'file' => ['required', 'file', 'max:25600'],
+            'file' => ['required', 'file', 'max:'.config('crmlog.upload.max_size')],
         ];
     }
 

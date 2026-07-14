@@ -60,6 +60,7 @@ class BusinessFactory extends Factory
             'address' => fake()->address(),
             'status' => 'active',
             'earning_period' => 'weekly',
+            'first_invoice_date' => \App\Modules\Business\Data\BusinessFormData::defaultFirstInvoiceDate(),
             'planned_courier_count' => fake()->numberBetween(2, 12),
             'notes' => fake()->sentence(),
             'created_by' => User::factory(),

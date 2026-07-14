@@ -39,6 +39,7 @@ class BusinessUpdateTest extends TestCase
             'phone' => '0212 000 00 00',
             'pricing_model' => 'per_package',
             'earning_period' => 'weekly',
+            'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 3,
             'status' => 'active',
         ]);
@@ -70,7 +71,9 @@ class BusinessUpdateTest extends TestCase
             'pricing_model' => 'per_package',
             'customer_price' => '50.00',
             'courier_price' => '35.00',
+            'guaranteed_package_count' => '3',
             'earning_period' => 'weekly',
+            'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 5,
             'status' => 'active',
             'notes' => 'Güncellenmiş not',
@@ -84,6 +87,7 @@ class BusinessUpdateTest extends TestCase
 
         $this->assertSame('Güncel Burger House', $business->company_name);
         $this->assertSame('Güncellenmiş not', $business->notes);
+        $this->assertSame(3.0, (float) $business->guaranteed_package_count);
         $this->assertNotEmpty($business->logo_path);
 
         Storage::disk('public')->assertExists($business->logo_path);
@@ -95,6 +99,8 @@ class BusinessUpdateTest extends TestCase
         $showResponse->assertSee('Güncel Burger House');
         $showResponse->assertSee('50,00 ₺', false);
         $showResponse->assertSee('35,00 ₺', false);
+        $showResponse->assertSee('Garanti Paket Sayısı');
+        $showResponse->assertSee('3');
 
         $stats = \App\Modules\Business\Data\BusinessOverviewStats::forBusiness(
             $business->id,
@@ -126,6 +132,7 @@ class BusinessUpdateTest extends TestCase
             'district' => 'Nilüfer',
             'pricing_model' => 'daily',
             'earning_period' => 'weekly',
+            'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 4,
             'status' => 'pending',
             'estimated_opening_date' => '2026-08-15',
@@ -166,6 +173,7 @@ class BusinessUpdateTest extends TestCase
             'district' => 'Beşiktaş',
             'pricing_model' => 'per_package',
             'earning_period' => 'weekly',
+            'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 4,
             'status' => 'active',
             'tax_number' => $business->tax_number,
@@ -196,6 +204,7 @@ class BusinessUpdateTest extends TestCase
                 'phone' => $business->phone,
                 'pricing_model' => 'per_package',
                 'earning_period' => 'weekly',
+                'first_invoice_date' => '2026-07-14',
                 'planned_courier_count' => 3,
                 'status' => 'inactive',
                 'tax_number' => $business->tax_number,
@@ -218,6 +227,7 @@ class BusinessUpdateTest extends TestCase
             'phone' => $business->phone,
             'pricing_model' => 'per_package',
             'earning_period' => 'weekly',
+            'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 3,
             'status' => 'inactive',
             'contract_end_date' => '2026-07-01',
@@ -243,6 +253,7 @@ class BusinessUpdateTest extends TestCase
             'phone' => '0212 000 00 00',
             'pricing_model' => 'per_package',
             'earning_period' => 'weekly',
+            'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 2,
             'status' => 'active',
         ]);

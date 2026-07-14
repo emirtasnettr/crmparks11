@@ -27,7 +27,17 @@ class StoreAgencyContractRequest extends FormRequest
             'auto_renewal' => ['nullable', 'boolean'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'status' => ['nullable', Rule::in(['draft', 'active'])],
-            'contract_file' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
+            'contract_file' => ['nullable', 'file', 'mimes:pdf', 'max:'.config('crmlog.upload.max_size')],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'contract_file.max' => 'Dosya boyutu en fazla '.config('crmlog.upload.max_size_mb').' MB olabilir.',
         ];
     }
 

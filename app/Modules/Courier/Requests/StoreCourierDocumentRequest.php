@@ -22,8 +22,18 @@ class StoreCourierDocumentRequest extends FormRequest
             'courier_id' => ['required', 'integer', 'exists:couriers,id'],
             'document_type' => ['required', Rule::in(array_keys(CourierDocumentFormData::documentTypes()))],
             'document_number' => ['nullable', 'string', 'max:120'],
-            'file' => ['required', 'file', 'max:25600'],
+            'file' => ['required', 'file', 'max:'.config('crmlog.upload.max_size')],
             'expires_at' => ['nullable', 'date'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'file.max' => 'Dosya boyutu en fazla '.config('crmlog.upload.max_size_mb').' MB olabilir.',
         ];
     }
 }

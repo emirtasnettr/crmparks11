@@ -79,6 +79,7 @@ class BusinessIndexTest extends TestCase
             'district' => 'Nilüfer',
             'pricing_model' => 'daily',
             'earning_period' => 'weekly',
+            'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 4,
             'status' => 'contract_stage',
             'estimated_opening_date' => '2026-09-01',
@@ -121,6 +122,7 @@ class BusinessIndexTest extends TestCase
             'district' => 'Kadıköy',
             'pricing_model' => 'per_package',
             'earning_period' => 'weekly',
+            'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 5,
             'status' => 'opening_stage',
             'start_date' => '2026-07-20',
@@ -153,7 +155,10 @@ class BusinessIndexTest extends TestCase
         $response->assertSee('Yeni İşletme');
         $response->assertSee('Genel Bilgiler');
         $response->assertSee('Çalışma Modeli');
-        $response->assertSee('Hakediş Periyodu');
+        $response->assertSee('Fatura Periyodu');
+        $response->assertSee('İlk Fatura Tarihi');
+        $response->assertSee(\App\Modules\Business\Data\BusinessFormData::defaultFirstInvoiceDate());
+        $response->assertSee('Garanti Paket Sayısı');
         $response->assertSee('Kaydet');
         $response->assertSee(route('businesses.store'), false);
     }

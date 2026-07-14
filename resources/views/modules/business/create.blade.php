@@ -5,7 +5,7 @@
 
 @section('content')
 <div
-    x-data="businessForm(@js($districtsByCity), {}, false, @js(\App\Modules\Business\Support\BusinessFeatures::earningsEnabled()))"
+    x-data="businessForm(@js($districtsByCity), @js(['first_invoice_date' => \App\Modules\Business\Data\BusinessFormData::defaultFirstInvoiceDate()]), false, @js(\App\Modules\Business\Support\BusinessFeatures::earningsEnabled()))"
     class="max-w-5xl"
 >
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

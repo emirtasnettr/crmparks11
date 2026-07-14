@@ -65,7 +65,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                 </svg>
                 <p class="text-sm font-medium text-gray-700 dark:text-slate-300" x-text="selectedFileName || 'Dosya seçmek için tıklayın'"></p>
-                <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">PDF, Word veya Resim (maks. 25MB)</p>
+                <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">PDF, Word veya Resim (maks. {{ config('crmlog.upload.max_size_mb') }}MB)</p>
                 <input
                     type="file"
                     name="file"

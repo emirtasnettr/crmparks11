@@ -167,6 +167,11 @@ class BusinessFormData
         ];
     }
 
+    public static function defaultFirstInvoiceDate(): string
+    {
+        return now()->addMonthNoOverflow()->startOfMonth()->toDateString();
+    }
+
     /**
      * @return array<string, string>
      */

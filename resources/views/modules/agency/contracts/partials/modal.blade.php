@@ -89,7 +89,13 @@
             </div>
         </div>
 
-        <x-ui.file-upload name="contract_file" label="Dosya Yükle (PDF)" accept="application/pdf,.pdf" />
+        <x-ui.file-upload
+            name="contract_file"
+            label="Dosya Yükle (PDF)"
+            accept="application/pdf,.pdf"
+            :max-size-mb="config('crmlog.upload.max_size_mb')"
+            :hint="'PDF (maks. '.config('crmlog.upload.max_size_mb').'MB)'"
+        />
 
         <input type="hidden" name="auto_renewal" :value="modal.auto_renewal ? 1 : 0">
         <x-ui.toggle name="auto_renewal_toggle" label="Otomatik Yenileme" x-model="modal.auto_renewal" />

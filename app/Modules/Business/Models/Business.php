@@ -37,7 +37,9 @@ class Business extends Model
         'estimated_opening_date',
         'start_date',
         'earning_period',
+        'first_invoice_date',
         'planned_courier_count',
+        'guaranteed_package_count',
         'notes',
         'logo_path',
         'created_by',
@@ -49,7 +51,9 @@ class Business extends Model
             'contract_end_date' => 'date',
             'estimated_opening_date' => 'date',
             'start_date' => 'date',
+            'first_invoice_date' => 'date',
             'planned_courier_count' => 'integer',
+            'guaranteed_package_count' => 'decimal:2',
         ];
     }
 

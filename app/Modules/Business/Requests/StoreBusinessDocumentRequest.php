@@ -21,7 +21,7 @@ class StoreBusinessDocumentRequest extends FormRequest
         return [
             'business_id' => ['required', 'integer', 'exists:businesses,id'],
             'document_type' => ['required', Rule::in(array_keys(BusinessDocumentFormData::documentTypes()))],
-            'file' => ['required', 'file', 'max:25600'],
+            'file' => ['required', 'file', 'max:'.config('crmlog.upload.max_size')],
             'expires_at' => ['nullable', 'date'],
         ];
     }
@@ -35,6 +35,7 @@ class StoreBusinessDocumentRequest extends FormRequest
             'business_id.required' => 'İşletme seçilmelidir.',
             'document_type.required' => 'Evrak türü seçilmelidir.',
             'file.required' => 'Dosya seçilmelidir.',
+            'file.max' => 'Dosya boyutu en fazla '.config('crmlog.upload.max_size_mb').' MB olabilir.',
         ];
     }
 }

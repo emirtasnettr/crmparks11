@@ -157,7 +157,7 @@ class SettingsDefaults
   public static function files(): array
   {
     return [
-      'max_file_size_mb' => 10,
+      'max_file_size_mb' => 250,
       'allowed_pdf' => true,
       'allowed_docx' => true,
       'allowed_xlsx' => true,

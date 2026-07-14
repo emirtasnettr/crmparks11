@@ -1,5 +1,7 @@
 <?php
 
+$maxUploadMb = (int) env('CRMLOG_UPLOAD_MAX_MB', 250);
+
 return [
     'name' => env('APP_NAME', 'CRMLog'),
 
@@ -13,7 +15,8 @@ return [
     ],
 
     'upload' => [
-        'max_size' => 10240, // KB
+        'max_size_mb' => $maxUploadMb,
+        'max_size' => $maxUploadMb * 1024, // KB (Laravel file max rule)
         'allowed_mimes' => [
             'pdf', 'xlsx', 'xls', 'csv', 'doc', 'docx', 'png', 'jpg', 'jpeg', 'zip',
         ],

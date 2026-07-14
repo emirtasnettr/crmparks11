@@ -4,7 +4,7 @@
 
 
 @section('content')
-<div x-data="agencyDocumentPage()">
+<div x-data="agencyDocumentPage(@js(['maxSizeMb' => config('crmlog.upload.max_size_mb')]))">
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
             <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Evraklar</h1>

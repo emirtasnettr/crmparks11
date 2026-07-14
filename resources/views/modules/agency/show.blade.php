@@ -233,7 +233,7 @@
             ])
         </x-entity.tab-panel>
 
-        <x-entity.tab-panel name="documents" alpine-page="agencyDocumentPage" :alpine-config="['agencyId' => $agency['id']]">
+        <x-entity.tab-panel name="documents" alpine-page="agencyDocumentPage" :alpine-config="['agencyId' => $agency['id'], 'maxSizeMb' => config('crmlog.upload.max_size_mb')]">
             <x-ui.card title="Evraklar">
                 <x-slot:actions>
                     <x-entity.tab-add-button label="Evrak Yükle" @click="openModal = true" />
