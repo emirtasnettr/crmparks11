@@ -61,10 +61,6 @@
                     <dt class="text-gray-500 dark:text-slate-400">Telefon</dt>
                     <dd class="font-medium text-gray-900 dark:text-white">{{ $document['agency_phone'] }}</dd>
                 </div>
-                <div class="flex justify-between gap-4">
-                    <dt class="text-gray-500 dark:text-slate-400">E-posta</dt>
-                    <dd class="font-medium text-gray-900 dark:text-white">{{ $document['agency_email'] }}</dd>
-                </div>
             </dl>
         </x-ui.card>
 

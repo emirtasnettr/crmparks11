@@ -62,24 +62,8 @@
                 <x-ui.card title="İletişim ve Adres">
                     <dl class="space-y-3 text-sm">
                         <x-entity.detail-row label="Telefon" :value="$agency['phone']" />
-                        <x-entity.detail-row label="E-Posta" :value="$agency['email']" />
-                        <x-entity.detail-row label="Web Sitesi" :value="$agency['website']" />
-                        <x-entity.detail-row label="Vergi Dairesi" :value="$agency['tax_office']" />
                         <x-entity.detail-row label="Vergi No" :value="$agency['tax_number']" />
-                        <x-entity.detail-row label="MERSİS No" :value="$agency['mersis_number']" />
-                        <x-entity.detail-row label="Ticaret Sicil No" :value="$agency['trade_registry_number']" />
                         <x-entity.detail-row label="Konum" :value="$agency['location']" />
-                        <x-entity.detail-row label="Adres" :value="$agency['address']" />
-                    </dl>
-                </x-ui.card>
-
-                <x-ui.card title="Finans ve Banka">
-                    <dl class="space-y-3 text-sm">
-                        <x-entity.detail-row label="Komisyon Oranı" :value="$agency['commission_rate']" />
-                        <x-entity.detail-row label="Ödeme Periyodu" :value="$agency['payment_period_label']" />
-                        <x-entity.detail-row label="Banka" :value="$agency['bank_name']" />
-                        <x-entity.detail-row label="Hesap Sahibi" :value="$agency['account_holder']" />
-                        <x-entity.detail-row label="IBAN" :value="$agency['iban']" />
                     </dl>
                 </x-ui.card>
 

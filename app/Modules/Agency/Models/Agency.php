@@ -24,34 +24,16 @@ class Agency extends Model
     protected $fillable = [
         'company_name',
         'brand_name',
-        'tax_office',
         'tax_number',
-        'mersis_number',
-        'trade_registry_number',
         'phone',
-        'email',
-        'website',
         'city_id',
         'district_id',
         'authorized_person',
-        'address',
-        'commission_rate',
-        'payment_period',
-        'bank_key',
-        'account_holder',
-        'iban',
         'status',
         'notes',
         'logo_path',
         'created_by',
     ];
-
-    protected function casts(): array
-    {
-        return [
-            'commission_rate' => 'decimal:2',
-        ];
-    }
 
     public function city(): BelongsTo
     {

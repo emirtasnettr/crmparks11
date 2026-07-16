@@ -64,7 +64,6 @@ class AgencyDocumentPresenter
             'agency_name' => $agency?->displayName() ?? '—',
             'agency_city' => $agency?->city?->name ?? '—',
             'agency_phone' => $agency?->phone ?? '—',
-            'agency_email' => $agency?->email ?? '—',
             'agency_authorized' => $agency?->authorized_person ?? '—',
             'document_type' => $document->category?->code ?? 'other',
             'document_type_label' => $document->category?->label ?? 'Diğer',

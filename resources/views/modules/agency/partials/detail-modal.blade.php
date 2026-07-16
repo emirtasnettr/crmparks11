@@ -42,10 +42,6 @@
                     <dd class="font-medium text-gray-900 dark:text-white" x-text="selected?.phone"></dd>
                 </div>
                 <div class="flex justify-between gap-4">
-                    <dt class="text-gray-500 dark:text-slate-400">E-posta</dt>
-                    <dd class="font-medium text-gray-900 dark:text-white" x-text="selected?.email"></dd>
-                </div>
-                <div class="flex justify-between gap-4">
                     <dt class="text-gray-500 dark:text-slate-400">Konum</dt>
                     <dd class="font-medium text-gray-900 dark:text-white" x-text="selected?.location"></dd>
                 </div>

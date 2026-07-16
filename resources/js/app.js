@@ -434,20 +434,9 @@ Alpine.data('agencyForm', (districtsByCity = {}, initial = {}, isEdit = false) =
         company_name: '',
         brand_name: '',
         phone: '',
-        email: '',
-        website: '',
-        tax_office: '',
         tax_number: '',
-        mersis_number: '',
-        trade_registry_number: '',
         city: '',
         district: '',
-        address: '',
-        commission_rate: '',
-        payment_period: '',
-        bank_key: '',
-        account_holder: '',
-        iban: '',
         status: 'active',
         notes: '',
         ...initial,
@@ -457,29 +446,11 @@ Alpine.data('agencyForm', (districtsByCity = {}, initial = {}, isEdit = false) =
         if (this.form.city) {
             this.districts = this.districtsByCity[this.form.city] || [];
         }
-
-        if (this.form.iban) {
-            this.formatIbanInput();
-        }
     },
 
     onCityChange() {
         this.form.district = '';
         this.districts = this.districtsByCity[this.form.city] || [];
-    },
-
-    formatIbanInput() {
-        let value = (this.form.iban || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-
-        if (value.length > 0 && !value.startsWith('TR')) {
-            value = 'TR' + value.replace(/^TR/, '');
-        }
-
-        if (value.length > 26) {
-            value = value.slice(0, 26);
-        }
-
-        this.form.iban = value.replace(/(.{4})/g, '$1 ').trim();
     },
 
     validate() {
@@ -507,10 +478,6 @@ Alpine.data('agencyForm', (districtsByCity = {}, initial = {}, isEdit = false) =
 
         if (!this.form.district) {
             this.errors.district = 'İlçe seçilmelidir.';
-        }
-
-        if (!this.form.address.trim()) {
-            this.errors.address = 'Açık adres zorunludur.';
         }
 
         return Object.keys(this.errors).length === 0;

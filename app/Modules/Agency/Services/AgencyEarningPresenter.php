@@ -33,7 +33,6 @@ class AgencyEarningPresenter
             'agency_authorized' => '—',
             'agency_city' => $agency->city?->name ?? '—',
             'agency_phone' => $agency->phone ?? '—',
-            'agency_email' => $agency->email ?? '—',
             'reference' => sprintf('AHK-%d-%03d', $periodYear, $agency->id),
             'period_month' => $periodMonth,
             'period_year' => $periodYear,

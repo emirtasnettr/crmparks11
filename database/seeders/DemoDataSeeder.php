@@ -116,7 +116,6 @@ class DemoDataSeeder extends Seeder
                 'company_name' => 'Hızlı Rota Lojistik A.Ş.',
                 'brand_name' => 'Hızlı Rota',
                 'tax_number' => '9000000001',
-                'commission_rate' => 12,
                 'status' => 'active',
                 'authorized_person' => 'Cemal Aksoy',
             ],
@@ -124,7 +123,6 @@ class DemoDataSeeder extends Seeder
                 'company_name' => 'Anadolu Kurye Hizmetleri Ltd. Şti.',
                 'brand_name' => 'Anadolu Kurye',
                 'tax_number' => '9000000002',
-                'commission_rate' => 15,
                 'status' => 'active',
                 'authorized_person' => 'Sevgi Demirtaş',
             ],
@@ -132,7 +130,6 @@ class DemoDataSeeder extends Seeder
                 'company_name' => 'Marmara Dağıtım Acentesi Ltd.',
                 'brand_name' => 'Marmara Express',
                 'tax_number' => '9000000003',
-                'commission_rate' => 10,
                 'status' => 'pending',
                 'authorized_person' => 'Okan Yücel',
             ],
@@ -147,7 +144,6 @@ class DemoDataSeeder extends Seeder
                 'district_id' => $district->id,
                 'created_by' => $admin->id,
                 'notes' => self::MARKER,
-                'payment_period' => 'weekly',
             ]);
 
             AgencyContact::factory()->create([

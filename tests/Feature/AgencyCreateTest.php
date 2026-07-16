@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Modules\Agency\Models\Agency;
 use Database\Seeders\CitySeeder;
 use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
@@ -43,13 +42,13 @@ class AgencyCreateTest extends TestCase
         $response->assertSee('Yeni Acente');
         $response->assertSee('Sisteme yeni bir acente kaydı oluşturun.');
         $response->assertSee('Genel Bilgiler');
-        $response->assertSee('Vergi Bilgileri');
         $response->assertSee('Adres Bilgileri');
-        $response->assertSee('Finans Bilgileri');
-        $response->assertSee('Banka Bilgileri');
-        $response->assertSee('MERSİS No');
-        $response->assertSee('Varsayılan Komisyon Oranı');
-        $response->assertSee('15 Günlük');
+        $response->assertSee('Vergi Numarası');
+        $response->assertDontSee('name="mersis_number"', false);
+        $response->assertDontSee('name="commission_rate"', false);
+        $response->assertDontSee('name="iban"', false);
+        $response->assertDontSee('name="tax_office"', false);
+        $response->assertDontSee('name="address"', false);
         $response->assertSee('Beklemede');
         $response->assertSee('agency-form');
         $response->assertSee(route('agencies.store'), false);

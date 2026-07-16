@@ -32,8 +32,6 @@
         'isEdit' => false,
         'cities' => $cities,
         'statuses' => $statuses,
-        'paymentPeriods' => $paymentPeriods,
-        'banks' => $banks,
     ])
 </div>
 @endsection

@@ -49,7 +49,6 @@ class AgencyUpdateTest extends TestCase
             'tax_number' => '1234567890',
             'city' => 'İstanbul',
             'district' => 'Kadıköy',
-            'address' => 'Test adres',
             'status' => 'active',
             'logo' => $logo,
         ]);
@@ -88,7 +87,6 @@ class AgencyUpdateTest extends TestCase
             'tax_number' => '9012345678',
             'city' => 'Konya',
             'district' => 'Selçuklu',
-            'address' => 'Test adres',
             'status' => 'pending',
         ]);
 

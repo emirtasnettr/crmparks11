@@ -208,18 +208,6 @@ class AgencyService
         $agency->update(['logo_path' => $uploaded['path']]);
     }
 
-    private function normalizeCommissionRate(mixed $value): ?float
-    {
-        if ($value === null || $value === '') {
-            return null;
-        }
-
-        $normalized = str_replace(['%', ' '], '', (string) $value);
-        $normalized = str_replace(',', '.', $normalized);
-
-        return round((float) $normalized, 2);
-    }
-
     private function generateTaxNumber(): string
     {
         do {
@@ -237,14 +225,10 @@ class AgencyService
     {
         $attributes = [
             'company_name' => $data['company_name'],
-            'tax_office' => $data['tax_office'] ?? '',
             'tax_number' => $data['tax_number'] ?? $agency?->tax_number ?? $this->generateTaxNumber(),
             'phone' => $data['phone'],
-            'email' => $data['email'] ?? null,
             'city_id' => $this->resolveCityId($data['city'] ?? null),
             'district_id' => $this->resolveDistrictId($data['city'] ?? null, $data['district'] ?? null),
-            'address' => $data['address'] ?? null,
-            'commission_rate' => $this->normalizeCommissionRate($data['commission_rate'] ?? null),
             'status' => $data['status'],
             'notes' => $data['notes'] ?? null,
         ];
@@ -253,36 +237,8 @@ class AgencyService
             $attributes['brand_name'] = $data['brand_name'] ?? $agency?->brand_name;
         }
 
-        if (Schema::hasColumn('agencies', 'website')) {
-            $attributes['website'] = $data['website'] ?? null;
-        }
-
         if (Schema::hasColumn('agencies', 'authorized_person')) {
             $attributes['authorized_person'] = $data['authorized_person'] ?? null;
-        }
-
-        if (Schema::hasColumn('agencies', 'mersis_number')) {
-            $attributes['mersis_number'] = $data['mersis_number'] ?? null;
-        }
-
-        if (Schema::hasColumn('agencies', 'trade_registry_number')) {
-            $attributes['trade_registry_number'] = $data['trade_registry_number'] ?? null;
-        }
-
-        if (Schema::hasColumn('agencies', 'payment_period')) {
-            $attributes['payment_period'] = $data['payment_period'] ?? null;
-        }
-
-        if (Schema::hasColumn('agencies', 'bank_key')) {
-            $attributes['bank_key'] = $data['bank_key'] ?? null;
-        }
-
-        if (Schema::hasColumn('agencies', 'account_holder')) {
-            $attributes['account_holder'] = $data['account_holder'] ?? null;
-        }
-
-        if (Schema::hasColumn('agencies', 'iban')) {
-            $attributes['iban'] = $data['iban'] ?? null;
         }
 
         if ($agency === null) {

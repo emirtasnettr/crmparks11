@@ -42,21 +42,10 @@ class AgencyPresenter
             'brand_name' => $agency->brand_name,
             'display_name' => $agency->displayName(),
             'phone' => $agency->phone,
-            'email' => $agency->email,
-            'website' => $agency->website,
-            'tax_office' => $agency->tax_office,
             'tax_number' => $agency->tax_number,
-            'mersis_number' => $agency->mersis_number,
-            'trade_registry_number' => $agency->trade_registry_number,
             'city' => $agency->city?->name ?? '',
             'district' => $agency->district?->name ?? '',
-            'address' => $agency->address,
             'authorized_person' => $agency->authorized_person,
-            'commission_rate' => $agency->commission_rate,
-            'payment_period' => $agency->payment_period,
-            'bank_key' => $agency->bank_key,
-            'account_holder' => $agency->account_holder,
-            'iban' => $agency->iban,
             'status' => $agency->status,
             'notes' => $agency->notes,
             'active_couriers' => $agency->activeCourierCount(),
@@ -103,7 +92,6 @@ class AgencyPresenter
             'display_name' => $base['display_name'] ?? $base['brand_name'] ?? $base['company_name'],
             'authorized_person' => $base['authorized_person'] ?? '—',
             'phone' => $base['phone'],
-            'email' => $base['email'],
             'location' => trim($base['city'].' / '.$base['district'], ' /'),
             'active_couriers' => $base['active_couriers'],
             'active_businesses' => $base['active_businesses'],
@@ -125,25 +113,13 @@ class AgencyPresenter
     public function showPayload(Agency $agency): array
     {
         $base = $this->toBaseArray($agency);
-        $paymentPeriods = AgencyFormData::paymentPeriods();
-        $banks = AgencyFormData::banks();
         $id = $agency->id;
 
         return array_merge($this->detailPayload($agency), [
             'status' => $base['status'],
             'uuid' => $agency->uuid,
             'tax_number' => $base['tax_number'],
-            'tax_office' => $base['tax_office'],
             'brand_name' => $base['brand_name'] ?? $base['company_name'],
-            'website' => $base['website'],
-            'mersis_number' => $base['mersis_number'],
-            'trade_registry_number' => $base['trade_registry_number'],
-            'address' => $base['address'],
-            'commission_rate' => $this->formatCommissionRate($base['commission_rate']),
-            'payment_period_label' => $paymentPeriods[$base['payment_period'] ?? ''] ?? '—',
-            'bank_name' => $banks[$base['bank_key'] ?? ''] ?? ($base['bank_key'] ?? '—'),
-            'account_holder' => $base['account_holder'],
-            'iban' => $base['iban'],
             'notes' => $base['notes'],
             'created_at_formatted' => $agency->created_at?->format('d.m.Y') ?? now()->format('d.m.Y'),
             'contacts' => $this->contacts
@@ -190,38 +166,12 @@ class AgencyPresenter
             'company_name' => $base['company_name'],
             'brand_name' => $base['brand_name'],
             'phone' => $base['phone'],
-            'email' => $base['email'],
-            'website' => $base['website'],
-            'tax_office' => $base['tax_office'],
             'tax_number' => $base['tax_number'],
-            'mersis_number' => $base['mersis_number'],
-            'trade_registry_number' => $base['trade_registry_number'],
             'city' => $base['city'],
             'district' => $base['district'],
-            'address' => $base['address'],
-            'commission_rate' => $base['commission_rate'] !== null
-                ? number_format((float) $base['commission_rate'], 1, ',', '.')
-                : '',
-            'payment_period' => $base['payment_period'],
-            'bank_key' => $base['bank_key'],
-            'account_holder' => $base['account_holder'],
-            'iban' => $base['iban'],
             'status' => $base['status'],
             'notes' => $base['notes'],
             'logo_url' => $base['logo_url'],
         ];
-    }
-
-    private function formatCommissionRate(mixed $rate): string
-    {
-        if ($rate === null || $rate === '') {
-            return '—';
-        }
-
-        if (is_string($rate) && str_contains($rate, '%')) {
-            return $rate;
-        }
-
-        return number_format((float) $rate, 1, ',', '.').'%';
     }
 }

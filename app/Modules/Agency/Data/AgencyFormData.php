@@ -3,7 +3,6 @@
 namespace App\Modules\Agency\Data;
 
 use App\Modules\Business\Data\BusinessFormData;
-use App\Modules\Courier\Data\CourierFormData;
 
 class AgencyFormData
 {
@@ -38,18 +37,6 @@ class AgencyFormData
     /**
      * @return array<string, string>
      */
-    public static function paymentPeriods(): array
-    {
-        return [
-            'weekly' => 'Haftalık',
-            'biweekly' => '15 Günlük',
-            'monthly' => 'Aylık',
-        ];
-    }
-
-    /**
-     * @return array<string, string>
-     */
     public static function courierCountRanges(): array
     {
         return [
@@ -59,13 +46,5 @@ class AgencyFormData
             '11-20' => '11 – 20 Kurye',
             '21+' => '21+ Kurye',
         ];
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    public static function banks(): array
-    {
-        return CourierFormData::banks();
     }
 }

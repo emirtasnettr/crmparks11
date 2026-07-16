@@ -36,7 +36,6 @@ class AgencyStoreTest extends TestCase
             'phone' => '0212 111 22 33',
             'city' => 'İstanbul',
             'district' => 'Kadıköy',
-            'address' => 'Test adres',
             'status' => 'active',
         ]);
 
@@ -53,15 +52,9 @@ class AgencyStoreTest extends TestCase
             'company_name' => 'Point Kurye Acente Ltd. Şti.',
             'brand_name' => 'Point Acente',
             'phone' => '0216 444 55 66',
-            'email' => 'info@pointacente.test',
-            'website' => 'https://pointacente.test',
-            'tax_office' => 'Kadıköy',
             'tax_number' => '1234567890',
             'city' => 'İstanbul',
             'district' => 'Kadıköy',
-            'address' => 'Test Mahallesi No:1',
-            'commission_rate' => '15',
-            'payment_period' => 'monthly',
             'status' => 'active',
             'notes' => 'Canlı kayıt testi',
         ]);

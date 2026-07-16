@@ -96,8 +96,6 @@ class AgencyController extends Controller
             'cities' => AgencyFormData::cities(),
             'districtsByCity' => AgencyFormData::districtsByCity(),
             'statuses' => AgencyFormData::statuses(),
-            'paymentPeriods' => AgencyFormData::paymentPeriods(),
-            'banks' => AgencyFormData::banks(),
         ]);
     }
 
@@ -147,8 +145,6 @@ class AgencyController extends Controller
             'cities' => AgencyFormData::cities(),
             'districtsByCity' => AgencyFormData::districtsByCity(),
             'statuses' => AgencyFormData::statuses(),
-            'paymentPeriods' => AgencyFormData::paymentPeriods(),
-            'banks' => AgencyFormData::banks(),
         ]);
     }
 
