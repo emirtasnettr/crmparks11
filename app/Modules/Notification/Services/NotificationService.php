@@ -2,7 +2,11 @@
 
 namespace App\Modules\Notification\Services;
 
+use App\Models\Contract;
 use App\Models\User;
+use App\Modules\Agency\Models\Agency;
+use App\Modules\Business\Models\Business;
+use App\Modules\Business\Support\BusinessCardVisibility;
 use Carbon\Carbon;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Collection;
@@ -72,7 +76,7 @@ class NotificationService
 
         $notification->markAsRead();
 
-        return $this->resolveDestination($notification);
+        return $this->resolveDestination($notification, $user);
     }
 
     public function markAllAsRead(User $user): int
@@ -91,7 +95,7 @@ class NotificationService
         $notification->delete();
     }
 
-    private function resolveDestination(DatabaseNotification $notification): string
+    private function resolveDestination(DatabaseNotification $notification, User $user): string
     {
         $data = is_array($notification->data) ? $notification->data : [];
         $type = (string) ($data['type'] ?? '');
@@ -101,8 +105,101 @@ class NotificationService
             return $this->resolveFormSubmissionDestination($notification, $meta);
         }
 
+        if ($type === 'contract_expiry') {
+            return $this->resolveContractExpiryDestination($notification, $meta, $user);
+        }
+
         return $this->normalizeStoredActionUrl($data['action_url'] ?? null)
             ?? route('notifications.index');
+    }
+
+    /**
+     * @param  array<string, mixed>  $meta
+     */
+    private function resolveContractExpiryDestination(DatabaseNotification $notification, array $meta, User $user): string
+    {
+        $contract = $this->findContractForNotification($notification, $meta);
+
+        if ($contract !== null && ! $contract->trashed()) {
+            return $this->contractDestinationForUser($contract, $user);
+        }
+
+        if ($contract !== null && $contract->trashed()) {
+            return $this->contractFallbackDestination($contract, $user);
+        }
+
+        $businessId = (int) ($meta['business_id'] ?? 0);
+        if ($businessId > 0 && Business::query()->whereKey($businessId)->exists()) {
+            return BusinessCardVisibility::canViewRestrictedTabs($user)
+                ? route('businesses.contracts.index', ['business_id' => $businessId])
+                : route('businesses.show', $businessId);
+        }
+
+        $agencyId = (int) ($meta['agency_id'] ?? 0);
+        if ($agencyId > 0 && Agency::query()->whereKey($agencyId)->exists()) {
+            return route('agencies.contracts.index', ['agency_id' => $agencyId]);
+        }
+
+        return route('businesses.contracts.index');
+    }
+
+    /**
+     * @param  array<string, mixed>  $meta
+     */
+    private function findContractForNotification(DatabaseNotification $notification, array $meta): ?Contract
+    {
+        $contractId = (int) ($meta['contract_id'] ?? 0);
+
+        if ($contractId > 0) {
+            $contract = Contract::query()->withTrashed()->with('contractable')->find($contractId);
+
+            if ($contract !== null) {
+                return $contract;
+            }
+        }
+
+        $data = is_array($notification->data) ? $notification->data : [];
+        $stored = $this->normalizeStoredActionUrl($data['action_url'] ?? null);
+
+        if ($stored !== null && preg_match('#/sozlesmeler/(\d+)(?:\?|$)#', $stored, $matches) === 1) {
+            return Contract::query()->withTrashed()->with('contractable')->find((int) $matches[1]);
+        }
+
+        return null;
+    }
+
+    private function contractDestinationForUser(Contract $contract, User $user): string
+    {
+        if ($contract->contractable_type === Agency::class) {
+            return route('agencies.contracts.show', $contract->id);
+        }
+
+        if (BusinessCardVisibility::canViewRestrictedTabs($user)) {
+            return route('businesses.contracts.show', $contract->id);
+        }
+
+        return $this->contractFallbackDestination($contract, $user);
+    }
+
+    private function contractFallbackDestination(Contract $contract, User $user): string
+    {
+        if ($contract->contractable_type === Agency::class) {
+            $agencyId = (int) $contract->contractable_id;
+
+            return $agencyId > 0
+                ? route('agencies.contracts.index', ['agency_id' => $agencyId])
+                : route('agencies.contracts.index');
+        }
+
+        $businessId = (int) $contract->contractable_id;
+
+        if ($businessId > 0 && Business::query()->whereKey($businessId)->exists()) {
+            return BusinessCardVisibility::canViewRestrictedTabs($user)
+                ? route('businesses.contracts.index', ['business_id' => $businessId])
+                : route('businesses.show', $businessId);
+        }
+
+        return route('businesses.contracts.index');
     }
 
     /**

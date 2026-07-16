@@ -70,6 +70,12 @@ class ScheduledReminderService
                         meta: [
                             'reminder_key' => $reminderKey,
                             'contract_id' => $contract->id,
+                            'business_id' => $contract->contractable_type === Business::class
+                                ? $contract->contractable_id
+                                : null,
+                            'agency_id' => $contract->contractable_type === Agency::class
+                                ? $contract->contractable_id
+                                : null,
                         ],
                     ),
                 );
