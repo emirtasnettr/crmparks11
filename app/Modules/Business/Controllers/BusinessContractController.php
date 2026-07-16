@@ -6,7 +6,6 @@ use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
 use App\Modules\Business\Data\BusinessContractFormData;
 use App\Modules\Business\Exports\BusinessListExportSheets;
-use App\Modules\Business\Models\Business;
 use App\Modules\Business\Requests\StoreBusinessContractRequest;
 use App\Modules\Business\Requests\UpdateBusinessContractRequest;
 use App\Modules\Business\Services\BusinessContractPresenter;
@@ -15,8 +14,10 @@ use App\Modules\Business\Services\BusinessDocumentService;
 use App\Support\EntityCardRedirect;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BusinessContractController extends Controller
 {
@@ -103,8 +104,7 @@ class BusinessContractController extends Controller
         $contract = $this->contracts->create($request->validated(), $request->user());
 
         if ($request->hasFile('contract_file')) {
-            $business = Business::query()->findOrFail($contract->contractable_id);
-            $this->documents->storeContractFile($business, $request->file('contract_file'), $request->user());
+            $this->documents->storeForContract($contract, $request->file('contract_file'), $request->user());
         }
 
         if ($request->boolean('redirect_to_business')) {
@@ -128,8 +128,7 @@ class BusinessContractController extends Controller
         $contract = $this->contracts->update($contract, $request->validated(), $request->user());
 
         if ($request->hasFile('contract_file')) {
-            $business = Business::query()->findOrFail($contract->contractable_id);
-            $this->documents->storeContractFile($business, $request->file('contract_file'), $request->user());
+            $this->documents->storeForContract($contract, $request->file('contract_file'), $request->user());
         }
 
         if ($request->boolean('redirect_to_contract')) {
@@ -149,6 +148,35 @@ class BusinessContractController extends Controller
         return redirect()
             ->route('businesses.contracts.index', ['business_id' => $contract->contractable_id])
             ->with('success', 'Sözleşme başarıyla güncellendi.');
+    }
+
+    public function download(Request $request, int $id): StreamedResponse
+    {
+        abort_unless(\App\Modules\Business\Support\BusinessCardVisibility::canViewRestrictedTabs($request->user()), 403);
+
+        $contract = $this->contracts->find($id);
+        abort_if($contract === null, 404);
+
+        $document = $this->documents->findForContract($contract);
+        abort_if($document === null, 404);
+
+        return Storage::disk($document->disk ?: 'public')
+            ->download($document->file_path, $document->original_name);
+    }
+
+    public function destroy(Request $request, int $id): RedirectResponse
+    {
+        abort_unless($request->user()?->hasRole('super_admin'), 403);
+
+        $contract = $this->contracts->find($id);
+        abort_if($contract === null, 404);
+
+        $businessId = $contract->contractable_id;
+        $this->contracts->destroy($contract);
+
+        return redirect()
+            ->route('businesses.contracts.index', ['business_id' => $businessId])
+            ->with('success', 'Sözleşme silindi.');
     }
 
     public function deactivate(Request $request, int $id): RedirectResponse

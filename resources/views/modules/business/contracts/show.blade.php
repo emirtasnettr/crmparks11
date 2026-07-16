@@ -33,7 +33,7 @@
 
         <div class="flex shrink-0 flex-wrap gap-2">
             @if ($contract['file_name'])
-                <x-ui.button variant="secondary">
+                <x-ui.button href="{{ route('businesses.contracts.download', $contract['id']) }}" variant="secondary">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                     </svg>
@@ -45,6 +45,17 @@
                     <x-ui.button type="button" @click="openEdit({{ $contract['id'] }})">Düzenle</x-ui.button>
                 @endif
             @endcan
+            @if ($contract['can_delete'])
+                <form
+                    method="POST"
+                    action="{{ route('businesses.contracts.destroy', $contract['id']) }}"
+                    onsubmit="return confirm('Sözleşme kalıcı olarak silinsin mi?')"
+                >
+                    @csrf
+                    @method('DELETE')
+                    <x-ui.button type="submit" variant="danger">Sil</x-ui.button>
+                </form>
+            @endif
         </div>
     </div>
 
@@ -116,14 +127,28 @@
 
     {{-- PDF Önizleme --}}
     <x-ui.card title="PDF Önizleme" class="mt-6">
-        @if ($contract['file_name'])
+        @if ($contract['file_url'])
+            <div class="overflow-hidden rounded-lg border border-gray-200 dark:border-slate-700">
+                <iframe
+                    src="{{ $contract['file_url'] }}#toolbar=1"
+                    class="h-[70vh] w-full bg-white"
+                    title="PDF Önizleme"
+                ></iframe>
+            </div>
+            <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $contract['file_name'] }}</p>
+                <x-ui.button href="{{ route('businesses.contracts.download', $contract['id']) }}" variant="secondary" size="sm">
+                    Dosyayı İndir
+                </x-ui.button>
+            </div>
+        @elseif ($contract['file_name'])
             <div class="flex min-h-[420px] flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 p-8 dark:border-slate-600 dark:bg-slate-800/50">
                 <svg class="mb-4 h-16 w-16 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
                 </svg>
                 <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $contract['file_name'] }}</p>
-                <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">PDF önizleme backend bağlantısı sonrası aktif olacaktır.</p>
-                <x-ui.button variant="secondary" class="mt-4" size="sm">
+                <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">PDF önizleme için dosya yolu bulunamadı.</p>
+                <x-ui.button href="{{ route('businesses.contracts.download', $contract['id']) }}" variant="secondary" class="mt-4" size="sm">
                     Dosyayı İndir
                 </x-ui.button>
             </div>

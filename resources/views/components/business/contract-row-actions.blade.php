@@ -23,6 +23,19 @@
             url: route('businesses.contracts.deactivate', $id),
         );
     }
+
+    if (($contract['can_delete'] ?? false) && auth()->user()?->hasRole('super_admin')) {
+        $items[] = RowActions::divider();
+        $items[] = RowActions::run(
+            'Sil',
+            'delete',
+            confirm: 'Sözleşme kalıcı olarak silinsin mi?',
+            tone: 'danger',
+            id: $id,
+            url: route('businesses.contracts.destroy', $id),
+            method: 'DELETE',
+        );
+    }
 @endphp
 
 <x-ui.action-menu :items="$items" width="w-48" />

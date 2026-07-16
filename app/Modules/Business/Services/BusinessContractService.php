@@ -15,6 +15,7 @@ class BusinessContractService
 {
     public function __construct(
         private readonly BusinessContractPresenter $presenter,
+        private readonly BusinessDocumentService $documents,
     ) {}
 
     /**
@@ -50,7 +51,7 @@ class BusinessContractService
     {
         return Contract::query()
             ->where('contractable_type', Business::class)
-            ->with(['contractable', 'contractType', 'creator'])
+            ->with(['contractable', 'contractType', 'creator', 'document'])
             ->find($id);
     }
 
@@ -137,6 +138,14 @@ class BusinessContractService
         $contract->update(['status' => 'cancelled']);
 
         return $contract->fresh(['contractable', 'contractType', 'creator']);
+    }
+
+    public function destroy(Contract $contract): void
+    {
+        DB::transaction(function () use ($contract): void {
+            $this->documents->deleteContractDocuments($contract);
+            $contract->delete();
+        });
     }
 
     /**

@@ -5,10 +5,15 @@ namespace App\Modules\Business\Services;
 use App\Models\Contract;
 use App\Modules\Business\Models\Business;
 use App\Support\ContractStatusResolver;
+use App\Support\PublicMediaUrl;
 use Carbon\Carbon;
 
 class BusinessContractPresenter
 {
+    public function __construct(
+        private readonly BusinessDocumentService $documents,
+    ) {}
+
     /**
      * @return array<string, mixed>
      */
@@ -43,6 +48,8 @@ class BusinessContractPresenter
         $endDate = $contract->end_date ?? $startDate;
         $displayStatus = $this->resolveDisplayStatus($contract);
         $remainingDays = (int) Carbon::today()->diffInDays($endDate, false);
+        $document = $this->documents->findForContract($contract);
+        $actor = auth()->user();
 
         return [
             'id' => $contract->id,
@@ -62,8 +69,11 @@ class BusinessContractPresenter
             'remaining_days' => $remainingDays,
             'is_current' => ContractStatusResolver::isCurrent($displayStatus),
             'can_update' => $contract->status !== 'cancelled',
+            'can_delete' => $actor?->hasRole('super_admin') ?? false,
             'notes' => $contract->notes,
-            'file_name' => null,
+            'document_id' => $document?->id,
+            'file_name' => $document?->original_name,
+            'file_url' => PublicMediaUrl::fromPath($document?->file_path),
         ];
     }
 

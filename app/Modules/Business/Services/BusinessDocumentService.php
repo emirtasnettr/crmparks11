@@ -3,6 +3,7 @@
 namespace App\Modules\Business\Services;
 
 use App\Core\Services\EntityDocumentStorageService;
+use App\Models\Contract;
 use App\Models\Document;
 use App\Models\DocumentCategory;
 use App\Models\User;
@@ -98,6 +99,142 @@ class BusinessDocumentService
             'business_id' => $business->id,
             'document_type' => 'contract',
         ], $file, $user);
+    }
+
+    public function storeForContract(Contract $contract, UploadedFile $file, User $user): Document
+    {
+        $document = DB::transaction(function () use ($contract, $file, $user): Document {
+            $this->deleteContractDocuments($contract);
+
+            $category = DocumentCategory::query()
+                ->where('code', 'contract')
+                ->firstOrFail();
+
+            $stored = $this->storage->store($file, 'contracts', $contract->id);
+
+            return Document::query()->create([
+                'documentable_type' => Contract::class,
+                'documentable_id' => $contract->id,
+                'document_category_id' => $category->id,
+                'original_name' => $stored['original_name'],
+                'stored_name' => $stored['stored_name'],
+                'file_path' => $stored['file_path'],
+                'mime_type' => $stored['mime_type'],
+                'file_size' => $stored['file_size'],
+                'disk' => $stored['disk'],
+                'uploaded_by' => $user->id,
+            ]);
+        });
+
+        $contract->update(['document_id' => $document->id]);
+
+        return $document;
+    }
+
+    public function findForContract(Contract $contract): ?Document
+    {
+        $contract->loadMissing('document');
+
+        if ($contract->document !== null) {
+            return $contract->document;
+        }
+
+        $direct = Document::query()
+            ->where('documentable_type', Contract::class)
+            ->where('documentable_id', $contract->id)
+            ->orderByDesc('created_at')
+            ->first();
+
+        if ($direct !== null) {
+            return $this->attachDocumentToContract($contract, $direct);
+        }
+
+        $business = $contract->contractable;
+
+        if (! $business instanceof Business) {
+            return null;
+        }
+
+        return $this->findLegacyBusinessContractDocument($contract, $business);
+    }
+
+    private function findLegacyBusinessContractDocument(Contract $contract, Business $business): ?Document
+    {
+        $documents = Document::query()
+            ->where('documentable_type', Business::class)
+            ->where('documentable_id', $business->id)
+            ->whereHas('category', fn (Builder $category) => $category->where('code', 'contract'))
+            ->orderByDesc('created_at')
+            ->get();
+
+        foreach ($documents as $document) {
+            $alreadyLinked = Contract::query()
+                ->whereKeyNot($contract->id)
+                ->where('document_id', $document->id)
+                ->exists();
+
+            if ($alreadyLinked) {
+                continue;
+            }
+
+            $match = Contract::query()
+                ->where('contractable_type', Business::class)
+                ->where('contractable_id', $business->id)
+                ->where('created_at', '<=', $document->created_at)
+                ->orderByDesc('created_at')
+                ->first();
+
+            if ($match?->id === $contract->id) {
+                return $this->attachDocumentToContract($contract, $document);
+            }
+        }
+
+        $unlinkedContracts = Contract::query()
+            ->where('contractable_type', Business::class)
+            ->where('contractable_id', $business->id)
+            ->whereNull('document_id')
+            ->count();
+
+        if ($unlinkedContracts === 1 && $documents->isNotEmpty()) {
+            return $this->attachDocumentToContract($contract, $documents->first());
+        }
+
+        return null;
+    }
+
+    private function attachDocumentToContract(Contract $contract, Document $document): Document
+    {
+        if ((int) $contract->document_id !== (int) $document->id) {
+            $contract->update(['document_id' => $document->id]);
+        }
+
+        if ($document->documentable_type !== Contract::class || (int) $document->documentable_id !== (int) $contract->id) {
+            $document->update([
+                'documentable_type' => Contract::class,
+                'documentable_id' => $contract->id,
+            ]);
+        }
+
+        return $document->fresh();
+    }
+
+    public function deleteContractDocuments(Contract $contract): void
+    {
+        if ($contract->document_id !== null) {
+            $document = Document::query()->find($contract->document_id);
+
+            if ($document !== null) {
+                $this->destroy($document);
+            }
+        }
+
+        Document::query()
+            ->where('documentable_type', Contract::class)
+            ->where('documentable_id', $contract->id)
+            ->get()
+            ->each(fn (Document $document) => $this->destroy($document));
+
+        $contract->update(['document_id' => null]);
     }
 
     public function find(int $id): ?Document
