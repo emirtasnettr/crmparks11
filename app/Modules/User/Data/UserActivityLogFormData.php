@@ -64,6 +64,7 @@ class UserActivityLogFormData
             'courier_updated' => 'Kurye Güncellendi',
             'courier_activated' => 'Kurye Aktifleştirildi',
             'courier_deactivated' => 'Kurye Pasifleştirildi',
+            'courier_deleted' => 'Kurye Silindi',
             'earning_created' => 'Hakediş Oluşturuldu',
             'revenue_created' => 'Gelir Kaydı Oluşturuldu',
             'expense_created' => 'Gider Kaydı Oluşturuldu',
@@ -135,6 +136,7 @@ class UserActivityLogFormData
             'courier_updated' => 'couriers',
             'courier_activated' => 'couriers',
             'courier_deactivated' => 'couriers',
+            'courier_deleted' => 'couriers',
             'earning_created' => 'earnings',
             'revenue_created' => 'earnings',
             'expense_created' => 'finance',
@@ -195,7 +197,7 @@ class UserActivityLogFormData
     {
         return match (true) {
             $action === 'login_failed' => 'failed',
-            in_array($action, ['role_changed', 'permission_updated', 'settings_updated', 'courier_deactivated'], true) => 'warning',
+            in_array($action, ['role_changed', 'permission_updated', 'settings_updated', 'courier_deactivated', 'courier_deleted'], true) => 'warning',
             in_array($newValues['status'] ?? null, ['cancelled', 'deleted', 'inactive'], true) => 'warning',
             ($newValues['error'] ?? false) === true => 'failed',
             default => 'success',

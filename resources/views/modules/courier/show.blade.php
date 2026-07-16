@@ -28,6 +28,17 @@
         </div>
         <div class="flex flex-wrap gap-2">
             <x-ui.button variant="secondary" href="{{ route('couriers.edit', $courier['id']) }}">Düzenle</x-ui.button>
+            @if ($courier['can_delete'] ?? false)
+                <form
+                    method="POST"
+                    action="{{ route('couriers.destroy', $courier['id']) }}"
+                    onsubmit="return confirm('Kurye kalıcı olarak silinsin mi?')"
+                >
+                    @csrf
+                    @method('DELETE')
+                    <x-ui.button type="submit" variant="danger">Sil</x-ui.button>
+                </form>
+            @endif
             <x-ui.button href="{{ route('couriers.index') }}" variant="secondary">Listeye Dön</x-ui.button>
         </div>
     </div>

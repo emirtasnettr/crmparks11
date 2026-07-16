@@ -229,6 +229,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/{id}/duzenle', [CourierController::class, 'edit'])->name('edit');
         Route::put('/{id}', [CourierController::class, 'update'])->middleware('permission:courier.update')->name('update');
         Route::post('/{id}/pasife-al', [CourierController::class, 'deactivate'])->middleware('permission:courier.update')->name('deactivate');
+        Route::delete('/{id}', [CourierController::class, 'destroy'])->name('destroy');
         Route::get('/{id}', [CourierController::class, 'show'])->name('show');
     });
 

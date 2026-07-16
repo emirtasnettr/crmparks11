@@ -69,6 +69,7 @@ class CourierPresenter
             'photo_path' => $courier->photo_path,
             'photo_url' => $this->media->url($courier->photo_path),
             'has_profile_photo' => ! empty($courier->photo_path),
+            'can_delete' => auth()->user()?->hasRole('super_admin') ?? false,
         ], $avatar);
     }
 

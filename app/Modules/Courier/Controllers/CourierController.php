@@ -195,4 +195,21 @@ class CourierController extends Controller
             ->route('couriers.index')
             ->with('success', 'Kurye pasife alındı.');
     }
+
+    public function destroy(Request $request, int $id): RedirectResponse
+    {
+        abort_unless($request->user()?->hasRole('super_admin'), 403);
+
+        $courier = $this->couriers->find($id);
+
+        if ($courier === null) {
+            abort(404);
+        }
+
+        $this->couriers->destroy($courier);
+
+        return redirect()
+            ->route('couriers.index')
+            ->with('success', 'Kurye silindi.');
+    }
 }

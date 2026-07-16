@@ -3,6 +3,7 @@
 namespace App\Modules\Courier\Services;
 
 use App\Modules\ActivityLog\Services\ActivityLogService;
+use App\Core\Enums\Status;
 use App\Models\City;
 use App\Models\District;
 use App\Models\User;
@@ -20,6 +21,7 @@ class CourierService
         private readonly CourierMediaService $media,
         private readonly ActivityLogService $activityLog,
         private readonly CurrentAccountService $currentAccounts,
+        private readonly CourierUserProvisioner $userProvisioner,
     ) {}
 
     /**
@@ -97,6 +99,7 @@ class CourierService
             );
 
             $this->currentAccounts->ensureForEntity($courier);
+            $this->userProvisioner->ensureForCourier($courier);
 
             return $courier->fresh(['city', 'district', 'agency', 'vehicleType']);
         });
@@ -163,6 +166,27 @@ class CourierService
         }
 
         return $courier;
+    }
+
+    public function destroy(Courier $courier): void
+    {
+        DB::transaction(function () use ($courier): void {
+            $courier->loadMissing('user');
+
+            $this->activityLog->log(
+                'courier_deleted',
+                $courier,
+                description: "{$courier->full_name} kuryesi silindi.",
+            );
+
+            if ($courier->user !== null) {
+                $linkedUser = $courier->user;
+                $linkedUser->update(['status' => Status::Inactive]);
+                $linkedUser->delete();
+            }
+
+            $courier->delete();
+        });
     }
 
     /**

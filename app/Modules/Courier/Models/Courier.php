@@ -83,6 +83,11 @@ class Courier extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
     protected static function newFactory(): CourierFactory
     {
         return CourierFactory::new();

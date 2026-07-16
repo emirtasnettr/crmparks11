@@ -2,8 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Core\Enums\UserType;
 use App\Models\User;
 use App\Modules\Courier\Models\Courier;
+use App\Modules\Courier\Services\CourierUserProvisioner;
+use Illuminate\Support\Facades\Hash;
 use Database\Seeders\CitySeeder;
 use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
@@ -79,5 +82,90 @@ class CourierStoreTest extends TestCase
         $indexResponse = $this->actingAs($user)->get(route('couriers.index'));
         $indexResponse->assertOk();
         $indexResponse->assertSee('Point Kurye');
+
+        $courierUser = User::query()->findOrFail($courier->user_id);
+        $this->assertSame('point@kurye.test', $courierUser->email);
+        $this->assertSame(UserType::Courier, $courierUser->user_type);
+        $this->assertTrue($courierUser->hasRole('courier'));
+        $this->assertTrue(Hash::check(CourierUserProvisioner::DEFAULT_PASSWORD, $courierUser->password));
+        $this->assertSame(Courier::class, $courierUser->profileable_type);
+        $this->assertSame($courier->id, $courierUser->profileable_id);
+    }
+
+    public function test_courier_user_is_created_with_generated_email_when_missing(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $this->actingAs($user)->post(route('couriers.store'), [
+            'first_name' => 'Otomatik',
+            'last_name' => 'Kurye',
+            'phone' => '0532 777 88 99',
+            'courier_type' => 'independent',
+            'vehicle_type' => 'motorcycle',
+            'start_date' => '2024-06-01',
+            'status' => 'active',
+        ])->assertRedirect();
+
+        $courier = Courier::query()->where('full_name', 'Otomatik Kurye')->firstOrFail();
+        $courierUser = User::query()->findOrFail($courier->user_id);
+
+        $this->assertStringEndsWith('@crmlog.com', $courierUser->email);
+        $this->assertTrue($courierUser->hasRole('courier'));
+    }
+
+    public function test_super_admin_can_delete_courier(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $this->actingAs($user)->post(route('couriers.store'), [
+            'first_name' => 'Silinecek',
+            'last_name' => 'Kurye',
+            'phone' => '0532 000 11 22',
+            'email' => 'silinecek@kurye.test',
+            'courier_type' => 'independent',
+            'vehicle_type' => 'motorcycle',
+            'start_date' => '2024-06-01',
+            'status' => 'active',
+        ])->assertRedirect();
+
+        $courier = Courier::query()->where('full_name', 'Silinecek Kurye')->firstOrFail();
+        $courierUserId = $courier->user_id;
+
+        $this->actingAs($user)
+            ->delete(route('couriers.destroy', $courier->id))
+            ->assertRedirect(route('couriers.index'))
+            ->assertSessionHas('success');
+
+        $this->assertSoftDeleted('couriers', ['id' => $courier->id]);
+        $this->assertSoftDeleted('users', ['id' => $courierUserId]);
+    }
+
+    public function test_non_super_admin_cannot_delete_courier(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('super_admin');
+
+        $this->actingAs($admin)->post(route('couriers.store'), [
+            'first_name' => 'Korunan',
+            'last_name' => 'Kurye',
+            'phone' => '0532 333 44 55',
+            'courier_type' => 'independent',
+            'vehicle_type' => 'motorcycle',
+            'start_date' => '2024-06-01',
+            'status' => 'active',
+        ])->assertRedirect();
+
+        $courier = Courier::query()->where('full_name', 'Korunan Kurye')->firstOrFail();
+
+        $ops = User::factory()->create();
+        $ops->assignRole('operations_specialist');
+
+        $this->actingAs($ops)
+            ->delete(route('couriers.destroy', $courier->id))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('couriers', ['id' => $courier->id, 'deleted_at' => null]);
     }
 }
