@@ -155,6 +155,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/sozlesmeler', [BusinessContractController::class, 'index'])->name('contracts.index');
             Route::get('/sozlesmeler/export', [BusinessContractController::class, 'export'])->name('contracts.export');
             Route::post('/sozlesmeler', [BusinessContractController::class, 'store'])->middleware('permission:business.update')->name('contracts.store');
+            Route::put('/sozlesmeler/{id}', [BusinessContractController::class, 'update'])->middleware('permission:business.update')->name('contracts.update');
             Route::get('/sozlesmeler/{id}', [BusinessContractController::class, 'show'])->name('contracts.show');
             Route::post('/sozlesmeler/{id}/pasife-al', [BusinessContractController::class, 'deactivate'])->middleware('permission:business.update')->name('contracts.deactivate');
             Route::get('/hakedisler', [BusinessEarningController::class, 'index'])->name('earnings.index');

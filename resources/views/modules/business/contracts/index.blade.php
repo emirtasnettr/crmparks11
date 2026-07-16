@@ -4,7 +4,12 @@
 
 
 @section('content')
-<div x-data="contractPage()">
+<div x-data="contractPage(@js([
+    'routes' => [
+        'store' => route('businesses.contracts.store'),
+        'update' => url('/isletmeler/sozlesmeler'),
+    ],
+]))">
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
             <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Sözleşmeler</h1>

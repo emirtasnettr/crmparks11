@@ -58,8 +58,10 @@ class BusinessContractPresenter
             'start_date_formatted' => $startDate->format('d.m.Y'),
             'end_date_formatted' => $endDate->format('d.m.Y'),
             'status' => $displayStatus,
+            'stored_status' => $contract->status,
             'remaining_days' => $remainingDays,
             'is_current' => ContractStatusResolver::isCurrent($displayStatus),
+            'can_update' => $contract->status !== 'cancelled',
             'notes' => $contract->notes,
             'file_name' => null,
         ];

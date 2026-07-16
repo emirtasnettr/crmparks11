@@ -79,6 +79,42 @@ class BusinessContractTest extends TestCase
         $response->assertOk();
         $response->assertSee('Sözleşme Bilgileri');
         $response->assertSee('Burger House');
+        $response->assertSee('Düzenle');
+    }
+
+    public function test_business_contract_can_be_updated(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+
+        $contract = Contract::factory()->create([
+            'contractable_type' => Business::class,
+            'contractable_id' => $business->id,
+            'contract_type_id' => ContractType::query()->where('code', 'service')->value('id'),
+            'contract_number' => 'SZL-2026-001',
+            'notes' => 'Eski not',
+            'created_by' => $user->id,
+        ]);
+
+        $response = $this->actingAs($user)->put(route('businesses.contracts.update', $contract->id), [
+            'business_id' => $business->id,
+            'contract_number' => 'SZL-2026-001',
+            'contract_type' => 'service',
+            'start_date' => '2026-01-01',
+            'end_date' => '2026-12-31',
+            'status' => 'active',
+            'notes' => 'Güncel not',
+            'redirect_to_contract' => true,
+        ]);
+
+        $response->assertRedirect(route('businesses.contracts.show', $contract->id));
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseHas('contracts', [
+            'id' => $contract->id,
+            'notes' => 'Güncel not',
+        ]);
     }
 
     /**

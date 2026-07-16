@@ -101,6 +101,37 @@ class BusinessContractService
         });
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function update(Contract $contract, array $data, User $user): Contract
+    {
+        return DB::transaction(function () use ($contract, $data): Contract {
+            $business = Business::query()->findOrFail((int) $data['business_id']);
+            $contractType = ContractType::query()
+                ->where('code', $data['contract_type'])
+                ->firstOrFail();
+
+            $title = $contractType->label;
+            if (! empty($data['contract_number'])) {
+                $title .= ' - '.$data['contract_number'];
+            }
+
+            $contract->update([
+                'contractable_id' => $business->id,
+                'contract_type_id' => $contractType->id,
+                'title' => $title,
+                'contract_number' => $data['contract_number'] ?? null,
+                'start_date' => $data['start_date'],
+                'end_date' => $data['end_date'],
+                'status' => $data['status'] ?? $contract->status,
+                'notes' => $data['notes'] ?? null,
+            ]);
+
+            return $contract->fresh(['contractable', 'contractType', 'creator']);
+        });
+    }
+
     public function deactivate(Contract $contract): Contract
     {
         $contract->update(['status' => 'cancelled']);

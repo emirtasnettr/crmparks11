@@ -776,9 +776,14 @@ Alpine.data('agencyCourierPage', (preset = {}) => {
 
 Alpine.data('contractPage', (preset = {}) => {
     const lockedBusinessId = lockedPresetId(preset, 'businessId');
+    const contractsById = preset.contractsById ?? {};
+    const routes = preset.routes ?? {};
 
     return {
     lockedBusinessId,
+    contractsById,
+    routes,
+    editId: null,
     openModal: false,
     modalErrors: {},
     submitting: false,
@@ -792,9 +797,19 @@ Alpine.data('contractPage', (preset = {}) => {
         status: 'draft',
     },
 
+    get formAction() {
+        if (this.editId && this.routes.update) {
+            return `${this.routes.update}/${this.editId}`;
+        }
+
+        return this.routes.store ?? '';
+    },
+
     closeModal() {
         this.openModal = false;
         this.modalErrors = {};
+        this.submitting = false;
+        this.editId = null;
         this.resetModal();
     },
 
@@ -808,6 +823,26 @@ Alpine.data('contractPage', (preset = {}) => {
             notes: '',
             status: 'draft',
         };
+    },
+
+    openEdit(id) {
+        const row = this.contractsById[id];
+
+        if (!row) {
+            return;
+        }
+
+        this.editId = id;
+        this.modal = {
+            business_id: String(row.business_id ?? this.lockedBusinessId ?? ''),
+            contract_number: row.contract_number ?? '',
+            contract_type: row.contract_type ?? '',
+            start_date: row.start_date ?? '',
+            end_date: row.end_date ?? '',
+            notes: row.notes ?? '',
+            status: row.stored_status === 'draft' ? 'draft' : 'active',
+        };
+        this.openModal = true;
     },
 
     validateModal() {

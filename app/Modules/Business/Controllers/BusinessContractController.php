@@ -8,6 +8,7 @@ use App\Modules\Business\Data\BusinessContractFormData;
 use App\Modules\Business\Exports\BusinessListExportSheets;
 use App\Modules\Business\Models\Business;
 use App\Modules\Business\Requests\StoreBusinessContractRequest;
+use App\Modules\Business\Requests\UpdateBusinessContractRequest;
 use App\Modules\Business\Services\BusinessContractPresenter;
 use App\Modules\Business\Services\BusinessContractService;
 use App\Modules\Business\Services\BusinessDocumentService;
@@ -92,6 +93,8 @@ class BusinessContractController extends Controller
 
         return view('modules.business.contracts.show', [
             'contract' => $this->presenter->showRow($contract),
+            'businesses' => $this->contracts->businesses(),
+            'contractTypes' => BusinessContractFormData::contractTypes(),
         ]);
     }
 
@@ -115,6 +118,37 @@ class BusinessContractController extends Controller
         return redirect()
             ->route('businesses.contracts.index', ['business_id' => $contract->contractable_id])
             ->with('success', 'Sözleşme başarıyla oluşturuldu.');
+    }
+
+    public function update(UpdateBusinessContractRequest $request, int $id): RedirectResponse
+    {
+        $contract = $this->contracts->find($id);
+        abort_if($contract === null, 404);
+
+        $contract = $this->contracts->update($contract, $request->validated(), $request->user());
+
+        if ($request->hasFile('contract_file')) {
+            $business = Business::query()->findOrFail($contract->contractable_id);
+            $this->documents->storeContractFile($business, $request->file('contract_file'), $request->user());
+        }
+
+        if ($request->boolean('redirect_to_contract')) {
+            return redirect()
+                ->route('businesses.contracts.show', $contract->id)
+                ->with('success', 'Sözleşme başarıyla güncellendi.');
+        }
+
+        if ($request->boolean('redirect_to_business')) {
+            return EntityCardRedirect::toShow(
+                route('businesses.show', $contract->contractable_id),
+                'contracts',
+                'Sözleşme başarıyla güncellendi.',
+            );
+        }
+
+        return redirect()
+            ->route('businesses.contracts.index', ['business_id' => $contract->contractable_id])
+            ->with('success', 'Sözleşme başarıyla güncellendi.');
     }
 
     public function deactivate(Request $request, int $id): RedirectResponse

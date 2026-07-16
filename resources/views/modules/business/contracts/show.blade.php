@@ -4,6 +4,16 @@
 
 
 @section('content')
+<div
+    x-data="contractPage(@js([
+        'businessId' => $contract['business_id'],
+        'contractsById' => [$contract['id'] => $contract],
+        'routes' => [
+            'store' => route('businesses.contracts.store'),
+            'update' => url('/isletmeler/sozlesmeler'),
+        ],
+    ]))"
+>
 <div class="max-w-5xl">
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -30,7 +40,11 @@
                     Dosyayı İndir
                 </x-ui.button>
             @endif
-            <x-ui.button variant="secondary">Düzenle</x-ui.button>
+            @can('business.update')
+                @if ($contract['can_update'])
+                    <x-ui.button type="button" @click="openEdit({{ $contract['id'] }})">Düzenle</x-ui.button>
+                @endif
+            @endcan
         </div>
     </div>
 
@@ -125,5 +139,15 @@
             Listeye Dön
         </x-ui.button>
     </div>
+</div>
+
+@include('modules.business.contracts.partials.modal', [
+    'hideEntitySelector' => true,
+    'presetEntityLabel' => $contract['business_name'],
+    'lockedBusinessId' => $contract['business_id'],
+    'redirectToContract' => true,
+    'contractTypes' => $contractTypes,
+    'businesses' => $businesses,
+])
 </div>
 @endsection
