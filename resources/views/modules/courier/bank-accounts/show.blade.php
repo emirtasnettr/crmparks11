@@ -21,12 +21,26 @@
 
         <div class="flex shrink-0 flex-wrap gap-2">
             @if (! $account['is_default'] && $account['status'] === 'active')
-                <x-ui.button variant="secondary">Varsayılan Yap</x-ui.button>
+                <form
+                    method="POST"
+                    action="{{ route('couriers.bank-accounts.make-default', $account['id']) }}"
+                    onsubmit="return confirm('Bu hesap varsayılan yapılsın mı?')"
+                >
+                    @csrf
+                    <x-ui.button type="submit" variant="secondary">Varsayılan Yap</x-ui.button>
+                </form>
             @endif
             @if ($account['status'] === 'active')
-                <x-ui.button variant="secondary">Pasife Al</x-ui.button>
+                <form
+                    method="POST"
+                    action="{{ route('couriers.bank-accounts.deactivate', $account['id']) }}"
+                    onsubmit="return confirm('Banka hesabı pasife alınsın mı?')"
+                >
+                    @csrf
+                    <x-ui.button type="submit" variant="danger">Pasife Al</x-ui.button>
+                </form>
             @endif
-            <x-ui.button variant="secondary">Düzenle</x-ui.button>
+            <x-ui.button href="{{ route('couriers.show', $account['courier_id']) }}" variant="secondary">Kurye Profili</x-ui.button>
         </div>
     </div>
 

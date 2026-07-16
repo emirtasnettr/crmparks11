@@ -106,6 +106,8 @@ class CourierPresenter
             'work_history_url' => route('couriers.work-history.index', ['courier_id' => $id]),
             'documents_url' => route('couriers.documents.index', ['courier_id' => $id]),
             'bank_accounts_url' => route('couriers.bank-accounts.index', ['courier_id' => $id]),
+            'show_url' => route('couriers.show', $id),
+            'edit_url' => route('couriers.edit', $id),
         ], CourierFeatures::earningsEnabled() ? [
             'earnings_url' => route('couriers.earnings.index', ['courier_id' => $id]),
         ] : []);

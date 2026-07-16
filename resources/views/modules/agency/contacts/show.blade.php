@@ -22,7 +22,17 @@
         </div>
 
         <div class="flex shrink-0 gap-2">
-            <x-ui.button variant="secondary">Düzenle</x-ui.button>
+            @if (($contact['status'] ?? '') === 'active')
+                <form
+                    method="POST"
+                    action="{{ route('agencies.contacts.deactivate', $contact['id']) }}"
+                    onsubmit="return confirm('Yetkili pasife alınsın mı?')"
+                >
+                    @csrf
+                    <x-ui.button type="submit" variant="danger">Pasife Al</x-ui.button>
+                </form>
+            @endif
+            <x-ui.button href="{{ route('agencies.show', $contact['agency_id']) }}" variant="secondary">Acente Kartı</x-ui.button>
         </div>
     </div>
 

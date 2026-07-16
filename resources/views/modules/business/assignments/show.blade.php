@@ -4,7 +4,7 @@
 
 
 @section('content')
-<div class="max-w-5xl">
+<div class="max-w-5xl" x-data="{ openEditModal: false }">
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
             <div class="flex flex-wrap items-center gap-3">
@@ -19,7 +19,21 @@
             </p>
         </div>
 
-        <x-ui.button variant="secondary">Düzenle</x-ui.button>
+        <div class="flex shrink-0 flex-wrap gap-2">
+            @can('assignment.update')
+                <x-ui.button type="button" @click="openEditModal = true">Düzenle</x-ui.button>
+                @if ($assignment['is_active_assignment'] ?? false)
+                    <form
+                        method="POST"
+                        action="{{ route('businesses.assignments.terminate', $assignment['id']) }}"
+                        onsubmit="return confirm('Atama sonlandırılsın mı?')"
+                    >
+                        @csrf
+                        <x-ui.button type="submit" variant="danger">Sonlandır</x-ui.button>
+                    </form>
+                @endif
+            @endcan
+        </div>
     </div>
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -103,5 +117,9 @@
             Listeye Dön
         </x-ui.button>
     </div>
+
+    @can('assignment.update')
+        @include('modules.business.assignments.partials.edit-modal')
+    @endcan
 </div>
 @endsection

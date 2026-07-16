@@ -227,7 +227,6 @@
         </x-ui.card>
         <div class="flex flex-wrap gap-2">
             <x-ui.button type="button" variant="secondary" @click="$dispatch('settings-backup-manual')">Manuel Yedek Al</x-ui.button>
-            <x-ui.button type="button" variant="secondary">Yedekleri Görüntüle</x-ui.button>
         </div>
         @break
 

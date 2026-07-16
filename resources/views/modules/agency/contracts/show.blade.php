@@ -22,15 +22,17 @@
         </div>
 
         <div class="flex shrink-0 flex-wrap gap-2">
-            @if ($contract['file_name'])
-                <x-ui.button variant="secondary">
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                    Dosyayı İndir
-                </x-ui.button>
+            @if (($contract['status'] ?? '') === 'active' || ($contract['status'] ?? '') === 'expiring_soon')
+                <form
+                    method="POST"
+                    action="{{ route('agencies.contracts.deactivate', $contract['id']) }}"
+                    onsubmit="return confirm('Sözleşme pasife alınsın mı?')"
+                >
+                    @csrf
+                    <x-ui.button type="submit" variant="danger">Pasife Al</x-ui.button>
+                </form>
             @endif
-            <x-ui.button variant="secondary">Düzenle</x-ui.button>
+            <x-ui.button href="{{ route('agencies.show', $contract['agency_id']) }}" variant="secondary">Acente Kartı</x-ui.button>
         </div>
     </div>
 
@@ -118,8 +120,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
                 </svg>
                 <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $contract['file_name'] }}</p>
-                <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">PDF önizleme backend bağlantısı sonrası aktif olacaktır.</p>
-                <x-ui.button variant="secondary" class="mt-4" size="sm">Dosyayı İndir</x-ui.button>
+                <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Dosya kaydı mevcut; indirme bağlantısı henüz tanımlı değil.</p>
             </div>
         @else
             <div class="flex min-h-[200px] items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 dark:border-slate-600 dark:bg-slate-800/50">
@@ -132,15 +133,19 @@
         {{-- Ek Belgeler --}}
         <x-ui.card title="Ek Belgeler">
             <ul class="divide-y divide-gray-200 dark:divide-slate-700">
-                @foreach ($contract['attachments'] as $attachment)
+                @forelse ($contract['attachments'] as $attachment)
                     <li class="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
                         <div>
                             <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $attachment['name'] }}</p>
                             <p class="text-xs text-gray-500 dark:text-slate-400">{{ $attachment['type'] }} · {{ $attachment['uploaded_at'] }}</p>
                         </div>
-                        <x-ui.button variant="secondary" size="sm">İndir</x-ui.button>
+                        @if (! empty($attachment['download_url']))
+                            <x-ui.button href="{{ $attachment['download_url'] }}" variant="secondary" size="sm">İndir</x-ui.button>
+                        @endif
                     </li>
-                @endforeach
+                @empty
+                    <li class="py-2 text-sm text-gray-500 dark:text-slate-400">Ek belge bulunmuyor.</li>
+                @endforelse
             </ul>
         </x-ui.card>
 

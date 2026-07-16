@@ -18,9 +18,9 @@
         <div class="flex shrink-0 flex-wrap gap-2">
             @if ($collection['can_update'] ?? false)
                 <x-ui.button href="#edit">Düzenle</x-ui.button>
+                <x-ui.button href="#edit" variant="secondary">Tahsilat Gir</x-ui.button>
             @endif
-            <x-ui.button variant="secondary">Tahsilat Gir</x-ui.button>
-            <x-ui.button variant="secondary">Dekont Yükle</x-ui.button>
+            <x-ui.button href="#receipts" variant="secondary">Dekont Yükle</x-ui.button>
         </div>
     </div>
 

@@ -19,13 +19,13 @@
         </div>
 
         <div class="flex shrink-0 flex-wrap gap-2">
-            <x-ui.button variant="secondary">
+            <x-ui.button href="{{ route('couriers.documents.download', $document['id']) }}" variant="secondary">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                 </svg>
                 İndir
             </x-ui.button>
-            <x-ui.button variant="secondary">Düzenle</x-ui.button>
+            <x-ui.button href="{{ route('couriers.show', $document['courier_id']) }}" variant="secondary">Kurye Profili</x-ui.button>
         </div>
     </div>
 
@@ -99,8 +99,8 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
             </svg>
             <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $document['file_name'] }}</p>
-            <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Dosya önizleme backend bağlantısı sonrası aktif olacaktır.</p>
-            <x-ui.button variant="secondary" class="mt-4" size="sm">
+            <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">{{ $document['file_name'] }}</p>
+            <x-ui.button href="{{ route('couriers.documents.download', $document['id']) }}" variant="secondary" class="mt-4" size="sm">
                 Dosyayı İndir
             </x-ui.button>
         </div>

@@ -14,7 +14,10 @@
             <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">{{ $earning['courier_name'] }} — {{ $earning['business_name'] }}</p>
         </div>
         <div class="flex shrink-0 flex-wrap gap-2">
-            <x-ui.button variant="secondary">Düzenle</x-ui.button>
+            @can('earning.update')
+                <x-ui.button href="{{ route('businesses.earnings.show', $earning['id']) }}" variant="secondary">İşletme Kaydında Düzenle</x-ui.button>
+            @endcan
+            <x-ui.button href="{{ route('couriers.show', $earning['courier_id']) }}" variant="secondary">Kurye Profili</x-ui.button>
         </div>
     </div>
 

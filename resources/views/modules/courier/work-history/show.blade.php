@@ -18,9 +18,16 @@
 
         <div class="flex shrink-0 flex-wrap gap-2">
             @if ($record['is_ongoing'])
-                <x-ui.button variant="secondary">Çalışmayı Sonlandır</x-ui.button>
+                <form
+                    method="POST"
+                    action="{{ route('couriers.work-history.terminate', $record['id']) }}"
+                    onsubmit="return confirm('Çalışma kaydı sonlandırılsın mı?')"
+                >
+                    @csrf
+                    <x-ui.button type="submit" variant="danger">Çalışmayı Sonlandır</x-ui.button>
+                </form>
             @endif
-            <x-ui.button variant="secondary">Düzenle</x-ui.button>
+            <x-ui.button href="{{ route('couriers.show', $record['courier_id']) }}" variant="secondary">Kurye Profili</x-ui.button>
         </div>
     </div>
 

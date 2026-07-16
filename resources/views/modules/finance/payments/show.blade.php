@@ -21,12 +21,12 @@
         <div class="flex shrink-0 flex-wrap gap-2">
             @if ($payment['can_update'] ?? false)
                 <x-ui.button href="#edit">Düzenle</x-ui.button>
-            @endif
-            @if ($payment['status'] !== 'cancelled' && ($payment['remaining_amount'] ?? 0) > 0)
-                <x-ui.button variant="secondary">Ödeme Yap</x-ui.button>
+                @if ($payment['status'] !== 'cancelled' && ($payment['remaining_amount'] ?? 0) > 0)
+                    <x-ui.button href="#edit" variant="secondary">Ödeme Yap</x-ui.button>
+                @endif
             @endif
             @if (count($payment['receipts']) > 0)
-                <x-ui.button variant="secondary">Dekont Görüntüle</x-ui.button>
+                <x-ui.button href="#receipts" variant="secondary">Dekont Görüntüle</x-ui.button>
             @endif
         </div>
     </div>
@@ -82,7 +82,7 @@
                     </div>
                 </dl>
                 <div class="mt-4">
-                    <x-ui.button variant="secondary" size="sm">Hakedişe Git</x-ui.button>
+                    <x-ui.button href="{{ route('businesses.earnings.show', $payment['earning_id']) }}" variant="secondary" size="sm">Hakedişe Git</x-ui.button>
                 </div>
             @else
                 <p class="text-sm text-gray-500 dark:text-slate-400">Bu ödeme bir hakediş kaydına bağlı değil (manuel ödeme).</p>
@@ -174,7 +174,7 @@
             @endif
         </x-ui.card>
 
-        <x-ui.card title="Dekontlar">
+        <x-ui.card title="Dekontlar" id="receipts">
             @if (count($payment['receipts']) > 0)
                 <ul class="space-y-2 text-sm">
                     @foreach ($payment['receipts'] as $receipt)

@@ -27,7 +27,9 @@
             </div>
         </div>
         <div class="flex flex-wrap gap-2">
-            <x-ui.button variant="secondary" href="{{ route('couriers.edit', $courier['id']) }}">Düzenle</x-ui.button>
+            @can('courier.update')
+                <x-ui.button variant="secondary" href="{{ route('couriers.edit', $courier['id']) }}">Düzenle</x-ui.button>
+            @endcan
             @if ($courier['can_delete'] ?? false)
                 <form
                     method="POST"

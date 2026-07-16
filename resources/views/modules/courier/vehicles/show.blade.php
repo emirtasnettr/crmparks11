@@ -18,9 +18,16 @@
 
         <div class="flex shrink-0 flex-wrap gap-2">
             @if ($vehicle['status'] === 'active')
-                <x-ui.button variant="secondary">Pasife Al</x-ui.button>
+                <form
+                    method="POST"
+                    action="{{ route('couriers.vehicles.deactivate', $vehicle['id']) }}"
+                    onsubmit="return confirm('Araç kaydı pasife alınsın mı?')"
+                >
+                    @csrf
+                    <x-ui.button type="submit" variant="danger">Pasife Al</x-ui.button>
+                </form>
             @endif
-            <x-ui.button variant="secondary">Düzenle</x-ui.button>
+            <x-ui.button href="{{ route('couriers.show', $vehicle['courier_id']) }}" variant="secondary">Kurye Profili</x-ui.button>
         </div>
     </div>
 

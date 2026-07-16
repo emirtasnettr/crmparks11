@@ -20,8 +20,8 @@
         <div class="flex shrink-0 flex-wrap gap-2">
             @if ($expense['can_update'] ?? false)
                 <x-ui.button href="#edit">Düzenle</x-ui.button>
+                <x-ui.button href="#edit" variant="secondary">Ödeme Yap</x-ui.button>
             @endif
-            <x-ui.button variant="secondary">Ödeme Yap</x-ui.button>
             <x-ui.button href="{{ route('finance.expenses.pdf', $expense['id']) }}" variant="secondary">PDF Oluştur</x-ui.button>
         </div>
     </div>

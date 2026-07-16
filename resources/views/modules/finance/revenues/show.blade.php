@@ -20,7 +20,7 @@
             @if ($revenue['can_update'] ?? false)
                 <x-ui.button href="#edit">Düzenle</x-ui.button>
             @endif
-            <x-ui.button variant="secondary">Tahsilat Gir</x-ui.button>
+            <x-ui.button href="{{ route('finance.collections.index', ['business_id' => $revenue['business_id']]) }}" variant="secondary">Tahsilatlar</x-ui.button>
             <x-ui.button href="{{ route('finance.revenues.pdf', $revenue['id']) }}" variant="secondary">PDF Oluştur</x-ui.button>
         </div>
     </div>
