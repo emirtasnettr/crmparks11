@@ -68,6 +68,8 @@ class CourierPresenter
             'photo_url' => $this->media->url($courier->photo_path),
             'has_profile_photo' => ! empty($courier->photo_path),
             'can_delete' => auth()->user()?->hasRole('super_admin') ?? false,
+            'login_email' => $courier->user?->email,
+            'has_login_account' => $courier->user_id !== null && $courier->user !== null,
         ], $avatar);
     }
 
@@ -143,6 +145,8 @@ class CourierPresenter
             'company_name' => $courier->courier_type === 'independent' ? $base['company_name'] : null,
             'start_date_formatted' => $courier->start_date?->format('d.m.Y'),
             'notes' => $base['notes'],
+            'login_email' => $base['login_email'],
+            'has_login_account' => $base['has_login_account'],
             'active_vehicle' => $activeVehicle,
             'default_bank' => $defaultBank,
             'vehicles' => $vehicles,

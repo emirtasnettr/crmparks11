@@ -50,6 +50,14 @@ class CourierUserProvisioner
         return $user;
     }
 
+    public function updatePassword(Courier $courier, string $password): User
+    {
+        $user = $this->ensureForCourier($courier);
+        $user->update(['password' => $password]);
+
+        return $user->fresh();
+    }
+
     private function resolveEmail(Courier $courier): string
     {
         $email = trim((string) $courier->email);

@@ -39,7 +39,7 @@ class CourierService
     public function find(int $id): ?Courier
     {
         return Courier::query()
-            ->with(['city', 'district', 'agency', 'vehicleType'])
+            ->with(['city', 'district', 'agency', 'vehicleType', 'user'])
             ->find($id);
     }
 
@@ -166,6 +166,21 @@ class CourierService
         }
 
         return $courier;
+    }
+
+    public function updatePassword(Courier $courier, string $password): User
+    {
+        return DB::transaction(function () use ($courier, $password): User {
+            $user = $this->userProvisioner->updatePassword($courier, $password);
+
+            $this->activityLog->log(
+                'courier_password_changed',
+                $courier,
+                description: "{$courier->full_name} giriş şifresi güncellendi.",
+            );
+
+            return $user;
+        });
     }
 
     public function destroy(Courier $courier): void

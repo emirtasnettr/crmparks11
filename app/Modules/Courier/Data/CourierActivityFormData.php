@@ -12,6 +12,7 @@ final class CourierActivityFormData
         return [
             'courier_created' => 'Kurye Oluşturuldu',
             'courier_updated' => 'Kurye Güncellendi',
+            'courier_password_changed' => 'Giriş Şifresi Değiştirildi',
             'courier_deactivated' => 'Kurye Pasife Alındı',
             'courier_activated' => 'Kurye Aktifleştirildi',
             'document_uploaded' => 'Belge Yüklendi',

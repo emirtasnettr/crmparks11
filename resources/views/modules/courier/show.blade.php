@@ -97,6 +97,50 @@
                     </dl>
                 </x-ui.card>
 
+                <x-ui.card title="Giriş Bilgileri">
+                    @if ($courier['has_login_account'] ?? false)
+                        <dl class="mb-4 space-y-3 text-sm">
+                            <x-entity.detail-row label="Giriş E-Postası" :value="$courier['login_email']" />
+                        </dl>
+
+                        @can('courier.update')
+                            <form method="POST" action="{{ route('couriers.password.update', $courier['id']) }}" class="space-y-4 border-t border-gray-200 pt-4 dark:border-slate-700">
+                                @csrf
+                                @method('PUT')
+
+                                <p class="text-sm text-gray-500 dark:text-slate-400">
+                                    Kuryenin panele giriş şifresini buradan değiştirebilirsiniz.
+                                </p>
+
+                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                    <x-ui.input
+                                        type="password"
+                                        name="password"
+                                        label="Yeni Şifre *"
+                                        autocomplete="new-password"
+                                        :error="$errors->first('password')"
+                                    />
+                                    <x-ui.input
+                                        type="password"
+                                        name="password_confirmation"
+                                        label="Şifre Tekrar *"
+                                        autocomplete="new-password"
+                                        :error="$errors->first('password_confirmation')"
+                                    />
+                                </div>
+
+                                <div class="flex justify-end">
+                                    <x-ui.button type="submit" variant="primary">Şifreyi Güncelle</x-ui.button>
+                                </div>
+                            </form>
+                        @endcan
+                    @else
+                        <p class="text-sm text-gray-500 dark:text-slate-400">
+                            Bu kurye için henüz giriş hesabı oluşturulmamış.
+                        </p>
+                    @endif
+                </x-ui.card>
+
                 <x-ui.card title="Aktif Araç">
                     @if ($courier['active_vehicle'])
                         <dl class="space-y-3 text-sm">

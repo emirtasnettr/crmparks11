@@ -10,6 +10,7 @@ use App\Modules\Courier\Data\CourierFormData;
 use App\Modules\Courier\Data\CourierVehicleFormData;
 use App\Modules\Courier\Exports\CourierListExportSheets;
 use App\Modules\Courier\Requests\StoreCourierRequest;
+use App\Modules\Courier\Requests\UpdateCourierPasswordRequest;
 use App\Modules\Courier\Requests\UpdateCourierRequest;
 use App\Modules\Courier\Services\CourierPresenter;
 use App\Modules\Courier\Services\CourierService;
@@ -194,6 +195,21 @@ class CourierController extends Controller
         return redirect()
             ->route('couriers.show', $id)
             ->with('success', 'Kurye bilgileri güncellendi.');
+    }
+
+    public function updatePassword(UpdateCourierPasswordRequest $request, int $id): RedirectResponse
+    {
+        $courier = $this->couriers->find($id);
+
+        if ($courier === null) {
+            abort(404);
+        }
+
+        $this->couriers->updatePassword($courier, $request->validated('password'));
+
+        return redirect()
+            ->route('couriers.show', $id)
+            ->with('success', 'Kurye giriş şifresi güncellendi.');
     }
 
     public function deactivate(Request $request, int $id): RedirectResponse

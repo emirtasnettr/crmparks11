@@ -168,4 +168,88 @@ class CourierStoreTest extends TestCase
 
         $this->assertDatabaseHas('couriers', ['id' => $courier->id, 'deleted_at' => null]);
     }
+
+    public function test_admin_can_update_courier_login_password(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('super_admin');
+
+        $this->actingAs($admin)->post(route('couriers.store'), [
+            'first_name' => 'Sifre',
+            'last_name' => 'Kurye',
+            'phone' => '0532 555 66 77',
+            'email' => 'sifre@kurye.test',
+            'courier_type' => 'independent',
+            'vehicle_type' => 'motorcycle',
+            'start_date' => '2024-06-01',
+            'status' => 'active',
+        ])->assertRedirect();
+
+        $courier = Courier::query()->where('full_name', 'Sifre Kurye')->firstOrFail();
+        $courierUser = User::query()->findOrFail($courier->user_id);
+
+        $this->actingAs($admin)
+            ->put(route('couriers.password.update', $courier->id), [
+                'password' => 'yeniSifre99',
+                'password_confirmation' => 'yeniSifre99',
+            ])
+            ->assertRedirect(route('couriers.show', $courier->id))
+            ->assertSessionHas('success');
+
+        $this->assertTrue(Hash::check('yeniSifre99', $courierUser->fresh()->password));
+        $this->assertFalse(Hash::check(CourierUserProvisioner::DEFAULT_PASSWORD, $courierUser->fresh()->password));
+    }
+
+    public function test_courier_password_update_requires_permission(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('super_admin');
+
+        $this->actingAs($admin)->post(route('couriers.store'), [
+            'first_name' => 'Yetkisiz',
+            'last_name' => 'Sifre',
+            'phone' => '0532 888 99 00',
+            'courier_type' => 'independent',
+            'vehicle_type' => 'motorcycle',
+            'start_date' => '2024-06-01',
+            'status' => 'active',
+        ])->assertRedirect();
+
+        $courier = Courier::query()->where('full_name', 'Yetkisiz Sifre')->firstOrFail();
+
+        $viewer = User::factory()->create();
+
+        $this->actingAs($viewer)
+            ->put(route('couriers.password.update', $courier->id), [
+                'password' => 'yeniSifre99',
+                'password_confirmation' => 'yeniSifre99',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_courier_show_displays_login_credentials_form(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('super_admin');
+
+        $this->actingAs($admin)->post(route('couriers.store'), [
+            'first_name' => 'Giris',
+            'last_name' => 'Bilgi',
+            'phone' => '0532 101 20 30',
+            'email' => 'giris@kurye.test',
+            'courier_type' => 'independent',
+            'vehicle_type' => 'motorcycle',
+            'start_date' => '2024-06-01',
+            'status' => 'active',
+        ])->assertRedirect();
+
+        $courier = Courier::query()->where('full_name', 'Giris Bilgi')->firstOrFail();
+
+        $this->actingAs($admin)
+            ->get(route('couriers.show', $courier->id))
+            ->assertOk()
+            ->assertSee('Giriş Bilgileri')
+            ->assertSee('giris@kurye.test')
+            ->assertSee('Şifreyi Güncelle');
+    }
 }

@@ -214,6 +214,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/hareket-gecmisi', [CourierActivityController::class, 'index'])->name('activities.index');
         Route::get('/{id}/duzenle', [CourierController::class, 'edit'])->name('edit');
         Route::put('/{id}', [CourierController::class, 'update'])->middleware('permission:courier.update')->name('update');
+        Route::put('/{id}/sifre', [CourierController::class, 'updatePassword'])->middleware('permission:courier.update')->name('password.update');
         Route::post('/{id}/pasife-al', [CourierController::class, 'deactivate'])->middleware('permission:courier.update')->name('deactivate');
         Route::delete('/{id}', [CourierController::class, 'destroy'])->name('destroy');
         Route::get('/{id}', [CourierController::class, 'show'])->name('show');
