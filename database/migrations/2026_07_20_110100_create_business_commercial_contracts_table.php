@@ -29,8 +29,8 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
-            $table->index(['business_id', 'status']);
-            $table->index(['business_id', 'start_date', 'end_date']);
+            $table->index(['business_id', 'status'], 'bcc_business_status_idx');
+            $table->index(['business_id', 'start_date', 'end_date'], 'bcc_business_dates_idx');
         });
 
         if (Schema::hasTable('business_shift_attendances')) {
