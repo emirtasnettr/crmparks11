@@ -5,7 +5,6 @@ namespace App\Modules\Business\Data;
 use App\Core\Helpers\MoneyCalculator;
 use App\Models\EarningLine;
 use App\Modules\Business\Models\Business;
-use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\Business\Services\BusinessPresenter;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -133,12 +132,9 @@ class BusinessOverviewStats
 
     private static function currentActiveCouriers(int $businessId): int
     {
-        return (int) BusinessCourierAssignment::query()
-            ->where('business_id', $businessId)
-            ->currentlyActive()
-            ->pluck('courier_id')
-            ->unique()
-            ->count();
+        $business = Business::query()->find($businessId);
+
+        return $business?->activeCourierCount() ?? 0;
     }
 
     /**

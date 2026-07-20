@@ -27,7 +27,6 @@ class SidebarMenuTest extends TestCase
 
         $response->assertOk();
         $response->assertSee(route('businesses.index'), false);
-        $response->assertDontSee('href="'.route('businesses.assignments.index').'"', false);
         $response->assertSee(route('couriers.index'), false);
         $response->assertSee(route('agencies.index'), false);
         $response->assertSee('Finans');
@@ -81,7 +80,6 @@ class SidebarMenuTest extends TestCase
         $response->assertDontSee('href="'.route('businesses.contracts.index').'"', false);
         $response->assertDontSee('href="'.route('businesses.documents.index').'"', false);
         $response->assertDontSee('href="'.route('businesses.activities.index').'"', false);
-        $response->assertDontSee('href="'.route('businesses.assignments.index').'"', false);
         $response->assertSee('href="'.route('shift-planning.index').'"', false);
         $response->assertSee('İşletmeler');
         $response->assertDontSee('Atanan Kuryeler');
@@ -109,7 +107,6 @@ class SidebarMenuTest extends TestCase
         $this->actingAs($user)->get(route('businesses.contracts.index'))->assertForbidden();
         $this->actingAs($user)->get(route('businesses.documents.index'))->assertForbidden();
         $this->actingAs($user)->get(route('businesses.activities.index'))->assertForbidden();
-        $this->actingAs($user)->get(route('businesses.assignments.index'))->assertOk();
         $this->actingAs($user)->get(route('shift-planning.index'))->assertOk();
         $this->actingAs($user)->get(route('stock.products.index'))->assertOk();
         $this->actingAs($user)->get(route('stock.dashboard'))->assertOk();
@@ -145,7 +142,6 @@ class SidebarMenuTest extends TestCase
         $dashboard->assertDontSee(route('landing-page-builder.index'), false);
         $dashboard->assertDontSee(route('settings.index'), false);
         $dashboard->assertDontSee('Ayarlar');
-        $dashboard->assertDontSee(route('businesses.assignments.index'), false);
 
         $this->actingAs($user)->get(route('couriers.index'))->assertForbidden();
         $this->actingAs($user)->get(route('agencies.index'))->assertForbidden();

@@ -3,8 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Modules\Business\Models\Business;
-use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\Courier\Models\CourierBankAccount;
 use App\Modules\Courier\Models\CourierVehicle;
@@ -83,28 +81,4 @@ class CourierVehicleBankWorkActionsTest extends TestCase
         $this->assertFalse($secondary->fresh()->is_default);
     }
 
-    public function test_work_history_can_be_terminated(): void
-    {
-        $user = User::factory()->create();
-        $user->assignRole('super_admin');
-        $business = Business::factory()->create(['created_by' => $user->id]);
-        $courier = Courier::factory()->create(['created_by' => $user->id]);
-
-        $assignment = BusinessCourierAssignment::factory()->create([
-            'business_id' => $business->id,
-            'courier_id' => $courier->id,
-            'start_date' => now()->subMonths(2)->toDateString(),
-            'end_date' => null,
-            'status' => 'active',
-            'assigned_by' => $user->id,
-        ]);
-
-        $this->actingAs($user)
-            ->post(route('couriers.work-history.terminate', $assignment->id))
-            ->assertRedirect(route('couriers.work-history.index', ['courier_id' => $courier->id]));
-
-        $assignment->refresh();
-        $this->assertSame('inactive', $assignment->status);
-        $this->assertNotNull($assignment->end_date);
-    }
 }

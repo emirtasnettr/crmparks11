@@ -84,11 +84,6 @@ class Business extends Model
             ->latestOfMany();
     }
 
-    public function assignments(): HasMany
-    {
-        return $this->hasMany(BusinessCourierAssignment::class);
-    }
-
     public function shifts(): HasMany
     {
         return $this->hasMany(BusinessShift::class);
@@ -109,10 +104,20 @@ class Business extends Model
         return $this->morphMany(\App\Models\Document::class, 'documentable');
     }
 
+    /**
+     * Aktif vardiya kadrolarındaki benzersiz kurye sayısı.
+     */
     public function activeCourierCount(): int
     {
-        return (int) $this->assignments()
-            ->currentlyActive()
+        return (int) \App\Modules\ShiftPlanning\Models\BusinessShiftCourier::query()
+            ->whereHas('shift', function ($query): void {
+                $query->where('business_id', $this->id)
+                    ->where('is_active', true)
+                    ->where(function ($inner): void {
+                        $inner->whereNull('end_date')
+                            ->orWhereDate('end_date', '>=', now()->toDateString());
+                    });
+            })
             ->pluck('courier_id')
             ->unique()
             ->count();

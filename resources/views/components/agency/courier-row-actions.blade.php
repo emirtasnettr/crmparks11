@@ -17,7 +17,6 @@
             id: $courierId,
             url: route('agencies.couriers.detach', $courierId),
         ),
-        RowActions::link('Çalışma Geçmişi', route('couriers.work-history.index', ['courier_id' => $courierId])),
         RowActions::link('Hakedişleri Gör', route('couriers.earnings.index', ['courier_id' => $courierId])),
         RowActions::link('Belgeleri Gör', route('couriers.documents.index', ['courier_id' => $courierId])),
         RowActions::link('Acenteye Git', route('agencies.couriers.index', ['agency_id' => $agencyId])),

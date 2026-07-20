@@ -7,8 +7,6 @@ use App\Models\District;
 use App\Models\User;
 use App\Models\VehicleType;
 use App\Modules\Agency\Models\Agency;
-use App\Modules\Business\Models\Business;
-use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\Courier\Models\Courier;
 use Database\Seeders\CitySeeder;
 use Database\Seeders\LookupTableSeeder;
@@ -43,16 +41,8 @@ class AgencyCourierIndexTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('super_admin');
         $agency = $this->createAgency($user);
-        $business = $this->createBusiness($user);
         $courier = $this->createAgencyCourier($user, $agency, [
             'full_name' => 'Emre Demir',
-        ]);
-
-        BusinessCourierAssignment::factory()->create([
-            'business_id' => $business->id,
-            'courier_id' => $courier->id,
-            'status' => 'active',
-            'start_date' => now()->subMonths(2)->toDateString(),
         ]);
 
         $response = $this->actingAs($user)->get(route('agencies.couriers.index'));
@@ -125,20 +115,6 @@ class AgencyCourierIndexTest extends TestCase
         ], $overrides));
     }
 
-    private function createBusiness(User $user): Business
-    {
-        $city = City::query()->where('name', 'İstanbul')->firstOrFail();
-        $district = District::query()
-            ->where('city_id', $city->id)
-            ->where('name', 'Kadıköy')
-            ->firstOrFail();
-
-        return Business::factory()->create([
-            'city_id' => $city->id,
-            'district_id' => $district->id,
-            'created_by' => $user->id,
-        ]);
-    }
 
     /**
      * @param  array<string, mixed>  $overrides

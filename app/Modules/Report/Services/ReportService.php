@@ -8,7 +8,6 @@ use App\Models\EarningLine;
 use App\Modules\Agency\Models\Agency;
 use App\Modules\Business\Data\BusinessFormData;
 use App\Modules\Business\Models\Business;
-use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\Finance\Models\FinanceCollection;
 use App\Modules\Report\Data\ReportCatalog;
@@ -189,13 +188,6 @@ class ReportService
      */
     public function operationsSummary(): array
     {
-        $activeAssignments = BusinessCourierAssignment::query()
-            ->where(function ($q): void {
-                $q->whereNull('end_date')
-                    ->orWhereDate('end_date', '>=', now()->toDateString());
-            })
-            ->count();
-
         return [
             'stats' => [
                 'businesses' => Business::query()->count(),
@@ -204,7 +196,6 @@ class ReportService
                 'active_couriers' => Courier::query()->where('status', 'active')->count(),
                 'agencies' => Agency::query()->count(),
                 'active_agencies' => Agency::query()->where('status', 'active')->count(),
-                'active_assignments' => $activeAssignments,
                 'earnings_this_month' => EarningLine::query()
                     ->where('period_year', now()->year)
                     ->where('period_month', now()->month)

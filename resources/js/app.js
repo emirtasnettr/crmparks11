@@ -1071,85 +1071,6 @@ Alpine.data('agencyDocumentPage', (preset = {}) => {
 };
 });
 
-Alpine.data('assignmentPage', (preset = {}) => {
-    const lockedBusinessId = lockedPresetId(preset, 'businessId');
-
-    return {
-    lockedBusinessId,
-    openModal: false,
-    modalErrors: {},
-    submitting: false,
-    modal: {
-        business_id: lockedBusinessId,
-        courier_id: '',
-        courier_type: 'independent',
-        agency_id: '',
-        start_date: '',
-        end_date: '',
-        notes: '',
-        status: 'active',
-    },
-
-    closeModal() {
-        this.openModal = false;
-        this.modalErrors = {};
-        this.resetModal();
-    },
-
-    resetModal() {
-        this.modal = {
-            business_id: this.lockedBusinessId,
-            courier_id: '',
-            courier_type: 'independent',
-            agency_id: '',
-            start_date: '',
-            end_date: '',
-            notes: '',
-            status: 'active',
-        };
-    },
-
-    onCourierChange(event) {
-        const option = event.target.selectedOptions[0];
-        if (!option || !option.value) {
-            return;
-        }
-
-        this.modal.courier_type = option.dataset.type || 'independent';
-        this.modal.agency_id = option.dataset.agency || '';
-    },
-
-    validateModal() {
-        this.modalErrors = {};
-
-        requireEntityId(this.modalErrors, 'business_id', this.lockedBusinessId, this.modal.business_id, 'İşletme seçilmelidir.');
-
-        if (!this.modal.courier_id) {
-            this.modalErrors.courier_id = 'Kurye seçilmelidir.';
-        }
-
-        if (!this.modal.start_date) {
-            this.modalErrors.start_date = 'Başlangıç tarihi zorunludur.';
-        }
-
-        if (this.modal.start_date && this.modal.end_date && this.modal.end_date < this.modal.start_date) {
-            this.modalErrors.start_date = 'Bitiş tarihi başlangıçtan önce olamaz.';
-        }
-
-        return Object.keys(this.modalErrors).length === 0;
-    },
-
-    handleSubmit(event) {
-        if (!this.validateModal()) {
-            event.preventDefault();
-            return;
-        }
-
-        this.submitting = true;
-    },
-};
-});
-
 Alpine.data('earningPage', (preset = {}) => ({
     activeModal: preset.openBulk ? 'bulk' : null,
     submitting: false,
@@ -4095,6 +4016,11 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
     selectedBusinessId: config.selectedBusinessId,
     shifts: config.shifts || [],
     availableCouriers: config.availableCouriers || [],
+    eligibleCouriers: config.availableCouriers || [],
+    eligibleCouriersLoading: false,
+    courierSearch: '',
+    assignCourierSearch: '',
+    eligibleFetchToken: 0,
     jokerReasons: config.jokerReasons || {},
     canCreate: config.canCreate,
     canUpdate: config.canUpdate,
@@ -4106,6 +4032,7 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
     assignUrlTemplate: config.assignUrlTemplate,
     jokerUrlTemplate: config.jokerUrlTemplate,
     destroyUrlTemplate: config.destroyUrlTemplate,
+    eligibleCouriersUrl: config.eligibleCouriersUrl || '',
     deleteShiftId: null,
     shiftForm: {
         id: null,
@@ -4124,6 +4051,10 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
         shift_name: '',
         required_headcount: 1,
         courier_ids: [],
+        start_date: '',
+        end_date: '',
+        start_time: '',
+        end_time: '',
     },
     jokerForm: {
         id: null,
@@ -4135,8 +4066,31 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
         notes: '',
         roster: [],
     },
+    init() {
+        this.$watch(
+            () => [
+                this.openShiftModal,
+                this.shiftMode,
+                this.shiftForm.start_date,
+                this.shiftForm.end_date,
+                this.shiftForm.start_time,
+                this.shiftForm.end_time,
+            ].join('|'),
+            () => {
+                if (this.openShiftModal && this.shiftMode === 'create') {
+                    this.refreshEligibleCouriers({
+                        start_date: this.shiftForm.start_date,
+                        end_date: this.shiftForm.end_date,
+                        start_time: this.shiftForm.start_time,
+                        end_time: this.shiftForm.end_time,
+                    });
+                }
+            },
+        );
+    },
     openCreate() {
         this.shiftMode = 'create';
+        this.courierSearch = '';
         this.shiftForm = {
             id: null,
             name: '',
@@ -4150,6 +4104,12 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
             courier_ids: [],
         };
         this.openShiftModal = true;
+        this.refreshEligibleCouriers({
+            start_date: this.shiftForm.start_date,
+            end_date: this.shiftForm.end_date,
+            start_time: this.shiftForm.start_time,
+            end_time: this.shiftForm.end_time,
+        });
     },
     openEdit(id) {
         const shift = this.shifts.find((item) => item.id === id);
@@ -4172,13 +4132,25 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
     openAssign(id) {
         const shift = this.shifts.find((item) => item.id === id);
         if (!shift) return;
+        this.assignCourierSearch = '';
         this.courierForm = {
             id: shift.id,
             shift_name: shift.name,
             required_headcount: shift.required_headcount || 1,
             courier_ids: [...(shift.courier_ids || [])].map(String),
+            start_date: shift.start_date || this.defaultStartDate,
+            end_date: shift.end_date || this.defaultEndDate,
+            start_time: shift.start_time,
+            end_time: shift.end_time,
         };
         this.openCourierModal = true;
+        this.refreshEligibleCouriers({
+            start_date: this.courierForm.start_date,
+            end_date: this.courierForm.end_date,
+            start_time: this.courierForm.start_time,
+            end_time: this.courierForm.end_time,
+            exclude_shift_id: shift.id,
+        }, 'assign');
     },
     openJoker(id) {
         const shift = this.shifts.find((item) => item.id === id);
@@ -4211,6 +4183,98 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
     closeDeleteModal() {
         this.openDeleteModal = false;
         this.deleteShiftId = null;
+    },
+    async refreshEligibleCouriers(schedule, mode = 'create') {
+        if (!this.eligibleCouriersUrl) {
+            this.eligibleCouriers = this.availableCouriers || [];
+            return;
+        }
+
+        const startDate = schedule.start_date || '';
+        const endDate = schedule.end_date || '';
+        const startTime = (schedule.start_time || '').slice(0, 5);
+        const endTime = (schedule.end_time || '').slice(0, 5);
+
+        if (!startDate || !endDate || !startTime || !endTime) {
+            this.eligibleCouriers = this.availableCouriers || [];
+            return;
+        }
+
+        const token = ++this.eligibleFetchToken;
+        this.eligibleCouriersLoading = true;
+
+        try {
+            const params = new URLSearchParams({
+                start_date: startDate,
+                end_date: endDate,
+                start_time: startTime,
+                end_time: endTime,
+            });
+
+            if (schedule.exclude_shift_id) {
+                params.set('exclude_shift_id', String(schedule.exclude_shift_id));
+            }
+
+            const response = await fetch(`${this.eligibleCouriersUrl}?${params.toString()}`, {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) {
+                throw new Error('eligible couriers failed');
+            }
+
+            const payload = await response.json();
+            if (token !== this.eligibleFetchToken) {
+                return;
+            }
+
+            this.eligibleCouriers = payload.couriers || [];
+            this.pruneSelectedCouriers(mode);
+        } catch (error) {
+            if (token !== this.eligibleFetchToken) {
+                return;
+            }
+            this.eligibleCouriers = this.availableCouriers || [];
+        } finally {
+            if (token === this.eligibleFetchToken) {
+                this.eligibleCouriersLoading = false;
+            }
+        }
+    },
+    pruneSelectedCouriers(mode = 'create') {
+        const allowed = new Set((this.eligibleCouriers || []).map((courier) => String(courier.id)));
+        if (mode === 'assign') {
+            this.courierForm.courier_ids = (this.courierForm.courier_ids || [])
+                .map(String)
+                .filter((id) => allowed.has(id));
+            return;
+        }
+
+        this.shiftForm.courier_ids = (this.shiftForm.courier_ids || [])
+            .map(String)
+            .filter((id) => allowed.has(id));
+    },
+    filteredCreateCouriers() {
+        return this.filterCouriersBySearch(this.eligibleCouriers, this.courierSearch);
+    },
+    filteredAssignCouriers() {
+        return this.filterCouriersBySearch(this.eligibleCouriers, this.assignCourierSearch);
+    },
+    filterCouriersBySearch(couriers, query) {
+        const needle = String(query || '').trim().toLocaleLowerCase('tr-TR');
+        if (!needle) {
+            return couriers || [];
+        }
+
+        return (couriers || []).filter((courier) => {
+            const name = String(courier.name || '').toLocaleLowerCase('tr-TR');
+            const phone = String(courier.phone || '').toLocaleLowerCase('tr-TR');
+            return name.includes(needle) || phone.includes(needle);
+        });
     },
     jokerPool() {
         const absentId = String(this.jokerForm.absent_courier_id || '');

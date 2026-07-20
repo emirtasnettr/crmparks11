@@ -4,10 +4,10 @@ namespace App\Modules\ShiftPlanning\Services;
 
 use App\Models\User;
 use App\Modules\Business\Models\Business;
-use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\ShiftPlanning\Data\ShiftPlanningFormData;
 use App\Modules\ShiftPlanning\Models\BusinessShift;
+use App\Modules\ShiftPlanning\Models\BusinessShiftCourier;
 use App\Modules\ShiftPlanning\Models\BusinessShiftJokerAssignment;
 use App\Modules\ShiftPlanning\Support\ShiftCourierConflictChecker;
 use Carbon\Carbon;
@@ -63,11 +63,17 @@ class ShiftPlanningService
             ->find($id);
     }
 
-    public function activeAssignmentCourierCount(int $businessId): int
+    public function activeRosterCourierCount(int $businessId): int
     {
-        return BusinessCourierAssignment::query()
-            ->where('business_id', $businessId)
-            ->currentlyActive()
+        return (int) BusinessShiftCourier::query()
+            ->whereHas('shift', function ($query) use ($businessId): void {
+                $query->where('business_id', $businessId)
+                    ->where('is_active', true)
+                    ->where(function ($inner): void {
+                        $inner->whereNull('end_date')
+                            ->orWhereDate('end_date', '>=', now()->toDateString());
+                    });
+            })
             ->pluck('courier_id')
             ->unique()
             ->count();
@@ -90,6 +96,38 @@ class ShiftPlanningService
                 'phone' => $courier->phone ?? '—',
             ])
             ->all();
+    }
+
+    /**
+     * Seçilen tarih/saat aralığında çakışması olmayan aktif kuryeler.
+     *
+     * @param  array{
+     *     start_date?: mixed,
+     *     end_date?: mixed,
+     *     start_time?: mixed,
+     *     end_time?: mixed,
+     *     days_of_week?: mixed,
+     *     excluded_dates?: mixed,
+     * }  $schedule
+     * @return array<int, array{id: int, name: string, phone: string}>
+     */
+    public function eligibleCouriersForSchedule(array $schedule, ?int $excludeShiftId = null): array
+    {
+        $couriers = $this->availableCouriers();
+        if ($couriers === []) {
+            return [];
+        }
+
+        $busy = array_flip($this->conflicts->busyCourierIds(
+            array_map(fn (array $courier) => (int) $courier['id'], $couriers),
+            $schedule,
+            $excludeShiftId,
+        ));
+
+        return array_values(array_filter(
+            $couriers,
+            fn (array $courier) => ! isset($busy[(int) $courier['id']]),
+        ));
     }
 
     /**

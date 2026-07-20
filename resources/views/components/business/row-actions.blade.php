@@ -21,8 +21,6 @@
         $items[] = RowActions::link('Sözleşmeler', route('businesses.contracts.index', ['business_id' => $id]));
     }
 
-    $items[] = RowActions::link('Atanan Kuryeler', route('businesses.assignments.index', ['business_id' => $id]));
-
     if ($canViewRestricted && BusinessFeatures::earningsEnabled()) {
         $items[] = RowActions::link('Hakedişler', route('businesses.earnings.index', ['business_id' => $id]));
     }

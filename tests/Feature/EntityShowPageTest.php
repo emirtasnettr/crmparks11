@@ -16,8 +16,9 @@ use App\Modules\Agency\Models\AgencyContact;
 use App\Modules\Agency\Services\AgencyPresenter;
 use App\Modules\Business\Models\Business;
 use App\Modules\Business\Models\BusinessContact;
-use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\Business\Models\BusinessPricing;
+use App\Modules\ShiftPlanning\Models\BusinessShift;
+use App\Modules\ShiftPlanning\Models\BusinessShiftCourier;
 use App\Modules\Business\Services\BusinessPresenter;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\Courier\Services\CourierPresenter;
@@ -78,12 +79,20 @@ class EntityShowPageTest extends TestCase
       'created_by' => $user->id,
     ]);
 
-    BusinessCourierAssignment::factory()->create([
+    $shift = BusinessShift::query()->create([
       'business_id' => $business->id,
-      'courier_id' => $courier->id,
+      'name' => 'Aktif',
+      'start_time' => '09:00',
+      'end_time' => '17:00',
+      'required_headcount' => 1,
       'start_date' => '2026-07-01',
       'end_date' => null,
-      'assigned_by' => $user->id,
+      'is_active' => true,
+      'created_by' => $user->id,
+    ]);
+    BusinessShiftCourier::query()->create([
+      'business_shift_id' => $shift->id,
+      'courier_id' => $courier->id,
     ]);
 
     $stats = \App\Modules\Business\Data\BusinessOverviewStats::forBusiness(
@@ -153,7 +162,7 @@ class EntityShowPageTest extends TestCase
 
     $show = $this->actingAs($user)->get(route('businesses.show', $business->id));
     $show->assertOk();
-    $show->assertSee('Atanan Kuryeler');
+    $show->assertDontSee('Atanan Kuryeler');
     $this->assertStringNotContainsString("setTab('contracts')", $show->getContent());
     $this->assertStringNotContainsString("setTab('documents')", $show->getContent());
     $this->assertStringNotContainsString("setTab('contacts')", $show->getContent());
@@ -165,7 +174,6 @@ class EntityShowPageTest extends TestCase
     $this->actingAs($user)->get(route('businesses.contacts.index'))->assertForbidden();
     $this->actingAs($user)->get(route('businesses.activities.index'))->assertForbidden();
     $this->actingAs($user)->get(route('reports.contract-expiry'))->assertForbidden();
-    $this->actingAs($user)->get(route('businesses.assignments.index'))->assertOk();
   }
 
   public function test_business_show_uses_pricing_model_labels_for_hourly(): void
@@ -221,9 +229,10 @@ class EntityShowPageTest extends TestCase
     $response->assertSee('Yeni Araç');
     $response->assertSee('Belgeler');
     $response->assertSee('0532 100 10 01');
-    $response->assertSee("courierDocumentPage(JSON.parse('{\\u0022courierId\\u0022:{$courier->id}}'))", false);
-    $response->assertSee("courierBankAccountPage(JSON.parse('{\\u0022courierId\\u0022:{$courier->id}}'))", false);
-    $response->assertSee("courierVehiclePage(JSON.parse('{\\u0022courierId\\u0022:{$courier->id}}'))", false);
+    $response->assertSee('courierDocumentPage(', false);
+    $response->assertSee('courierBankAccountPage(', false);
+    $response->assertSee('courierVehiclePage(', false);
+    $response->assertSee('courierId', false);
     $response->assertDontSee('courierDocumentPage(@js(', false);
   }
 
@@ -301,7 +310,6 @@ class EntityShowPageTest extends TestCase
     $user = User::factory()->create();
     $courierA = $this->createCourier($user, ['full_name' => 'Ahmet Yıldız']);
     $courierB = $this->createCourier($user, ['full_name' => 'Murat Kaya']);
-    $business = $this->createBusiness($user);
     $categoryId = DocumentCategory::query()->where('code', 'identity')->value('id');
 
     Document::factory()->create([
@@ -320,30 +328,12 @@ class EntityShowPageTest extends TestCase
       'uploaded_by' => $user->id,
     ]);
 
-    BusinessCourierAssignment::factory()->create([
-      'business_id' => $business->id,
-      'courier_id' => $courierA->id,
-      'start_date' => '2026-01-01',
-      'assigned_by' => $user->id,
-    ]);
-
-    BusinessCourierAssignment::factory()->create([
-      'business_id' => $business->id,
-      'courier_id' => $courierB->id,
-      'start_date' => '2026-02-01',
-      'assigned_by' => $user->id,
-    ]);
-
     $payload = app(CourierPresenter::class)->showPayload($courierA->fresh());
 
     $this->assertSame($courierA->id, $payload['id']);
 
     foreach ($payload['documents'] as $document) {
       $this->assertSame($courierA->id, $document['courier_id']);
-    }
-
-    foreach ($payload['work_history'] as $history) {
-      $this->assertSame($courierA->id, $history['courier_id']);
     }
 
     $fileNames = collect($payload['documents'])->pluck('file_name')->all();
@@ -356,7 +346,6 @@ class EntityShowPageTest extends TestCase
     $user = User::factory()->create();
     $businessA = $this->createBusiness($user, ['company_name' => 'Burger House Gıda Ltd. Şti.']);
     $businessB = $this->createBusiness($user, ['company_name' => 'Napoli Pizza Restoran A.Ş.']);
-    $courier = $this->createCourier($user);
     $contractTypeId = ContractType::query()->value('id');
 
     BusinessContact::factory()->create([
@@ -367,13 +356,6 @@ class EntityShowPageTest extends TestCase
     BusinessContact::factory()->create([
       'business_id' => $businessB->id,
       'full_name' => 'Ali Veli',
-    ]);
-
-    BusinessCourierAssignment::factory()->create([
-      'business_id' => $businessA->id,
-      'courier_id' => $courier->id,
-      'start_date' => '2026-01-01',
-      'assigned_by' => $user->id,
     ]);
 
     Contract::factory()->create([
@@ -400,10 +382,6 @@ class EntityShowPageTest extends TestCase
 
     foreach ($payload['contracts'] as $contract) {
       $this->assertSame($businessA->id, $contract['business_id']);
-    }
-
-    foreach ($payload['assignments'] as $assignment) {
-      $this->assertSame($businessA->id, $assignment['business_id']);
     }
 
     $contactNames = collect($payload['contacts'])->pluck('full_name')->all();

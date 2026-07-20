@@ -100,6 +100,38 @@ final class ShiftCourierConflictChecker
     }
 
     /**
+     * Verilen programda çakışması olan kurye id'leri.
+     *
+     * @param  array<int, int>  $courierIds
+     * @param  array{
+     *     start_date?: mixed,
+     *     end_date?: mixed,
+     *     start_time?: mixed,
+     *     end_time?: mixed,
+     *     days_of_week?: mixed,
+     *     excluded_dates?: mixed,
+     * }  $schedule
+     * @return array<int, int>
+     */
+    public function busyCourierIds(array $courierIds, array $schedule, ?int $excludeShiftId = null): array
+    {
+        $busy = [];
+
+        foreach ($courierIds as $courierId) {
+            $id = (int) $courierId;
+            if ($id <= 0) {
+                continue;
+            }
+
+            if ($this->firstConflictForCourier($id, $schedule, $excludeShiftId) !== null) {
+                $busy[] = $id;
+            }
+        }
+
+        return $busy;
+    }
+
+    /**
      * @param  array{
      *     start_date?: mixed,
      *     end_date?: mixed,

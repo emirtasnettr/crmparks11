@@ -13,7 +13,6 @@ use App\Modules\Agency\Models\Agency;
 use App\Modules\Agency\Models\AgencyContact;
 use App\Modules\Business\Models\Business;
 use App\Modules\Business\Models\BusinessContact;
-use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\Courier\Models\CourierBankAccount;
 use App\Modules\Courier\Models\CourierVehicle;
@@ -130,11 +129,11 @@ class DemoDataSeeder extends Seeder
             $agencies = $this->seedAgencies($admin, $city, $district);
             $businesses = $this->seedBusinesses($admin, $city, $district);
             $couriers = $this->seedCouriers($admin, $agencies);
-            $assignments = $this->seedAssignments($admin, $businesses, $couriers);
-            $this->seedShifts($admin, $businesses, $assignments);
+            $roster = $this->allocateDemoRoster($businesses, $couriers);
+            $this->seedShifts($admin, $businesses, $roster);
             $this->seedStock($admin, $couriers);
-            $this->seedHourlyEarningsFromAttendances($admin, $assignments);
-            $this->seedEarningsAndFinance($admin, $businesses, $couriers, $assignments, $agencies);
+            $this->seedHourlyEarningsFromAttendances($admin);
+            $this->seedEarningsAndFinance($admin, $businesses, $couriers, $roster, $agencies);
         });
 
         $opening = Business::query()->where('notes', self::MARKER)->where('status', 'opening_stage')->count();
@@ -479,18 +478,20 @@ class DemoDataSeeder extends Seeder
     }
 
     /**
+     * İşletme → kurye eşlemesi (vardiya kadrosu için; BCA yok).
+     *
      * @param  list<Business>  $businesses
      * @param  list<Courier>  $couriers
-     * @return list<BusinessCourierAssignment>
+     * @return list<array{business_id: int, courier_id: int}>
      */
-    private function seedAssignments(User $admin, array $businesses, array $couriers): array
+    private function allocateDemoRoster(array $businesses, array $couriers): array
     {
         $activeCouriers = array_values(array_filter(
             $couriers,
             fn (Courier $courier): bool => $courier->status === 'active'
         ));
 
-        $assignments = [];
+        $roster = [];
         $cursor = 0;
         $poolSize = count($activeCouriers);
 
@@ -508,41 +509,21 @@ class DemoDataSeeder extends Seeder
                 $courier = $activeCouriers[$cursor];
                 $cursor++;
 
-                $assignments[] = BusinessCourierAssignment::factory()->create([
+                $roster[] = [
                     'business_id' => $business->id,
                     'courier_id' => $courier->id,
-                    'assigned_by' => $admin->id,
-                    'status' => 'active',
-                    'start_date' => now()->subMonths(2)->toDateString(),
-                    'end_date' => null,
-                    'notes' => self::MARKER,
-                ]);
+                ];
             }
         }
 
-        // Geçmiş (pasif) atama — aktif kuryenin önceki işletmesi.
-        $firstActive = collect($businesses)->firstWhere('status', 'active');
-        $historyCourier = $activeCouriers[0] ?? null;
-        if ($firstActive && $historyCourier) {
-            $assignments[] = BusinessCourierAssignment::factory()->create([
-                'business_id' => $firstActive->id,
-                'courier_id' => $historyCourier->id,
-                'assigned_by' => $admin->id,
-                'status' => 'inactive',
-                'start_date' => now()->subMonths(6)->toDateString(),
-                'end_date' => now()->subMonths(3)->toDateString(),
-                'notes' => self::MARKER,
-            ]);
-        }
-
-        return $assignments;
+        return $roster;
     }
 
     /**
      * @param  list<Business>  $businesses
-     * @param  list<BusinessCourierAssignment>  $assignments
+     * @param  list<array{business_id: int, courier_id: int}>  $roster
      */
-    private function seedShifts(User $admin, array $businesses, array $assignments): void
+    private function seedShifts(User $admin, array $businesses, array $roster): void
     {
         $activeBusinesses = array_values(array_filter(
             $businesses,
@@ -579,9 +560,8 @@ class DemoDataSeeder extends Seeder
         $createdShifts = [];
 
         foreach ($targets as $businessIndex => $business) {
-            $businessCourierIds = collect($assignments)
-                ->filter(fn (BusinessCourierAssignment $assignment): bool => $assignment->business_id === $business->id
-                    && $assignment->status === 'active')
+            $businessCourierIds = collect($roster)
+                ->filter(fn (array $row): bool => $row['business_id'] === $business->id)
                 ->pluck('courier_id')
                 ->unique()
                 ->values()
@@ -614,8 +594,8 @@ class DemoDataSeeder extends Seeder
                     'created_by' => $admin->id,
                 ]);
 
-                $roster = array_slice($businessCourierIds, 0, $shift->required_headcount);
-                foreach ($roster as $courierId) {
+                $shiftRoster = array_slice($businessCourierIds, 0, $shift->required_headcount);
+                foreach ($shiftRoster as $courierId) {
                     BusinessShiftCourier::query()->create([
                         'business_shift_id' => $shift->id,
                         'courier_id' => $courierId,
@@ -624,7 +604,7 @@ class DemoDataSeeder extends Seeder
 
                 $createdShifts[] = [
                     'shift' => $shift,
-                    'roster' => $roster,
+                    'roster' => $shiftRoster,
                     'business' => $business,
                     'business_courier_ids' => $businessCourierIds,
                     'business_index' => $businessIndex,
@@ -635,7 +615,7 @@ class DemoDataSeeder extends Seeder
 
         $this->seedJokerAssignments($admin, $createdShifts);
         $this->seedShiftAttendances($createdShifts);
-        $this->seedLiveOperationsBoard($admin, $businesses, $assignments);
+        $this->seedLiveOperationsBoard($admin, $businesses, $roster);
     }
 
     /**
@@ -643,9 +623,9 @@ class DemoDataSeeder extends Seeder
      * 5 girmedi · 7 geç kaldı · 17 aktif · 7 yaklaşan
      *
      * @param  list<Business>  $businesses
-     * @param  list<BusinessCourierAssignment>  $assignments
+     * @param  list<array{business_id: int, courier_id: int}>  $roster
      */
-    private function seedLiveOperationsBoard(User $admin, array $businesses, array $assignments): void
+    private function seedLiveOperationsBoard(User $admin, array $businesses, array $roster): void
     {
         $today = now()->toDateString();
 
@@ -663,9 +643,8 @@ class DemoDataSeeder extends Seeder
                 $shift->update(['excluded_dates' => $excluded]);
             });
 
-        $courierBusiness = collect($assignments)
-            ->filter(fn (BusinessCourierAssignment $row): bool => $row->status === 'active')
-            ->mapWithKeys(fn (BusinessCourierAssignment $row) => [(int) $row->courier_id => (int) $row->business_id]);
+        $courierBusiness = collect($roster)
+            ->mapWithKeys(fn (array $row) => [(int) $row['courier_id'] => (int) $row['business_id']]);
 
         $courierIds = $courierBusiness->keys()->values()->all();
         if (count($courierIds) < 36) {
@@ -994,15 +973,9 @@ class DemoDataSeeder extends Seeder
         }
     }
 
-    /**
-     * @param  list<BusinessCourierAssignment>  $assignments
-     */
-    private function seedHourlyEarningsFromAttendances(User $admin, array $assignments): void
+    private function seedHourlyEarningsFromAttendances(User $admin): void
     {
         $statusIds = EarningStatus::query()->pluck('id', 'code');
-        $assignmentIndex = collect($assignments)
-            ->filter(fn (BusinessCourierAssignment $row): bool => $row->status === 'active')
-            ->keyBy(fn (BusinessCourierAssignment $row): string => $row->business_id.'-'.$row->courier_id);
 
         $groups = BusinessShiftAttendance::query()
             ->where('notes', self::MARKER)
@@ -1038,12 +1011,10 @@ class DemoDataSeeder extends Seeder
             $revenueUnit = (float) ($business?->activePricing?->customer_unit_price ?: $courierUnit * 1.5);
             $courierTotal = round((float) $rows->sum('earnings_amount'), 2);
             $revenueTotal = round($workedHours * $revenueUnit, 2);
-            $assignment = $assignmentIndex->get($sample->business_id.'-'.$sample->courier_id);
 
             EarningLine::factory()->create([
                 'business_id' => $sample->business_id,
                 'courier_id' => $sample->courier_id,
-                'assignment_id' => $assignment?->id,
                 'business_pricing_id' => $business?->activePricing?->id,
                 'earning_type' => 'hourly',
                 'pricing_model' => 'hourly',
@@ -1086,12 +1057,10 @@ class DemoDataSeeder extends Seeder
             $courierUnit = (float) ($business?->activePricing?->courier_unit_price ?: 120);
             $revenueUnit = (float) ($business?->activePricing?->customer_unit_price ?: 180);
             $plannedHours = 96.0;
-            $assignment = $assignmentIndex->get($businessId.'-'.$courierId);
 
             EarningLine::factory()->create([
                 'business_id' => $businessId,
                 'courier_id' => $courierId,
-                'assignment_id' => $assignment?->id,
                 'business_pricing_id' => $business?->activePricing?->id,
                 'earning_type' => 'hourly',
                 'pricing_model' => 'hourly',
@@ -1115,14 +1084,14 @@ class DemoDataSeeder extends Seeder
     /**
      * @param  list<Business>  $businesses
      * @param  list<Courier>  $couriers
-     * @param  list<BusinessCourierAssignment>  $assignments
+     * @param  list<array{business_id: int, courier_id: int}>  $roster
      * @param  list<Agency>  $agencies
      */
     private function seedEarningsAndFinance(
         User $admin,
         array $businesses,
         array $couriers,
-        array $assignments,
+        array $roster,
         array $agencies,
     ): void {
         $statusIds = EarningStatus::query()->pluck('id', 'code');
@@ -1151,29 +1120,28 @@ class DemoDataSeeder extends Seeder
             ->pluck('id')
             ->all();
 
-        $financeAssignments = array_values(array_filter(
-            $assignments,
-            function (BusinessCourierAssignment $assignment) use ($businessById, $hourlyBusinessIds): bool {
-                $business = $businessById->get($assignment->business_id);
+        $financePairs = array_values(array_filter(
+            $roster,
+            function (array $pair) use ($businessById, $hourlyBusinessIds): bool {
+                $business = $businessById->get($pair['business_id']);
 
                 return $business !== null
                     && $business->status === 'active'
-                    && $assignment->status === 'active'
-                    && ! in_array($assignment->business_id, $hourlyBusinessIds, true);
+                    && ! in_array($pair['business_id'], $hourlyBusinessIds, true);
             }
         ));
 
-        foreach ($financeAssignments as $index => $assignment) {
+        foreach ($financePairs as $index => $pair) {
             /** @var Business $business */
-            $business = $businessById->get($assignment->business_id);
+            $business = $businessById->get($pair['business_id']);
             /** @var Courier|null $courier */
-            $courier = $courierById->get($assignment->courier_id);
+            $courier = $courierById->get($pair['courier_id']);
 
             if ($courier === null) {
                 continue;
             }
 
-            // Her atama için 2 dönem üret (geçmiş + güncel/gelecek karışık).
+            // Her eşleşme için 2 dönem üret (geçmiş + güncel/gelecek karışık).
             foreach ([0, 1] as $periodOffset) {
                 $period = $periods[($index + $periodOffset) % count($periods)];
                 $statusCode = $statusCycle[($index + $periodOffset) % count($statusCycle)];
@@ -1195,7 +1163,6 @@ class DemoDataSeeder extends Seeder
                 $earning = EarningLine::factory()->create([
                     'business_id' => $business->id,
                     'courier_id' => $courier->id,
-                    'assignment_id' => $assignment->id,
                     'earning_type' => 'package_based',
                     'pricing_model' => 'per_package',
                     'period_month' => $period['month'],

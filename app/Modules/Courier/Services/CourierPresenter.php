@@ -16,8 +16,6 @@ class CourierPresenter
         private readonly CourierEarningPresenter $earningPresenter,
         private readonly CourierDocumentService $documents,
         private readonly CourierDocumentPresenter $documentPresenter,
-        private readonly CourierWorkHistoryService $workHistory,
-        private readonly CourierWorkHistoryPresenter $workHistoryPresenter,
         private readonly CourierVehicleService $vehicles,
         private readonly CourierVehiclePresenter $vehiclePresenter,
         private readonly CourierBankAccountService $bankAccounts,
@@ -103,7 +101,6 @@ class CourierPresenter
             'vehicle_type_label' => $base['vehicle_type_label'],
             'active_business_name' => $base['active_business_name'],
             'status_label' => $statusLabels[$base['status']] ?? $base['status'],
-            'work_history_url' => route('couriers.work-history.index', ['courier_id' => $id]),
             'documents_url' => route('couriers.documents.index', ['courier_id' => $id]),
             'bank_accounts_url' => route('couriers.bank-accounts.index', ['courier_id' => $id]),
             'show_url' => route('couriers.show', $id),
@@ -151,10 +148,6 @@ class CourierPresenter
             'bank_accounts' => $bankAccountRows,
             'documents' => $this->documents->forCourier($id)
                 ->map(fn ($document) => $this->documentPresenter->indexRow($document))
-                ->values()
-                ->all(),
-            'work_history' => $this->workHistory->filter(['courier_id' => $id])
-                ->map(fn ($assignment) => $this->workHistoryPresenter->indexRow($assignment))
                 ->values()
                 ->all(),
             'activities' => $this->activities->forCourier($id)

@@ -6,7 +6,6 @@ use App\Models\City;
 use App\Models\District;
 use App\Models\User;
 use App\Modules\Business\Models\Business;
-use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\ShiftPlanning\Models\BusinessShift;
 use App\Modules\ShiftPlanning\Models\BusinessShiftAttendance;
@@ -47,7 +46,6 @@ class ShiftAttendanceBoardTest extends TestCase
         $user->assignRole('super_admin');
         $business = $this->createBusiness($user);
         $courier = $this->createCourier($user, ['full_name' => 'Beklenen Kurye']);
-        $this->assignCourier($business, $courier, $user);
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
@@ -81,7 +79,6 @@ class ShiftAttendanceBoardTest extends TestCase
         $user->assignRole('super_admin');
         $business = $this->createBusiness($user);
         $courier = $this->createCourier($user, ['full_name' => 'Akşam Kurye']);
-        $this->assignCourier($business, $courier, $user);
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
@@ -115,7 +112,6 @@ class ShiftAttendanceBoardTest extends TestCase
         $user->assignRole('super_admin');
         $business = $this->createBusiness($user);
         $courier = $this->createCourier($user, ['full_name' => 'Yaklaşan Kurye']);
-        $this->assignCourier($business, $courier, $user);
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
@@ -146,7 +142,6 @@ class ShiftAttendanceBoardTest extends TestCase
         $user->assignRole('super_admin');
         $business = $this->createBusiness($user);
         $courier = $this->createCourier($user, ['full_name' => 'Müdahale Kurye']);
-        $this->assignCourier($business, $courier, $user);
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
@@ -200,7 +195,6 @@ class ShiftAttendanceBoardTest extends TestCase
         $user->assignRole('super_admin');
         $business = $this->createBusiness($user);
         $courier = $this->createCourier($user);
-        $this->assignCourier($business, $courier, $user);
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
@@ -232,7 +226,6 @@ class ShiftAttendanceBoardTest extends TestCase
         $user->assignRole('super_admin');
         $business = $this->createBusiness($user);
         $courier = $this->createCourier($user, ['full_name' => 'Filtre Kurye']);
-        $this->assignCourier($business, $courier, $user);
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
@@ -298,15 +291,4 @@ class ShiftAttendanceBoardTest extends TestCase
         ], $overrides));
     }
 
-    private function assignCourier(Business $business, Courier $courier, User $user): void
-    {
-        BusinessCourierAssignment::factory()->create([
-            'business_id' => $business->id,
-            'courier_id' => $courier->id,
-            'status' => 'active',
-            'start_date' => '2026-01-01',
-            'end_date' => null,
-            'assigned_by' => $user->id,
-        ]);
-    }
 }

@@ -41,7 +41,7 @@ class SidebarMenu
                 'label' => 'İşletmeler',
                 'icon' => 'building-office-2',
                 'route' => 'businesses.index',
-                'active' => ['businesses.index', 'businesses.show', 'businesses.assignments.*'],
+                'active' => ['businesses.index', 'businesses.show'],
                 'permission' => 'business.view',
                 'roles' => ['operations_specialist'],
             ],
@@ -195,7 +195,6 @@ class SidebarMenu
                             'except_roles' => ['operations_specialist'],
                         ]
                         : null,
-                    ['label' => 'Çalışma Geçmişi', 'route' => 'couriers.work-history.index', 'active' => ['couriers.work-history.*']],
                     ['label' => 'Araç Bilgileri', 'route' => 'couriers.vehicles.index', 'active' => ['couriers.vehicles.*']],
                     ['label' => 'Banka Bilgileri', 'route' => 'couriers.bank-accounts.index', 'active' => ['couriers.bank-accounts.*']],
                     ['label' => 'Hareket Geçmişi', 'route' => 'couriers.activities.index', 'active' => ['couriers.activities.*']],

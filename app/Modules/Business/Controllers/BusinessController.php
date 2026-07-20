@@ -12,7 +12,6 @@ use App\Modules\Business\Data\BusinessOverviewStats;
 use App\Modules\Business\Exports\BusinessListExportSheets;
 use App\Modules\Business\Requests\StoreBusinessRequest;
 use App\Modules\Business\Requests\UpdateBusinessRequest;
-use App\Modules\Business\Services\BusinessAssignmentService;
 use App\Modules\Business\Services\BusinessPresenter;
 use App\Modules\Business\Services\BusinessService;
 use App\Support\RequestFilter;
@@ -28,7 +27,6 @@ class BusinessController extends Controller
   public function __construct(
     private readonly BusinessService $businesses,
     private readonly BusinessPresenter $presenter,
-    private readonly BusinessAssignmentService $assignments,
   ) {}
 
   public function index(Request $request): View
@@ -130,7 +128,7 @@ class BusinessController extends Controller
             $tab = $request->string('tab')->toString();
 
             if (in_array($tab, ['contacts', 'contracts', 'documents', 'activities'], true)) {
-                return redirect()->route('businesses.show', ['id' => $id, 'tab' => 'assignments']);
+                return redirect()->route('businesses.show', ['id' => $id, 'tab' => 'overview']);
             }
         }
 
@@ -156,8 +154,6 @@ class BusinessController extends Controller
             'contactTitles' => BusinessContactFormData::titles(),
             'contractTypes' => BusinessContractFormData::contractTypes(),
             'documentTypes' => BusinessDocumentFormData::documentTypes(),
-            'assignmentCouriers' => $this->assignments->couriersAvailableForAssignment(),
-            'assignmentAgencies' => $this->assignments->agencies(),
         ]);
     }
 

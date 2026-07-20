@@ -8,7 +8,6 @@ use App\Modules\Agency\Controllers\AgencyDocumentController;
 use App\Modules\Agency\Controllers\AgencyEarningController;
 use App\Modules\Agency\Controllers\AgencyController;
 use App\Modules\Business\Controllers\BusinessActivityController;
-use App\Modules\Business\Controllers\BusinessAssignmentController;
 use App\Modules\Business\Controllers\BusinessContactController;
 use App\Modules\Business\Controllers\BusinessContractController;
 use App\Modules\Business\Controllers\BusinessController;
@@ -20,7 +19,6 @@ use App\Modules\Courier\Controllers\CourierEarningController;
 use App\Modules\Courier\Controllers\CourierActivityController;
 use App\Modules\Courier\Controllers\CourierBankAccountController;
 use App\Modules\Courier\Controllers\CourierVehicleController;
-use App\Modules\Courier\Controllers\CourierWorkHistoryController;
 use App\Modules\Dashboard\Controllers\DashboardController;
 use App\Modules\Finance\Controllers\FinanceCollectionController;
 use App\Modules\Finance\Controllers\FinanceActivityLogController;
@@ -91,6 +89,7 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('vardiya-planlama')->name('shift-planning.')->middleware('permission:shift_planning.view')->group(function () {
         Route::get('/', [ShiftPlanningController::class, 'index'])->name('index');
+        Route::get('/uygun-kuryeler', [ShiftPlanningController::class, 'eligibleCouriers'])->name('eligible-couriers');
         Route::get('/katilim', [ShiftAttendanceController::class, 'board'])->name('attendance');
         Route::get('/rapor', [ShiftAttendanceReportController::class, 'index'])->name('report');
         Route::get('/rapor/export', [ShiftAttendanceReportController::class, 'export'])->name('report.export');
@@ -145,17 +144,6 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::prefix('isletmeler')->name('businesses.')->group(function () {
-        Route::middleware('permission:assignment.view')->group(function () {
-            Route::get('/atanan-kuryeler', [BusinessAssignmentController::class, 'index'])->name('assignments.index');
-            Route::get('/atanan-kuryeler/export', [BusinessAssignmentController::class, 'export'])->name('assignments.export');
-            Route::post('/atanan-kuryeler', [BusinessAssignmentController::class, 'store'])->middleware('permission:assignment.create')->name('assignments.store');
-            Route::put('/atanan-kuryeler/{id}', [BusinessAssignmentController::class, 'update'])->middleware('permission:assignment.update')->name('assignments.update');
-            Route::post('/atanan-kuryeler/{id}/sonlandir', [BusinessAssignmentController::class, 'terminate'])
-                ->middleware('permission:assignment.update')
-                ->name('assignments.terminate');
-            Route::get('/atanan-kuryeler/{id}', [BusinessAssignmentController::class, 'show'])->name('assignments.show');
-        });
-
         Route::middleware('permission:business.view')->group(function () {
             Route::get('/', [BusinessController::class, 'index'])->name('index');
             Route::get('/export', [BusinessController::class, 'export'])->name('export');
@@ -219,11 +207,6 @@ Route::middleware('auth')->group(function () {
             ->name('earnings.import');
         Route::get('/hakedisler/{id}/pdf', [CourierEarningController::class, 'pdf'])->name('earnings.pdf');
         Route::get('/hakedisler/{id}', [CourierEarningController::class, 'show'])->name('earnings.show');
-        Route::get('/calisma-gecmisi', [CourierWorkHistoryController::class, 'index'])->name('work-history.index');
-        Route::post('/calisma-gecmisi/{id}/sonlandir', [CourierWorkHistoryController::class, 'terminate'])
-            ->middleware('permission:courier.update')
-            ->name('work-history.terminate');
-        Route::get('/calisma-gecmisi/{id}', [CourierWorkHistoryController::class, 'show'])->name('work-history.show');
         Route::get('/arac-bilgileri', [CourierVehicleController::class, 'index'])->name('vehicles.index');
         Route::post('/arac-bilgileri', [CourierVehicleController::class, 'store'])->middleware('permission:courier.update')->name('vehicles.store');
         Route::post('/arac-bilgileri/{id}/pasife-al', [CourierVehicleController::class, 'deactivate'])

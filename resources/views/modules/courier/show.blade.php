@@ -49,7 +49,6 @@
         <x-entity.tab-list>
             <x-entity.tab-trigger name="overview" label="Genel Bakış" />
             <x-entity.tab-trigger name="shift_earnings" label="Vardiya / Hakediş" />
-            <x-entity.tab-trigger name="work_history" label="Çalışma Geçmişi" />
             <x-entity.tab-trigger name="documents" label="Belgeler" />
             <x-entity.tab-trigger name="bank_accounts" label="Banka Bilgileri" />
             <x-entity.tab-trigger name="vehicles" label="Araç Bilgileri" />
@@ -198,41 +197,6 @@
                         </tbody>
                     </table>
                 </div>
-            </x-ui.card>
-        </x-entity.tab-panel>
-
-        <x-entity.tab-panel name="work_history">
-            <x-ui.card title="Çalışma Geçmişi">
-                @if (count($courier['work_history']))
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-sm">
-                            <thead>
-                                <tr class="border-b border-gray-200 dark:border-slate-700">
-                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">İşletme</th>
-                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Başlangıç</th>
-                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Bitiş</th>
-                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Durum</th>
-                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">İşlemler</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
-                                @foreach ($courier['work_history'] as $history)
-                                    <tr>
-                                        <td class="py-2.5 text-gray-900 dark:text-white">{{ $history['business_name'] }}</td>
-                                        <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $history['start_date_formatted'] ?? $history['start_date'] }}</td>
-                                        <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $history['end_date_formatted'] ?? ($history['end_date'] ?? '—') }}</td>
-                                        <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $history['work_status_label'] ?? ($history['status'] ?? '—') }}</td>
-                                        <td class="py-2.5">
-                                            <x-courier.work-history-row-actions :record="$history" />
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                @else
-                    <p class="text-sm text-gray-500 dark:text-slate-400">Çalışma geçmişi bulunmuyor.</p>
-                @endif
             </x-ui.card>
         </x-entity.tab-panel>
 

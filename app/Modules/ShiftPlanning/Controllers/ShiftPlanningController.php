@@ -12,6 +12,7 @@ use App\Modules\ShiftPlanning\Requests\UpdateBusinessShiftRequest;
 use App\Modules\ShiftPlanning\Services\ShiftAttendanceService;
 use App\Modules\ShiftPlanning\Services\ShiftPlanningPresenter;
 use App\Modules\ShiftPlanning\Services\ShiftPlanningService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -44,14 +45,6 @@ class ShiftPlanningController extends Controller
 
         $jokerRows = $business
             ? $this->shifts->jokersForBusiness($business->id, $week['week_start'], $week['week_end'])
-                ->map(fn ($joker) => $this->presenter->jokerRow($joker))
-                ->values()
-                ->all()
-            : [];
-
-        $upcomingJokers = $business
-            ? $this->shifts->jokersForBusiness($business->id, now()->toDateString())
-                ->take(20)
                 ->map(fn ($joker) => $this->presenter->jokerRow($joker))
                 ->values()
                 ->all()
@@ -95,7 +88,7 @@ class ShiftPlanningController extends Controller
             : [];
 
         $activeCourierCount = $business
-            ? $this->shifts->activeAssignmentCourierCount($business->id)
+            ? $this->shifts->activeRosterCourierCount($business->id)
             : 0;
 
         return view('modules.shift-planning.index', [
@@ -105,8 +98,6 @@ class ShiftPlanningController extends Controller
             'shifts' => $shiftRows,
             'week' => $week,
             'calendarDays' => $calendarDays,
-            'jokers' => $upcomingJokers,
-            'weekJokers' => $jokerRows,
             'availableCouriers' => $availableCouriers,
             'activeCourierCount' => $activeCourierCount,
             'jokerReasons' => ShiftPlanningFormData::jokerReasons(),
@@ -114,6 +105,29 @@ class ShiftPlanningController extends Controller
             'canUpdate' => $request->user()?->can('shift_planning.update') ?? false,
             'canDelete' => $request->user()?->can('shift_planning.delete') ?? false,
         ]);
+    }
+
+    public function eligibleCouriers(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'start_date' => ['required', 'date'],
+            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+            'start_time' => ['required', 'date_format:H:i'],
+            'end_time' => ['required', 'date_format:H:i'],
+            'exclude_shift_id' => ['nullable', 'integer', 'exists:business_shifts,id'],
+        ]);
+
+        $couriers = $this->shifts->eligibleCouriersForSchedule(
+            [
+                'start_date' => $validated['start_date'],
+                'end_date' => $validated['end_date'],
+                'start_time' => $validated['start_time'],
+                'end_time' => $validated['end_time'],
+            ],
+            isset($validated['exclude_shift_id']) ? (int) $validated['exclude_shift_id'] : null,
+        );
+
+        return response()->json(['couriers' => $couriers]);
     }
 
     public function store(StoreBusinessShiftRequest $request): RedirectResponse

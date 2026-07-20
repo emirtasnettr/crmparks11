@@ -6,10 +6,12 @@ use App\Models\EarningLine;
 use App\Models\PricingModelType;
 use App\Models\User;
 use App\Modules\Business\Models\Business;
-use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\Business\Models\BusinessPricing;
 use App\Modules\Business\Data\BusinessOverviewStats;
 use App\Modules\Business\Services\BusinessPresenter;
+use App\Modules\Courier\Models\Courier;
+use App\Modules\ShiftPlanning\Models\BusinessShift;
+use App\Modules\ShiftPlanning\Models\BusinessShiftCourier;
 use Carbon\Carbon;
 use Database\Seeders\CitySeeder;
 use Database\Seeders\LookupTableSeeder;
@@ -91,29 +93,29 @@ class BusinessOverviewStatsTest extends TestCase
         $this->assertSame(0.0, $unitPrices['courier_unit']);
     }
 
-    public function test_active_couriers_are_counted_from_assignments(): void
+    public function test_active_couriers_are_counted_from_roster(): void
     {
         $user = User::factory()->create();
         $business = Business::factory()->create(['created_by' => $user->id]);
-        $firstCourier = \App\Modules\Courier\Models\Courier::factory()->create(['created_by' => $user->id]);
-        $secondCourier = \App\Modules\Courier\Models\Courier::factory()->create(['created_by' => $user->id]);
+        $firstCourier = Courier::factory()->create(['created_by' => $user->id]);
+        $secondCourier = Courier::factory()->create(['created_by' => $user->id]);
 
-        BusinessCourierAssignment::factory()->create([
-            'business_id' => $business->id,
-            'courier_id' => $firstCourier->id,
-            'start_date' => '2026-07-01',
-            'end_date' => null,
-            'status' => 'active',
-            'assigned_by' => $user->id,
-        ]);
+        $this->putCourierOnActiveRoster($business, $firstCourier, $user);
 
-        BusinessCourierAssignment::factory()->create([
+        $endedShift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'courier_id' => $secondCourier->id,
+            'name' => 'Eski',
+            'start_time' => '09:00',
+            'end_time' => '17:00',
+            'required_headcount' => 1,
             'start_date' => '2026-06-01',
             'end_date' => '2026-06-30',
-            'status' => 'inactive',
-            'assigned_by' => $user->id,
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+        BusinessShiftCourier::query()->create([
+            'business_shift_id' => $endedShift->id,
+            'courier_id' => $secondCourier->id,
         ]);
 
         $stats = BusinessOverviewStats::forBusiness(
@@ -125,31 +127,31 @@ class BusinessOverviewStatsTest extends TestCase
         $this->assertSame(1, $stats['active_couriers']);
     }
 
-    public function test_terminated_assignments_are_excluded_from_active_courier_count(): void
+    public function test_inactive_shifts_are_excluded_from_active_courier_count(): void
     {
         Carbon::setTestNow('2026-07-08 12:00:00');
 
         $user = User::factory()->create();
         $business = Business::factory()->create(['created_by' => $user->id]);
-        $activeCourier = \App\Modules\Courier\Models\Courier::factory()->create(['created_by' => $user->id]);
-        $terminatedCourier = \App\Modules\Courier\Models\Courier::factory()->create(['created_by' => $user->id]);
+        $activeCourier = Courier::factory()->create(['created_by' => $user->id]);
+        $inactiveCourier = Courier::factory()->create(['created_by' => $user->id]);
 
-        BusinessCourierAssignment::factory()->create([
+        $this->putCourierOnActiveRoster($business, $activeCourier, $user);
+
+        $inactiveShift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'courier_id' => $activeCourier->id,
+            'name' => 'Pasif',
+            'start_time' => '09:00',
+            'end_time' => '17:00',
+            'required_headcount' => 1,
             'start_date' => '2026-07-01',
             'end_date' => null,
-            'status' => 'active',
-            'assigned_by' => $user->id,
+            'is_active' => false,
+            'created_by' => $user->id,
         ]);
-
-        BusinessCourierAssignment::factory()->create([
-            'business_id' => $business->id,
-            'courier_id' => $terminatedCourier->id,
-            'start_date' => '2026-07-01',
-            'end_date' => '2026-07-07',
-            'status' => 'inactive',
-            'assigned_by' => $user->id,
+        BusinessShiftCourier::query()->create([
+            'business_shift_id' => $inactiveShift->id,
+            'courier_id' => $inactiveCourier->id,
         ]);
 
         $stats = BusinessOverviewStats::forBusiness(
@@ -199,5 +201,25 @@ class BusinessOverviewStatsTest extends TestCase
         $this->assertSame(50.0, $stats['received_per_package']);
         $this->assertSame(35.0, $stats['courier_per_package']);
         $this->assertSame(15.0, $stats['net_per_package']);
+    }
+
+    private function putCourierOnActiveRoster(Business $business, Courier $courier, User $user): void
+    {
+        $shift = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'name' => 'Aktif',
+            'start_time' => '09:00',
+            'end_time' => '17:00',
+            'required_headcount' => 1,
+            'start_date' => now()->subWeek()->toDateString(),
+            'end_date' => null,
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        BusinessShiftCourier::query()->create([
+            'business_shift_id' => $shift->id,
+            'courier_id' => $courier->id,
+        ]);
     }
 }

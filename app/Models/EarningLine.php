@@ -4,7 +4,6 @@ namespace App\Models;
 
 use App\Core\Traits\HasUuid;
 use App\Modules\Business\Models\Business;
-use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\Courier\Models\Courier;
 use Database\Factories\EarningLineFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -21,7 +20,6 @@ class EarningLine extends Model
         'batch_id',
         'business_id',
         'courier_id',
-        'assignment_id',
         'business_pricing_id',
         'earning_type',
         'pricing_model',
@@ -65,11 +63,6 @@ class EarningLine extends Model
     public function courier(): BelongsTo
     {
         return $this->belongsTo(Courier::class);
-    }
-
-    public function assignment(): BelongsTo
-    {
-        return $this->belongsTo(BusinessCourierAssignment::class, 'assignment_id');
     }
 
     public function status(): BelongsTo

@@ -254,7 +254,7 @@ class PermissionManagementTest extends TestCase
                 'business.view',
                 'courier.view',
                 'agency.view',
-                'assignment.view',
+                'shift_planning.view',
             ],
         ])->assertOk();
 

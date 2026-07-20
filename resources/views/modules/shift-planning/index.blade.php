@@ -40,6 +40,7 @@
         assignUrlTemplate: @js(url('/vardiya-planlama/__ID__/kuryeler')),
         jokerUrlTemplate: @js(url('/vardiya-planlama/__ID__/joker')),
         destroyUrlTemplate: @js(url('/vardiya-planlama/__ID__')),
+        eligibleCouriersUrl: @js(route('shift-planning.eligible-couriers')),
     })"
 >
     <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -89,9 +90,7 @@
         @if ($activeCourierCount === 0)
             <x-ui.card class="mt-6 border-l-4 border-l-amber-500">
                 <p class="text-sm text-gray-700 dark:text-slate-300">
-                    Bu işletmeye henüz aktif kurye ataması yok.
-                    <a href="{{ route('businesses.assignments.index') }}" class="font-medium text-primary-600 hover:underline">Atanan Kuryeler</a>
-                    üzerinden kadro oluşturun.
+                    Bu işletmenin aktif vardiya kadrosunda henüz kurye yok. Vardiya oluşturup kurye atayarak kadro oluşturun.
                 </p>
             </x-ui.card>
         @endif
@@ -100,7 +99,7 @@
             <div>
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Vardiya Şablonları</h2>
                 <p class="text-sm text-gray-500 dark:text-slate-400">
-                    {{ $selectedBusinessName }} · {{ count($shifts) }} vardiya · {{ $activeCourierCount }} atanmış kurye
+                    {{ $selectedBusinessName }} · {{ count($shifts) }} vardiya · {{ $activeCourierCount }} kadrodaki kurye
                 </p>
             </div>
         </div>
@@ -158,22 +157,21 @@
             @endforelse
         </div>
 
-        <div class="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-5">
-            <div class="xl:col-span-3">
-                <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Haftalık Görünüm</h2>
-                        <p class="text-sm text-gray-500 dark:text-slate-400">Sabit kadro + joker + katılım özeti (başladı / gelmedi)</p>
-                    </div>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <a href="{{ route('shift-planning.index', ['business_id' => $selectedBusinessId, 'week' => $week['prev_week']]) }}" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-slate-600">← Önceki</a>
-                        <span class="min-w-[10rem] text-center text-sm font-semibold text-gray-900 dark:text-white">{{ $week['label'] }}</span>
-                        <a href="{{ route('shift-planning.index', ['business_id' => $selectedBusinessId, 'week' => $week['next_week']]) }}" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-slate-600">Sonraki →</a>
-                        <a href="{{ route('shift-planning.attendance') }}" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-primary-700 dark:border-slate-600 dark:text-primary-300">Canlı Operasyon</a>
-                    </div>
+        <div class="mt-8">
+            <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Haftalık Görünüm</h2>
+                    <p class="text-sm text-gray-500 dark:text-slate-400">Sabit kadro + joker + katılım özeti (başladı / gelmedi)</p>
                 </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <a href="{{ route('shift-planning.index', ['business_id' => $selectedBusinessId, 'week' => $week['prev_week']]) }}" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-slate-600">← Önceki</a>
+                    <span class="min-w-[10rem] text-center text-sm font-semibold text-gray-900 dark:text-white">{{ $week['label'] }}</span>
+                    <a href="{{ route('shift-planning.index', ['business_id' => $selectedBusinessId, 'week' => $week['next_week']]) }}" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-slate-600">Sonraki →</a>
+                    <a href="{{ route('shift-planning.attendance') }}" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-primary-700 dark:border-slate-600 dark:text-primary-300">Canlı Operasyon</a>
+                </div>
+            </div>
 
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
                     @foreach ($calendarDays as $day)
                         <div @class([
                             'rounded-xl border p-3',
@@ -221,37 +219,6 @@
                         </div>
                     @endforeach
                 </div>
-            </div>
-
-            <div class="xl:col-span-2">
-                <h2 class="mb-3 text-lg font-semibold text-gray-900 dark:text-white">Joker Atamaları</h2>
-                <x-ui.card :padding="false">
-                    <div class="divide-y divide-gray-100 dark:divide-slate-700">
-                        @forelse ($jokers as $joker)
-                            <div class="flex items-start justify-between gap-3 px-4 py-3 sm:px-6">
-                                <div class="min-w-0">
-                                    <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $joker['work_date_formatted'] }} · {{ $joker['shift_name'] }}</p>
-                                    <p class="text-xs text-gray-500 dark:text-slate-400">
-                                        {{ $joker['absent_courier_name'] }} ({{ $joker['reason_label'] }}) → {{ $joker['joker_courier_name'] }}
-                                    </p>
-                                </div>
-                                @if ($canUpdate)
-                                    <form method="POST" action="{{ route('shift-planning.jokers.destroy', $joker['id']) }}" onsubmit="return confirm('Joker ataması kaldırılsın mı?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <input type="hidden" name="week" value="{{ $week['week_start'] }}">
-                                        <button type="submit" class="text-xs font-medium text-rose-600 hover:underline">Kaldır</button>
-                                    </form>
-                                @endif
-                            </div>
-                        @empty
-                            <p class="px-4 py-10 text-center text-sm text-gray-500 dark:text-slate-400 sm:px-6">
-                                Yaklaşan joker ataması yok.
-                            </p>
-                        @endforelse
-                    </div>
-                </x-ui.card>
-            </div>
         </div>
     @endif
 

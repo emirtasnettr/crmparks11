@@ -6,7 +6,7 @@
     use App\Modules\Business\Support\BusinessCardVisibility;
 
     $canViewRestrictedTabs = BusinessCardVisibility::canViewRestrictedTabs();
-    $defaultTab = $canViewRestrictedTabs ? 'overview' : 'assignments';
+    $defaultTab = 'overview';
 @endphp
 
 @section('content')
@@ -50,9 +50,6 @@
             @if ($canViewRestrictedTabs)
                 <x-entity.tab-trigger name="contacts" label="Yetkililer" />
                 <x-entity.tab-trigger name="contracts" label="Sözleşmeler" />
-            @endif
-            <x-entity.tab-trigger name="assignments" label="Atanan Kuryeler" />
-            @if ($canViewRestrictedTabs)
                 <x-entity.tab-trigger name="documents" label="Evraklar" />
                 <x-entity.tab-trigger name="activities" label="Hareket Geçmişi" />
             @endif
@@ -259,57 +256,6 @@
             ])
         </x-entity.tab-panel>
         @endif
-
-        <x-entity.tab-panel name="assignments" alpine-page="assignmentPage" :alpine-config="['businessId' => $business['id']]">
-            <x-ui.card title="Atanan Kuryeler">
-                <x-slot:actions>
-                    <x-entity.tab-add-button label="Yeni Atama" @click="openModal = true" />
-                </x-slot:actions>
-                @if (count($business['assignments']))
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-sm">
-                            <thead>
-                                <tr class="border-b border-gray-200 dark:border-slate-700">
-                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Kurye</th>
-                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Tür</th>
-                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Başlangıç</th>
-                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Bitiş</th>
-                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Durum</th>
-                                    <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">İşlemler</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
-                                @foreach ($business['assignments'] as $assignment)
-                                    <tr>
-                                        <td class="py-2.5 text-gray-900 dark:text-white">{{ $assignment['courier_name'] }}</td>
-                                        <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $assignment['courier_type_label'] }}</td>
-                                        <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $assignment['start_date_formatted'] }}</td>
-                                        <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $assignment['end_date_formatted'] }}</td>
-                                        <td class="py-2.5">
-                                            <x-business.assignment-status-badge :status="$assignment['work_status']" />
-                                        </td>
-                                        <td class="py-2.5">
-                                            <x-business.assignment-row-actions :assignment="$assignment" />
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                @else
-                    <p class="text-sm text-gray-500 dark:text-slate-400">Atama kaydı bulunmuyor.</p>
-                @endif
-            </x-ui.card>
-            @include('modules.business.assignments.partials.modal', [
-                'hideEntitySelector' => true,
-                'presetEntityLabel' => $business['display_name'] ?? $business['brand_name'],
-                'lockedBusinessId' => $business['id'],
-                'redirectToBusiness' => true,
-                'couriers' => $assignmentCouriers,
-                'agencies' => $assignmentAgencies,
-                'businesses' => [],
-            ])
-        </x-entity.tab-panel>
 
         @if ($canViewRestrictedTabs)
         <x-entity.tab-panel name="documents" alpine-page="documentPage" :alpine-config="['businessId' => $business['id'], 'maxSizeMb' => config('crmlog.upload.max_size_mb')]">

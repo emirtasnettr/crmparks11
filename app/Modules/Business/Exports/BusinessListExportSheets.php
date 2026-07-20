@@ -122,42 +122,6 @@ final class BusinessListExportSheets
      * @param  array<string, mixed>  $filters
      * @return array{headings: array<int, string>, rows: array<int, array<int, mixed>>}
      */
-    public static function assignments(array $filters): array
-    {
-        $workStatusLabels = [
-            'active' => 'Aktif',
-            'left' => 'Ayrıldı',
-            'leaving_soon' => 'Yakında Ayrılacak',
-            'on_leave' => 'İzinli',
-        ];
-
-        $service = app(\App\Modules\Business\Services\BusinessAssignmentService::class);
-        $presenter = app(\App\Modules\Business\Services\BusinessAssignmentPresenter::class);
-
-        $rows = $service->filter($filters)
-            ->map(fn ($assignment) => $presenter->indexRow($assignment))
-            ->all();
-
-        return ListExport::sheet(
-            $rows,
-            ['Kurye', 'Telefon', 'İşletme', 'Acente', 'Kurye Tipi', 'Başlangıç', 'Bitiş', 'Çalışma Durumu'],
-            [
-                fn (array $row) => $row['courier_name'],
-                fn (array $row) => $row['courier_phone'],
-                fn (array $row) => $row['business_name'],
-                fn (array $row) => $row['agency_name'] ?? '—',
-                fn (array $row) => $row['courier_type_label'],
-                fn (array $row) => $row['start_date_formatted'],
-                fn (array $row) => $row['end_date_formatted'] ?? '—',
-                fn (array $row) => $workStatusLabels[$row['work_status']] ?? $row['work_status'],
-            ],
-        );
-    }
-
-    /**
-     * @param  array<string, mixed>  $filters
-     * @return array{headings: array<int, string>, rows: array<int, array<int, mixed>>}
-     */
     public static function earnings(array $filters): array
     {
         $pricingLabels = BusinessFormData::pricingModels() + ['fixed' => 'Sabit Ücret'];

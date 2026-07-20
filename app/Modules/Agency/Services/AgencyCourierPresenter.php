@@ -3,16 +3,14 @@
 namespace App\Modules\Agency\Services;
 
 use App\Modules\Agency\Data\AgencyCourierFormData;
-use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\Courier\Models\Courier;
-use Carbon\Carbon;
 
 class AgencyCourierPresenter
 {
     /**
      * @return array<string, mixed>
      */
-    public function indexRow(Courier $courier, ?BusinessCourierAssignment $assignment = null): array
+    public function indexRow(Courier $courier): array
     {
         $courier->loadMissing(['agency', 'vehicleType']);
 
@@ -20,7 +18,6 @@ class AgencyCourierPresenter
         $vehicleCode = $courier->vehicleType?->code ?? 'motor';
         $joinDate = $courier->start_date;
         $initials = $this->initials($courier->full_name);
-        $activeBusiness = $assignment?->business?->displayName();
 
         return [
             'id' => $courier->id,
@@ -31,7 +28,7 @@ class AgencyCourierPresenter
             'phone' => $courier->phone ?? '—',
             'vehicle_type' => $vehicleCode,
             'vehicle_type_label' => $vehicleTypes[$vehicleCode] ?? ($courier->vehicleType?->label ?? '—'),
-            'active_business_name' => $activeBusiness,
+            'active_business_name' => '—',
             'join_date' => $joinDate?->toDateString(),
             'join_date_formatted' => $joinDate?->format('d.m.Y') ?? '—',
             'status' => $courier->status ?? 'active',
@@ -49,9 +46,9 @@ class AgencyCourierPresenter
     /**
      * @return array<string, mixed>
      */
-    public function showRow(Courier $courier, ?BusinessCourierAssignment $assignment = null): array
+    public function showRow(Courier $courier): array
     {
-        return $this->indexRow($courier, $assignment);
+        return $this->indexRow($courier);
     }
 
     private function initials(string $fullName): string

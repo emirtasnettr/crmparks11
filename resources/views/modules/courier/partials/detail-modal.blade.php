@@ -61,9 +61,8 @@
             <div class="grid grid-cols-2 gap-2 pt-2">
                 <a :href="selected?.edit_url" class="rounded-lg bg-primary-600 px-3 py-2 text-center text-sm font-medium text-white hover:bg-primary-700">Düzenle</a>
                 <a :href="selected?.show_url" class="rounded-lg border border-gray-200 px-3 py-2 text-center text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700">Profil</a>
-                <a :href="selected?.work_history_url" class="rounded-lg border border-gray-200 px-3 py-2 text-center text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700">Çalışma Geçmişi</a>
                 <a :href="selected?.documents_url" class="rounded-lg border border-gray-200 px-3 py-2 text-center text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700">Belgeler</a>
-                <a :href="selected?.bank_accounts_url" class="col-span-2 rounded-lg border border-gray-200 px-3 py-2 text-center text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700">Banka Bilgileri</a>
+                <a :href="selected?.bank_accounts_url" class="rounded-lg border border-gray-200 px-3 py-2 text-center text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700">Banka Bilgileri</a>
             </div>
         </div>
     </div>

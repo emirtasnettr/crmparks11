@@ -10,7 +10,6 @@ use App\Modules\ActivityLog\Models\ActivityLog;
 use App\Modules\Business\Data\BusinessActivityFormData;
 use App\Modules\Business\Models\Business;
 use App\Modules\Business\Models\BusinessContact;
-use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\Finance\Models\FinanceCollection;
 use App\Modules\Finance\Models\FinanceRevenue;
 use Carbon\Carbon;
@@ -121,7 +120,6 @@ class BusinessActivityService
                 $query->whereIn('subject_type', [
                     Business::class,
                     BusinessContact::class,
-                    BusinessCourierAssignment::class,
                     EarningLine::class,
                     FinanceRevenue::class,
                     FinanceCollection::class,

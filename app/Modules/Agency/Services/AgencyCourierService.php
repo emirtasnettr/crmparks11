@@ -4,9 +4,7 @@ namespace App\Modules\Agency\Services;
 
 use App\Models\User;
 use App\Modules\ActivityLog\Services\ActivityLogService;
-use App\Modules\Agency\Data\AgencyCourierFormData;
 use App\Modules\Agency\Models\Agency;
-use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\Courier\Models\Courier;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -31,10 +29,7 @@ class AgencyCourierService
             ->orderByDesc('start_date')
             ->orderBy('full_name')
             ->get()
-            ->map(fn (Courier $courier) => $this->presenter->indexRow(
-                $courier,
-                $this->activeAssignmentFor($courier),
-            ))
+            ->map(fn (Courier $courier) => $this->presenter->indexRow($courier))
             ->when(
                 ! empty($filters['active_business']) && $filters['active_business'] !== 'all',
                 fn (Collection $items) => $items
@@ -209,20 +204,5 @@ class AgencyCourierService
             ->when(! empty($filters['vehicle_type']) && $filters['vehicle_type'] !== 'all', function (Builder $query) use ($filters): void {
                 $query->whereHas('vehicleType', fn (Builder $inner) => $inner->where('code', $filters['vehicle_type']));
             });
-    }
-
-    private function activeAssignmentFor(Courier $courier): ?BusinessCourierAssignment
-    {
-        $today = now()->toDateString();
-
-        return BusinessCourierAssignment::query()
-            ->where('courier_id', $courier->id)
-            ->where('status', 'active')
-            ->where(function (Builder $query) use ($today): void {
-                $query->whereNull('end_date')
-                    ->orWhereDate('end_date', '>=', $today);
-            })
-            ->with('business')
-            ->first();
     }
 }

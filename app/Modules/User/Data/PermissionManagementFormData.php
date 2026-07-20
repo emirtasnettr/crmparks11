@@ -112,7 +112,7 @@ class PermissionManagementFormData
 
         $operational = self::slugsMatching([
             'dashboard.view',
-            'assignment.', 'shift_planning.', 'stock.',
+            'shift_planning.', 'stock.',
             'courier.', 'agency.',
         ]);
 
@@ -274,7 +274,6 @@ class PermissionManagementFormData
             self::module('businesses', 'İşletmeler', ['işletme', 'business'], self::actions('business', ['view', 'create', 'update', 'delete', 'export', 'print'], ['view' => ['business.view', 'business.view_own']])),
             self::module('contacts', 'Yetkililer', ['yetkili', 'contact'], self::actions('business_contact', ['view', 'create', 'update', 'delete', 'export'], ['view' => ['business_contact.view', 'business_contact.view_own']])),
             self::module('contracts', 'Sözleşmeler', ['sözleşme', 'contract'], self::actions('contract', ['view', 'create', 'update', 'delete', 'export', 'print'], ['view' => ['contract.view', 'contract.view_own']])),
-            self::module('assignments', 'Atanan Kuryeler', ['atama', 'assignment'], self::actions('assignment', ['view', 'create', 'update', 'delete', 'export'])),
             self::module('shift_planning', 'Vardiya Planlama', ['vardiya', 'shift'], self::actions('shift_planning', ['view', 'create', 'update', 'delete'])),
             self::module('stock', 'Stok Yönetimi', ['stok', 'ekipman', 'zimmet', 'stock'], self::actions('stock', ['view', 'create', 'update', 'delete'])),
             self::module('earnings', 'Hakedişler', ['hakediş', 'earning'], self::actions('earning', ['view', 'create', 'update', 'delete', 'export', 'print', 'approve'], ['view' => ['earning.view', 'earning.view_own']])),

@@ -10,7 +10,6 @@
     $items = [
         RowActions::link('Görüntüle', route('couriers.show', $id)),
         RowActions::link('Düzenle', route('couriers.edit', $id)),
-        RowActions::link('Çalışma Geçmişi', route('couriers.work-history.index', ['courier_id' => $id])),
         RowActions::link('Belgeler', route('couriers.documents.index', ['courier_id' => $id])),
     ];
 

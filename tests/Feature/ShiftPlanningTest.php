@@ -6,7 +6,6 @@ use App\Models\City;
 use App\Models\District;
 use App\Models\User;
 use App\Modules\Business\Models\Business;
-use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\ShiftPlanning\Models\BusinessShift;
 use App\Modules\ShiftPlanning\Models\BusinessShiftCourier;
@@ -106,7 +105,6 @@ class ShiftPlanningTest extends TestCase
         $this->assertDatabaseHas('business_shift_couriers', [
             'courier_id' => $courier->id,
         ]);
-        $this->assertDatabaseCount('business_courier_assignments', 0);
     }
 
     public function test_courier_can_work_non_overlapping_shifts_at_different_businesses(): void
@@ -218,6 +216,67 @@ class ShiftPlanningTest extends TestCase
         $this->assertSame(2, BusinessShiftCourier::query()->where('courier_id', $courier->id)->count());
     }
 
+    public function test_eligible_couriers_endpoint_hides_overlapping_assignments(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $businessA = $this->createBusiness($user, ['brand_name' => 'A Market']);
+        $busy = $this->createCourier($user, ['full_name' => 'Meşgul Kurye']);
+        $free = $this->createCourier($user, ['full_name' => 'Boş Kurye']);
+
+        $shift = BusinessShift::query()->create([
+            'business_id' => $businessA->id,
+            'name' => 'Sabah A',
+            'start_time' => '09:00',
+            'end_time' => '12:00',
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-08-03',
+            'required_headcount' => 1,
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+        BusinessShiftCourier::query()->create([
+            'business_shift_id' => $shift->id,
+            'courier_id' => $busy->id,
+        ]);
+
+        $response = $this->actingAs($user)->getJson(route('shift-planning.eligible-couriers', [
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-08-03',
+            'start_time' => '09:00',
+            'end_time' => '12:00',
+        ]));
+
+        $response->assertOk();
+        $ids = collect($response->json('couriers'))->pluck('id')->map(fn ($id) => (int) $id)->all();
+
+        $this->assertContains($free->id, $ids);
+        $this->assertNotContains($busy->id, $ids);
+
+        $afternoon = $this->actingAs($user)->getJson(route('shift-planning.eligible-couriers', [
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-08-03',
+            'start_time' => '13:00',
+            'end_time' => '17:00',
+        ]));
+
+        $afternoonIds = collect($afternoon->json('couriers'))->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $this->assertContains($busy->id, $afternoonIds);
+        $this->assertContains($free->id, $afternoonIds);
+
+        // Aynı vardiya hariç tutulunca mevcut kadro üyesi listede kalır.
+        $self = $this->actingAs($user)->getJson(route('shift-planning.eligible-couriers', [
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-08-03',
+            'start_time' => '09:00',
+            'end_time' => '12:00',
+            'exclude_shift_id' => $shift->id,
+        ]));
+
+        $selfIds = collect($self->json('couriers'))->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $this->assertContains($busy->id, $selfIds);
+    }
+
     public function test_can_create_shift_with_custom_date_range(): void
     {
         $user = User::factory()->create();
@@ -248,8 +307,6 @@ class ShiftPlanningTest extends TestCase
         $business = $this->createBusiness($user);
         $c1 = $this->createCourier($user, ['full_name' => 'Kurye 1']);
         $c2 = $this->createCourier($user, ['full_name' => 'Kurye 2']);
-        $this->assignCourier($business, $c1, $user);
-        $this->assignCourier($business, $c2, $user);
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
@@ -279,8 +336,6 @@ class ShiftPlanningTest extends TestCase
         $business = $this->createBusiness($user);
         $roster = $this->createCourier($user, ['full_name' => 'Kadrolu Kurye']);
         $joker = $this->createCourier($user, ['full_name' => 'Joker Kurye']);
-        $this->assignCourier($business, $roster, $user);
-        $this->assignCourier($business, $joker, $user);
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
@@ -333,8 +388,6 @@ class ShiftPlanningTest extends TestCase
         $business = $this->createBusiness($user);
         $c1 = $this->createCourier($user, ['full_name' => 'A']);
         $c2 = $this->createCourier($user, ['full_name' => 'B']);
-        $this->assignCourier($business, $c1, $user);
-        $this->assignCourier($business, $c2, $user);
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
@@ -392,8 +445,6 @@ class ShiftPlanningTest extends TestCase
         $business = $this->createBusiness($user);
         $roster = $this->createCourier($user, ['full_name' => 'Kadrolu']);
         $joker = $this->createCourier($user, ['full_name' => 'Joker']);
-        $this->assignCourier($business, $roster, $user);
-        $this->assignCourier($business, $joker, $user);
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
@@ -452,15 +503,4 @@ class ShiftPlanningTest extends TestCase
         ], $overrides));
     }
 
-    private function assignCourier(Business $business, Courier $courier, User $user): void
-    {
-        BusinessCourierAssignment::factory()->create([
-            'business_id' => $business->id,
-            'courier_id' => $courier->id,
-            'status' => 'active',
-            'start_date' => '2026-01-01',
-            'end_date' => null,
-            'assigned_by' => $user->id,
-        ]);
-    }
 }

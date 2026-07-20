@@ -36,7 +36,6 @@ final class OperationalDataCleaner
             'current_accounts',
             'earning_lines',
             'earning_batches',
-            'business_courier_assignments',
             'business_contacts',
             'business_pricings',
             'agency_contacts',

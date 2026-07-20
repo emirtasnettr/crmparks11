@@ -24,7 +24,6 @@ class BusinessEarningService
 {
     public function __construct(
         private readonly BusinessEarningPresenter $presenter,
-        private readonly BusinessAssignmentService $assignments,
         private readonly ActivityLogService $activityLog,
         private readonly EarningFinanceSyncService $earningFinanceSync,
         private readonly EarningNotificationService $earningNotifications,
@@ -104,7 +103,17 @@ class BusinessEarningService
      */
     public function couriers(): array
     {
-        return $this->assignments->couriers();
+        return Courier::query()
+            ->orderBy('full_name')
+            ->get(['id', 'full_name', 'phone', 'courier_type', 'agency_id'])
+            ->map(fn (Courier $courier) => [
+                'id' => $courier->id,
+                'name' => $courier->full_name,
+                'phone' => $courier->phone ?? '—',
+                'courier_type' => $courier->courier_type ?? 'independent',
+                'agency_id' => $courier->agency_id,
+            ])
+            ->all();
     }
 
     /**

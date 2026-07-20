@@ -9,7 +9,6 @@ use App\Modules\Agency\Models\Agency;
 use App\Modules\Agency\Models\AgencyContact;
 use App\Modules\Business\Models\Business;
 use App\Modules\Business\Models\BusinessContact;
-use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\Courier\Models\CourierBankAccount;
 use App\Modules\Courier\Models\CourierVehicle;
@@ -72,9 +71,6 @@ final class DemoDataCleaner
                 })
                 ->pluck('id');
             $stockProductIds = StockProduct::withTrashed()
-                ->where('notes', $marker)
-                ->pluck('id');
-            $assignmentIds = BusinessCourierAssignment::withTrashed()
                 ->where('notes', $marker)
                 ->pluck('id');
             $earningIds = EarningLine::withTrashed()
@@ -206,14 +202,6 @@ final class DemoDataCleaner
 
             $counts['earning_lines'] = EarningLine::withTrashed()
                 ->whereIn('id', $earningIds)
-                ->forceDelete();
-
-            $counts['assignments'] = BusinessCourierAssignment::withTrashed()
-                ->where(function ($query) use ($assignmentIds, $businessIds, $courierIds): void {
-                    $query->whereIn('id', $assignmentIds)
-                        ->orWhereIn('business_id', $businessIds)
-                        ->orWhereIn('courier_id', $courierIds);
-                })
                 ->forceDelete();
 
             $counts['business_contacts'] = BusinessContact::query()

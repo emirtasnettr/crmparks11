@@ -11,7 +11,6 @@ use App\Models\EarningLine;
 use App\Modules\Business\Data\BusinessFormData;
 use App\Modules\Business\Models\Business;
 use App\Modules\Business\Models\BusinessContact;
-use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\Business\Models\BusinessPricing;
 use App\Models\Contract;
 use App\Models\Document;
@@ -29,8 +28,6 @@ class BusinessPresenter
     private readonly BusinessMediaService $media,
     private readonly BusinessContactService $contacts,
     private readonly BusinessContactPresenter $contactPresenter,
-    private readonly BusinessAssignmentService $assignments,
-    private readonly BusinessAssignmentPresenter $assignmentPresenter,
     private readonly BusinessContractService $contracts,
     private readonly BusinessContractPresenter $contractPresenter,
     private readonly BusinessDocumentService $documents,
@@ -128,7 +125,6 @@ class BusinessPresenter
       'status_label' => $statusLabels[$base['status']] ?? $base['status'],
       'contacts_url' => route('businesses.contacts.index', ['business_id' => $id]),
       'contracts_url' => route('businesses.contracts.index', ['business_id' => $id]),
-      'assignments_url' => route('businesses.assignments.index', ['business_id' => $id]),
       'documents_url' => route('businesses.documents.index', ['business_id' => $id]),
       'activities_url' => route('businesses.activities.index', ['business_id' => $id]),
     ], BusinessFeatures::earningsEnabled() ? [
@@ -171,11 +167,6 @@ class BusinessPresenter
       'contracts' => $this->contracts
         ->forBusiness($business->id)
         ->map(fn (Contract $contract) => $this->contractPresenter->showRow($contract))
-        ->values()
-        ->all(),
-      'assignments' => $this->assignments
-        ->forBusiness($business->id, activeOnly: true)
-        ->map(fn (BusinessCourierAssignment $assignment) => $this->assignmentPresenter->showRow($assignment))
         ->values()
         ->all(),
       'documents' => $this->documents
