@@ -258,7 +258,10 @@ class CourierPortalShiftAttendanceTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Merhaba, Portal Kurye', false);
+        $response->assertSee('Vardiyalarım', false);
+        $response->assertSee('Hesap', false);
         $response->assertSee('Çıkış Yap', false);
+        $response->assertSee('aria-label="Kurye menü"', false);
         $response->assertDontSee('aria-label="Menüyü aç"', false);
         $response->assertDontSee('aria-label="Ara"', false);
         $response->assertDontSee('title="Bildirimler"', false);

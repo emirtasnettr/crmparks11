@@ -21,17 +21,19 @@
 >
     @include('layouts.partials.courier-portal-nav')
 
-    <main class="mx-auto min-h-screen max-w-lg px-4 pb-6 pt-20 sm:max-w-4xl sm:px-6 sm:pt-24">
+    <main class="mx-auto min-h-screen max-w-lg px-4 pt-[4.25rem] pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] sm:max-w-4xl sm:px-6">
         @include('layouts.partials.flash-messages')
 
         @yield('content')
     </main>
 
+    @include('layouts.partials.courier-portal-bottom-nav')
+
     <div
         x-show="toast"
         x-cloak
         x-transition
-        class="fixed bottom-6 left-4 right-4 z-[60] mx-auto max-w-sm rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 shadow-lg sm:left-auto sm:right-6"
+        class="fixed bottom-24 left-4 right-4 z-[60] mx-auto max-w-sm rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 shadow-lg sm:left-auto sm:right-6"
         x-text="toast"
     ></div>
 
