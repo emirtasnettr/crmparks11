@@ -176,6 +176,7 @@ class CourierEarningController extends Controller
                 'Acente' => $row['agency_name'],
                 'Dönem' => $row['period_label'],
                 'Paket Sayısı' => $row['package_count'],
+                'Saat' => $row['worked_hours'] > 0 ? number_format($row['worked_hours'], 2, ',', '.').' sa' : '—',
                 'Ödeme Durumu' => $paymentStatusLabel,
                 'Ödeme Tarihi' => $row['payment_date_formatted'],
                 'Açıklama' => $row['description'] ?? '—',

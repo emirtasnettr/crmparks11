@@ -79,6 +79,54 @@ class BusinessCommercialContractTest extends TestCase
         $this->assertEquals(80.0, (float) $second->guaranteed_hourly_package_fee);
     }
 
+    public function test_guarantee_fee_only_applies_to_per_package_contracts(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+
+        $this->actingAs($user)->post(route('businesses.commercial-contracts.store'), [
+            'business_id' => $business->id,
+            'start_date' => '2026-07-01',
+            'end_date' => null,
+            'work_type' => 'hourly',
+            'business_amount' => 180,
+            'courier_amount' => 120,
+            'payment_period' => 'biweekly',
+            'guaranteed_hourly_package_fee' => 85,
+        ])->assertRedirect();
+
+        $hourly = BusinessCommercialContract::query()
+            ->where('business_id', $business->id)
+            ->where('status', 'active')
+            ->first();
+
+        $this->assertNotNull($hourly);
+        $this->assertSame('hourly', $hourly->work_type);
+        $this->assertNull($hourly->guaranteed_hourly_package_fee);
+        $this->assertEquals(120.0, $hourly->courierHourlyRateForAttendance());
+
+        $this->actingAs($user)->post(route('businesses.commercial-contracts.store'), [
+            'business_id' => $business->id,
+            'start_date' => '2026-08-01',
+            'end_date' => null,
+            'work_type' => 'per_package',
+            'business_amount' => 48,
+            'courier_amount' => 34,
+            'payment_period' => 'weekly',
+            'guaranteed_hourly_package_fee' => 90,
+        ])->assertRedirect();
+
+        $perPackage = BusinessCommercialContract::query()
+            ->where('business_id', $business->id)
+            ->where('status', 'active')
+            ->first();
+
+        $this->assertNotNull($perPackage);
+        $this->assertSame('per_package', $perPackage->work_type);
+        $this->assertEquals(90.0, (float) $perPackage->guaranteed_hourly_package_fee);
+    }
+
     public function test_attendance_earnings_follow_contract_active_on_work_date(): void
     {
         $user = User::factory()->create();
@@ -178,12 +226,17 @@ class BusinessCommercialContractTest extends TestCase
         $city = City::query()->where('name', 'İstanbul')->firstOrFail();
         $district = District::query()->where('city_id', $city->id)->where('name', 'Kadıköy')->firstOrFail();
 
-        return Business::factory()->create([
+        $business = Business::factory()->create([
             'created_by' => $user->id,
             'city_id' => $city->id,
             'district_id' => $district->id,
             'status' => 'active',
         ]);
+
+        // Factory'nin otomatik oluşturduğu kontratı kaldır; test kendi kontratını kurar.
+        $business->commercialContracts()->forceDelete();
+
+        return $business->fresh();
     }
 
     private function createCourier(User $user): Courier

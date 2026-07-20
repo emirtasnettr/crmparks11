@@ -105,6 +105,16 @@
         </nav>
 
         <div class="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
+            @can('report.view')
+                <a
+                    href="{{ route('radar') }}"
+                    class="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 {{ request()->routeIs('radar') ? 'ring-2 ring-red-600 ring-offset-2' : '' }}"
+                >
+                    <x-ui.icon name="signal" class="h-4 w-4 shrink-0" />
+                    Radar
+                </a>
+            @endcan
+
             @include('layouts.partials.global-search')
 
             @include('layouts.partials.notification-bell')

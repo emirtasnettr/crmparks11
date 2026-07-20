@@ -37,7 +37,7 @@
                     :options="$statuses" />
 
                 <x-ui.select name="type" label="Bildirim Türü" :selected="$filters['type']"
-                    :options="array_merge(['all' => 'Tümü'], $types)" />
+                    :options="filter_select_options($types)" />
 
                 <x-ui.select name="date_range" label="Tarih Aralığı" :selected="$filters['date_range']"
                     :options="$dateRanges" />

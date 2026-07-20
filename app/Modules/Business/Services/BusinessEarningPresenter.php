@@ -59,6 +59,7 @@ class BusinessEarningPresenter
             'pricing_model' => $pricingModel,
             'pricing_model_label' => BusinessEarningFormData::pricingModels()[$pricingModel] ?? $pricingModel,
             'package_count' => (int) $line->package_count,
+            'worked_hours' => $line->resolvedWorkedHours(),
             'revenue_unit_price' => (float) $line->revenue_unit_price,
             'courier_unit_price' => (float) $line->courier_unit_price,
             'extra_income' => (float) $line->extra_payment,

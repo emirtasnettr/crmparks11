@@ -43,21 +43,21 @@
                     name="city"
                     label="İl"
                     :selected="$filters['city']"
-                    :options="array_merge(['all' => 'Tümü'], collect($cities)->mapWithKeys(fn ($c) => [$c => $c])->all())"
+                    :options="filter_select_options(collect($cities)->mapWithKeys(fn ($c) => [$c => $c])->all())"
                 />
 
                 <x-ui.select
                     name="status"
                     label="Durum"
                     :selected="$filters['status']"
-                    :options="array_merge(['all' => 'Tümü'], $statuses)"
+                    :options="filter_select_options($statuses)"
                 />
 
                 <x-ui.select
                     name="courier_count"
                     label="Aktif Kurye Sayısı"
                     :selected="$filters['courier_count']"
-                    :options="array_merge(['all' => 'Tümü'], $courierCountRanges)"
+                    :options="filter_select_options($courierCountRanges)"
                 />
             </div>
 

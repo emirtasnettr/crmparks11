@@ -3,24 +3,15 @@
 namespace App\Modules\Business\Services;
 
 use App\Core\Helpers\MoneyCalculator;
-use App\Models\City;
-use App\Models\District;
-use App\Models\PricingModelType;
-use App\Models\User;
 use App\Models\EarningLine;
+use App\Models\Contract;
+use App\Models\Document;
+use App\Modules\Business\Data\BusinessCommercialContractFormData;
 use App\Modules\Business\Data\BusinessFormData;
 use App\Modules\Business\Models\Business;
 use App\Modules\Business\Models\BusinessContact;
-use App\Modules\Business\Models\BusinessPricing;
-use App\Models\Contract;
-use App\Models\Document;
-use App\Modules\Business\Services\BusinessContactPresenter;
-use App\Modules\Business\Services\BusinessContactService;
 use App\Modules\Business\Support\BusinessFeatures;
 use App\Modules\Business\Support\BusinessLogo;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 class BusinessPresenter
 {
@@ -45,9 +36,10 @@ class BusinessPresenter
    */
   public function toBaseArray(Business $business): array
   {
-    $business->loadMissing(['city', 'district', 'activePricing.pricingModelType']);
+    $business->loadMissing(['city', 'district', 'activeCommercialContract']);
     $logo = BusinessLogo::initials($business);
-    $pricingCode = $this->pricingModelCode($business);
+    $workType = $this->workTypeCode($business);
+    $unitPrices = $this->unitPrices($business);
 
     return array_merge([
       'id' => $business->id,
@@ -70,14 +62,17 @@ class BusinessPresenter
       'earning_period' => $business->earning_period,
       'first_invoice_date' => $business->first_invoice_date?->toDateString(),
       'planned_courier_count' => (int) ($business->planned_courier_count ?? 0),
-      'guaranteed_package_count' => $business->guaranteed_package_count !== null
-        ? (float) $business->guaranteed_package_count
-        : null,
-      'pricing_model' => $this->normalizePricingModelForList($pricingCode),
+      'work_type' => $workType,
+      'pricing_model' => $workType ?? '',
+      'has_active_contract' => $workType !== null,
       'active_couriers' => $business->activeCourierCount(),
       'logo_path' => $business->logo_path,
       'logo_url' => $this->media->url($business->logo_path),
       'has_logo_image' => ! empty($business->logo_path),
+      'can_delete' => auth()->user()?->hasRole('super_admin') ?? false,
+      'customer_unit' => $unitPrices['revenue_unit'],
+      'courier_unit' => $unitPrices['courier_unit'],
+      'guaranteed_hourly_package_fee' => $unitPrices['guaranteed_hourly_package_fee'],
     ], $logo);
   }
 
@@ -87,12 +82,18 @@ class BusinessPresenter
   public function indexRow(Business $business): array
   {
     $base = $this->toBaseArray($business);
-    $pricingModel = $base['pricing_model'] ?? 'per_package';
-    $unitPrices = $this->unitPrices($business);
+    $workType = $base['work_type'];
 
     return array_merge($base, [
-      'customer_price_label' => $this->formatStoredPrice($unitPrices['revenue_unit'], $pricingModel),
-      'courier_price_label' => $this->formatStoredPrice($unitPrices['courier_unit'], $pricingModel),
+      'customer_price_label' => $workType
+        ? $this->formatStoredPrice((float) $base['customer_unit'], $workType)
+        : '—',
+      'courier_price_label' => $workType
+        ? $this->formatStoredPrice((float) $base['courier_unit'], $workType)
+        : '—',
+      'work_type_label' => $workType
+        ? (BusinessCommercialContractFormData::workTypes()[$workType] ?? $workType)
+        : '—',
     ]);
   }
 
@@ -102,10 +103,7 @@ class BusinessPresenter
   public function detailPayload(Business $business): array
   {
     $base = $this->toBaseArray($business);
-    $pricingLabels = array_merge(BusinessFormData::pricingModels(), [
-      'fixed' => 'Sabit Ücret',
-      'monthly_fixed' => 'Aylık Sabit',
-    ]);
+    $workTypes = BusinessCommercialContractFormData::workTypes();
     $statusLabels = BusinessFormData::statuses();
     $id = $business->id;
 
@@ -120,11 +118,18 @@ class BusinessPresenter
       'display_name' => $base['display_name'] ?? $base['brand_name'] ?? $base['company_name'],
       'phone' => $base['phone'],
       'location' => trim($base['city'].' / '.$base['district'], ' /'),
-      'pricing_model_label' => $pricingLabels[$base['pricing_model']] ?? $base['pricing_model'],
+      'work_type' => $base['work_type'],
+      'work_type_label' => $base['work_type']
+        ? ($workTypes[$base['work_type']] ?? $base['work_type'])
+        : '—',
+      'pricing_model_label' => $base['work_type']
+        ? ($workTypes[$base['work_type']] ?? $base['work_type'])
+        : '—',
       'active_couriers' => $base['active_couriers'],
       'planned_courier_count' => $base['planned_courier_count'],
       'status' => $base['status'],
       'status_label' => $statusLabels[$base['status']] ?? $base['status'],
+      'can_delete' => $base['can_delete'],
       'contacts_url' => route('businesses.contacts.index', ['business_id' => $id]),
       'contracts_url' => route('businesses.contracts.index', ['business_id' => $id]),
       'documents_url' => route('businesses.documents.index', ['business_id' => $id]),
@@ -140,22 +145,31 @@ class BusinessPresenter
   public function showPayload(Business $business): array
   {
     $base = $this->toBaseArray($business);
-    $pricingModel = $base['pricing_model'] ?? 'per_package';
-    $unitPrices = $this->unitPrices($business);
+    $workType = $base['work_type'];
     $earningPeriods = BusinessFormData::earningPeriods();
+    $activeContract = $this->commercialContracts->activeForBusiness($business->id);
 
     return array_merge($this->detailPayload($business), [
       'uuid' => $business->uuid,
+      'public_id' => $business->public_id,
       'email' => $base['email'],
       'website' => $base['website'],
       'tax_office' => $base['tax_office'],
       'tax_number' => $base['tax_number'],
       'address' => $base['address'],
-      'customer_price' => $this->formatStoredPrice($unitPrices['revenue_unit'], $pricingModel),
-      'courier_price' => $this->formatStoredPrice($unitPrices['courier_unit'], $pricingModel),
-      'pricing_model' => $pricingModel,
-      'guaranteed_package_count' => $base['guaranteed_package_count'],
-      'guaranteed_package_count_formatted' => $this->formatGuaranteedPackageCount($base['guaranteed_package_count'] ?? null),
+      'customer_price' => $workType
+        ? $this->formatStoredPrice((float) $base['customer_unit'], $workType)
+        : '—',
+      'courier_price' => $workType
+        ? $this->formatStoredPrice((float) $base['courier_unit'], $workType)
+        : '—',
+      'pricing_model' => $workType ?? '',
+      'work_type' => $workType,
+      'has_active_contract' => $activeContract !== null,
+      'guaranteed_hourly_package_fee' => $base['guaranteed_hourly_package_fee'],
+      'guaranteed_hourly_package_fee_formatted' => $base['guaranteed_hourly_package_fee'] !== null
+        ? MoneyCalculator::formatVatAmount((float) $base['guaranteed_hourly_package_fee'])
+        : '—',
       'notes' => $base['notes'],
       'contract_end_date_formatted' => $business->contract_end_date?->format('d.m.Y'),
       'estimated_opening_date_formatted' => $business->estimated_opening_date?->format('d.m.Y'),
@@ -176,8 +190,8 @@ class BusinessPresenter
         ->map(fn ($contract) => $this->commercialContractPresenter->indexRow($contract))
         ->values()
         ->all(),
-      'active_commercial_contract' => ($active = $this->commercialContracts->activeForBusiness($business->id))
-        ? $this->commercialContractPresenter->indexRow($active)
+      'active_commercial_contract' => $activeContract
+        ? $this->commercialContractPresenter->indexRow($activeContract)
         : null,
       'documents' => $this->documents
         ->forBusiness($business->id)
@@ -209,8 +223,6 @@ class BusinessPresenter
   public function formPayload(Business $business): array
   {
     $base = $this->toBaseArray($business);
-    $unitPrices = $this->unitPrices($business);
-    $pricingCode = $this->pricingModelCode($business);
 
     return [
       'company_name' => $base['company_name'],
@@ -223,12 +235,6 @@ class BusinessPresenter
       'city' => $base['city'],
       'district' => $base['district'],
       'address' => $base['address'],
-      'pricing_model' => $pricingCode === 'monthly_fixed' ? 'monthly_fixed' : $pricingCode,
-      'customer_price' => number_format($unitPrices['revenue_unit'], 2, '.', ''),
-      'courier_price' => number_format($unitPrices['courier_unit'], 2, '.', ''),
-      'guaranteed_package_count' => $base['guaranteed_package_count'] !== null
-        ? rtrim(rtrim(number_format((float) $base['guaranteed_package_count'], 2, '.', ''), '0'), '.')
-        : '',
       'earning_period' => $base['earning_period'] ?? 'weekly',
       'first_invoice_date' => ! empty($base['first_invoice_date'])
         ? $base['first_invoice_date']
@@ -244,7 +250,7 @@ class BusinessPresenter
   }
 
   /**
-   * @return array{revenue_unit: float, courier_unit: float, from_profile: bool}
+   * @return array{revenue_unit: float, courier_unit: float, guaranteed_hourly_package_fee: float|null, from_profile: bool}
    */
   public function unitPrices(Business $business): array
   {
@@ -253,16 +259,9 @@ class BusinessPresenter
       return [
         'revenue_unit' => (float) $contract->business_amount,
         'courier_unit' => (float) $contract->courier_amount,
-        'from_profile' => true,
-      ];
-    }
-
-    $business->loadMissing('activePricing');
-
-    if ($business->activePricing !== null) {
-      return [
-        'revenue_unit' => (float) $business->activePricing->customer_unit_price,
-        'courier_unit' => (float) $business->activePricing->courier_unit_price,
+        'guaranteed_hourly_package_fee' => $contract->guaranteed_hourly_package_fee !== null
+          ? (float) $contract->guaranteed_hourly_package_fee
+          : null,
         'from_profile' => true,
       ];
     }
@@ -270,46 +269,25 @@ class BusinessPresenter
     return [
       'revenue_unit' => 0.0,
       'courier_unit' => 0.0,
+      'guaranteed_hourly_package_fee' => null,
       'from_profile' => false,
     ];
   }
 
-  public function formatStoredPrice(float $amount, string $pricingModel): string
+  public function formatStoredPrice(float $amount, string $workType): string
   {
     $formatted = MoneyCalculator::formatVatAmount($amount);
 
-    return match ($pricingModel) {
+    return match ($workType) {
       'hourly' => $formatted.' / saat',
-      'daily' => $formatted.' / gün',
       default => $formatted,
     };
   }
 
-  public function formatGuaranteedPackageCount(float|int|string|null $count): string
-  {
-    if ($count === null || $count === '') {
-      return '—';
-    }
-
-    $formatted = number_format((float) $count, 2, ',', '.');
-
-    return rtrim(rtrim($formatted, '0'), ',');
-  }
-
-  private function pricingModelCode(Business $business): string
+  private function workTypeCode(Business $business): ?string
   {
     $contract = $this->commercialContracts->activeForBusiness($business->id);
-    if ($contract !== null) {
-      return $contract->work_type;
-    }
 
-    $business->loadMissing('activePricing.pricingModelType');
-
-    return $business->activePricing?->pricingModelType?->code ?? 'per_package';
-  }
-
-  private function normalizePricingModelForList(string $code): string
-  {
-    return $code === 'monthly_fixed' ? 'fixed' : $code;
+    return $contract?->work_type;
   }
 }

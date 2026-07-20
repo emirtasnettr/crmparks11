@@ -53,14 +53,14 @@
                     name="role"
                     label="Rol"
                     :selected="$filters['role']"
-                    :options="array_merge(['all' => 'Tümü'], $roles)"
+                    :options="filter_select_options($roles)"
                 />
 
                 <x-ui.select
                     name="status"
                     label="Durum"
                     :selected="$filters['status']"
-                    :options="array_merge(['all' => 'Tümü'], $statuses)"
+                    :options="filter_select_options($statuses)"
                 />
 
                 <x-ui.select

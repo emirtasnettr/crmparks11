@@ -252,6 +252,29 @@ class ShiftAttendanceService
         $totalMinutes = (int) $rows->sum('worked_minutes');
         $totalEarnings = (float) $rows->sum('earnings_amount');
 
+        $byModel = $rows
+            ->groupBy(fn (BusinessShiftAttendance $row) => (string) ($row->pricing_model ?: 'unknown'))
+            ->map(function (Collection $group, string $model): array {
+                $minutes = (int) $group->sum('worked_minutes');
+                $earnings = round((float) $group->sum('earnings_amount'), 2);
+
+                return [
+                    'pricing_model' => $model,
+                    'pricing_model_label' => match ($model) {
+                        'hourly' => 'Saatlik',
+                        'per_package' => 'Paket Başı',
+                        default => $model,
+                    },
+                    'sessions' => $group->count(),
+                    'total_minutes' => $minutes,
+                    'total_hours' => round($minutes / 60, 2),
+                    'total_earnings' => $earnings,
+                    'total_earnings_formatted' => number_format($earnings, 2, ',', '.').' ₺',
+                ];
+            })
+            ->values()
+            ->all();
+
         return [
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),
@@ -263,6 +286,7 @@ class ShiftAttendanceService
             'total_earnings_formatted' => number_format($totalEarnings, 2, ',', '.').' ₺',
             'sessions' => $rows->count(),
             'hourly_sessions' => $rows->where('pricing_model', 'hourly')->count(),
+            'by_pricing_model' => $byModel,
         ];
     }
 

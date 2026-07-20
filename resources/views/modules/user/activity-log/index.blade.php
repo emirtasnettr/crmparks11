@@ -30,16 +30,16 @@
         <form method="GET" action="{{ route('users.activity-log.index') }}" class="p-4 sm:p-6">
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
                 <x-ui.select name="user_id" label="Kullanıcı" :selected="$filters['user_id']"
-                    :options="array_merge(['all' => 'Tümü'], collect($users)->mapWithKeys(fn ($u) => [$u['id'] => $u['name']])->all())" />
+                    :options="filter_select_options(collect($users)->mapWithKeys(fn ($u) => [$u['id'] => $u['name']])->all())" />
 
                 <x-ui.select name="role" label="Rol" :selected="$filters['role']"
-                    :options="array_merge(['all' => 'Tümü'], $roles)" />
+                    :options="filter_select_options($roles)" />
 
                 <x-ui.select name="activity_type" label="Aktivite Türü" :selected="$filters['activity_type']"
-                    :options="array_merge(['all' => 'Tümü'], $activityTypes)" />
+                    :options="filter_select_options($activityTypes)" />
 
                 <x-ui.select name="module" label="Modül" :selected="$filters['module']"
-                    :options="array_merge(['all' => 'Tümü'], $modules)" />
+                    :options="filter_select_options($modules)" />
 
                 <x-ui.select name="date_range" label="Tarih Aralığı" :selected="$filters['date_range']"
                     :options="$dateRanges" />

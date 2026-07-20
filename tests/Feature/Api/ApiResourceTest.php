@@ -123,10 +123,11 @@ class ApiResourceTest extends TestCase
 
         $create = $this->postJson('/api/v1/businesses', [
             'company_name' => 'API Yazma İşletme Ltd. Şti.',
+            'brand_name' => 'API Marka',
             'phone' => '0212 111 22 33',
-            'pricing_model' => 'per_package',
             'earning_period' => 'weekly',
             'first_invoice_date' => '2026-07-14',
+            'planned_courier_count' => 3,
             'status' => 'active',
             'city' => 'İstanbul',
             'district' => 'Kadıköy',
@@ -140,10 +141,11 @@ class ApiResourceTest extends TestCase
 
         $this->putJson('/api/v1/businesses/'.$id, [
             'company_name' => 'API Güncel İşletme Ltd. Şti.',
+            'brand_name' => 'API Marka',
             'phone' => '0212 111 22 33',
-            'pricing_model' => 'per_package',
             'earning_period' => 'weekly',
             'first_invoice_date' => '2026-07-14',
+            'planned_courier_count' => 3,
             'status' => 'active',
             'city' => 'İstanbul',
             'district' => 'Kadıköy',

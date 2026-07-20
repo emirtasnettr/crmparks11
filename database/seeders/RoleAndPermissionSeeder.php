@@ -57,7 +57,9 @@ class RoleAndPermissionSeeder extends Seeder
             'super_admin' => $permissions,
             'general_manager' => array_values(array_filter(
                 $permissions,
-                fn (string $permission) => ! str_starts_with($permission, 'user.') && ! str_starts_with($permission, 'setting.')
+                fn (string $permission) => ! str_starts_with($permission, 'user.')
+                    && ! str_starts_with($permission, 'setting.')
+                    && ! in_array($permission, ['business.delete', 'courier.delete', 'agency.delete'], true)
             )),
             'sales_manager' => [
                 'dashboard.view',

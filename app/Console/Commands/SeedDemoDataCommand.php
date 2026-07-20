@@ -41,8 +41,6 @@ class SeedDemoDataCommand extends Command
         $this->newLine();
         $this->info('Örnek veriler yüklendi.');
         $this->line('  Giriş: admin@crmlog.com / password');
-        $this->line('  (isteğe bağlı) mudur@crmlog.com / password');
-        $this->line('  (isteğe bağlı) operasyon@crmlog.com / password');
         $this->comment('Temizlemek için: php artisan crmlog:clear-demo --force');
 
         return self::SUCCESS;

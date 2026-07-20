@@ -121,7 +121,7 @@ class DemoDataSeederTest extends TestCase
         $this->assertDatabaseMissing('business_shifts', ['notes' => DemoDataSeeder::MARKER]);
         $this->assertDatabaseMissing('stock_products', ['notes' => DemoDataSeeder::MARKER]);
         $this->assertDatabaseHas('users', ['email' => 'admin@crmlog.com']);
-        $this->assertDatabaseHas('users', ['email' => 'mudur@crmlog.com']);
+        $this->assertSame(1, \App\Models\User::query()->count());
     }
 
     public function test_demo_data_includes_shifts_and_stock(): void
@@ -159,5 +159,55 @@ class DemoDataSeederTest extends TestCase
         $this->assertDatabaseMissing('users', ['email' => 'mudur@crmlog.com']);
         $this->assertDatabaseMissing('users', ['email' => 'operasyon@crmlog.com']);
         $this->assertSame(1, \App\Models\User::query()->count());
+    }
+
+    public function test_demo_data_covers_july_month_and_live_board_states(): void
+    {
+        $this->seed([
+            \Database\Seeders\LookupTableSeeder::class,
+            \Database\Seeders\CitySeeder::class,
+            \Database\Seeders\RoleAndPermissionSeeder::class,
+            \Database\Seeders\AdminUserSeeder::class,
+            DemoDataSeeder::class,
+        ]);
+
+        $monthStart = now()->copy()->startOfMonth()->toDateString();
+        $monthEnd = now()->copy()->endOfMonth()->toDateString();
+
+        $shift = \App\Modules\ShiftPlanning\Models\BusinessShift::query()
+            ->where('notes', DemoDataSeeder::MARKER)
+            ->where('name', 'Öğle Vardiyası')
+            ->first();
+
+        $this->assertNotNull($shift);
+        $this->assertSame($monthStart, $shift->start_date?->toDateString());
+        $this->assertSame($monthEnd, $shift->end_date?->toDateString());
+
+        $this->assertGreaterThan(
+            0,
+            \App\Modules\ShiftPlanning\Models\BusinessShiftAttendance::query()
+                ->where('notes', DemoDataSeeder::MARKER)
+                ->whereDate('work_date', '>=', $monthStart)
+                ->whereDate('work_date', '<', now()->toDateString())
+                ->where('status', 'completed')
+                ->count()
+        );
+
+        $this->assertGreaterThan(
+            0,
+            \App\Modules\ShiftPlanning\Models\BusinessShiftAttendance::query()
+                ->where('notes', DemoDataSeeder::MARKER)
+                ->whereDate('work_date', now()->toDateString())
+                ->where('status', 'in_progress')
+                ->count()
+        );
+
+        $this->assertGreaterThan(
+            0,
+            \App\Modules\ShiftPlanning\Models\BusinessShift::query()
+                ->where('notes', DemoDataSeeder::MARKER)
+                ->where('name', 'Canlı Operasyon')
+                ->count()
+        );
     }
 }

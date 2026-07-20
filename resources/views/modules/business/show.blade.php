@@ -36,6 +36,17 @@
             @if (BusinessCardVisibility::canManageBusinessProfile())
                 <x-ui.button variant="secondary" href="{{ route('businesses.edit', $business['id']) }}">Düzenle</x-ui.button>
             @endif
+            @if ($business['can_delete'] ?? false)
+                <form
+                    method="POST"
+                    action="{{ route('businesses.destroy', $business['id']) }}"
+                    onsubmit="return confirm('İşletme kalıcı olarak silinsin mi? Bu işlem geri alınamaz.')"
+                >
+                    @csrf
+                    @method('DELETE')
+                    <x-ui.button type="submit" variant="danger">Sil</x-ui.button>
+                </form>
+            @endif
             @can('business.view')
                 @if (\App\Modules\Business\Support\BusinessCardVisibility::canBrowseBusinesses())
                     <x-ui.button href="{{ route('businesses.index') }}" variant="secondary">Listeye Dön</x-ui.button>
@@ -106,8 +117,7 @@
                     <dl class="space-y-3 text-sm">
                         <x-entity.detail-row label="Marka Adı" :value="$business['brand_name']" />
                         <x-entity.detail-row label="Firma Ünvanı" :value="$business['company_name']" />
-                        <x-entity.detail-row label="Kayıt No" :value="$business['uuid']" />
-                        <x-entity.detail-row label="Çalışma Modeli" :value="$business['pricing_model_label']" />
+                        <x-entity.detail-row label="İşletme ID" :value="$business['public_id']" />
                         @if (! empty($business['earning_period_label']))
                             <x-entity.detail-row label="Fatura Periyodu" :value="$business['earning_period_label']" />
                             <x-entity.detail-row label="İlk Fatura Tarihi" :value="$business['first_invoice_date_formatted'] ?? '—'" />
@@ -142,16 +152,29 @@
                     </dl>
                 </x-ui.card>
 
-                <x-ui.card title="Fiyatlandırma">
-                    <dl class="space-y-3 text-sm">
-                        @if (\App\Modules\Business\Support\BusinessPricingVisibility::canViewCustomerAndNetPricing())
-                            <x-entity.detail-row :label="$overviewStats['labels']['customer_detail']" :value="$business['customer_price']" />
-                        @endif
-                        <x-entity.detail-row :label="$overviewStats['labels']['courier_detail']" :value="$business['courier_price']" />
-                        @if (($business['pricing_model'] ?? '') === 'per_package' && ($business['guaranteed_package_count'] ?? null) !== null)
-                            <x-entity.detail-row label="Garanti Paket Sayısı" :value="$business['guaranteed_package_count_formatted']" />
-                        @endif
-                    </dl>
+                <x-ui.card title="Aktif Kontrat">
+                    @if (! empty($business['active_commercial_contract']))
+                        @php $activeContract = $business['active_commercial_contract']; @endphp
+                        <dl class="space-y-3 text-sm">
+                            <x-entity.detail-row label="Kontrat Tipi" :value="$activeContract['work_type_label']" />
+                            @if (\App\Modules\Business\Support\BusinessPricingVisibility::canViewCustomerAndNetPricing())
+                                <x-entity.detail-row label="İşletmeden Alınan" :value="$activeContract['business_amount_formatted']" />
+                            @endif
+                            <x-entity.detail-row label="Kuryeye Verilen" :value="$activeContract['courier_amount_formatted']" />
+                            @if (\App\Modules\Business\Support\BusinessPricingVisibility::canViewCustomerAndNetPricing())
+                                <x-entity.detail-row label="Net Kazanç" :value="$activeContract['net_profit_formatted']" />
+                            @endif
+                            <x-entity.detail-row label="Ödeme Periyodu" :value="$activeContract['payment_period_label']" />
+                            @if (($activeContract['work_type'] ?? '') === 'per_package' && ($activeContract['guaranteed_hourly_package_fee'] ?? null) !== null)
+                                <x-entity.detail-row label="Saatlik Garanti Paket Ücreti" :value="$activeContract['guaranteed_hourly_package_fee_formatted']" />
+                            @endif
+                            <x-entity.detail-row label="Başlangıç" :value="$activeContract['start_date_formatted']" />
+                        </dl>
+                    @else
+                        <p class="text-sm text-gray-500 dark:text-slate-400">
+                            Aktif kontrat yok. Çalışma tipi ve ücretler Kontrat sekmesinden tanımlanır.
+                        </p>
+                    @endif
                 </x-ui.card>
 
                 <x-ui.card title="Notlar">

@@ -4,6 +4,7 @@ namespace App\Modules\Courier\Services;
 
 use App\Core\Helpers\MoneyCalculator;
 use App\Models\EarningLine;
+use App\Modules\Business\Data\BusinessCommercialContractFormData;
 use App\Modules\Courier\Data\CourierEarningFormData;
 use App\Support\EarningStatusMapper;
 
@@ -37,7 +38,25 @@ class CourierEarningPresenter
         $paymentStatus = $this->paymentStatus($line, $statusCode);
         $earningAmount = (float) $line->net_courier_payment;
         $deduction = (float) $line->deduction;
+        $extraPayment = (float) $line->extra_payment;
         $netPayment = round($earningAmount, 2);
+        $paidAmount = $paymentStatus === 'paid' ? $netPayment : 0.0;
+
+        $extraPayments = [];
+        if ($extraPayment > 0) {
+            $extraPayments[] = [
+                'label' => 'Ek Ödeme',
+                'amount' => $extraPayment,
+            ];
+        }
+
+        $deductions = [];
+        if ($deduction > 0) {
+            $deductions[] = [
+                'label' => 'Kesinti',
+                'amount' => $deduction,
+            ];
+        }
 
         return [
             'id' => $line->id,
@@ -45,19 +64,28 @@ class CourierEarningPresenter
             'business_id' => $line->business_id,
             'agency_id' => $line->courier?->agency_id,
             'courier_name' => $line->courier?->full_name ?? '—',
-            'business_name' => $line->business?->displayName() ?? '—',
+            'courier_phone' => $line->courier?->phone ?? '—',
+            'business_name' => $line->business?->company_name ?? $line->business?->displayName() ?? '—',
+            'business_brand' => $line->business?->brand_name ?? '—',
             'agency_name' => $line->courier?->agency?->displayName() ?? '—',
             'courier_type' => $line->courier?->courier_type ?? 'independent',
             'period_month' => $line->period_month,
             'period_year' => $line->period_year,
             'period_label' => ($months[$line->period_month] ?? '').' '.$line->period_year,
+            'pricing_model' => $line->pricing_model,
+            'pricing_model_label' => BusinessCommercialContractFormData::workTypes()[$line->pricing_model]
+                ?? ($line->pricing_model ?: '—'),
             'package_count' => (int) $line->package_count,
+            'worked_hours' => $line->resolvedWorkedHours(),
             'unit_price' => (float) $line->courier_unit_price,
             'earning_amount' => $earningAmount,
-            'extra_payment' => (float) $line->extra_payment,
+            'extra_payment' => $extraPayment,
+            'extra_payments' => $extraPayments,
             'deduction' => $deduction,
+            'deductions' => $deductions,
             'net_payment' => $netPayment,
-            'paid_amount' => $paymentStatus === 'paid' ? $netPayment : 0,
+            'paid_amount' => $paidAmount,
+            'remaining_payment' => max(0, round($netPayment - $paidAmount, 2)),
             'payment_status' => $paymentStatus,
             'payment_date' => $line->paid_at?->toDateString(),
             'payment_date_formatted' => $line->paid_at?->format('d.m.Y') ?? '—',

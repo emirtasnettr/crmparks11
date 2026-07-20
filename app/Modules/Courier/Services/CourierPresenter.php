@@ -131,6 +131,7 @@ class CourierPresenter
         return array_merge($this->detailPayload($courier), [
             'status' => $base['status'],
             'uuid' => $courier->uuid,
+            'public_id' => $courier->public_id,
             'tc_number' => $base['tc_number'],
             'email' => $base['email'],
             'birth_date_formatted' => $courier->birth_date?->format('d.m.Y'),

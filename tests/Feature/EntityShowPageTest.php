@@ -8,7 +8,6 @@ use App\Models\ContractType;
 use App\Models\District;
 use App\Models\Document;
 use App\Models\DocumentCategory;
-use App\Models\PricingModelType;
 use App\Models\User;
 use App\Models\VehicleType;
 use App\Modules\Agency\Models\Agency;
@@ -16,7 +15,6 @@ use App\Modules\Agency\Models\AgencyContact;
 use App\Modules\Agency\Services\AgencyPresenter;
 use App\Modules\Business\Models\Business;
 use App\Modules\Business\Models\BusinessContact;
-use App\Modules\Business\Models\BusinessPricing;
 use App\Modules\ShiftPlanning\Models\BusinessShift;
 use App\Modules\ShiftPlanning\Models\BusinessShiftCourier;
 use App\Modules\Business\Services\BusinessPresenter;
@@ -67,16 +65,11 @@ class EntityShowPageTest extends TestCase
     $user->assignRole('super_admin');
     $business = $this->createBusiness($user);
     $courier = $this->createCourier($user);
-    $pricingModel = PricingModelType::query()->where('code', 'per_package')->firstOrFail();
 
-    BusinessPricing::query()->create([
-      'business_id' => $business->id,
-      'pricing_model_type_id' => $pricingModel->id,
-      'customer_unit_price' => 48.00,
-      'courier_unit_price' => 36.00,
-      'effective_from' => now()->toDateString(),
-      'is_active' => true,
-      'created_by' => $user->id,
+    $business->activeCommercialContract?->update([
+      'business_amount' => 48.00,
+      'courier_amount' => 36.00,
+      'net_profit' => 12.00,
     ]);
 
     $shift = BusinessShift::query()->create([
@@ -173,7 +166,6 @@ class EntityShowPageTest extends TestCase
     $this->actingAs($user)->get(route('businesses.documents.index'))->assertForbidden();
     $this->actingAs($user)->get(route('businesses.contacts.index'))->assertForbidden();
     $this->actingAs($user)->get(route('businesses.activities.index'))->assertForbidden();
-    $this->actingAs($user)->get(route('reports.contract-expiry'))->assertForbidden();
   }
 
   public function test_business_show_uses_pricing_model_labels_for_hourly(): void
@@ -185,17 +177,12 @@ class EntityShowPageTest extends TestCase
       'brand_name' => 'Saatlik Lojistik',
     ]);
 
-    $pricingModel = PricingModelType::query()->where('code', 'hourly')->firstOrFail();
-
-    BusinessPricing::query()->where('business_id', $business->id)->update(['is_active' => false]);
-    BusinessPricing::query()->create([
-      'business_id' => $business->id,
-      'pricing_model_type_id' => $pricingModel->id,
-      'customer_unit_price' => 290.00,
-      'courier_unit_price' => 250.00,
-      'effective_from' => now()->toDateString(),
-      'is_active' => true,
-      'created_by' => $user->id,
+    $business->activeCommercialContract?->update([
+      'work_type' => \App\Modules\Business\Models\BusinessCommercialContract::WORK_HOURLY,
+      'business_amount' => 290.00,
+      'courier_amount' => 250.00,
+      'net_profit' => 40.00,
+      'guaranteed_hourly_package_fee' => null,
     ]);
 
     $response = $this->actingAs($user)->get(route('businesses.show', $business->id));
@@ -205,8 +192,8 @@ class EntityShowPageTest extends TestCase
     $response->assertSee('Saatlik Kuryeye Verilen');
     $response->assertSee('Saatlik Net Kazanç');
     $response->assertSee('saatlik göstergeler');
-    $response->assertSee('İşletmeden Saatlik Ücret');
-    $response->assertSee('Kuryeye Saatlik Ücret');
+    $response->assertSee('Aktif Kontrat');
+    $response->assertSee('Saatlik Ücret');
     $response->assertDontSee('Paket Başı Alınan');
   }
 
@@ -526,25 +513,11 @@ class EntityShowPageTest extends TestCase
       ->where('name', 'Kadıköy')
       ->firstOrFail();
 
-    $business = Business::factory()->create(array_merge([
+    return Business::factory()->create(array_merge([
       'city_id' => $city->id,
       'district_id' => $district->id,
       'created_by' => $user->id,
     ], $overrides));
-
-    $pricingModel = PricingModelType::query()->where('code', 'per_package')->firstOrFail();
-    $business->pricings()->delete();
-    BusinessPricing::query()->create([
-      'business_id' => $business->id,
-      'pricing_model_type_id' => $pricingModel->id,
-      'customer_unit_price' => 45,
-      'courier_unit_price' => 32,
-      'effective_from' => now()->toDateString(),
-      'is_active' => true,
-      'created_by' => $user->id,
-    ]);
-
-    return $business;
   }
 
   /**

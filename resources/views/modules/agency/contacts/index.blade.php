@@ -44,14 +44,14 @@
                     name="agency_id"
                     label="Acente"
                     :selected="$filters['agency_id']"
-                    :options="array_merge(['all' => 'Tümü'], collect($agencies)->mapWithKeys(fn ($a) => [$a['id'] => $a['name']])->all())"
+                    :options="filter_select_options(collect($agencies)->mapWithKeys(fn ($a) => [$a['id'] => $a['name']])->all())"
                 />
 
                 <x-ui.select
                     name="title"
                     label="Görev"
                     :selected="$filters['title']"
-                    :options="array_merge(['all' => 'Tümü'], collect($titles)->mapWithKeys(fn ($t) => [$t => $t])->all())"
+                    :options="filter_select_options(collect($titles)->mapWithKeys(fn ($t) => [$t => $t])->all())"
                 />
 
                 <x-ui.select

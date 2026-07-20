@@ -34,6 +34,7 @@ class EarningLineFactory extends Factory
             'period_month' => 6,
             'period_year' => 2026,
             'package_count' => $packageCount,
+            'worked_hours' => 0,
             'revenue_unit_price' => $revenueUnit,
             'revenue_total' => $revenueTotal,
             'courier_unit_price' => $courierUnit,

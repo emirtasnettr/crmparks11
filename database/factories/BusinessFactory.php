@@ -4,10 +4,9 @@ namespace Database\Factories;
 
 use App\Models\City;
 use App\Models\District;
-use App\Models\PricingModelType;
 use App\Models\User;
 use App\Modules\Business\Models\Business;
-use App\Modules\Business\Models\BusinessPricing;
+use App\Modules\Business\Models\BusinessCommercialContract;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /** @extends Factory<Business> */
@@ -18,25 +17,15 @@ class BusinessFactory extends Factory
     public function configure(): static
     {
         return $this->afterCreating(function (Business $business): void {
-            if ($business->activePricing()->exists()) {
+            if ($business->activeCommercialContract()->exists()) {
                 return;
             }
 
-            $pricingModel = PricingModelType::query()
-                ->where('code', 'per_package')
-                ->first();
-
-            if ($pricingModel === null) {
-                return;
-            }
-
-            BusinessPricing::query()->create([
+            BusinessCommercialContract::factory()->perPackage()->create([
                 'business_id' => $business->id,
-                'pricing_model_type_id' => $pricingModel->id,
-                'customer_unit_price' => 45,
-                'courier_unit_price' => 32,
-                'effective_from' => now()->toDateString(),
-                'is_active' => true,
+                'business_amount' => 45,
+                'courier_amount' => 32,
+                'net_profit' => 13,
                 'created_by' => $business->created_by,
             ]);
         });

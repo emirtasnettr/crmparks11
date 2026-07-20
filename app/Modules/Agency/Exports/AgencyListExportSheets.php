@@ -136,7 +136,7 @@ final class AgencyListExportSheets
 
         return ListExport::sheet(
             $rows,
-            ['Acente', 'Referans', 'Dönem', 'Dönem Tipi', 'Kurye Sayısı', 'Paket', 'Hakediş', 'Kesinti', 'Net Ödeme', 'Ödeme Durumu', 'Ödeme Tarihi'],
+            ['Acente', 'Referans', 'Dönem', 'Dönem Tipi', 'Kurye Sayısı', 'Paket', 'Saat', 'Hakediş', 'Kesinti', 'Net Ödeme', 'Ödeme Durumu', 'Ödeme Tarihi'],
             [
                 fn (array $row) => $row['agency_name'],
                 fn (array $row) => $row['reference'],
@@ -144,6 +144,7 @@ final class AgencyListExportSheets
                 fn (array $row) => $row['period_type_label'],
                 fn (array $row) => $row['courier_count'],
                 fn (array $row) => $row['package_count'],
+                fn (array $row) => $row['worked_hours'],
                 fn (array $row) => $row['gross_amount'],
                 fn (array $row) => $row['deduction'],
                 fn (array $row) => $row['net_payment'],

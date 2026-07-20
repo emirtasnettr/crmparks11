@@ -31,10 +31,12 @@
             <dt class="text-xs font-medium text-gray-500">Net Kazanç (KDV hariç)</dt>
             <dd class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ $contract['net_profit_formatted'] }}</dd>
         </div>
-        <div>
-            <dt class="text-xs font-medium text-gray-500">Saatlik Garanti Paket Ücreti</dt>
-            <dd class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ $contract['guaranteed_hourly_package_fee_formatted'] }}</dd>
-        </div>
+        @if (($contract['work_type'] ?? '') === 'per_package')
+            <div>
+                <dt class="text-xs font-medium text-gray-500">Saatlik Garanti Paket Ücreti</dt>
+                <dd class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ $contract['guaranteed_hourly_package_fee_formatted'] }}</dd>
+            </div>
+        @endif
     </dl>
     @if ($contract['notes'])
         <p class="mt-4 text-sm text-gray-600 dark:text-slate-300">{{ $contract['notes'] }}</p>

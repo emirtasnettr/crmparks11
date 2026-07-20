@@ -29,19 +29,19 @@
         <form method="GET" action="{{ route('finance.activity-log.index') }}" class="p-4 sm:p-6">
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
                 <x-ui.select name="action_type" label="İşlem Türü" :selected="$filters['action_type']"
-                    :options="array_merge(['all' => 'Tümü'], $actionTypes)" />
+                    :options="filter_select_options($actionTypes)" />
 
                 <x-ui.select name="module" label="Modül" :selected="$filters['module']"
-                    :options="array_merge(['all' => 'Tümü'], $modules)" />
+                    :options="filter_select_options($modules)" />
 
                 <x-ui.select name="user_id" label="Kullanıcı" :selected="$filters['user_id']"
-                    :options="array_merge(['all' => 'Tümü'], collect($users)->mapWithKeys(fn ($u) => [$u['id'] => $u['name']])->all())" />
+                    :options="filter_select_options(collect($users)->mapWithKeys(fn ($u) => [$u['id'] => $u['name']])->all())" />
 
                 <x-ui.select name="date_range" label="Tarih Aralığı" :selected="$filters['date_range']"
                     :options="$dateRanges" />
 
                 <x-ui.select name="current_account" label="Cari" :selected="$filters['current_account']"
-                    :options="array_merge(['all' => 'Tümü'], collect($currentAccounts)->mapWithKeys(fn ($c) => [$c => $c])->all())" />
+                    :options="filter_select_options(collect($currentAccounts)->mapWithKeys(fn ($c) => [$c => $c])->all())" />
 
                 <x-ui.input type="text" name="reference" label="İşlem No" :value="$filters['reference']" placeholder="GLR-2026-000001" />
             </div>

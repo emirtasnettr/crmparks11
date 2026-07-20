@@ -49,7 +49,7 @@
                         <x-entity.detail-row label="Marka Adı" :value="$agency['brand_name']" />
                         <x-entity.detail-row label="Firma Ünvanı" :value="$agency['company_name']" />
                         <x-entity.detail-row label="Yetkili Kişi" :value="$agency['authorized_person']" />
-                        <x-entity.detail-row label="Kayıt No" :value="$agency['uuid']" />
+                        <x-entity.detail-row label="Acente ID" :value="$agency['public_id']" />
                         <x-entity.detail-row label="Aktif Kurye" :value="$agency['active_couriers']" />
                         <x-entity.detail-row label="Aktif İşletme" :value="$agency['active_businesses']" />
                         <x-entity.detail-row label="Kayıt Tarihi" :value="$agency['created_at_formatted']" />

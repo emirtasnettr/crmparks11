@@ -2,6 +2,7 @@
 
 namespace App\Modules\Courier\Models;
 
+use App\Core\Traits\HasPublicId;
 use App\Core\Traits\HasUuid;
 use App\Models\City;
 use App\Models\District;
@@ -17,7 +18,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Courier extends Model
 {
     /** @use HasFactory<CourierFactory> */
-    use HasFactory, HasUuid, SoftDeletes;
+    use HasFactory, HasPublicId, HasUuid, SoftDeletes;
 
     protected $fillable = [
         'user_id',

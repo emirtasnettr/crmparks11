@@ -40,16 +40,16 @@
         <form method="GET" action="{{ route('finance.payments.index') }}" class="p-4 sm:p-6">
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
                 <x-ui.select name="recipient_type" label="Alıcı Türü" :selected="$filters['recipient_type']"
-                    :options="array_merge(['all' => 'Tümü'], $recipientTypes)" />
+                    :options="filter_select_options($recipientTypes)" />
 
                 <x-ui.select name="recipient_id" label="Alıcı" :selected="$filters['recipient_id']"
-                    :options="array_merge(['all' => 'Tümü'], $recipientOptions)" />
+                    :options="filter_select_options($recipientOptions)" />
 
                 <x-ui.select name="payment_status" label="Ödeme Durumu" :selected="$filters['payment_status']"
-                    :options="array_merge(['all' => 'Tümü'], $paymentStatuses)" />
+                    :options="filter_select_options($paymentStatuses)" />
 
                 <x-ui.select name="payment_method" label="Ödeme Yöntemi" :selected="$filters['payment_method']"
-                    :options="array_merge(['all' => 'Tümü'], $paymentMethods)" />
+                    :options="filter_select_options($paymentMethods)" />
 
                 <x-ui.select name="date_range" label="Tarih Aralığı" :selected="$filters['date_range']"
                     :options="$dateRanges" />

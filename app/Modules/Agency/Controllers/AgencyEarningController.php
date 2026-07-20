@@ -160,6 +160,7 @@ class AgencyEarningController extends Controller
                 'Dönem Tipi' => $row['period_type_label'],
                 'Kurye Sayısı' => $row['courier_count'],
                 'Paket Sayısı' => $row['package_count'],
+                'Saat' => $row['worked_hours'] > 0 ? number_format($row['worked_hours'], 2, ',', '.').' sa' : '—',
                 'Ödeme Durumu' => $paymentStatusLabel,
                 'Durum' => $statusLabel,
                 'Ödeme Tarihi' => $row['payment_date_formatted'],

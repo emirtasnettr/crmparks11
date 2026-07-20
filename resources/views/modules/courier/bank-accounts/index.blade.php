@@ -44,21 +44,21 @@
                     name="bank_key"
                     label="Banka"
                     :selected="$filters['bank_key']"
-                    :options="array_merge(['all' => 'Tümü'], $banks)"
+                    :options="filter_select_options($banks)"
                 />
 
                 <x-ui.select
                     name="is_default"
                     label="Varsayılan Hesap"
                     :selected="$filters['is_default']"
-                    :options="array_merge(['all' => 'Tümü'], $defaultFilters)"
+                    :options="filter_select_options($defaultFilters)"
                 />
 
                 <x-ui.select
                     name="status"
                     label="Durum"
                     :selected="$filters['status']"
-                    :options="array_merge(['all' => 'Tümü'], $statuses)"
+                    :options="filter_select_options($statuses)"
                 />
             </div>
 

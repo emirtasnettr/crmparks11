@@ -44,21 +44,21 @@
                     name="document_type"
                     label="Evrak Türü"
                     :selected="$filters['document_type']"
-                    :options="array_merge(['all' => 'Tümü'], $documentTypes)"
+                    :options="filter_select_options($documentTypes)"
                 />
 
                 <x-ui.select
                     name="status"
                     label="Durum"
                     :selected="$filters['status']"
-                    :options="array_merge(['all' => 'Tümü'], $statuses)"
+                    :options="filter_select_options($statuses)"
                 />
 
                 <x-ui.select
                     name="expiry_filter"
                     label="Geçerlilik Tarihi"
                     :selected="$filters['expiry_filter']"
-                    :options="array_merge(['all' => 'Tümü'], $expiryFilters)"
+                    :options="filter_select_options($expiryFilters)"
                 />
             </div>
 

@@ -45,8 +45,8 @@
                     <dd class="font-medium text-gray-900 dark:text-white" x-text="selected?.location"></dd>
                 </div>
                 <div class="flex justify-between gap-4">
-                    <dt class="text-gray-500 dark:text-slate-400">Çalışma Modeli</dt>
-                    <dd class="font-medium text-gray-900 dark:text-white" x-text="selected?.pricing_model_label"></dd>
+                    <dt class="text-gray-500 dark:text-slate-400">Kontrat Tipi</dt>
+                    <dd class="font-medium text-gray-900 dark:text-white" x-text="selected?.work_type_label || '—'"></dd>
                 </div>
                 <div class="flex justify-between gap-4">
                     <dt class="text-gray-500 dark:text-slate-400">Aktif Kurye</dt>

@@ -118,6 +118,7 @@ class AgencyPresenter
         return array_merge($this->detailPayload($agency), [
             'status' => $base['status'],
             'uuid' => $agency->uuid,
+            'public_id' => $agency->public_id,
             'tax_number' => $base['tax_number'],
             'brand_name' => $base['brand_name'] ?? $base['company_name'],
             'notes' => $base['notes'],

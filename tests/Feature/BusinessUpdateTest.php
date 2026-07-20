@@ -37,7 +37,6 @@ class BusinessUpdateTest extends TestCase
         $response = $this->actingAs($user)->put(route('businesses.update', $business->id), [
             'company_name' => 'Test İşletme',
             'phone' => '0212 000 00 00',
-            'pricing_model' => 'per_package',
             'earning_period' => 'weekly',
             'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 3,
@@ -68,10 +67,6 @@ class BusinessUpdateTest extends TestCase
             'city' => 'İstanbul',
             'district' => 'Kadıköy',
             'address' => 'Test adres',
-            'pricing_model' => 'per_package',
-            'customer_price' => '50.00',
-            'courier_price' => '35.00',
-            'guaranteed_package_count' => '3',
             'earning_period' => 'weekly',
             'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 5,
@@ -87,7 +82,6 @@ class BusinessUpdateTest extends TestCase
 
         $this->assertSame('Güncel Burger House', $business->company_name);
         $this->assertSame('Güncellenmiş not', $business->notes);
-        $this->assertSame(3.0, (float) $business->guaranteed_package_count);
         $this->assertNotEmpty($business->logo_path);
 
         Storage::disk('public')->assertExists($business->logo_path);
@@ -97,10 +91,10 @@ class BusinessUpdateTest extends TestCase
         $showResponse->assertOk();
         $showResponse->assertSee('Burger House');
         $showResponse->assertSee('Güncel Burger House');
-        $showResponse->assertSee('50,00 ₺', false);
-        $showResponse->assertSee('35,00 ₺', false);
-        $showResponse->assertSee('Garanti Paket Sayısı');
-        $showResponse->assertSee('3');
+        $showResponse->assertSee('45,00 ₺', false);
+        $showResponse->assertSee('32,00 ₺', false);
+        $showResponse->assertSee('Aktif Kontrat');
+        $showResponse->assertSee('Paket Başı');
 
         $stats = \App\Modules\Business\Data\BusinessOverviewStats::forBusiness(
             $business->id,
@@ -108,9 +102,9 @@ class BusinessUpdateTest extends TestCase
             \Carbon\Carbon::parse('2026-07-08'),
         );
 
-        $this->assertSame(50.0, $stats['received_per_package']);
-        $this->assertSame(35.0, $stats['courier_per_package']);
-        $this->assertSame(15.0, $stats['net_per_package']);
+        $this->assertSame(45.0, $stats['received_per_package']);
+        $this->assertSame(32.0, $stats['courier_per_package']);
+        $this->assertSame(13.0, $stats['net_per_package']);
     }
 
     public function test_business_status_change_reflects_on_show_and_index(): void
@@ -130,7 +124,6 @@ class BusinessUpdateTest extends TestCase
             'phone' => '0224 666 77 88',
             'city' => 'Bursa',
             'district' => 'Nilüfer',
-            'pricing_model' => 'daily',
             'earning_period' => 'weekly',
             'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 4,
@@ -171,7 +164,6 @@ class BusinessUpdateTest extends TestCase
             'phone' => $business->phone,
             'city' => 'İstanbul',
             'district' => 'Beşiktaş',
-            'pricing_model' => 'per_package',
             'earning_period' => 'weekly',
             'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 4,
@@ -202,7 +194,6 @@ class BusinessUpdateTest extends TestCase
                 'company_name' => $business->company_name,
                 'brand_name' => $business->brand_name,
                 'phone' => $business->phone,
-                'pricing_model' => 'per_package',
                 'earning_period' => 'weekly',
                 'first_invoice_date' => '2026-07-14',
                 'planned_courier_count' => 3,
@@ -225,7 +216,6 @@ class BusinessUpdateTest extends TestCase
             'company_name' => $business->company_name,
             'brand_name' => $business->brand_name,
             'phone' => $business->phone,
-            'pricing_model' => 'per_package',
             'earning_period' => 'weekly',
             'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 3,
@@ -251,7 +241,6 @@ class BusinessUpdateTest extends TestCase
             'company_name' => 'Test',
             'brand_name' => 'Test Marka',
             'phone' => '0212 000 00 00',
-            'pricing_model' => 'per_package',
             'earning_period' => 'weekly',
             'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 2,

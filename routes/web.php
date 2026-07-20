@@ -118,28 +118,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/urunler/{id}', [StockProductController::class, 'show'])->name('products.show');
     });
 
+    Route::get('/radar', [ReportController::class, 'radar'])
+        ->middleware('permission:report.view')
+        ->name('radar');
+
     Route::prefix('raporlar')->middleware('permission:report.view')->name('reports.')->group(function () {
         Route::get('/', [ReportController::class, 'index'])->name('index');
-        Route::get('/isletme-pipeline', [ReportController::class, 'businessPipeline'])->name('business-pipeline');
-        Route::get('/acilis-asamasi', [ReportController::class, 'openingStage'])->name('opening-stage');
-        Route::get('/sozlesme-vadeleri', [ReportController::class, 'contractExpiry'])->name('contract-expiry');
-        Route::get('/hakedis-ozeti', [ReportController::class, 'earnings'])->name('earnings');
-        Route::get('/hakedis-ozeti/export', [ReportController::class, 'earningsExport'])
-            ->middleware('permission:report.export')
-            ->name('earnings.export');
-        Route::get('/tahsilat-yaslandirma', [ReportController::class, 'collections'])->name('collections');
-        Route::get('/tahsilat-yaslandirma/export', [ReportController::class, 'collectionsExport'])
-            ->middleware('permission:report.export')
-            ->name('collections.export');
-        Route::get('/operasyon-ozeti', [ReportController::class, 'operations'])->name('operations');
-        Route::get('/kurye-performansi', [ReportController::class, 'courierPerformance'])->name('courier-performance');
-        Route::get('/kurye-performansi/export', [ReportController::class, 'courierPerformanceExport'])
-            ->middleware('permission:report.export')
-            ->name('courier-performance.export');
-        Route::get('/acente-payi', [ReportController::class, 'agencyShare'])->name('agency-share');
-        Route::get('/acente-payi/export', [ReportController::class, 'agencyShareExport'])
-            ->middleware('permission:report.export')
-            ->name('agency-share.export');
     });
 
     Route::prefix('isletmeler')->name('businesses.')->group(function () {
@@ -187,6 +171,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/{id}/duzenle', [BusinessController::class, 'edit'])->name('edit');
             Route::put('/{id}', [BusinessController::class, 'update'])->middleware('permission:business.update')->name('update');
             Route::post('/{id}/pasife-al', [BusinessController::class, 'deactivate'])->middleware('permission:business.update')->name('deactivate');
+            Route::delete('/{id}', [BusinessController::class, 'destroy'])->name('destroy');
             Route::get('/{id}', [BusinessController::class, 'show'])->name('show');
         });
     });

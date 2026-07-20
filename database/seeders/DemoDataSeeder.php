@@ -146,7 +146,8 @@ class DemoDataSeeder extends Seeder
         $this->command?->info(
             "Demo veri hazır: {$active} aktif / {$opening} açılış işletme, "
             ."{$courierCount} kurye, {$shifts} vardiya, {$attendances} katılım, "
-            ."{$earnings} hakediş, {$stock} stok ürünü + finans."
+            ."{$earnings} hakediş, {$stock} stok ürünü + finans. "
+            .'Vardiyalar '.now()->format('Y-m').' ayı (1 → ay sonu); canlı pano: aktif / geç / girmedi.'
         );
     }
 
@@ -397,13 +398,14 @@ class DemoDataSeeder extends Seeder
             }
 
             if (in_array($business->brand_name, ['Ateş & Odun', 'Pizza Locale'], true)) {
-                $hourlyType = \App\Models\PricingModelType::query()->where('code', 'hourly')->first();
-                if ($hourlyType) {
-                    $business->activePricing?->update([
-                        'pricing_model_type_id' => $hourlyType->id,
-                        'customer_unit_price' => 180,
-                        'courier_unit_price' => 120,
-                        'label' => 'Saatlik anlaşma',
+                $contract = $business->activeCommercialContract;
+                if ($contract !== null) {
+                    $contract->update([
+                        'work_type' => \App\Modules\Business\Models\BusinessCommercialContract::WORK_HOURLY,
+                        'business_amount' => 180,
+                        'courier_amount' => 120,
+                        'net_profit' => 60,
+                        'guaranteed_hourly_package_fee' => null,
                     ]);
                 }
             }
@@ -580,8 +582,8 @@ class DemoDataSeeder extends Seeder
                     'start_time' => $def['start_time'],
                     'end_time' => $def['end_time'],
                     'required_headcount' => max(1, $required),
-                    'start_date' => now()->subWeeks(4)->startOfWeek()->toDateString(),
-                    'end_date' => now()->addWeeks(4)->endOfWeek()->toDateString(),
+                    'start_date' => now()->copy()->startOfMonth()->toDateString(),
+                    'end_date' => now()->copy()->endOfMonth()->toDateString(),
                     'days_of_week' => $def['days_of_week'],
                     'excluded_dates' => [],
                     'notes' => self::MARKER,
@@ -678,14 +680,14 @@ class DemoDataSeeder extends Seeder
 
         foreach ($groups as $businessId => $rosters) {
             /** @var Business|null $business */
-            $business = $businessById->get($businessId)?->fresh(['activePricing.pricingModelType']);
+            $business = $businessById->get($businessId)?->fresh(['activeCommercialContract']);
             if ($business === null) {
                 continue;
             }
 
-            $pricing = $business->activePricing;
-            $pricingCode = $pricing?->pricingModelType?->code;
-            $hourlyRate = $pricingCode === 'hourly' ? (float) $pricing?->courier_unit_price : null;
+            $contract = $business->activeCommercialContract;
+            $pricingCode = $contract?->work_type;
+            $hourlyRate = $pricingCode === 'hourly' ? (float) $contract?->courier_amount : null;
 
             if (! empty($rosters['current'])) {
                 $shift = BusinessShift::query()->create([
@@ -784,16 +786,25 @@ class DemoDataSeeder extends Seeder
      */
     private function seedShiftAttendances(array $createdShifts): void
     {
-        $today = now()->startOfDay();
+        $monthStart = now()->copy()->startOfMonth()->startOfDay();
+        $yesterday = now()->copy()->subDay()->startOfDay();
+
+        if ($yesterday->lt($monthStart)) {
+            return;
+        }
 
         foreach ($createdShifts as $item) {
             /** @var BusinessShift $shift */
             $shift = $item['shift'];
             /** @var Business $business */
-            $business = $item['business']->fresh(['activePricing.pricingModelType']);
-            $pricing = $business->activePricing;
-            $pricingCode = $pricing?->pricingModelType?->code;
-            $hourlyRate = $pricingCode === 'hourly' ? (float) $pricing?->courier_unit_price : null;
+            $business = $item['business']->fresh(['activeCommercialContract']);
+            $contract = $business->activeCommercialContract;
+            $pricingCode = $contract?->work_type;
+            $hourlyRate = $pricingCode === 'hourly'
+                ? (float) $contract?->courier_amount
+                : ($pricingCode === 'per_package'
+                    ? (float) ($contract?->guaranteed_hourly_package_fee ?: $contract?->courier_amount)
+                    : null);
 
             $startHour = (int) substr((string) $shift->start_time, 0, 2);
             $startMinute = (int) substr((string) $shift->start_time, 3, 2);
@@ -805,23 +816,22 @@ class DemoDataSeeder extends Seeder
                 $plannedMinutes = 360;
             }
 
-            for ($daysAgo = 21; $daysAgo >= 1; $daysAgo--) {
-                $day = $today->copy()->subDays($daysAgo);
-
+            for ($day = $monthStart->copy(); $day->lte($yesterday); $day->addDay()) {
                 if (! $shift->runsOn($day)) {
                     continue;
                 }
 
                 $workingIds = array_values($item['roster']);
+                $dayIndex = (int) $monthStart->diffInDays($day);
 
                 foreach ($workingIds as $courierIndex => $courierId) {
                     // Gerçekçi boşluk: bazı günlerde bazı kuryeler gelmemiş olsun.
-                    if (($daysAgo + $courierIndex + $item['def_index']) % 7 === 0) {
+                    if (($dayIndex + $courierIndex + $item['def_index']) % 7 === 0) {
                         continue;
                     }
 
                     $lateMinutes = ($courierIndex * 3) % 12;
-                    $earlyLeave = ($daysAgo % 5 === 0) ? 15 : 0;
+                    $earlyLeave = ($dayIndex % 5 === 0) ? 15 : 0;
                     $workedMinutes = max(60, $plannedMinutes - $earlyLeave);
                     $startedAt = $day->copy()->setTime($startHour, $startMinute)->addMinutes($lateMinutes);
                     $endedAt = $startedAt->copy()->addMinutes($workedMinutes);
@@ -832,8 +842,9 @@ class DemoDataSeeder extends Seeder
                     BusinessShiftAttendance::query()->create([
                         'business_shift_id' => $shift->id,
                         'business_id' => $business->id,
+                        'commercial_contract_id' => $contract?->id,
                         'courier_id' => $courierId,
-                        'work_date' => $dateKey,
+                        'work_date' => $day->toDateString(),
                         'started_at' => $startedAt,
                         'ended_at' => $endedAt,
                         'status' => 'completed',
@@ -928,20 +939,21 @@ class DemoDataSeeder extends Seeder
 
             $workedHours = round($rows->sum('worked_minutes') / 60, 2);
             $courierUnit = (float) ($rows->avg('hourly_rate') ?: 0);
-            $business = Business::query()->with('activePricing')->find($sample->business_id);
-            $revenueUnit = (float) ($business?->activePricing?->customer_unit_price ?: $courierUnit * 1.5);
+            $business = Business::query()->with('activeCommercialContract')->find($sample->business_id);
+            $revenueUnit = (float) ($business?->activeCommercialContract?->business_amount ?: $courierUnit * 1.5);
             $courierTotal = round((float) $rows->sum('earnings_amount'), 2);
             $revenueTotal = round($workedHours * $revenueUnit, 2);
 
             EarningLine::factory()->create([
                 'business_id' => $sample->business_id,
                 'courier_id' => $sample->courier_id,
-                'business_pricing_id' => $business?->activePricing?->id,
+                'business_pricing_id' => null,
                 'earning_type' => 'hourly',
                 'pricing_model' => 'hourly',
                 'period_month' => $periodMonth,
                 'period_year' => $periodYear,
                 'package_count' => 0,
+                'worked_hours' => $workedHours,
                 'revenue_unit_price' => $revenueUnit,
                 'revenue_total' => $revenueTotal,
                 'courier_unit_price' => $courierUnit,
@@ -974,20 +986,21 @@ class DemoDataSeeder extends Seeder
                 continue;
             }
 
-            $business = Business::query()->with('activePricing')->find($businessId);
-            $courierUnit = (float) ($business?->activePricing?->courier_unit_price ?: 120);
-            $revenueUnit = (float) ($business?->activePricing?->customer_unit_price ?: 180);
+            $business = Business::query()->with('activeCommercialContract')->find($businessId);
+            $courierUnit = (float) ($business?->activeCommercialContract?->courier_amount ?: 120);
+            $revenueUnit = (float) ($business?->activeCommercialContract?->business_amount ?: 180);
             $plannedHours = 96.0;
 
             EarningLine::factory()->create([
                 'business_id' => $businessId,
                 'courier_id' => $courierId,
-                'business_pricing_id' => $business?->activePricing?->id,
+                'business_pricing_id' => null,
                 'earning_type' => 'hourly',
                 'pricing_model' => 'hourly',
                 'period_month' => (int) $nextMonth->format('n'),
                 'period_year' => (int) $nextMonth->format('Y'),
                 'package_count' => 0,
+                'worked_hours' => $plannedHours,
                 'revenue_unit_price' => $revenueUnit,
                 'revenue_total' => round($plannedHours * $revenueUnit, 2),
                 'courier_unit_price' => $courierUnit,
@@ -1037,7 +1050,7 @@ class DemoDataSeeder extends Seeder
 
         $hourlyBusinessIds = Business::query()
             ->whereIn('id', collect($businesses)->pluck('id'))
-            ->whereHas('activePricing.pricingModelType', fn ($q) => $q->where('code', 'hourly'))
+            ->whereHas('activeCommercialContract', fn ($q) => $q->where('work_type', 'hourly'))
             ->pluck('id')
             ->all();
 

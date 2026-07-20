@@ -49,8 +49,14 @@
         <x-ui.card title="Hakediş Özeti">
             <dl class="space-y-3 text-sm">
                 @if ($earning['package_count'] > 0)
-                    <div class="flex justify-between gap-4"><dt class="text-gray-500">Paket Sayısı</dt><dd class="font-medium">{{ money_excl_vat($earning['package_count']) }}</dd></div>
-                    <div class="flex justify-between gap-4"><dt class="text-gray-500">Birim Ücret</dt><dd>{{ number_format($earning['unit_price']) }}</dd></div>
+                    <div class="flex justify-between gap-4"><dt class="text-gray-500">Paket Sayısı</dt><dd class="font-medium">{{ number_format($earning['package_count']) }}</dd></div>
+                    <div class="flex justify-between gap-4"><dt class="text-gray-500">Birim Ücret</dt><dd>{{ money_excl_vat($earning['unit_price']) }}</dd></div>
+                @endif
+                @if ($earning['worked_hours'] > 0)
+                    <div class="flex justify-between gap-4"><dt class="text-gray-500">Saat</dt><dd class="font-medium">{{ number_format($earning['worked_hours'], 2, ',', '.') }} sa</dd></div>
+                    @if ($earning['pricing_model'] === 'hourly')
+                        <div class="flex justify-between gap-4"><dt class="text-gray-500">Saatlik Ücret</dt><dd>{{ money_excl_vat($earning['unit_price']) }}</dd></div>
+                    @endif
                 @endif
                 <div class="flex justify-between gap-4"><dt class="text-gray-500">Hakediş Tutarı</dt><dd class="font-semibold text-gray-900 dark:text-white">{{ money_excl_vat($earning['earning_amount']) }}</dd></div>
                 <div class="flex justify-between gap-4"><dt class="text-gray-500">Ek Ödeme</dt><dd class="text-emerald-600">+{{ money_excl_vat($earning['extra_payment']) }}</dd></div>

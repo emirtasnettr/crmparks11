@@ -22,25 +22,25 @@
                     name="action"
                     label="İşlem Türü"
                     :selected="$filters['action']"
-                    :options="array_merge(['all' => 'Tümü'], $actionTypes)"
+                    :options="filter_select_options($actionTypes)"
                 />
                 <x-ui.select
                     name="product_id"
                     label="Ürün"
                     :selected="$filters['product_id']"
-                    :options="array_merge(['all' => 'Tümü'], collect($products)->mapWithKeys(fn ($p) => [$p['id'] => $p['label']])->all())"
+                    :options="filter_select_options(collect($products)->mapWithKeys(fn ($p) => [$p['id'] => $p['label']])->all())"
                 />
                 <x-ui.select
                     name="user_id"
                     label="Kullanıcı"
                     :selected="$filters['user_id']"
-                    :options="array_merge(['all' => 'Tümü'], collect($users)->mapWithKeys(fn ($u) => [$u['id'] => $u['name']])->all())"
+                    :options="filter_select_options(collect($users)->mapWithKeys(fn ($u) => [$u['id'] => $u['name']])->all())"
                 />
                 <x-ui.select
                     name="date_range"
                     label="Tarih"
                     :selected="$filters['date_range']"
-                    :options="array_merge(['all' => 'Tümü'], $dateRanges)"
+                    :options="filter_select_options($dateRanges)"
                 />
             </div>
             <div class="mt-4 flex flex-wrap gap-2">

@@ -41,15 +41,13 @@ chmod +x install.sh
 
 Sihirbaz sizi APP_URL, veritabanı ve admin şifresi için yönlendirir. Güncellemeler için: `./deploy.sh`
 
-## Demo Hesaplar (local/testing)
+## Geliştirme girişi (local/testing)
 
 | Rol | E-posta | Şifre |
 |-----|---------|-------|
 | Süper Admin | admin@crmlog.com | password |
-| Genel Müdür | mudur@crmlog.com | password |
-| Operasyon Uzmanı | operasyon@crmlog.com | password |
 
-> Production ortamında `ADMIN_INITIAL_PASSWORD` ile güçlü şifre tanımlayın.
+> Production ortamında `ADMIN_INITIAL_PASSWORD` ile güçlü şifre tanımlayın. Örnek veri için: `php artisan crmlog:seed-demo`
 
 ## Modüller
 

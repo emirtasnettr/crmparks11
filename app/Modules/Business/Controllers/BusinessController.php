@@ -38,7 +38,7 @@ class BusinessController extends Controller
       'search' => $request->string('search')->toString(),
       'status' => RequestFilter::valueOrAll($request, 'status'),
       'city' => RequestFilter::valueOrAll($request, 'city'),
-      'pricing_model' => RequestFilter::valueOrAll($request, 'pricing_model'),
+      'work_type' => RequestFilter::valueOrAll($request, 'work_type'),
     ];
 
     $perPage = 25;
@@ -67,6 +67,7 @@ class BusinessController extends Controller
       'filters' => $filters,
       'cities' => $this->businesses->cities(),
       'statuses' => BusinessFormData::statuses(),
+      'workTypes' => BusinessCommercialContractFormData::workTypes(),
       'total' => $total,
       'page' => $page,
       'perPage' => $perPage,
@@ -80,7 +81,7 @@ class BusinessController extends Controller
       'search' => $request->string('search')->toString(),
       'status' => RequestFilter::valueOrAll($request, 'status'),
       'city' => RequestFilter::valueOrAll($request, 'city'),
-      'pricing_model' => RequestFilter::valueOrAll($request, 'pricing_model'),
+      'work_type' => RequestFilter::valueOrAll($request, 'work_type'),
     ];
 
     return $this->downloadExportSheet(
@@ -95,8 +96,6 @@ class BusinessController extends Controller
     return view('modules.business.create', [
       'cities' => BusinessFormData::cities(),
       'districtsByCity' => BusinessFormData::districtsByCity(),
-      'pricingModels' => BusinessFormData::pricingModels(),
-      'pricingFieldLabels' => BusinessFormData::pricingFieldLabels(),
       'earningPeriods' => BusinessFormData::earningPeriods(),
       'statuses' => BusinessFormData::statuses(),
     ]);
@@ -173,8 +172,6 @@ class BusinessController extends Controller
       'formValues' => $this->presenter->formPayload($business),
       'cities' => BusinessFormData::cities(),
       'districtsByCity' => BusinessFormData::districtsByCity(),
-      'pricingModels' => BusinessFormData::pricingModels(),
-      'pricingFieldLabels' => BusinessFormData::pricingFieldLabels(),
       'earningPeriods' => BusinessFormData::earningPeriods(),
       'statuses' => BusinessFormData::statuses(),
     ]);
@@ -223,5 +220,22 @@ class BusinessController extends Controller
     return redirect()
       ->route('businesses.index')
       ->with('success', 'İşletme pasife alındı.');
+  }
+
+  public function destroy(Request $request, int $id): RedirectResponse
+  {
+    abort_unless($request->user()?->hasRole('super_admin'), 403);
+
+    $business = $this->businesses->find($id);
+
+    if ($business === null) {
+      abort(404);
+    }
+
+    $this->businesses->destroy($business);
+
+    return redirect()
+      ->route('businesses.index')
+      ->with('success', 'İşletme silindi.');
   }
 }

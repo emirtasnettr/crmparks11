@@ -2,12 +2,13 @@
 
 namespace Tests\Feature;
 
-use App\Models\EarningLine;
-use App\Models\EarningStatus;
 use App\Models\User;
 use App\Modules\Business\Models\Business;
 use App\Modules\Courier\Models\Courier;
-use App\Modules\Finance\Models\FinanceCollection;
+use App\Modules\ShiftPlanning\Models\BusinessShift;
+use App\Modules\ShiftPlanning\Models\BusinessShiftAttendance;
+use App\Modules\ShiftPlanning\Models\BusinessShiftCourier;
+use Carbon\Carbon;
 use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -33,162 +34,311 @@ class ReportModuleTest extends TestCase
         $user->assignRole('operations_specialist');
 
         $this->actingAs($user)->get(route('reports.index'))->assertForbidden();
+        $this->actingAs($user)->get(route('radar'))->assertForbidden();
     }
 
-    public function test_super_admin_can_view_reports_index_and_earnings(): void
+    public function test_reports_index_shows_under_construction(): void
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
-        $business = Business::factory()->create(['created_by' => $user->id]);
-        $courier = Courier::factory()->create(['created_by' => $user->id]);
-
-        EarningLine::factory()->create([
-            'business_id' => $business->id,
-            'courier_id' => $courier->id,
-            'period_year' => now()->year,
-            'period_month' => now()->month,
-            'status_id' => EarningStatus::query()->where('code', 'approved')->value('id'),
-            'created_by' => $user->id,
-        ]);
 
         $this->actingAs($user)->get(route('reports.index'))
             ->assertOk()
             ->assertSee('Raporlar')
-            ->assertSee('İşletme Pipeline')
-            ->assertSee('Açılış Aşaması')
-            ->assertSee('Sözleşme Vadeleri')
-            ->assertSee('Hakediş Özeti')
-            ->assertSee('Tahsilat Yaşlandırma')
-            ->assertSee('Operasyon Özeti')
-            ->assertSee('Kurye Performansı')
-            ->assertSee('Acente Payı');
-
-        $this->actingAs($user)->get(route('reports.earnings'))
-            ->assertOk()
-            ->assertSee('Hakediş Özeti')
-            ->assertSee($business->displayName());
-
-        $this->actingAs($user)->get(route('reports.operations'))
-            ->assertOk()
-            ->assertSee('Operasyon Özeti');
-
-        $this->actingAs($user)->get(route('reports.courier-performance'))
-            ->assertOk()
-            ->assertSee('Kurye Performansı')
-            ->assertSee($courier->full_name);
+            ->assertSee('Yapım aşamasında')
+            ->assertDontSee('Planlanmış Kurye');
     }
 
-    public function test_collections_report_and_export(): void
+    public function test_super_admin_can_view_radar_report(): void
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
-        $business = Business::factory()->create(['created_by' => $user->id]);
-
-        FinanceCollection::factory()->create([
-            'business_id' => $business->id,
-            'status' => 'pending',
-            'due_date' => now()->subDays(10)->toDateString(),
-            'total_amount' => 8000,
-            'collected_amount' => 0,
-            'created_by' => $user->id,
-        ]);
-
-        $this->actingAs($user)->get(route('reports.collections'))
-            ->assertOk()
-            ->assertSee('Tahsilat Yaşlandırma')
-            ->assertSee($business->displayName());
-
-        $this->actingAs($user)->get(route('reports.collections.export'))
-            ->assertOk();
-    }
-
-    public function test_agency_share_report(): void
-    {
-        $user = User::factory()->create();
-        $user->assignRole('super_admin');
-        $agency = \App\Modules\Agency\Models\Agency::factory()->create(['created_by' => $user->id]);
-        $business = Business::factory()->create(['created_by' => $user->id]);
-        $courier = Courier::factory()->create([
-            'created_by' => $user->id,
-            'agency_id' => $agency->id,
-        ]);
-
-        EarningLine::factory()->create([
-            'business_id' => $business->id,
-            'courier_id' => $courier->id,
-            'period_year' => now()->year,
-            'period_month' => now()->month,
-            'agency_payment' => 1500,
-            'status_id' => EarningStatus::query()->where('code', 'approved')->value('id'),
-            'created_by' => $user->id,
-        ]);
-
-        $this->actingAs($user)->get(route('reports.agency-share'))
-            ->assertOk()
-            ->assertSee('Acente Payı')
-            ->assertSee($agency->displayName());
-
-        $this->actingAs($user)->get(route('reports.agency-share.export'))
-            ->assertOk();
-    }
-
-    public function test_user_without_financial_permission_cannot_open_collections_report(): void
-    {
-        $user = User::factory()->create();
-        $user->assignRole('sales_manager');
-
-        $this->actingAs($user)->get(route('reports.index'))->assertOk();
-        $this->actingAs($user)->get(route('reports.collections'))->assertForbidden();
-    }
-
-    public function test_sales_manager_sees_sales_reports_and_cannot_open_ops_reports(): void
-    {
-        $user = User::factory()->create();
-        $user->assignRole('sales_manager');
 
         $business = Business::factory()->create([
             'created_by' => $user->id,
-            'status' => 'opening_stage',
-            'start_date' => now()->subDays(3)->toDateString(),
+            'brand_name' => 'Radar İşletme',
+            'planned_courier_count' => 6,
         ]);
+        $courierA = Courier::factory()->create(['created_by' => $user->id, 'full_name' => 'Aktif Kurye']);
+        $courierB = Courier::factory()->create(['created_by' => $user->id, 'full_name' => 'Yaklaşan Kurye Adı']);
 
-        \App\Models\Contract::factory()->create([
-            'contractable_type' => Business::class,
-            'contractable_id' => $business->id,
-            'status' => 'active',
-            'end_date' => now()->addDays(10)->toDateString(),
+        $now = now()->seconds(0);
+        $currentShift = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'name' => 'Gündüz',
+            'start_time' => $now->copy()->subHours(2)->format('H:i'),
+            'end_time' => $now->copy()->addHours(3)->format('H:i'),
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->toDateString(),
+            'required_headcount' => 1,
+            'days_of_week' => [(int) now()->dayOfWeek],
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+        $soonShift = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'name' => 'Akşam',
+            'start_time' => $now->copy()->addHours(2)->format('H:i'),
+            'end_time' => $now->copy()->addHours(6)->format('H:i'),
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->toDateString(),
+            'required_headcount' => 1,
+            'days_of_week' => [(int) now()->dayOfWeek],
+            'is_active' => true,
             'created_by' => $user->id,
         ]);
 
+        BusinessShiftCourier::query()->create([
+            'business_shift_id' => $currentShift->id,
+            'courier_id' => $courierA->id,
+        ]);
+        BusinessShiftCourier::query()->create([
+            'business_shift_id' => $soonShift->id,
+            'courier_id' => $courierB->id,
+        ]);
+
+        BusinessShiftAttendance::query()->create([
+            'business_shift_id' => $currentShift->id,
+            'business_id' => $business->id,
+            'courier_id' => $courierA->id,
+            'work_date' => Carbon::today()->toDateString(),
+            'started_at' => now()->subHour(),
+            'status' => 'in_progress',
+            'worked_minutes' => 0,
+            'hourly_rate' => 220,
+            'earnings_amount' => null,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('radar'));
+
+        $response->assertOk();
+        $response->assertSee('Radar');
+        $response->assertSee('Radar İşletme');
+        $response->assertSee('Planlanmış Kurye');
+        $response->assertSee('Vardiyada Kurye');
+        $response->assertSee('Yaklaşan Kurye');
+        $response->assertSeeText('6');
+        $response->assertSee('Aktif Kurye');
+        $response->assertSee('Yaklaşan Kurye Adı');
+        $response->assertSee(route('radar'), false);
+    }
+
+    public function test_sales_manager_can_view_radar_and_reports_placeholder(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('sales_manager');
+
+        $this->actingAs($user)->get(route('radar'))
+            ->assertOk()
+            ->assertSee('Radar');
+
         $this->actingAs($user)->get(route('reports.index'))
             ->assertOk()
-            ->assertSee('Satış raporlarını görüntüleyin.')
-            ->assertSee('İşletme Pipeline')
-            ->assertSee('Açılış Aşaması')
-            ->assertSee('Sözleşme Vadeleri')
-            ->assertDontSee('Hakediş Özeti')
-            ->assertDontSee('Operasyon Özeti')
-            ->assertDontSee('Kurye Performansı')
-            ->assertDontSee('Acente Payı');
+            ->assertSee('Yapım aşamasında');
+    }
 
-        $this->actingAs($user)->get(route('reports.business-pipeline'))
-            ->assertOk()
-            ->assertSee('İşletme Pipeline')
-            ->assertSee($business->displayName());
+    public function test_radar_caps_active_and_upcoming_at_planned_courier_count(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
 
-        $this->actingAs($user)->get(route('reports.opening-stage'))
-            ->assertOk()
-            ->assertSee('Açılış Aşaması')
-            ->assertSee($business->displayName());
+        $business = Business::factory()->create([
+            'created_by' => $user->id,
+            'brand_name' => 'Kapasite İşletme',
+            'planned_courier_count' => 1,
+        ]);
 
-        $this->actingAs($user)->get(route('reports.contract-expiry'))
-            ->assertOk()
-            ->assertSee('Sözleşme Vadeleri')
-            ->assertSee($business->displayName());
+        $couriers = collect([
+            Courier::factory()->create(['created_by' => $user->id, 'full_name' => 'Kurye Bir']),
+            Courier::factory()->create(['created_by' => $user->id, 'full_name' => 'Kurye İki']),
+            Courier::factory()->create(['created_by' => $user->id, 'full_name' => 'Kurye Üç']),
+        ]);
 
-        $this->actingAs($user)->get(route('reports.earnings'))->assertForbidden();
-        $this->actingAs($user)->get(route('reports.courier-performance'))->assertForbidden();
-        $this->actingAs($user)->get(route('reports.operations'))->assertForbidden();
-        $this->actingAs($user)->get(route('reports.agency-share'))->assertForbidden();
+        $shift = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'name' => 'Kapasite Vardiya',
+            'start_time' => '09:00',
+            'end_time' => '17:00',
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->addMonth()->toDateString(),
+            'required_headcount' => 3,
+            'days_of_week' => [0, 1, 2, 3, 4, 5, 6],
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        foreach ($couriers as $courier) {
+            BusinessShiftCourier::query()->create([
+                'business_shift_id' => $shift->id,
+                'courier_id' => $courier->id,
+            ]);
+
+            BusinessShiftAttendance::query()->create([
+                'business_shift_id' => $shift->id,
+                'business_id' => $business->id,
+                'courier_id' => $courier->id,
+                'work_date' => Carbon::today()->toDateString(),
+                'started_at' => now()->subHour(),
+                'status' => 'in_progress',
+                'worked_minutes' => 0,
+                'hourly_rate' => 200,
+                'earnings_amount' => null,
+            ]);
+        }
+
+        $radar = app(\App\Modules\Report\Services\ReportService::class)->radar();
+        $row = collect($radar['rows'])->firstWhere('business_id', $business->id);
+
+        $this->assertNotNull($row);
+        $this->assertSame(1, $row['planned_courier_count']);
+        $this->assertSame(1, $row['active_on_shift_count']);
+        $this->assertSame(0, $row['roster_planned_count']);
+        $this->assertSame(0, $row['missing_courier_count']);
+        $this->assertSame(
+            $row['planned_courier_count'],
+            $row['active_on_shift_count'] + $row['roster_planned_count'] + $row['missing_courier_count']
+        );
+    }
+
+    public function test_radar_active_plus_upcoming_never_exceeds_planned(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $business = Business::factory()->create([
+            'created_by' => $user->id,
+            'brand_name' => 'Döneristan Test',
+            'planned_courier_count' => 8,
+        ]);
+
+        $activeCouriers = collect(range(1, 4))->map(fn (int $n) => Courier::factory()->create([
+            'created_by' => $user->id,
+            'full_name' => "Aktif Kurye {$n}",
+        ]));
+        $upcomingCouriers = collect(range(1, 3))->map(fn (int $n) => Courier::factory()->create([
+            'created_by' => $user->id,
+            'full_name' => "Yaklaşan Test {$n}",
+        ]));
+
+        $now = now()->seconds(0);
+        $currentShift = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'name' => 'Şu Anki Vardiya',
+            'start_time' => $now->copy()->subHours(2)->format('H:i'),
+            'end_time' => $now->copy()->addHours(3)->format('H:i'),
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->toDateString(),
+            'required_headcount' => 4,
+            'days_of_week' => [(int) now()->dayOfWeek],
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+        $soonShift = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'name' => 'Yaklaşan Vardiya',
+            'start_time' => $now->copy()->addHours(2)->format('H:i'),
+            'end_time' => $now->copy()->addHours(6)->format('H:i'),
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->toDateString(),
+            'required_headcount' => 3,
+            'days_of_week' => [(int) now()->dayOfWeek],
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        foreach ($activeCouriers as $courier) {
+            BusinessShiftCourier::query()->create([
+                'business_shift_id' => $currentShift->id,
+                'courier_id' => $courier->id,
+            ]);
+            BusinessShiftAttendance::query()->create([
+                'business_shift_id' => $currentShift->id,
+                'business_id' => $business->id,
+                'courier_id' => $courier->id,
+                'work_date' => Carbon::today()->toDateString(),
+                'started_at' => now()->subHour(),
+                'status' => 'in_progress',
+                'worked_minutes' => 0,
+                'hourly_rate' => 200,
+                'earnings_amount' => null,
+            ]);
+        }
+
+        foreach ($upcomingCouriers as $courier) {
+            BusinessShiftCourier::query()->create([
+                'business_shift_id' => $soonShift->id,
+                'courier_id' => $courier->id,
+            ]);
+        }
+
+        $radar = app(\App\Modules\Report\Services\ReportService::class)->radar();
+        $row = collect($radar['rows'])->firstWhere('business_id', $business->id);
+
+        $this->assertNotNull($row);
+        $this->assertSame(8, $row['planned_courier_count']);
+        $this->assertSame(4, $row['active_on_shift_count']);
+        $this->assertSame(3, $row['roster_planned_count']);
+        $this->assertSame(1, $row['missing_courier_count']);
+        $this->assertSame(
+            $row['planned_courier_count'],
+            $row['active_on_shift_count'] + $row['roster_planned_count'] + $row['missing_courier_count']
+        );
+    }
+
+    public function test_radar_only_lists_businesses_with_shifts_today(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $withShift = Business::factory()->create([
+            'created_by' => $user->id,
+            'brand_name' => 'Bugün Vardiyalı',
+            'planned_courier_count' => 4,
+        ]);
+        $withoutShift = Business::factory()->create([
+            'created_by' => $user->id,
+            'brand_name' => 'Vardiyasız İşletme',
+            'planned_courier_count' => 5,
+        ]);
+
+        $courier = Courier::factory()->create(['created_by' => $user->id]);
+
+        BusinessShift::query()->create([
+            'business_id' => $withShift->id,
+            'name' => 'Bugünkü',
+            'start_time' => '10:00',
+            'end_time' => '18:00',
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->addDays(7)->toDateString(),
+            'required_headcount' => 1,
+            'days_of_week' => [0, 1, 2, 3, 4, 5, 6],
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        // Bu vardiya bugün çalışmıyor (haftanın diğer günü).
+        BusinessShift::query()->create([
+            'business_id' => $withoutShift->id,
+            'name' => 'Başka Gün',
+            'start_time' => '10:00',
+            'end_time' => '18:00',
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->addDays(14)->toDateString(),
+            'required_headcount' => 1,
+            'days_of_week' => [((int) now()->dayOfWeek + 1) % 7],
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        BusinessShiftCourier::query()->create([
+            'business_shift_id' => BusinessShift::query()->where('business_id', $withShift->id)->value('id'),
+            'courier_id' => $courier->id,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('radar'));
+
+        $response->assertOk();
+        $response->assertSee('Bugün Vardiyalı');
+        $response->assertDontSee('Vardiyasız İşletme');
     }
 }

@@ -24,7 +24,9 @@ class StoreBusinessCommercialContractRequest extends FormRequest
             ]);
         }
 
-        if ($this->input('work_type') !== BusinessCommercialContract::WORK_PER_PACKAGE) {
+        if ($this->input('work_type') !== BusinessCommercialContract::WORK_PER_PACKAGE
+            || $this->input('guaranteed_hourly_package_fee') === ''
+            || $this->input('guaranteed_hourly_package_fee') === null) {
             $this->merge(['guaranteed_hourly_package_fee' => null]);
         }
     }

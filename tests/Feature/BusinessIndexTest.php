@@ -4,10 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\City;
 use App\Models\District;
-use App\Models\PricingModelType;
 use App\Models\User;
 use App\Modules\Business\Models\Business;
-use App\Modules\Business\Models\BusinessPricing;
 use Database\Seeders\CitySeeder;
 use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
@@ -55,6 +53,7 @@ class BusinessIndexTest extends TestCase
         $response->assertDontSee('>Logo<', false);
         $response->assertSee('İşletmeden Alınan Ücret');
         $response->assertSee('Kuryeye Verilen Ücret');
+        $response->assertSee('Kontrat Tipi');
         $response->assertSee('45,00 ₺', false);
         $response->assertSee('32,00 ₺', false);
         $response->assertSee('Sözleşme Aşamasında');
@@ -77,7 +76,6 @@ class BusinessIndexTest extends TestCase
             'phone' => '0224 666 77 88',
             'city' => 'Bursa',
             'district' => 'Nilüfer',
-            'pricing_model' => 'daily',
             'earning_period' => 'weekly',
             'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 4,
@@ -120,7 +118,6 @@ class BusinessIndexTest extends TestCase
             'phone' => '0212 111 22 33',
             'city' => 'İstanbul',
             'district' => 'Kadıköy',
-            'pricing_model' => 'per_package',
             'earning_period' => 'weekly',
             'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 5,
@@ -154,11 +151,11 @@ class BusinessIndexTest extends TestCase
         $response->assertOk();
         $response->assertSee('Yeni İşletme');
         $response->assertSee('Genel Bilgiler');
-        $response->assertSee('Çalışma Modeli');
+        $response->assertDontSee('Çalışma Modeli');
         $response->assertSee('Fatura Periyodu');
         $response->assertSee('İlk Fatura Tarihi');
         $response->assertSee(\App\Modules\Business\Data\BusinessFormData::defaultFirstInvoiceDate());
-        $response->assertSee('Garanti Paket Sayısı');
+        $response->assertDontSee('Garanti Paket Sayısı');
         $response->assertSee('Kaydet');
         $response->assertSee(route('businesses.store'), false);
     }
@@ -174,24 +171,10 @@ class BusinessIndexTest extends TestCase
             ->where('name', 'Kadıköy')
             ->firstOrFail();
 
-        $business = Business::factory()->create(array_merge([
+        return Business::factory()->create(array_merge([
             'city_id' => $city->id,
             'district_id' => $district->id,
             'created_by' => $user->id,
         ], $overrides));
-
-        $pricingModel = PricingModelType::query()->where('code', 'per_package')->firstOrFail();
-        $business->pricings()->delete();
-        BusinessPricing::query()->create([
-            'business_id' => $business->id,
-            'pricing_model_type_id' => $pricingModel->id,
-            'customer_unit_price' => 45,
-            'courier_unit_price' => 32,
-            'effective_from' => now()->toDateString(),
-            'is_active' => true,
-            'created_by' => $user->id,
-        ]);
-
-        return $business;
     }
 }

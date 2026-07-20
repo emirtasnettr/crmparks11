@@ -26,6 +26,7 @@ class EarningLine extends Model
         'period_month',
         'period_year',
         'package_count',
+        'worked_hours',
         'revenue_unit_price',
         'revenue_total',
         'courier_unit_price',
@@ -49,6 +50,7 @@ class EarningLine extends Model
     protected function casts(): array
     {
         return [
+            'worked_hours' => 'decimal:2',
             'first_approved_at' => 'datetime',
             'approved_at' => 'datetime',
             'paid_at' => 'datetime',
@@ -88,5 +90,22 @@ class EarningLine extends Model
     protected static function newFactory(): EarningLineFactory
     {
         return EarningLineFactory::new();
+    }
+
+    /**
+     * Prefer stored worked_hours; fall back for legacy hourly rows.
+     */
+    public function resolvedWorkedHours(): float
+    {
+        $stored = round((float) ($this->worked_hours ?? 0), 2);
+        if ($stored > 0) {
+            return $stored;
+        }
+
+        if ($this->pricing_model === 'hourly' && (float) $this->courier_unit_price > 0) {
+            return round((float) $this->courier_total / (float) $this->courier_unit_price, 2);
+        }
+
+        return 0.0;
     }
 }

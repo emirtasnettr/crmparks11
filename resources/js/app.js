@@ -291,10 +291,6 @@ Alpine.data('businessForm', (districtsByCity = {}, initial = {}, isEdit = false,
         city: '',
         district: '',
         address: '',
-        pricing_model: 'per_package',
-        customer_price: '',
-        courier_price: '',
-        guaranteed_package_count: '',
         earning_period: '',
         first_invoice_date: '',
         planned_courier_count: '',
@@ -325,16 +321,6 @@ Alpine.data('businessForm', (districtsByCity = {}, initial = {}, isEdit = false,
         if (presetStatus && ['active', 'inactive', 'pending', 'contract_stage', 'opening_stage'].includes(presetStatus)) {
             this.form.status = presetStatus;
         }
-
-        this.$watch('form.pricing_model', (model) => {
-            if (!this.isEdit) {
-                this.form.customer_price = '';
-                this.form.courier_price = '';
-            }
-            if (model !== 'per_package') {
-                this.form.guaranteed_package_count = '';
-            }
-        });
     },
 
     onCityChange() {
@@ -355,10 +341,6 @@ Alpine.data('businessForm', (districtsByCity = {}, initial = {}, isEdit = false,
 
         if (!this.form.phone.trim()) {
             this.errors.phone = 'Telefon numarası zorunludur.';
-        }
-
-        if (!this.form.pricing_model) {
-            this.errors.pricing_model = 'Çalışma modeli seçilmelidir.';
         }
 
         if (this.earningsEnabled && !this.form.earning_period) {

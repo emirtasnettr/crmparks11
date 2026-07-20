@@ -34,10 +34,6 @@ class UpdateBusinessRequest extends FormRequest
             'city' => ['nullable', 'string', 'max:100'],
             'district' => ['nullable', 'string', 'max:100'],
             'address' => ['nullable', 'string', 'max:1000'],
-            'pricing_model' => ['required', Rule::in(array_keys(BusinessFormData::pricingModels()))],
-            'customer_price' => ['nullable', 'numeric', 'min:0'],
-            'courier_price' => ['nullable', 'numeric', 'min:0'],
-            'guaranteed_package_count' => ['nullable', 'numeric', 'min:0', 'max:9999'],
             'earning_period' => BusinessFeatures::earningsEnabled()
                 ? ['required', Rule::in(array_keys(BusinessFormData::earningPeriods()))]
                 : ['nullable', Rule::in(array_keys(BusinessFormData::earningPeriods()))],
@@ -77,7 +73,6 @@ class UpdateBusinessRequest extends FormRequest
             'company_name.required' => 'Firma ünvanı zorunludur.',
             'brand_name.required' => 'Marka adı zorunludur.',
             'phone.required' => 'Telefon numarası zorunludur.',
-            'pricing_model.required' => 'Çalışma modeli seçilmelidir.',
             'earning_period.required' => 'Fatura periyodu seçilmelidir.',
             'first_invoice_date.required' => 'İlk fatura tarihi zorunludur.',
             'planned_courier_count.required' => 'Planlanan kurye sayısı zorunludur.',

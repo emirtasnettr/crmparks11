@@ -34,7 +34,7 @@
                         <span>
                             <span class="font-mono text-xs">{{ $option['reference'] }}</span>
                             — {{ $option['period_label'] }}
-                            <span class="text-gray-500 dark:text-slate-400">({{ number_format($option['amount'], 2) }} ₺)</span>
+                            <span class="text-gray-500 dark:text-slate-400">({{ money_excl_vat($option['amount']) }})</span>
                         </span>
                     </label>
                 @empty

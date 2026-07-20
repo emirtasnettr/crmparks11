@@ -37,28 +37,28 @@
                     name="courier_id"
                     label="Kurye"
                     :selected="$filters['courier_id']"
-                    :options="array_merge(['all' => 'Tümü'], collect($couriers)->mapWithKeys(fn ($c) => [$c['id'] => $c['name']])->all())"
+                    :options="filter_select_options(collect($couriers)->mapWithKeys(fn ($c) => [$c['id'] => $c['name']])->all())"
                 />
 
                 <x-ui.select
                     name="vehicle_type"
                     label="Araç Tipi"
                     :selected="$filters['vehicle_type']"
-                    :options="array_merge(['all' => 'Tümü'], $vehicleTypes)"
+                    :options="filter_select_options($vehicleTypes)"
                 />
 
                 <x-ui.select
                     name="brand"
                     label="Marka"
                     :selected="$filters['brand']"
-                    :options="array_merge(['all' => 'Tümü'], collect($brands)->mapWithKeys(fn ($b) => [$b => $b])->all())"
+                    :options="filter_select_options(collect($brands)->mapWithKeys(fn ($b) => [$b => $b])->all())"
                 />
 
                 <x-ui.select
                     name="status"
                     label="Durum"
                     :selected="$filters['status']"
-                    :options="array_merge(['all' => 'Tümü'], $statuses)"
+                    :options="filter_select_options($statuses)"
                 />
             </div>
 

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Agency\Models;
 
+use App\Core\Traits\HasPublicId;
 use App\Core\Traits\HasUuid;
 use App\Models\City;
 use App\Models\District;
@@ -19,7 +20,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Agency extends Model
 {
     /** @use HasFactory<AgencyFactory> */
-    use HasBrandDisplayName, HasFactory, HasUuid, SoftDeletes;
+    use HasBrandDisplayName, HasFactory, HasPublicId, HasUuid, SoftDeletes;
 
     protected $fillable = [
         'company_name',

@@ -9,6 +9,7 @@ final class EarningCalculator
      * @return array{
      *     earning_type: string,
      *     package_count: int,
+     *     worked_hours: float,
      *     revenue_unit_price: float,
      *     revenue_total: float,
      *     courier_unit_price: float,
@@ -27,6 +28,7 @@ final class EarningCalculator
         $extraPayment = (float) ($data['extra_income'] ?? $data['extra_payment'] ?? 0);
         $extraExpense = (float) ($data['extra_expense'] ?? 0);
         $deduction = (float) ($data['deduction'] ?? 0);
+        $workedHours = round((float) ($data['worked_hours'] ?? $data['hours'] ?? 0), 2);
 
         if ($pricingModel === 'per_package') {
             $packageCount = (int) ($data['package_count'] ?? 0);
@@ -36,15 +38,15 @@ final class EarningCalculator
             $courierTotal = round($packageCount * $courierUnit, 2);
             $earningType = 'package_based';
         } elseif ($pricingModel === 'hourly') {
-            $hours = (float) ($data['worked_hours'] ?? $data['hours'] ?? 0);
             $revenueUnit = (float) ($data['revenue_unit_price'] ?? 0);
             $courierUnit = (float) ($data['courier_unit_price'] ?? $data['unit_price'] ?? 0);
             $packageCount = 0;
-            $revenueTotal = round($hours * $revenueUnit, 2);
-            $courierTotal = round($hours * $courierUnit, 2);
+            $revenueTotal = round($workedHours * $revenueUnit, 2);
+            $courierTotal = round($workedHours * $courierUnit, 2);
             $earningType = 'hourly';
         } else {
             $packageCount = 0;
+            $workedHours = 0.0;
             $revenueUnit = 0.0;
             $courierUnit = 0.0;
             $revenueTotal = (float) ($data['revenue_total'] ?? 0);
@@ -61,6 +63,7 @@ final class EarningCalculator
         return [
             'earning_type' => $earningType,
             'package_count' => $packageCount,
+            'worked_hours' => $workedHours,
             'revenue_unit_price' => $revenueUnit,
             'revenue_total' => $revenueTotal,
             'courier_unit_price' => $courierUnit,

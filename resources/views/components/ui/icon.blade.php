@@ -40,6 +40,7 @@
         'archive' => 'archive-box',
         'lock' => 'lock-closed',
         'clock' => 'clock',
+        'signal' => 'signal',
         'information' => 'information-circle',
         'code' => 'code-bracket',
         'paint' => 'paint-brush',

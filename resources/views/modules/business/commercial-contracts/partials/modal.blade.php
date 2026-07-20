@@ -86,7 +86,7 @@ $presetBusinessLabel = $presetBusinessLabel ?? null;
             <div x-show="workType === 'per_package'" x-cloak>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">Saatlik Garanti Paket Ücreti <span class="font-normal text-gray-400">(opsiyonel, KDV hariç)</span></label>
                 <input type="number" step="0.01" min="0" name="guaranteed_hourly_package_fee" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-white">
-                <p class="mt-1 text-xs text-gray-500">Girilirse vardiya hakedişi bu saatlik tutardan hesaplanır.</p>
+                <p class="mt-1 text-xs text-gray-500">Yalnızca paket başı çalışmada. Girilirse vardiya hakedişi bu saatlik tutardan hesaplanır.</p>
             </div>
 
             <div>

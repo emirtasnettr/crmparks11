@@ -29,28 +29,28 @@
                     name="business_id"
                     label="İşletme"
                     :selected="$filters['business_id']"
-                    :options="array_merge(['all' => 'Tümü'], collect($businesses)->mapWithKeys(fn ($b) => [$b['id'] => $b['name']])->all())"
+                    :options="filter_select_options(collect($businesses)->mapWithKeys(fn ($b) => [$b['id'] => $b['name']])->all())"
                 />
 
                 <x-ui.select
                     name="document_type"
                     label="Evrak Türü"
                     :selected="$filters['document_type']"
-                    :options="array_merge(['all' => 'Tümü'], $documentTypes)"
+                    :options="filter_select_options($documentTypes)"
                 />
 
                 <x-ui.select
                     name="status"
                     label="Durum"
                     :selected="$filters['status']"
-                    :options="array_merge(['all' => 'Tümü'], $statuses)"
+                    :options="filter_select_options($statuses)"
                 />
 
                 <x-ui.select
                     name="date_range"
                     label="Tarih Aralığı"
                     :selected="$filters['date_range']"
-                    :options="array_merge(['all' => 'Tümü'], $dateRanges)"
+                    :options="filter_select_options($dateRanges)"
                 />
             </div>
 

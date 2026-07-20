@@ -18,38 +18,18 @@ class AdminUserSeeder extends Seeder
             return;
         }
 
-        $users = [
+        $user = User::query()->updateOrCreate(
+            ['email' => 'admin@crmlog.com'],
             [
                 'name' => 'Süper Admin',
-                'email' => 'admin@crmlog.com',
-                'role' => 'super_admin',
-            ],
-            [
-                'name' => 'Genel Müdür',
-                'email' => 'mudur@crmlog.com',
-                'role' => 'general_manager',
-            ],
-            [
-                'name' => 'Operasyon Uzmanı',
-                'email' => 'operasyon@crmlog.com',
-                'role' => 'operations_specialist',
-            ],
-        ];
+                'password' => $password,
+                'user_type' => UserType::Internal,
+                'status' => Status::Active,
+                'email_verified_at' => now(),
+            ]
+        );
 
-        foreach ($users as $data) {
-            $user = User::query()->updateOrCreate(
-                ['email' => $data['email']],
-                [
-                    'name' => $data['name'],
-                    'password' => $password,
-                    'user_type' => UserType::Internal,
-                    'status' => Status::Active,
-                    'email_verified_at' => now(),
-                ]
-            );
-
-            $user->syncRoles([$data['role']]);
-        }
+        $user->syncRoles(['super_admin']);
     }
 
     private function resolvePassword(): ?string

@@ -138,7 +138,8 @@ class AgencyService
                 $query->where(function (Builder $inner) use ($search): void {
                     $inner->whereRaw('LOWER(company_name) LIKE ?', ['%'.$search.'%'])
                         ->orWhereRaw('LOWER(COALESCE(tax_number, "")) LIKE ?', ['%'.$search.'%'])
-                        ->orWhereRaw('LOWER(COALESCE(phone, "")) LIKE ?', ['%'.$search.'%']);
+                        ->orWhereRaw('LOWER(COALESCE(phone, "")) LIKE ?', ['%'.$search.'%'])
+                        ->orWhere('public_id', $search);
                 });
             })
             ->when(! empty($filters['status']) && $filters['status'] !== 'all', function (Builder $query) use ($filters): void {

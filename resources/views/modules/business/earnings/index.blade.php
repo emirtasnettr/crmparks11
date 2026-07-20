@@ -47,7 +47,7 @@
     {{-- İstatistik Kartları --}}
     <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         <x-ui.finance-stat-card title="Toplam Hakediş" :value="number_format($summary['count'])" icon="earning" accent="blue" />
-        <x-ui.finance-stat-card title="Toplam Gelir" :value="number_format($summary['total_revenue'])" icon="chart" accent="success" />
+        <x-ui.finance-stat-card title="Toplam Gelir" :value="money_excl_vat($summary['total_revenue'])" icon="chart" accent="success" />
         <x-ui.finance-stat-card title="Toplam Gider" :value="money_excl_vat($summary['total_expense'])" icon="earning" accent="danger" />
         <x-ui.finance-stat-card title="Toplam Kâr" :value="money_excl_vat($summary['total_profit'])" icon="chart" accent="violet" />
         <x-ui.finance-stat-card title="Bekleyen Hakediş" :value="number_format($summary['pending_count'])" icon="earning" accent="warning" />
@@ -59,19 +59,19 @@
         <form method="GET" action="{{ route('businesses.earnings.index') }}" class="p-4 sm:p-6">
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
                 <x-ui.select name="business_id" label="İşletme" :selected="$filters['business_id']"
-                    :options="array_merge(['all' => 'Tümü'], collect($businesses)->mapWithKeys(fn ($b) => [$b['id'] => $b['name']])->all())" />
+                    :options="filter_select_options(collect($businesses)->mapWithKeys(fn ($b) => [$b['id'] => $b['name']])->all())" />
                 <x-ui.select name="courier_id" label="Kurye" :selected="$filters['courier_id']"
-                    :options="array_merge(['all' => 'Tümü'], collect($couriers)->mapWithKeys(fn ($c) => [$c['id'] => $c['name']])->all())" />
+                    :options="filter_select_options(collect($couriers)->mapWithKeys(fn ($c) => [$c['id'] => $c['name']])->all())" />
                 <x-ui.select name="agency_id" label="Acente" :selected="$filters['agency_id']"
-                    :options="array_merge(['all' => 'Tümü'], collect($agencies)->mapWithKeys(fn ($a) => [$a['id'] => $a['name']])->all())" />
+                    :options="filter_select_options(collect($agencies)->mapWithKeys(fn ($a) => [$a['id'] => $a['name']])->all())" />
                 <x-ui.select name="period_month" label="Ay" :selected="$filters['period_month']"
-                    :options="array_merge(['all' => 'Tümü'], $months)" />
+                    :options="filter_select_options($months)" />
                 <x-ui.select name="period_year" label="Yıl" :selected="$filters['period_year']"
-                    :options="array_merge(['all' => 'Tümü'], [2026 => '2026', 2025 => '2025', 2024 => '2024'])" />
+                    :options="filter_select_options([2026 => '2026', 2025 => '2025', 2024 => '2024'])" />
                 <x-ui.select name="status" label="Hakediş Durumu" :selected="$filters['status']"
-                    :options="array_merge(['all' => 'Tümü'], $statuses)" />
+                    :options="filter_select_options($statuses)" />
                 <x-ui.select name="pricing_model" label="Çalışma Modeli" :selected="$filters['pricing_model']"
-                    :options="array_merge(['all' => 'Tümü'], $pricingModels)" />
+                    :options="filter_select_options($pricingModels)" />
             </div>
             <div class="mt-4 flex flex-wrap gap-2">
                 <x-ui.button type="submit">Filtrele</x-ui.button>
@@ -98,6 +98,7 @@
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Ay / Yıl</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Çalışma Modeli</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 text-right">Paket</th>
+                        <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 text-right">Saat</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 text-right">İşletmeden Gelir</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 text-right">Kurye Ödemesi</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 text-right">Kâr</th>
@@ -119,8 +120,11 @@
                             <td class="px-4 py-3 text-right text-gray-900 dark:text-white">
                                 {{ $earning['pricing_model'] === 'per_package' ? number_format($earning['package_count']) : '—' }}
                             </td>
+                            <td class="px-4 py-3 text-right tabular-nums text-gray-900 dark:text-white">
+                                {{ $earning['worked_hours'] > 0 ? number_format($earning['worked_hours'], 2, ',', '.').' sa' : '—' }}
+                            </td>
                             <td class="px-4 py-3 text-right font-medium text-emerald-600 dark:text-emerald-400">
-                                {{ number_format($earning['revenue']) }}
+                                {{ money_excl_vat($earning['revenue']) }}
                             </td>
                             <td class="px-4 py-3 text-right text-red-600 dark:text-red-400">
                                 {{ money_excl_vat($earning['courier_payment']) }}
@@ -137,7 +141,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="px-6 py-12 text-center text-sm text-gray-500 dark:text-slate-400">
+                            <td colspan="11" class="px-6 py-12 text-center text-sm text-gray-500 dark:text-slate-400">
                                 Filtrelere uygun hakediş bulunamadı.
                             </td>
                         </tr>

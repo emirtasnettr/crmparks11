@@ -38,19 +38,19 @@
         <form method="GET" action="{{ route('finance.expenses.index') }}" class="p-4 sm:p-6">
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
                 <x-ui.select name="expense_type" label="Gider Türü" :selected="$filters['expense_type']"
-                    :options="array_merge(['all' => 'Tümü'], $expenseTypes)" />
+                    :options="filter_select_options($expenseTypes)" />
 
                 <x-ui.select name="courier_id" label="Kurye" :selected="$filters['courier_id']"
-                    :options="array_merge(['all' => 'Tümü'], collect($couriers)->mapWithKeys(fn ($c) => [$c['id'] => $c['name']])->all())" />
+                    :options="filter_select_options(collect($couriers)->mapWithKeys(fn ($c) => [$c['id'] => $c['name']])->all())" />
 
                 <x-ui.select name="agency_id" label="Acente" :selected="$filters['agency_id']"
-                    :options="array_merge(['all' => 'Tümü'], collect($agencies)->mapWithKeys(fn ($a) => [$a['id'] => $a['name']])->all())" />
+                    :options="filter_select_options(collect($agencies)->mapWithKeys(fn ($a) => [$a['id'] => $a['name']])->all())" />
 
                 <x-ui.select name="date_range" label="Tarih Aralığı" :selected="$filters['date_range']"
                     :options="$dateRanges" />
 
                 <x-ui.select name="payment_status" label="Ödeme Durumu" :selected="$filters['payment_status']"
-                    :options="array_merge(['all' => 'Tümü'], $paymentStatuses)" />
+                    :options="filter_select_options($paymentStatuses)" />
             </div>
 
             <div class="mt-4 flex flex-wrap gap-2">

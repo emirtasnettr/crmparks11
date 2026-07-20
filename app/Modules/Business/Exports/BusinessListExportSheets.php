@@ -15,7 +15,7 @@ final class BusinessListExportSheets
      */
     public static function businesses(array $filters): array
     {
-        $pricingLabels = BusinessFormData::pricingModels() + ['fixed' => 'Sabit Ücret'];
+        $workTypeLabels = \App\Modules\Business\Data\BusinessCommercialContractFormData::workTypes();
         $statusLabels = BusinessFormData::statuses();
         $service = app(BusinessService::class);
         $presenter = app(BusinessPresenter::class);
@@ -45,7 +45,7 @@ final class BusinessListExportSheets
             'Telefon',
             'İl',
             'İlçe',
-            'Çalışma Modeli',
+            'Kontrat Tipi',
             'Aktif Kurye',
             'Durum',
         ]);
@@ -54,7 +54,8 @@ final class BusinessListExportSheets
             fn (array $row) => $row['phone'],
             fn (array $row) => $row['city'],
             fn (array $row) => $row['district'],
-            fn (array $row) => $pricingLabels[$row['pricing_model']] ?? $row['pricing_model'],
+            fn (array $row) => $row['work_type_label']
+                ?? ($workTypeLabels[$row['work_type'] ?? ''] ?? '—'),
             fn (array $row) => $row['active_couriers'],
             fn (array $row) => $statusLabels[$row['status']] ?? $row['status'],
         ]);
@@ -134,13 +135,14 @@ final class BusinessListExportSheets
 
         return ListExport::sheet(
             $rows,
-            ['İşletme', 'Kurye', 'Dönem', 'Çalışma Modeli', 'Paket', 'İşletmeden Gelir', 'Kurye Ödemesi', 'Kâr', 'Durum'],
+            ['İşletme', 'Kurye', 'Dönem', 'Çalışma Modeli', 'Paket', 'Saat', 'İşletmeden Gelir', 'Kurye Ödemesi', 'Kâr', 'Durum'],
             [
                 fn (array $row) => $row['business_name'],
                 fn (array $row) => $row['courier_name'],
                 fn (array $row) => $row['period_label'],
                 fn (array $row) => $pricingLabels[$row['pricing_model']] ?? $row['pricing_model'],
                 fn (array $row) => $row['package_count'],
+                fn (array $row) => $row['worked_hours'],
                 fn (array $row) => $row['revenue'],
                 fn (array $row) => $row['courier_payment'],
                 fn (array $row) => $row['profit'],

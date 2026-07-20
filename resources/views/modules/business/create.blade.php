@@ -31,8 +31,6 @@
         'formMethod' => 'POST',
         'isEdit' => false,
         'cities' => $cities,
-        'pricingModels' => $pricingModels,
-        'pricingFieldLabels' => $pricingFieldLabels,
         'earningPeriods' => $earningPeriods,
         'statuses' => $statuses,
     ])

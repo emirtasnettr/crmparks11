@@ -2,6 +2,7 @@
 
 namespace App\Modules\Business\Models;
 
+use App\Core\Traits\HasPublicId;
 use App\Core\Traits\HasUuid;
 use App\Models\City;
 use App\Models\District;
@@ -20,7 +21,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Business extends Model
 {
     /** @use HasFactory<BusinessFactory> */
-    use HasBrandDisplayName, HasFactory, HasUuid, SoftDeletes;
+    use HasBrandDisplayName, HasFactory, HasPublicId, HasUuid, SoftDeletes;
 
     protected $fillable = [
         'company_name',
@@ -40,7 +41,6 @@ class Business extends Model
         'earning_period',
         'first_invoice_date',
         'planned_courier_count',
-        'guaranteed_package_count',
         'notes',
         'logo_path',
         'created_by',
@@ -54,7 +54,6 @@ class Business extends Model
             'start_date' => 'date',
             'first_invoice_date' => 'date',
             'planned_courier_count' => 'integer',
-            'guaranteed_package_count' => 'decimal:2',
         ];
     }
 

@@ -71,7 +71,7 @@
                 </div>
                 <div class="flex justify-between gap-4">
                     <dt class="text-gray-500 dark:text-slate-400">Brüt Hakediş</dt>
-                    <dd class="font-semibold text-gray-900 dark:text-white">{{ number_format($earning['gross_amount']) }}</dd>
+                    <dd class="font-semibold text-gray-900 dark:text-white">{{ money_excl_vat($earning['gross_amount']) }}</dd>
                 </div>
                 <div class="flex justify-between gap-4 border-t border-gray-100 pt-3 dark:border-slate-700">
                     <dt class="font-semibold text-gray-900 dark:text-white">Net Ödeme</dt>
@@ -88,6 +88,7 @@
                             <tr class="border-b border-gray-200 dark:border-slate-700">
                                 <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Kurye</th>
                                 <th class="pb-2 text-right font-medium text-gray-500 dark:text-slate-400">Paket</th>
+                                <th class="pb-2 text-right font-medium text-gray-500 dark:text-slate-400">Saat</th>
                                 <th class="pb-2 text-right font-medium text-gray-500 dark:text-slate-400">Hakediş Payı</th>
                             </tr>
                         </thead>
@@ -95,8 +96,11 @@
                             @foreach ($earning['linked_couriers'] as $courier)
                                 <tr>
                                     <td class="py-2 font-medium text-gray-900 dark:text-white">{{ $courier['name'] }}</td>
-                                    <td class="py-2 text-right text-gray-600 dark:text-slate-400">{{ money_excl_vat($courier['package_count']) }}</td>
-                                    <td class="py-2 text-right font-medium text-gray-900 dark:text-white">{{ number_format($courier['gross_share']) }}</td>
+                                    <td class="py-2 text-right text-gray-600 dark:text-slate-400">{{ number_format($courier['package_count']) }}</td>
+                                    <td class="py-2 text-right text-gray-600 dark:text-slate-400">
+                                        {{ ($courier['worked_hours'] ?? 0) > 0 ? number_format($courier['worked_hours'], 2, ',', '.').' sa' : '—' }}
+                                    </td>
+                                    <td class="py-2 text-right font-medium text-gray-900 dark:text-white">{{ money_excl_vat($courier['gross_share']) }}</td>
                                 </tr>
                             @endforeach
                         </tbody>

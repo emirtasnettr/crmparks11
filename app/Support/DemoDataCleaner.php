@@ -30,6 +30,7 @@ use App\Modules\Stock\Models\StockProduct;
 use App\Models\User;
 use Database\Seeders\DemoDataSeeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * DEMO_SEED işaretli örnek veriyi ve bağlı kayıtları siler.
@@ -57,12 +58,6 @@ final class DemoDataCleaner
             $courierIds = Courier::withTrashed()
                 ->where('notes', $marker)
                 ->pluck('id');
-            $courierUserIds = Courier::withTrashed()
-                ->where('notes', $marker)
-                ->whereNotNull('user_id')
-                ->pluck('user_id')
-                ->unique()
-                ->values();
             $shiftIds = BusinessShift::withTrashed()
                 ->where(function ($query) use ($marker, $businessIds): void {
                     $query->where('notes', $marker)
@@ -203,6 +198,12 @@ final class DemoDataCleaner
                 ->whereIn('business_id', $businessIds)
                 ->delete();
 
+            if (Schema::hasTable('business_commercial_contracts')) {
+                $counts['business_commercial_contracts'] = DB::table('business_commercial_contracts')
+                    ->whereIn('business_id', $businessIds)
+                    ->delete();
+            }
+
             $counts['agency_contacts'] = AgencyContact::query()
                 ->whereIn('agency_id', $agencyIds)
                 ->delete();
@@ -257,30 +258,36 @@ final class DemoDataCleaner
                 ->whereIn('id', $courierIds)
                 ->forceDelete();
 
-            $linkedProfileUserIds = User::query()
+            $superAdminIds = User::query()
                 ->withTrashed()
-                ->where('profileable_type', Courier::class)
-                ->whereIn('profileable_id', $courierIds)
-                ->pluck('id');
+                ->role('super_admin')
+                ->pluck('id')
+                ->all();
 
-            $demoCourierUserIds = $courierUserIds
-                ->merge($linkedProfileUserIds)
-                ->unique()
-                ->values();
+            if ($superAdminIds === []) {
+                throw new \RuntimeException('Sistemde süper admin bulunamadı; demo temizliği iptal edildi.');
+            }
 
-            $demoCourierUsers = User::query()
+            $demoUsers = User::query()
                 ->withTrashed()
-                ->whereIn('id', $demoCourierUserIds)
-                ->get()
-                ->reject(fn (User $user): bool => $user->hasRole('super_admin'));
+                ->whereNotIn('id', $superAdminIds)
+                ->get();
 
-            $counts['courier_users'] = $demoCourierUsers->count();
+            $counts['users'] = $demoUsers->count();
 
-            foreach ($demoCourierUsers as $user) {
+            foreach ($demoUsers as $user) {
                 DB::table('model_has_roles')
                     ->where('model_type', User::class)
                     ->where('model_id', $user->id)
                     ->delete();
+
+                if (Schema::hasTable('model_has_permissions')) {
+                    DB::table('model_has_permissions')
+                        ->where('model_type', User::class)
+                        ->where('model_id', $user->id)
+                        ->delete();
+                }
+
                 $user->forceDelete();
             }
         });

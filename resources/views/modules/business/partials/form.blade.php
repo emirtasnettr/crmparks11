@@ -1,11 +1,6 @@
 @php
     use App\Modules\Business\Support\BusinessFeatures;
-    use App\Modules\Business\Support\BusinessPricingVisibility;
 
-    $canViewCustomerPricing = BusinessPricingVisibility::canViewCustomerAndNetPricing();
-@endphp
-
-@php
     $cancelUrl = $cancelUrl ?? route('businesses.index');
     $submitLabel = $submitLabel ?? 'Kaydet';
     $isEdit = $isEdit ?? false;
@@ -111,135 +106,8 @@
         </div>
     </x-ui.card>
 
-    {{-- Kart 4: Çalışma Modeli --}}
-    <x-ui.card title="Çalışma Modeli">
-        <x-ui.radio-group
-            name="pricing_model"
-            label="Çalışma Modeli *"
-            :options="$pricingModels"
-            :selected="($formValues ?? [])['pricing_model'] ?? 'per_package'"
-            x-model="form.pricing_model"
-        />
-
-        <p x-show="errors.pricing_model" x-cloak class="mb-4 text-sm text-red-600 dark:text-red-400" x-text="errors.pricing_model"></p>
-
-        <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-            @if ($canViewCustomerPricing)
-                <div x-show="form.pricing_model === 'per_package'" x-cloak>
-                    <x-ui.input
-                        name="customer_price"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        label="{{ $pricingFieldLabels['per_package']['customer'] }}"
-                        x-model="form.customer_price"
-                        ::disabled="form.pricing_model !== 'per_package'"
-                    />
-                </div>
-            @endif
-            <div x-show="form.pricing_model === 'per_package'" x-cloak>
-                <x-ui.input
-                    name="courier_price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    label="{{ $pricingFieldLabels['per_package']['courier'] }}"
-                    x-model="form.courier_price"
-                    ::disabled="form.pricing_model !== 'per_package'"
-                />
-            </div>
-            <div x-show="form.pricing_model === 'per_package'" x-cloak class="md:col-span-2">
-                <x-ui.input
-                    name="guaranteed_package_count"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    label="Garanti Paket Sayısı"
-                    x-model="form.guaranteed_package_count"
-                    ::disabled="form.pricing_model !== 'per_package'"
-                />
-                <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Opsiyonel. Örn. saatlik 2,5 paket garanti.</p>
-            </div>
-
-            @if ($canViewCustomerPricing)
-                <div x-show="form.pricing_model === 'monthly_fixed'" x-cloak>
-                    <x-ui.input
-                        name="customer_price"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        label="{{ $pricingFieldLabels['monthly_fixed']['customer'] }}"
-                        x-model="form.customer_price"
-                        ::disabled="form.pricing_model !== 'monthly_fixed'"
-                    />
-                </div>
-            @endif
-            <div x-show="form.pricing_model === 'monthly_fixed'" x-cloak>
-                <x-ui.input
-                    name="courier_price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    label="{{ $pricingFieldLabels['monthly_fixed']['courier'] }}"
-                    x-model="form.courier_price"
-                    ::disabled="form.pricing_model !== 'monthly_fixed'"
-                />
-            </div>
-
-            @if ($canViewCustomerPricing)
-                <div x-show="form.pricing_model === 'hourly'" x-cloak>
-                    <x-ui.input
-                        name="customer_price"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        label="{{ $pricingFieldLabels['hourly']['customer'] }}"
-                        x-model="form.customer_price"
-                        ::disabled="form.pricing_model !== 'hourly'"
-                    />
-                </div>
-            @endif
-            <div x-show="form.pricing_model === 'hourly'" x-cloak>
-                <x-ui.input
-                    name="courier_price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    label="{{ $pricingFieldLabels['hourly']['courier'] }}"
-                    x-model="form.courier_price"
-                    ::disabled="form.pricing_model !== 'hourly'"
-                />
-            </div>
-
-            @if ($canViewCustomerPricing)
-                <div x-show="form.pricing_model === 'daily'" x-cloak>
-                    <x-ui.input
-                        name="customer_price"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        label="{{ $pricingFieldLabels['daily']['customer'] }}"
-                        x-model="form.customer_price"
-                        ::disabled="form.pricing_model !== 'daily'"
-                    />
-                </div>
-            @endif
-            <div x-show="form.pricing_model === 'daily'" x-cloak>
-                <x-ui.input
-                    name="courier_price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    label="{{ $pricingFieldLabels['daily']['courier'] }}"
-                    x-model="form.courier_price"
-                    ::disabled="form.pricing_model !== 'daily'"
-                />
-            </div>
-        </div>
-    </x-ui.card>
-
     @if (BusinessFeatures::earningsEnabled())
-    {{-- Kart 5: Fatura Bilgisi --}}
+    {{-- Kart 4: Fatura Bilgisi --}}
     <x-ui.card title="Fatura Bilgisi">
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div class="space-y-1.5">
@@ -274,7 +142,7 @@
     </x-ui.card>
     @endif
 
-    {{-- Kart 6: Durum --}}
+    {{-- Kart 5: Durum --}}
     <x-ui.card title="Durum">
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <x-ui.select
@@ -336,7 +204,7 @@
         </p>
     </x-ui.card>
 
-    {{-- Kart 7: Notlar --}}
+    {{-- Kart 6: Notlar --}}
     <x-ui.card title="Notlar">
         <x-ui.textarea name="notes" rows="5" placeholder="İşletme hakkında ek notlar..." x-model="form.notes" />
     </x-ui.card>

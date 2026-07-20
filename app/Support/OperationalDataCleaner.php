@@ -36,6 +36,7 @@ final class OperationalDataCleaner
             'earning_lines',
             'earning_batches',
             'business_contacts',
+            'business_commercial_contracts',
             'business_pricings',
             'agency_contacts',
             'courier_bank_accounts',
@@ -70,9 +71,11 @@ final class OperationalDataCleaner
     /**
      * @return array<string, int>
      */
-    public static function wipeKeepingSuperAdmins(): array
+    public static function wipeKeepingSuperAdmins(bool $ignoreEnvironmentGuard = false): array
     {
-        DemoDataGuard::assertAllowed();
+        if (! $ignoreEnvironmentGuard) {
+            DemoDataGuard::assertAllowed();
+        }
 
         $counts = [];
 

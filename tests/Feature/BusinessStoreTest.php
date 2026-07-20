@@ -32,7 +32,6 @@ class BusinessStoreTest extends TestCase
         $response = $this->actingAs($user)->post(route('businesses.store'), [
             'company_name' => 'Yeni İşletme Ltd. Şti.',
             'phone' => '0212 111 22 33',
-            'pricing_model' => 'per_package',
             'earning_period' => 'weekly',
             'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 4,
@@ -59,10 +58,6 @@ class BusinessStoreTest extends TestCase
             'city' => 'İstanbul',
             'district' => 'Kadıköy',
             'address' => 'Test Mahallesi No:1',
-            'pricing_model' => 'per_package',
-            'customer_price' => '55.00',
-            'courier_price' => '40.00',
-            'guaranteed_package_count' => '2.5',
             'earning_period' => 'weekly',
             'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 6,
@@ -80,7 +75,6 @@ class BusinessStoreTest extends TestCase
         $this->assertSame('Point Market', $business->brand_name);
         $this->assertSame('1234567890', $business->tax_number);
         $this->assertSame(6, (int) $business->planned_courier_count);
-        $this->assertSame(2.5, (float) $business->guaranteed_package_count);
         $this->assertSame('weekly', $business->earning_period);
         $this->assertSame('2026-07-14', $business->first_invoice_date?->toDateString());
         $this->assertSame('Canlı kayıt testi', $business->notes);
@@ -92,8 +86,8 @@ class BusinessStoreTest extends TestCase
 
         $showResponse = $this->actingAs($user)->get(route('businesses.show', $business->id));
         $showResponse->assertOk();
-        $showResponse->assertSee('Garanti Paket Sayısı');
-        $showResponse->assertSee('2,5');
+        $showResponse->assertSee('Aktif Kontrat');
+        $showResponse->assertSee('Aktif kontrat yok');
     }
 
     public function test_business_store_requires_brand_name(): void
@@ -104,7 +98,6 @@ class BusinessStoreTest extends TestCase
         $response = $this->actingAs($user)->from(route('businesses.create'))->post(route('businesses.store'), [
             'company_name' => 'Markasız İşletme Ltd.',
             'phone' => '0212 111 22 33',
-            'pricing_model' => 'per_package',
             'earning_period' => 'weekly',
             'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 3,
@@ -125,7 +118,6 @@ class BusinessStoreTest extends TestCase
             'company_name' => 'Eksik Kurye Sayılı Ltd.',
             'brand_name' => 'Eksik Şube',
             'phone' => '0212 111 22 33',
-            'pricing_model' => 'per_package',
             'earning_period' => 'weekly',
             'first_invoice_date' => '2026-07-14',
             'status' => 'active',
@@ -145,7 +137,6 @@ class BusinessStoreTest extends TestCase
             'company_name' => 'Faturasız İşletme Ltd.',
             'brand_name' => 'Faturasız',
             'phone' => '0212 111 22 33',
-            'pricing_model' => 'per_package',
             'earning_period' => 'monthly',
             'planned_courier_count' => 3,
             'status' => 'active',
@@ -168,7 +159,6 @@ class BusinessStoreTest extends TestCase
             'tax_number' => '9988776655',
             'city' => 'İstanbul',
             'district' => 'Kadıköy',
-            'pricing_model' => 'per_package',
             'earning_period' => 'weekly',
             'first_invoice_date' => '2026-08-01',
             'planned_courier_count' => 3,
@@ -194,5 +184,57 @@ class BusinessStoreTest extends TestCase
         $this->assertSame(2, Business::query()->where('company_name', 'Ortak Ünvan Gıda A.Ş.')->count());
         $this->assertSame(2, Business::query()->where('tax_number', '9988776655')->count());
         $this->assertNotSame($firstBusiness->id, $secondBusiness->id);
+    }
+
+    public function test_super_admin_can_delete_business(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $this->actingAs($user)->post(route('businesses.store'), [
+            'company_name' => 'Silinecek İşletme Ltd.',
+            'brand_name' => 'Silinecek',
+            'phone' => '0212 111 22 33',
+            'earning_period' => 'weekly',
+            'first_invoice_date' => '2026-08-01',
+            'planned_courier_count' => 3,
+            'status' => 'active',
+        ])->assertRedirect();
+
+        $business = Business::query()->where('brand_name', 'Silinecek')->firstOrFail();
+
+        $this->actingAs($user)
+            ->delete(route('businesses.destroy', $business->id))
+            ->assertRedirect(route('businesses.index'))
+            ->assertSessionHas('success');
+
+        $this->assertSoftDeleted('businesses', ['id' => $business->id]);
+    }
+
+    public function test_non_super_admin_cannot_delete_business(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('super_admin');
+
+        $this->actingAs($admin)->post(route('businesses.store'), [
+            'company_name' => 'Korunan İşletme Ltd.',
+            'brand_name' => 'Korunan',
+            'phone' => '0212 333 44 55',
+            'earning_period' => 'weekly',
+            'first_invoice_date' => '2026-08-01',
+            'planned_courier_count' => 2,
+            'status' => 'active',
+        ])->assertRedirect();
+
+        $business = Business::query()->where('brand_name', 'Korunan')->firstOrFail();
+
+        $manager = User::factory()->create();
+        $manager->assignRole('general_manager');
+
+        $this->actingAs($manager)
+            ->delete(route('businesses.destroy', $business->id))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('businesses', ['id' => $business->id, 'deleted_at' => null]);
     }
 }

@@ -36,27 +36,21 @@
                 name="status"
                 label="Durum"
                 :selected="$filters['status']"
-                :options="array_merge(['all' => 'Tümü'], $statuses)"
+                :options="filter_select_options($statuses)"
             />
 
             <x-ui.select
                 name="city"
                 label="İl"
                 :selected="$filters['city']"
-                :options="array_merge(['all' => 'Tümü'], collect($cities)->mapWithKeys(fn ($c) => [$c => $c])->all())"
+                :options="filter_select_options(collect($cities)->mapWithKeys(fn ($c) => [$c => $c])->all())"
             />
 
             <x-ui.select
-                name="pricing_model"
-                label="Çalışma Modeli"
-                :selected="$filters['pricing_model']"
-                :options="[
-                    'all' => 'Tümü',
-                    'per_package' => 'Paket Başı',
-                    'fixed' => 'Sabit Ücret',
-                    'hourly' => 'Saatlik',
-                    'daily' => 'Günlük',
-                ]"
+                name="work_type"
+                label="Kontrat Tipi"
+                :selected="$filters['work_type']"
+                :options="filter_select_options($workTypes)"
             />
         </div>
 
@@ -84,14 +78,13 @@
       <thead>
         <tr class="border-b border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-800/50">
           <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 sm:px-6">Marka Adı</th>
-          <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Firma Ünvanı</th>
           @if (\App\Modules\Business\Support\BusinessPricingVisibility::canViewCustomerAndNetPricing())
             <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">İşletmeden Alınan Ücret</th>
           @endif
           <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Kuryeye Verilen Ücret</th>
           <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Telefon</th>
           <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">İl / İlçe</th>
-          <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Çalışma Modeli</th>
+          <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Kontrat Tipi</th>
           <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Aktif Kurye</th>
           <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Durum</th>
           <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 sm:px-6">İşlemler</th>
@@ -110,9 +103,6 @@
             <td class="px-4 py-3 font-medium text-gray-900 dark:text-white sm:px-6">
               {{ $business['display_name'] ?? $business['brand_name'] }}
             </td>
-            <td class="px-4 py-3 text-gray-600 dark:text-slate-400">
-              {{ $business['company_name'] }}
-            </td>
             @if (\App\Modules\Business\Support\BusinessPricingVisibility::canViewCustomerAndNetPricing())
               <td class="whitespace-nowrap px-4 py-3 text-gray-900 dark:text-white">
                 {{ $business['customer_price_label'] }}
@@ -128,7 +118,11 @@
               {{ $business['city'] }} / {{ $business['district'] }}
             </td>
             <td class="px-4 py-3">
-              <x-business.pricing-badge :model="$business['pricing_model']" />
+              @if (! empty($business['work_type']))
+                <x-business.pricing-badge :model="$business['work_type']" />
+              @else
+                <span class="text-sm text-gray-400 dark:text-slate-500">—</span>
+              @endif
             </td>
             <td class="px-4 py-3 text-gray-900 dark:text-white">
               {{ $business['active_couriers'] }}
@@ -142,7 +136,7 @@
           </tr>
         @empty
           <tr>
-            <td colspan="10" class="px-6 py-12 text-center text-sm text-gray-500 dark:text-slate-400">
+            <td colspan="9" class="px-6 py-12 text-center text-sm text-gray-500 dark:text-slate-400">
               Filtrelere uygun işletme bulunamadı.
             </td>
           </tr>

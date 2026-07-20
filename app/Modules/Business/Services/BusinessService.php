@@ -4,11 +4,8 @@ namespace App\Modules\Business\Services;
 
 use App\Models\City;
 use App\Models\District;
-use App\Models\PricingModelType;
 use App\Models\User;
 use App\Modules\Business\Models\Business;
-use App\Modules\Business\Models\BusinessPricing;
-use App\Modules\Business\Support\BusinessPricingVisibility;
 use App\Modules\Finance\Services\CurrentAccountService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -30,7 +27,7 @@ class BusinessService
   public function filter(array $filters): Collection
   {
     return $this->baseQuery($filters)
-      ->with(['city', 'district', 'activePricing.pricingModelType'])
+      ->with(['city', 'district', 'activeCommercialContract'])
       ->orderByDesc('id')
       ->get();
   }
@@ -38,7 +35,7 @@ class BusinessService
   public function find(int $id): ?Business
   {
     return Business::query()
-      ->with(['city', 'district', 'activePricing.pricingModelType'])
+      ->with(['city', 'district', 'activeCommercialContract'])
       ->find($id);
   }
 
@@ -68,11 +65,10 @@ class BusinessService
         $this->businessAttributes($data, $user),
       );
 
-      $this->syncPricing($business, $data, $user);
       $this->syncLogo($business, $data['logo'] ?? null);
       $this->currentAccounts->ensureForEntity($business);
 
-      return $business->fresh(['city', 'district', 'activePricing.pricingModelType']);
+      return $business->fresh(['city', 'district', 'activeCommercialContract']);
     });
   }
 
@@ -86,10 +82,9 @@ class BusinessService
         $this->businessAttributes($data, $user, $business),
       );
 
-      $this->syncPricing($business, $data, $user);
       $this->syncLogo($business, $data['logo'] ?? null, replace: isset($data['logo']));
 
-      return $business->fresh(['city', 'district', 'activePricing.pricingModelType']);
+      return $business->fresh(['city', 'district', 'activeCommercialContract']);
     });
   }
 
@@ -106,7 +101,18 @@ class BusinessService
 
     $business->update($payload);
 
-    return $business->fresh(['city', 'district', 'activePricing.pricingModelType']);
+    return $business->fresh(['city', 'district', 'activeCommercialContract']);
+  }
+
+  public function destroy(Business $business): void
+  {
+    DB::transaction(function () use ($business): void {
+      if (! empty($business->logo_path)) {
+        $this->media->delete($business->logo_path);
+      }
+
+      $business->delete();
+    });
   }
 
   /**
@@ -121,7 +127,8 @@ class BusinessService
         $query->where(function (Builder $inner) use ($search): void {
           $inner->whereRaw('LOWER(company_name) LIKE ?', ['%'.$search.'%'])
             ->orWhereRaw('LOWER(COALESCE(brand_name, "")) LIKE ?', ['%'.$search.'%'])
-            ->orWhereRaw('LOWER(COALESCE(phone, "")) LIKE ?', ['%'.$search.'%']);
+            ->orWhereRaw('LOWER(COALESCE(phone, "")) LIKE ?', ['%'.$search.'%'])
+            ->orWhere('public_id', $search);
         });
       })
       ->when(! empty($filters['status']) && $filters['status'] !== 'all', function (Builder $query) use ($filters): void {
@@ -130,10 +137,11 @@ class BusinessService
       ->when(! empty($filters['city']) && $filters['city'] !== 'all', function (Builder $query) use ($filters): void {
         $query->whereHas('city', fn (Builder $cityQuery) => $cityQuery->where('name', $filters['city']));
       })
-      ->when(! empty($filters['pricing_model']) && $filters['pricing_model'] !== 'all', function (Builder $query) use ($filters): void {
-        $code = $filters['pricing_model'] === 'fixed' ? 'monthly_fixed' : $filters['pricing_model'];
-
-        $query->whereHas('activePricing.pricingModelType', fn (Builder $pricingQuery) => $pricingQuery->where('code', $code));
+      ->when(! empty($filters['work_type']) && $filters['work_type'] !== 'all', function (Builder $query) use ($filters): void {
+        $query->whereHas(
+          'activeCommercialContract',
+          fn (Builder $contractQuery) => $contractQuery->where('work_type', $filters['work_type'])
+        );
       });
   }
 
@@ -169,56 +177,6 @@ class BusinessService
       ->value('id');
   }
 
-  /**
-   * @param  array<string, mixed>  $data
-   */
-  private function syncPricing(Business $business, array $data, ?User $user): void
-  {
-    $pricingModel = PricingModelType::query()
-      ->where('code', $data['pricing_model'])
-      ->first();
-
-    if ($pricingModel === null) {
-      return;
-    }
-
-    $customerPrice = $this->normalizePrice($data['customer_price'] ?? null);
-    $courierPrice = $this->normalizePrice($data['courier_price'] ?? null);
-    $activePricing = $business->activePricing;
-
-    if (! BusinessPricingVisibility::canViewCustomerAndNetPricing($user)) {
-      $customerPrice = $activePricing !== null
-        ? (float) $activePricing->customer_unit_price
-        : 0.0;
-    }
-
-    if (
-      $activePricing !== null
-      && (int) $activePricing->pricing_model_type_id === (int) $pricingModel->id
-      && (float) $activePricing->customer_unit_price === $customerPrice
-      && (float) $activePricing->courier_unit_price === $courierPrice
-    ) {
-      return;
-    }
-
-    if ($activePricing !== null) {
-      $activePricing->update([
-        'is_active' => false,
-        'effective_to' => now()->toDateString(),
-      ]);
-    }
-
-    BusinessPricing::query()->create([
-      'business_id' => $business->id,
-      'pricing_model_type_id' => $pricingModel->id,
-      'customer_unit_price' => $customerPrice,
-      'courier_unit_price' => $courierPrice,
-      'effective_from' => now()->toDateString(),
-      'is_active' => true,
-      'created_by' => $user?->id,
-    ]);
-  }
-
   private function syncLogo(Business $business, mixed $logo, bool $replace = true): void
   {
     if (! $replace || $logo === null) {
@@ -231,15 +189,6 @@ class BusinessService
 
     $uploaded = $this->media->storeLogo($logo, $business->id);
     $business->update(['logo_path' => $uploaded['path']]);
-  }
-
-  private function normalizePrice(mixed $value): float
-  {
-    if ($value === null || $value === '') {
-      return 0.0;
-    }
-
-    return round((float) str_replace(',', '.', (string) $value), 2);
   }
 
   private function generateTaxNumber(): string
@@ -301,13 +250,6 @@ class BusinessService
 
     if (Schema::hasColumn('businesses', 'planned_courier_count')) {
       $attributes['planned_courier_count'] = (int) ($data['planned_courier_count'] ?? 0);
-    }
-
-    if (Schema::hasColumn('businesses', 'guaranteed_package_count')) {
-      $attributes['guaranteed_package_count'] = ($data['pricing_model'] ?? null) === 'per_package'
-        && filled($data['guaranteed_package_count'] ?? null)
-          ? round((float) $data['guaranteed_package_count'], 2)
-          : null;
     }
 
     if ($business === null) {

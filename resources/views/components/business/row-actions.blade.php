@@ -38,6 +38,20 @@
             'danger',
         );
     }
+
+    if (($business['can_delete'] ?? false) && auth()->user()?->hasRole('super_admin')) {
+        $name = $business['display_name'] ?? $business['brand_name'] ?? $business['company_name'] ?? 'İşletme';
+        $items[] = RowActions::divider();
+        $items[] = RowActions::run(
+            'Sil',
+            'delete',
+            confirm: "{$name} kalıcı olarak silinsin mi? Bu işlem geri alınamaz.",
+            tone: 'danger',
+            id: $id,
+            url: route('businesses.destroy', $id),
+            method: 'DELETE',
+        );
+    }
 @endphp
 
 <x-ui.action-menu :items="$items" width="w-52" />

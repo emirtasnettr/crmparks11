@@ -64,7 +64,7 @@
                         <x-entity.detail-row label="Doğum Tarihi" :value="$courier['birth_date_formatted']" />
                         <x-entity.detail-row label="Telefon" :value="$courier['phone']" />
                         <x-entity.detail-row label="E-Posta" :value="$courier['email']" />
-                        <x-entity.detail-row label="Kayıt No" :value="$courier['uuid']" />
+                        <x-entity.detail-row label="Kurye ID" :value="$courier['public_id']" />
                     </dl>
                 </x-ui.card>
 
@@ -132,8 +132,21 @@
             <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <x-ui.finance-stat-card title="Çalışma" :value="$shiftAttendance['summary']['total_hours'].' sa'" :excl-vat="false" accent="blue" />
                 <x-ui.finance-stat-card title="Vardiya Sayısı" :value="(string) $shiftAttendance['summary']['sessions']" :excl-vat="false" accent="violet" />
-                <x-ui.finance-stat-card title="Saatlik Hakediş" :value="$shiftAttendance['summary']['total_earnings_formatted']" accent="success" />
+                <x-ui.finance-stat-card title="Vardiya Hakedişi" :value="$shiftAttendance['summary']['total_earnings_formatted']" accent="success" />
             </div>
+
+            @if (! empty($shiftAttendance['summary']['by_pricing_model']))
+                <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    @foreach ($shiftAttendance['summary']['by_pricing_model'] as $modelSummary)
+                        <x-ui.finance-stat-card
+                            :title="$modelSummary['pricing_model_label']"
+                            :value="$modelSummary['total_earnings_formatted']"
+                            :subtitle="$modelSummary['total_hours'].' sa · '.$modelSummary['sessions'].' vardiya'"
+                            :accent="$modelSummary['pricing_model'] === 'hourly' ? 'warning' : 'blue'"
+                        />
+                    @endforeach
+                </div>
+            @endif
 
             <x-ui.card title="Vardiya Katılımları">
                 <form method="GET" action="{{ route('couriers.show', $courier['id']) }}" class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -146,7 +159,7 @@
                 </form>
                 <p class="mb-4 text-sm text-gray-500 dark:text-slate-400">
                     Dönem: {{ $shiftAttendance['summary']['from_formatted'] }} – {{ $shiftAttendance['summary']['to_formatted'] }}.
-                    Saatlik anlaşmalı işletmelerde kazanç, çalışılan süre × saat ücreti ile hesaplanır.
+                    Her gün, o gün geçerli işletme kontratına göre hesaplanır (saatlik ve paket başı karışık olabilir).
                 </p>
                 <div class="overflow-x-auto">
                     <table class="w-full min-w-[720px] text-left text-sm">
@@ -154,6 +167,7 @@
                             <tr class="border-b border-gray-200 dark:border-slate-700">
                                 <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Tarih</th>
                                 <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">İşletme / Vardiya</th>
+                                <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Model</th>
                                 <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Başlangıç–Bitiş</th>
                                 <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Süre</th>
                                 <th class="pb-2 font-medium text-gray-500 dark:text-slate-400 text-right">Kazanç</th>
@@ -169,6 +183,13 @@
                                     <td class="py-2.5">
                                         <p class="font-medium text-gray-900 dark:text-white">{{ $row['business_name'] }}</p>
                                         <p class="text-xs text-gray-500 dark:text-slate-400">{{ $row['shift_name'] }}</p>
+                                    </td>
+                                    <td class="py-2.5">
+                                        @if (! empty($row['pricing_model']))
+                                            <x-business.pricing-badge :model="$row['pricing_model']" />
+                                        @else
+                                            <span class="text-xs text-gray-400">—</span>
+                                        @endif
                                     </td>
                                     <td class="py-2.5 text-gray-600 dark:text-slate-300">
                                         {{ $row['started_at_formatted'] }}

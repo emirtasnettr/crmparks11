@@ -47,7 +47,7 @@ class BusinessOverviewStats
     public static function forBusiness(int $businessId, CarbonInterface $start, CarbonInterface $end): array
     {
         $business = Business::query()
-            ->with(['activePricing.pricingModelType', 'city', 'district'])
+            ->with(['activeCommercialContract', 'city', 'district'])
             ->find($businessId);
 
         if ($business === null) {
@@ -56,10 +56,7 @@ class BusinessOverviewStats
 
         $presenter = app(BusinessPresenter::class);
         $unitPrices = $presenter->unitPrices($business);
-        $pricingModel = $business->activePricing?->pricingModelType?->code ?? 'per_package';
-        if ($pricingModel === 'fixed') {
-            $pricingModel = 'monthly_fixed';
-        }
+        $pricingModel = $business->activeCommercialContract?->work_type ?? 'per_package';
         $lines = self::earningLinesInPeriod($businessId, $start, $end);
         $totalPackages = (int) $lines->sum('package_count');
         $totalRevenue = round((float) $lines->sum('revenue_total'), 2);

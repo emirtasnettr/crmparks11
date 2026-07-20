@@ -55,13 +55,14 @@ final class CourierListExportSheets
 
         return ListExport::sheet(
             $rows,
-            ['Kurye', 'Kurye Tipi', 'İşletme', 'Dönem', 'Paket', 'Hakediş', 'Kesinti', 'Net Ödeme', 'Ödeme Durumu', 'Ödeme Tarihi'],
+            ['Kurye', 'Kurye Tipi', 'İşletme', 'Dönem', 'Paket', 'Saat', 'Hakediş', 'Kesinti', 'Net Ödeme', 'Ödeme Durumu', 'Ödeme Tarihi'],
             [
                 fn (array $row) => $row['courier_name'],
                 fn (array $row) => $row['courier_type'],
                 fn (array $row) => $row['business_name'],
                 fn (array $row) => $row['period_label'],
                 fn (array $row) => $row['package_count'],
+                fn (array $row) => $row['worked_hours'],
                 fn (array $row) => $row['earning_amount'],
                 fn (array $row) => $row['deduction'],
                 fn (array $row) => $row['net_payment'],

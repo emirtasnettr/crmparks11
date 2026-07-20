@@ -54,13 +54,13 @@
                 <x-ui.input name="search" label="Cari Ara" :value="$filters['search']" placeholder="Kod, ünvan veya telefon" />
 
                 <x-ui.select name="type" label="Cari Tipi" :selected="$filters['type']"
-                    :options="array_merge(['all' => 'Tümü'], $accountTypes)" />
+                    :options="filter_select_options($accountTypes)" />
 
                 <x-ui.select name="status" label="Durum" :selected="$filters['status']"
-                    :options="array_merge(['all' => 'Tümü'], $statuses)" />
+                    :options="filter_select_options($statuses)" />
 
                 <x-ui.select name="balance_status" label="Bakiye Durumu" :selected="$filters['balance_status']"
-                    :options="array_merge(['all' => 'Tümü'], $balanceStatuses)" />
+                    :options="filter_select_options($balanceStatuses)" />
             </div>
 
             <div class="mt-4 flex flex-wrap gap-2">

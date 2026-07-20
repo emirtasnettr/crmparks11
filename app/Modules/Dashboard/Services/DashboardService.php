@@ -168,7 +168,7 @@ class DashboardService
         $today = Carbon::today();
 
         return Business::query()
-            ->with(['city:id,name', 'district:id,name', 'activePricing'])
+            ->with(['city:id,name', 'district:id,name', 'activeCommercialContract'])
             ->where('status', 'opening_stage')
             ->orderByRaw('CASE WHEN start_date IS NULL THEN 1 ELSE 0 END')
             ->orderBy('start_date')
@@ -191,8 +191,8 @@ class DashboardService
                     default => '—',
                 };
 
-                $customerAmount = (float) ($business->activePricing?->customer_unit_price ?? 0);
-                $courierAmount = (float) ($business->activePricing?->courier_unit_price ?? 0);
+                $customerAmount = (float) ($business->activeCommercialContract?->business_amount ?? 0);
+                $courierAmount = (float) ($business->activeCommercialContract?->courier_amount ?? 0);
 
                 return [
                     'id' => $business->id,
@@ -369,7 +369,7 @@ class DashboardService
     public function getLatestBusinesses(int $limit = 5): array
     {
         return Business::query()
-            ->with(['city', 'district', 'activePricing.pricingModelType'])
+            ->with(['city', 'district', 'activeCommercialContract'])
             ->orderByDesc('id')
             ->limit($limit)
             ->get()
@@ -448,12 +448,9 @@ class DashboardService
     {
         $id = (int) $business['id'];
 
-        $pricingLabels = [
+        $workTypeLabels = [
             'per_package' => 'Paket Başı',
-            'fixed' => 'Sabit Ücret',
-            'monthly_fixed' => 'Aylık Sabit',
-            'hourly' => 'Saatlik',
-            'daily' => 'Günlük',
+            'hourly' => 'Saatlik Ücret',
         ];
 
         return [
@@ -465,7 +462,8 @@ class DashboardService
             'logo_color' => $business['logo_color'],
             'logo_url' => $business['logo_url'] ?? null,
             'location' => trim($business['city'].' / '.$business['district'], ' /'),
-            'pricing_model_label' => $pricingLabels[$business['pricing_model']] ?? $business['pricing_model'],
+            'pricing_model_label' => $workTypeLabels[$business['work_type'] ?? '']
+                ?? ($business['work_type_label'] ?? '—'),
             'status' => $business['status'],
             'created_at_formatted' => $model->created_at?->format('d.m.Y') ?? now()->format('d.m.Y'),
             'url' => route('businesses.show', $id),

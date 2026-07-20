@@ -2,551 +2,225 @@
 
 namespace App\Modules\Report\Services;
 
-use App\Core\Helpers\MoneyCalculator;
-use App\Models\Contract;
-use App\Models\EarningLine;
-use App\Modules\Agency\Models\Agency;
-use App\Modules\Business\Data\BusinessFormData;
 use App\Modules\Business\Models\Business;
 use App\Modules\Courier\Models\Courier;
-use App\Modules\Finance\Models\FinanceCollection;
-use App\Modules\Report\Data\ReportCatalog;
-use App\Support\EarningStatusMapper;
+use App\Modules\ShiftPlanning\Models\BusinessShift;
+use App\Modules\ShiftPlanning\Models\BusinessShiftAttendance;
+use App\Modules\ShiftPlanning\Support\ShiftAttendanceRules;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
 class ReportService
 {
     /**
-     * @return array<int, array<string, mixed>>
+     * @return array{
+     *     work_date: string,
+     *     work_date_formatted: string,
+     *     rows: array<int, array<string, mixed>>,
+     *     summary: array{businesses: int, planned: int, active: int, roster: int, missing: int}
+     * }
      */
-    public function catalog($user): array
+    public function radar(?Carbon $day = null): array
     {
-        return ReportCatalog::forUser($user);
-    }
+        $day ??= Carbon::today();
+        $date = $day->toDateString();
 
-    /**
-     * @param  array<string, string>  $filters
-     * @return array<string, mixed>
-     */
-    public function earningsSummary(array $filters): array
-    {
-        $year = (int) ($filters['year'] ?: now()->year);
-        $month = ($filters['month'] ?? 'all') === 'all' ? null : (int) $filters['month'];
+        $todayShifts = BusinessShift::query()
+            ->with(['rosterCouriers:id,full_name,phone'])
+            ->where('is_active', true)
+            ->get()
+            ->filter(fn (BusinessShift $shift) => $shift->runsOn($day))
+            ->values();
 
-        $lines = EarningLine::query()
-            ->with(['business', 'courier', 'status'])
-            ->where('period_year', $year)
-            ->when($month !== null, fn ($q) => $q->where('period_month', $month))
-            ->orderByDesc('period_month')
-            ->orderByDesc('id')
+        $businessIdsWithShiftToday = $todayShifts
+            ->pluck('business_id')
+            ->unique()
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        if ($businessIdsWithShiftToday === []) {
+            return [
+                'work_date' => $date,
+                'work_date_formatted' => $day->format('d.m.Y'),
+                'rows' => [],
+                'summary' => [
+                    'businesses' => 0,
+                    'planned' => 0,
+                    'active' => 0,
+                    'roster' => 0,
+                    'missing' => 0,
+                ],
+            ];
+        }
+
+        $businesses = Business::query()
+            ->whereIn('id', $businessIdsWithShiftToday)
+            ->orderBy('brand_name')
+            ->orderBy('company_name')
             ->get();
 
-        $rows = $lines->map(function (EarningLine $line): array {
-            $status = EarningStatusMapper::toUiCode($line->status?->code ?? 'draft');
+        $activePeople = $this->activeCouriersByBusiness($date, $businessIdsWithShiftToday);
+        $upcomingPeople = $this->upcomingCouriersByBusiness($todayShifts, $day);
 
-            return [
-                'id' => $line->id,
-                'business' => $line->business?->displayName() ?? '—',
-                'courier' => $line->courier?->full_name ?? '—',
-                'period' => sprintf('%02d/%d', $line->period_month, $line->period_year),
-                'status' => $status,
-                'revenue' => (float) $line->revenue_total,
-                'expense' => round((float) $line->net_courier_payment + (float) $line->agency_payment + (float) $line->extra_expense, 2),
-                'profit' => (float) $line->profit,
-                'revenue_formatted' => MoneyCalculator::format((float) $line->revenue_total),
-                'expense_formatted' => MoneyCalculator::format((float) $line->net_courier_payment + (float) $line->agency_payment + (float) $line->extra_expense),
-                'profit_formatted' => MoneyCalculator::format((float) $line->profit),
-                'url' => route('businesses.earnings.show', $line->id),
+        $rows = [];
+        foreach ($businesses as $business) {
+            // Planlanmış = restoran için ihtiyaç duyulan kurye sayısı (kapasite; kişi listesi yok).
+            $planned = max(0, (int) ($business->planned_courier_count ?? 0));
+            if ($planned <= 0) {
+                continue;
+            }
+
+            $activePeopleForBusiness = array_values($activePeople[$business->id] ?? []);
+            $upcomingPeopleForBusiness = array_values($upcomingPeople[$business->id] ?? []);
+
+            $activeIds = collect($activePeopleForBusiness)->pluck('id')->all();
+
+            // Yaklaşan: gelecek saatlerde başlayacak vardiyadakiler; aktiflerle çakışmaz.
+            $upcomingUnique = collect($upcomingPeopleForBusiness)
+                ->reject(fn (array $person): bool => in_array($person['id'], $activeIds, true))
+                ->values()
+                ->all();
+
+            // Vardiyada öncelikli; kalan kapasite Yaklaşan'a gider. Toplam ≤ Planlanmış.
+            $activePeopleCapped = array_slice($activePeopleForBusiness, 0, $planned);
+            $active = count($activePeopleCapped);
+            $remainingCapacity = max(0, $planned - $active);
+            $upcomingPeopleCapped = array_slice($upcomingUnique, 0, $remainingCapacity);
+            $upcoming = count($upcomingPeopleCapped);
+            $missing = max(0, $planned - $active - $upcoming);
+
+            $rows[] = [
+                'business_id' => $business->id,
+                'business_name' => $business->displayName(),
+                'planned_courier_count' => $planned,
+                'active_on_shift_count' => $active,
+                'roster_planned_count' => $upcoming,
+                'missing_courier_count' => $missing,
+                'active_couriers' => $activePeopleCapped,
+                'roster_couriers' => $upcomingPeopleCapped,
             ];
-        });
-
-        return [
-            'filters' => [
-                'year' => $year,
-                'month' => $filters['month'] ?? 'all',
-            ],
-            'summary' => [
-                'count' => $rows->count(),
-                'revenue' => round($rows->sum('revenue'), 2),
-                'expense' => round($rows->sum('expense'), 2),
-                'profit' => round($rows->sum('profit'), 2),
-                'revenue_formatted' => MoneyCalculator::format((float) $rows->sum('revenue')),
-                'expense_formatted' => MoneyCalculator::format((float) $rows->sum('expense')),
-                'profit_formatted' => MoneyCalculator::format((float) $rows->sum('profit')),
-            ],
-            'rows' => $rows->values()->all(),
-        ];
-    }
-
-    /**
-     * @return array{headings: array<int, string>, rows: array<int, array<int, mixed>>}
-     */
-    public function earningsExportRows(array $filters): array
-    {
-        $data = $this->earningsSummary($filters);
-
-        return [
-            'headings' => ['İşletme', 'Kurye', 'Dönem', 'Durum', 'Gelir', 'Gider', 'Kâr'],
-            'rows' => collect($data['rows'])->map(fn (array $row) => [
-                $row['business'],
-                $row['courier'],
-                $row['period'],
-                $row['status'],
-                $row['revenue'],
-                $row['expense'],
-                $row['profit'],
-            ])->all(),
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    public function collectionsAging(): array
-    {
-        $today = Carbon::today();
-
-        $collections = FinanceCollection::query()
-            ->with('business')
-            ->whereIn('status', ['pending', 'partial', 'overdue'])
-            ->orderBy('due_date')
-            ->get();
-
-        $buckets = [
-            'current' => ['label' => 'Vadesi Gelmemiş', 'count' => 0, 'amount' => 0.0],
-            '0_30' => ['label' => '0–30 Gün Gecikmiş', 'count' => 0, 'amount' => 0.0],
-            '31_60' => ['label' => '31–60 Gün Gecikmiş', 'count' => 0, 'amount' => 0.0],
-            '61_plus' => ['label' => '61+ Gün Gecikmiş', 'count' => 0, 'amount' => 0.0],
-        ];
-
-        $rows = $collections->map(function (FinanceCollection $collection) use ($today, &$buckets): array {
-            $remaining = round((float) $collection->total_amount - (float) $collection->collected_amount, 2);
-            $days = (int) $collection->due_date->diffInDays($today, false);
-
-            $bucket = match (true) {
-                $days < 0 => 'current',
-                $days <= 30 => '0_30',
-                $days <= 60 => '31_60',
-                default => '61_plus',
-            };
-
-            $buckets[$bucket]['count']++;
-            $buckets[$bucket]['amount'] += $remaining;
-
-            return [
-                'id' => $collection->id,
-                'business' => $collection->business?->displayName() ?? '—',
-                'reference' => $collection->reference,
-                'due_date_formatted' => $collection->due_date->format('d.m.Y'),
-                'days_overdue' => max(0, $days),
-                'bucket' => $bucket,
-                'bucket_label' => $buckets[$bucket]['label'],
-                'amount' => $remaining,
-                'amount_formatted' => MoneyCalculator::format($remaining),
-                'url' => route('finance.collections.show', $collection->id),
-            ];
-        });
-
-        foreach ($buckets as $key => $bucket) {
-            $buckets[$key]['amount_formatted'] = MoneyCalculator::format($bucket['amount']);
         }
 
         return [
-            'buckets' => $buckets,
-            'summary' => [
-                'count' => $rows->count(),
-                'amount' => round($rows->sum('amount'), 2),
-                'amount_formatted' => MoneyCalculator::format((float) $rows->sum('amount')),
-            ],
-            'rows' => $rows->values()->all(),
-        ];
-    }
-
-    /**
-     * @return array{headings: array<int, string>, rows: array<int, array<int, mixed>>}
-     */
-    public function collectionsExportRows(): array
-    {
-        $data = $this->collectionsAging();
-
-        return [
-            'headings' => ['İşletme', 'Referans', 'Vade', 'Gecikme (gün)', 'Grup', 'Kalan Tutar'],
-            'rows' => collect($data['rows'])->map(fn (array $row) => [
-                $row['business'],
-                $row['reference'],
-                $row['due_date_formatted'],
-                $row['days_overdue'],
-                $row['bucket_label'],
-                $row['amount'],
-            ])->all(),
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    public function operationsSummary(): array
-    {
-        return [
-            'stats' => [
-                'businesses' => Business::query()->count(),
-                'active_businesses' => Business::query()->where('status', 'active')->count(),
-                'couriers' => Courier::query()->count(),
-                'active_couriers' => Courier::query()->where('status', 'active')->count(),
-                'agencies' => Agency::query()->count(),
-                'active_agencies' => Agency::query()->where('status', 'active')->count(),
-                'earnings_this_month' => EarningLine::query()
-                    ->where('period_year', now()->year)
-                    ->where('period_month', now()->month)
-                    ->count(),
-            ],
-        ];
-    }
-
-    /**
-     * @param  array<string, string>  $filters
-     * @return array<string, mixed>
-     */
-    public function courierPerformanceSummary(array $filters): array
-    {
-        $year = (int) ($filters['year'] ?: now()->year);
-        $month = ($filters['month'] ?? 'all') === 'all' ? null : (int) $filters['month'];
-
-        $lines = EarningLine::query()
-            ->with(['courier', 'status'])
-            ->where('period_year', $year)
-            ->when($month !== null, fn ($q) => $q->where('period_month', $month))
-            ->get();
-
-        $rows = $lines
-            ->groupBy('courier_id')
-            ->map(function (Collection $group) use ($year, $month): array {
-                /** @var EarningLine $first */
-                $first = $group->first();
-                $courier = $first->courier;
-                $revenue = round($group->sum(fn (EarningLine $line) => (float) $line->revenue_total), 2);
-                $courierPay = round($group->sum(fn (EarningLine $line) => (float) $line->net_courier_payment), 2);
-                $profit = round($group->sum(fn (EarningLine $line) => (float) $line->profit), 2);
-                $packages = (int) $group->sum('package_count');
-
-                return [
-                    'courier_id' => $first->courier_id,
-                    'courier' => $courier?->full_name ?? '—',
-                    'packages' => $packages,
-                    'lines' => $group->count(),
-                    'revenue' => $revenue,
-                    'courier_payment' => $courierPay,
-                    'profit' => $profit,
-                    'revenue_formatted' => MoneyCalculator::format($revenue),
-                    'courier_payment_formatted' => MoneyCalculator::format($courierPay),
-                    'profit_formatted' => MoneyCalculator::format($profit),
-                    'url' => route('couriers.earnings.index', [
-                        'courier_id' => $first->courier_id,
-                        'period_year' => $year,
-                        'period_month' => $month ?? 'all',
-                    ]),
-                ];
-            })
-            ->sortByDesc('revenue')
-            ->values();
-
-        return [
-            'filters' => [
-                'year' => $year,
-                'month' => $filters['month'] ?? 'all',
-            ],
-            'summary' => [
-                'count' => $rows->count(),
-                'packages' => (int) $rows->sum('packages'),
-                'revenue' => round($rows->sum('revenue'), 2),
-                'courier_payment' => round($rows->sum('courier_payment'), 2),
-                'profit' => round($rows->sum('profit'), 2),
-                'revenue_formatted' => MoneyCalculator::format((float) $rows->sum('revenue')),
-                'courier_payment_formatted' => MoneyCalculator::format((float) $rows->sum('courier_payment')),
-                'profit_formatted' => MoneyCalculator::format((float) $rows->sum('profit')),
-            ],
-            'rows' => $rows->all(),
-        ];
-    }
-
-    /**
-     * @return array{headings: array<int, string>, rows: array<int, array<int, mixed>>}
-     */
-    public function courierPerformanceExportRows(array $filters): array
-    {
-        $data = $this->courierPerformanceSummary($filters);
-
-        return [
-            'headings' => ['Kurye', 'Paket', 'Kayıt', 'Gelir', 'Kurye Ödemesi', 'Kâr'],
-            'rows' => collect($data['rows'])->map(fn (array $row) => [
-                $row['courier'],
-                $row['packages'],
-                $row['lines'],
-                $row['revenue'],
-                $row['courier_payment'],
-                $row['profit'],
-            ])->all(),
-        ];
-    }
-
-    /**
-     * @param  array<string, string>  $filters
-     * @return array<string, mixed>
-     */
-    public function agencyShareSummary(array $filters): array
-    {
-        $year = (int) ($filters['year'] ?: now()->year);
-        $month = ($filters['month'] ?? 'all') === 'all' ? null : (int) $filters['month'];
-
-        $lines = EarningLine::query()
-            ->with(['courier.agency', 'status'])
-            ->where('period_year', $year)
-            ->when($month !== null, fn ($q) => $q->where('period_month', $month))
-            ->whereHas('courier', fn ($q) => $q->whereNotNull('agency_id'))
-            ->get();
-
-        $rows = $lines
-            ->groupBy(fn (EarningLine $line) => $line->courier?->agency_id)
-            ->filter(fn ($group, $agencyId) => $agencyId !== null)
-            ->map(function (Collection $group) use ($year, $month): array {
-                /** @var EarningLine $first */
-                $first = $group->first();
-                $agency = $first->courier?->agency;
-                $agencyPayment = round($group->sum(fn (EarningLine $line) => (float) $line->agency_payment), 2);
-                $revenue = round($group->sum(fn (EarningLine $line) => (float) $line->revenue_total), 2);
-                $packages = (int) $group->sum('package_count');
-                $agencyId = $first->courier?->agency_id;
-
-                return [
-                    'agency_id' => $agencyId,
-                    'agency' => $agency?->displayName() ?? '—',
-                    'couriers' => $group->pluck('courier_id')->unique()->count(),
-                    'packages' => $packages,
-                    'lines' => $group->count(),
-                    'revenue' => $revenue,
-                    'agency_payment' => $agencyPayment,
-                    'revenue_formatted' => MoneyCalculator::format($revenue),
-                    'agency_payment_formatted' => MoneyCalculator::format($agencyPayment),
-                    'url' => route('agencies.earnings.index', [
-                        'agency_id' => $agencyId,
-                        'period_year' => $year,
-                        'period_month' => $month ?? 'all',
-                    ]),
-                ];
-            })
-            ->sortByDesc('agency_payment')
-            ->values();
-
-        return [
-            'filters' => [
-                'year' => $year,
-                'month' => $filters['month'] ?? 'all',
-            ],
-            'summary' => [
-                'count' => $rows->count(),
-                'packages' => (int) $rows->sum('packages'),
-                'revenue' => round($rows->sum('revenue'), 2),
-                'agency_payment' => round($rows->sum('agency_payment'), 2),
-                'revenue_formatted' => MoneyCalculator::format((float) $rows->sum('revenue')),
-                'agency_payment_formatted' => MoneyCalculator::format((float) $rows->sum('agency_payment')),
-            ],
-            'rows' => $rows->all(),
-        ];
-    }
-
-    /**
-     * @return array{headings: array<int, string>, rows: array<int, array<int, mixed>>}
-     */
-    public function agencyShareExportRows(array $filters): array
-    {
-        $data = $this->agencyShareSummary($filters);
-
-        return [
-            'headings' => ['Acente', 'Kurye', 'Paket', 'Kayıt', 'Gelir', 'Acente Payı'],
-            'rows' => collect($data['rows'])->map(fn (array $row) => [
-                $row['agency'],
-                $row['couriers'],
-                $row['packages'],
-                $row['lines'],
-                $row['revenue'],
-                $row['agency_payment'],
-            ])->all(),
-        ];
-    }
-
-    /**
-     * @param  array<string, string>  $filters
-     * @return array<string, mixed>
-     */
-    public function businessPipelineSummary(array $filters): array
-    {
-        $statusFilter = ($filters['status'] ?? 'all') === 'all' ? null : (string) $filters['status'];
-        $statusLabels = BusinessFormData::statuses();
-        $total = Business::query()->count();
-        $counts = Business::query()
-            ->selectRaw('status, COUNT(*) as aggregate')
-            ->groupBy('status')
-            ->pluck('aggregate', 'status');
-
-        $distribution = collect($statusLabels)
-            ->map(function (string $label, string $key) use ($total, $counts): array {
-                $count = (int) ($counts[$key] ?? 0);
-
-                return [
-                    'key' => $key,
-                    'label' => $label,
-                    'count' => $count,
-                    'percentage' => $total > 0 ? round(($count / $total) * 100, 1) : 0.0,
-                ];
-            })
-            ->values()
-            ->all();
-
-        $rows = Business::query()
-            ->with(['city:id,name', 'district:id,name'])
-            ->when($statusFilter !== null, fn ($q) => $q->where('status', $statusFilter))
-            ->orderByDesc('created_at')
-            ->get()
-            ->map(function (Business $business) use ($statusLabels): array {
-                $city = $business->city?->name;
-                $district = $business->district?->name;
-                $location = match (true) {
-                    $city !== null && $district !== null => $city.' / '.$district,
-                    $city !== null => $city,
-                    $district !== null => $district,
-                    default => '—',
-                };
-
-                return [
-                    'id' => $business->id,
-                    'name' => $business->displayName(),
-                    'location' => $location,
-                    'status' => $business->status,
-                    'status_label' => $statusLabels[$business->status] ?? $business->status,
-                    'created_at_formatted' => $business->created_at?->format('d.m.Y') ?? '—',
-                    'url' => route('businesses.show', $business->id),
-                ];
-            })
-            ->all();
-
-        return [
-            'filters' => [
-                'status' => $statusFilter ?? 'all',
-            ],
-            'summary' => [
-                'total' => $total,
-                'filtered_count' => count($rows),
-            ],
-            'distribution' => $distribution,
+            'work_date' => $date,
+            'work_date_formatted' => $day->format('d.m.Y'),
             'rows' => $rows,
-            'status_options' => array_merge(['all' => 'Tümü'], $statusLabels),
+            'summary' => [
+                'businesses' => count($rows),
+                'planned' => (int) collect($rows)->sum('planned_courier_count'),
+                'active' => (int) collect($rows)->sum('active_on_shift_count'),
+                'roster' => (int) collect($rows)->sum('roster_planned_count'),
+                'missing' => (int) collect($rows)->sum('missing_courier_count'),
+            ],
         ];
     }
 
     /**
-     * @return array<string, mixed>
+     * @param  list<int>  $businessIds
+     * @return array<int, array<int, array{id: int, name: string, phone: string, shift_name: string|null, shift_time: string|null}>>
      */
-    public function openingStageReport(): array
+    private function activeCouriersByBusiness(string $date, array $businessIds = []): array
     {
-        $today = Carbon::today();
+        $rows = BusinessShiftAttendance::query()
+            ->with(['courier:id,full_name,phone', 'shift:id,name,start_time,end_time'])
+            ->whereDate('work_date', $date)
+            ->where('status', 'in_progress')
+            ->when($businessIds !== [], fn ($query) => $query->whereIn('business_id', $businessIds))
+            ->get();
 
-        $rows = Business::query()
-            ->with(['city:id,name', 'district:id,name', 'activePricing'])
-            ->where('status', 'opening_stage')
-            ->orderByRaw('CASE WHEN start_date IS NULL THEN 1 ELSE 0 END')
-            ->orderBy('start_date')
-            ->orderBy('brand_name')
-            ->get()
-            ->map(function (Business $business) use ($today): array {
-                $planned = (int) ($business->planned_courier_count ?? 0);
-                $completed = $business->activeCourierCount();
-                $startDate = $business->start_date;
-                $daysUntil = $startDate !== null
-                    ? (int) $today->diffInDays($startDate, false)
-                    : null;
-
-                $city = $business->city?->name;
-                $district = $business->district?->name;
-                $location = match (true) {
-                    $city !== null && $district !== null => $city.' / '.$district,
-                    $city !== null => $city,
-                    $district !== null => $district,
-                    default => '—',
-                };
-
-                return [
-                    'id' => $business->id,
-                    'name' => $business->displayName(),
-                    'location' => $location,
-                    'planned_courier_count' => $planned,
-                    'completed_courier_count' => $completed,
-                    'start_date_formatted' => $startDate?->format('d.m.Y') ?? '—',
-                    'days_until_opening' => $daysUntil,
-                    'is_opening_overdue' => $daysUntil !== null && $daysUntil < 0,
-                    'delay_label' => match (true) {
-                        $daysUntil === null => 'Tarih yok',
-                        $daysUntil < 0 => abs($daysUntil).' gün gecikti',
-                        $daysUntil === 0 => 'Bugün açılıyor',
-                        default => $daysUntil.' gün kaldı',
-                    },
-                    'url' => route('businesses.show', $business->id),
-                ];
+        return $rows
+            ->groupBy('business_id')
+            ->map(function (Collection $group): array {
+                return $group
+                    ->unique('courier_id')
+                    ->map(fn (BusinessShiftAttendance $row) => $this->courierPayload(
+                        $row->courier,
+                        $row->shift,
+                    ))
+                    ->filter()
+                    ->sortBy('name')
+                    ->values()
+                    ->all();
             })
-            ->values();
-
-        return [
-            'summary' => [
-                'total' => $rows->count(),
-                'overdue' => $rows->where('is_opening_overdue', true)->count(),
-            ],
-            'rows' => $rows->all(),
-        ];
+            ->all();
     }
 
     /**
-     * @return array<string, mixed>
+     * Gelecek saatlerde başlayacak (henüz start olmamış) vardiya kadrolarındaki kuryeler.
+     *
+     * @param  Collection<int, BusinessShift>  $todayShifts
+     * @return array<int, array<int, array{id: int, name: string, phone: string, shift_name: string|null, shift_time: string|null}>>
      */
-    public function contractExpiryReport(): array
+    private function upcomingCouriersByBusiness(Collection $todayShifts, Carbon $day): array
     {
-        $today = Carbon::today();
-        $horizon = $today->copy()->addDays(30);
+        $now = now();
+        $byBusiness = [];
 
-        $rows = Contract::query()
-            ->with(['contractable'])
-            ->where('contractable_type', Business::class)
-            ->where('status', 'active')
-            ->whereNotNull('end_date')
-            ->whereDate('end_date', '<=', $horizon->toDateString())
-            ->orderBy('end_date')
-            ->get()
-            ->map(function (Contract $contract) use ($today): array {
-                $business = $contract->contractable instanceof Business ? $contract->contractable : null;
-                $daysUntil = $contract->end_date !== null
-                    ? (int) $today->diffInDays($contract->end_date, false)
-                    : 0;
+        foreach ($todayShifts as $shift) {
+            $shiftStart = ShiftAttendanceRules::shiftStartAt($shift, $day);
+            if ($now->gte($shiftStart)) {
+                continue;
+            }
 
-                return [
-                    'id' => $contract->id,
-                    'title' => $contract->title ?: ($contract->contract_number ?? 'Sözleşme'),
-                    'business_name' => $business?->displayName() ?? '—',
-                    'end_date_formatted' => $contract->end_date?->format('d.m.Y') ?? '—',
-                    'is_overdue' => $daysUntil < 0,
-                    'delay_label' => $daysUntil < 0
-                        ? abs($daysUntil).' gün gecikmiş'
-                        : ($daysUntil === 0 ? 'Bugün bitiyor' : $daysUntil.' gün kaldı'),
-                    'url' => route('businesses.contracts.show', $contract->id),
-                ];
+            $businessId = (int) $shift->business_id;
+            foreach ($shift->rosterCouriers as $courier) {
+                $existing = $byBusiness[$businessId][$courier->id] ?? null;
+                $payload = $this->courierPayload($courier, $shift);
+                if ($payload === null) {
+                    continue;
+                }
+
+                $payload['shift_start_ts'] = $shiftStart->timestamp;
+
+                // Aynı kurye birden fazla yaklaşan vardiyadaysa en erken olanı tut.
+                if ($existing === null || $payload['shift_start_ts'] < ($existing['shift_start_ts'] ?? PHP_INT_MAX)) {
+                    $byBusiness[$businessId][$courier->id] = $payload;
+                }
+            }
+        }
+
+        return collect($byBusiness)
+            ->map(function (array $people): array {
+                return collect($people)
+                    ->map(function (array $person): array {
+                        unset($person['shift_start_ts']);
+
+                        return $person;
+                    })
+                    ->sortBy('name')
+                    ->values()
+                    ->all();
             })
-            ->values();
+            ->all();
+    }
+
+    /**
+     * @return array{id: int, name: string, phone: string, shift_name: string|null, shift_time: string|null}|null
+     */
+    private function courierPayload(?Courier $courier, ?BusinessShift $shift): ?array
+    {
+        if ($courier === null) {
+            return null;
+        }
 
         return [
-            'summary' => [
-                'total' => $rows->count(),
-                'overdue' => $rows->where('is_overdue', true)->count(),
-                'expiring_soon' => $rows->where('is_overdue', false)->count(),
-            ],
-            'rows' => $rows->all(),
+            'id' => $courier->id,
+            'name' => $courier->full_name,
+            'phone' => $courier->phone ?: '—',
+            'shift_name' => $shift?->name,
+            'shift_time' => $this->formatShiftTime($shift),
         ];
+    }
+
+    private function formatShiftTime(?BusinessShift $shift): ?string
+    {
+        if ($shift === null || $shift->start_time === null || $shift->end_time === null) {
+            return null;
+        }
+
+        $start = substr((string) $shift->start_time, 0, 5);
+        $end = substr((string) $shift->end_time, 0, 5);
+
+        return $start.'–'.$end;
     }
 }

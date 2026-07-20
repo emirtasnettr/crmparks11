@@ -41,6 +41,7 @@ class AgencyEarningPresenter
             'period_type_label' => 'Aylık',
             'courier_count' => $lines->pluck('courier_id')->unique()->count(),
             'package_count' => (int) $lines->sum('package_count'),
+            'worked_hours' => round($lines->sum(fn (EarningLine $line) => $line->resolvedWorkedHours()), 2),
             'gross_amount' => $grossAmount,
             'extra_payment' => round($lines->sum(fn (EarningLine $line) => (float) $line->extra_payment), 2),
             'deduction' => $deduction,
@@ -55,7 +56,14 @@ class AgencyEarningPresenter
                 'courier_name' => $line->courier?->full_name ?? '—',
                 'business_name' => $line->business?->displayName() ?? '—',
                 'package_count' => (int) $line->package_count,
+                'worked_hours' => $line->resolvedWorkedHours(),
                 'agency_payment' => (float) $line->agency_payment,
+            ])->values()->all(),
+            'linked_couriers' => $lines->map(fn (EarningLine $line) => [
+                'name' => $line->courier?->full_name ?? '—',
+                'package_count' => (int) $line->package_count,
+                'worked_hours' => $line->resolvedWorkedHours(),
+                'gross_share' => (float) $line->agency_payment,
             ])->values()->all(),
         ];
     }

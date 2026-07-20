@@ -201,7 +201,8 @@ class CourierService
                 $query->where(function (Builder $inner) use ($search): void {
                     $inner->whereRaw('LOWER(full_name) LIKE ?', ['%'.$search.'%'])
                         ->orWhereRaw('LOWER(phone) LIKE ?', ['%'.$search.'%'])
-                        ->orWhereRaw('LOWER(tc_number) LIKE ?', ['%'.$search.'%']);
+                        ->orWhereRaw('LOWER(tc_number) LIKE ?', ['%'.$search.'%'])
+                        ->orWhere('public_id', $search);
                 });
             })
             ->when(! empty($filters['courier_type']) && $filters['courier_type'] !== 'all', function (Builder $query) use ($filters): void {

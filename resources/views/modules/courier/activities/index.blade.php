@@ -28,28 +28,28 @@
                     name="courier_id"
                     label="Kurye"
                     :selected="$filters['courier_id']"
-                    :options="array_merge(['all' => 'Tümü'], collect($couriers)->mapWithKeys(fn ($c) => [$c['id'] => $c['name']])->all())"
+                    :options="filter_select_options(collect($couriers)->mapWithKeys(fn ($c) => [$c['id'] => $c['name']])->all())"
                 />
 
                 <x-ui.select
                     name="action"
                     label="İşlem Türü"
                     :selected="$filters['action']"
-                    :options="array_merge(['all' => 'Tümü'], $actionTypes)"
+                    :options="filter_select_options($actionTypes)"
                 />
 
                 <x-ui.select
                     name="user_id"
                     label="Kullanıcı"
                     :selected="$filters['user_id']"
-                    :options="array_merge(['all' => 'Tümü'], collect($users)->mapWithKeys(fn ($u) => [$u['id'] => $u['name']])->all())"
+                    :options="filter_select_options(collect($users)->mapWithKeys(fn ($u) => [$u['id'] => $u['name']])->all())"
                 />
 
                 <x-ui.select
                     name="date_range"
                     label="Tarih Aralığı"
                     :selected="$filters['date_range']"
-                    :options="array_merge(['all' => 'Tümü'], $dateRanges)"
+                    :options="filter_select_options($dateRanges)"
                 />
             </div>
 

@@ -2,225 +2,29 @@
 
 namespace App\Modules\Report\Controllers;
 
-use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
-use App\Modules\Business\Data\BusinessEarningFormData;
 use App\Modules\Report\Services\ReportService;
-use Illuminate\Http\Request;
 use Illuminate\View\View;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ReportController extends Controller
 {
-    use DownloadsListExport;
-
     public function __construct(
         private readonly ReportService $reports,
     ) {}
 
-    public function index(Request $request): View
+    public function index(): View
     {
-        return view('modules.report.index', [
-            'reports' => $this->reports->catalog($request->user()),
+        return view('modules.report.index');
+    }
+
+    public function radar(): View
+    {
+        $radar = $this->reports->radar();
+
+        return view('modules.report.radar', [
+            'workDateFormatted' => $radar['work_date_formatted'],
+            'rows' => $radar['rows'],
+            'summary' => $radar['summary'],
         ]);
-    }
-
-    public function earnings(Request $request): View
-    {
-        abort_unless($request->user()?->can('earning.view'), 403);
-
-        $filters = [
-            'year' => $request->string('year')->toString() ?: (string) now()->year,
-            'month' => $request->string('month')->toString() ?: 'all',
-        ];
-
-        $data = $this->reports->earningsSummary($filters);
-
-        return view('modules.report.earnings', [
-            'filters' => $data['filters'],
-            'summary' => $data['summary'],
-            'rows' => $data['rows'],
-            'months' => array_merge(['all' => 'Tümü'], BusinessEarningFormData::months()),
-            'years' => $this->yearOptions(),
-        ]);
-    }
-
-    public function earningsExport(Request $request): BinaryFileResponse
-    {
-        abort_unless($request->user()?->can('earning.view') && $request->user()?->can('report.export'), 403);
-
-        $filters = [
-            'year' => $request->string('year')->toString() ?: (string) now()->year,
-            'month' => $request->string('month')->toString() ?: 'all',
-        ];
-
-        return $this->downloadExportSheet(
-            'hakedis-ozeti',
-            $this->reports->earningsExportRows($filters),
-            'Hakediş Özeti',
-        );
-    }
-
-    public function collections(Request $request): View
-    {
-        abort_unless($request->user()?->can('dashboard.financial'), 403);
-
-        $data = $this->reports->collectionsAging();
-
-        return view('modules.report.collections', [
-            'buckets' => $data['buckets'],
-            'summary' => $data['summary'],
-            'rows' => $data['rows'],
-        ]);
-    }
-
-    public function collectionsExport(Request $request): BinaryFileResponse
-    {
-        abort_unless($request->user()?->can('dashboard.financial') && $request->user()?->can('report.export'), 403);
-
-        return $this->downloadExportSheet(
-            'tahsilat-yaslandirma',
-            $this->reports->collectionsExportRows(),
-            'Tahsilat Yaşlandırma',
-        );
-    }
-
-    public function operations(Request $request): View
-    {
-        abort_unless($request->user()?->can('courier.view'), 403);
-
-        return view('modules.report.operations', [
-            'stats' => $this->reports->operationsSummary()['stats'],
-        ]);
-    }
-
-    public function courierPerformance(Request $request): View
-    {
-        abort_unless($request->user()?->can('courier.view'), 403);
-
-        $filters = [
-            'year' => $request->string('year')->toString() ?: (string) now()->year,
-            'month' => $request->string('month')->toString() ?: 'all',
-        ];
-
-        $data = $this->reports->courierPerformanceSummary($filters);
-
-        return view('modules.report.courier-performance', [
-            'filters' => $data['filters'],
-            'summary' => $data['summary'],
-            'rows' => $data['rows'],
-            'months' => array_merge(['all' => 'Tümü'], BusinessEarningFormData::months()),
-            'years' => $this->yearOptions(),
-        ]);
-    }
-
-    public function courierPerformanceExport(Request $request): BinaryFileResponse
-    {
-        abort_unless($request->user()?->can('courier.view') && $request->user()?->can('report.export'), 403);
-
-        $filters = [
-            'year' => $request->string('year')->toString() ?: (string) now()->year,
-            'month' => $request->string('month')->toString() ?: 'all',
-        ];
-
-        return $this->downloadExportSheet(
-            'kurye-performansi',
-            $this->reports->courierPerformanceExportRows($filters),
-            'Kurye Performansı',
-        );
-    }
-
-    public function agencyShare(Request $request): View
-    {
-        abort_unless($request->user()?->can('agency.view'), 403);
-
-        $filters = [
-            'year' => $request->string('year')->toString() ?: (string) now()->year,
-            'month' => $request->string('month')->toString() ?: 'all',
-        ];
-
-        $data = $this->reports->agencyShareSummary($filters);
-
-        return view('modules.report.agency-share', [
-            'filters' => $data['filters'],
-            'summary' => $data['summary'],
-            'rows' => $data['rows'],
-            'months' => array_merge(['all' => 'Tümü'], BusinessEarningFormData::months()),
-            'years' => $this->yearOptions(),
-        ]);
-    }
-
-    public function agencyShareExport(Request $request): BinaryFileResponse
-    {
-        abort_unless($request->user()?->can('agency.view') && $request->user()?->can('report.export'), 403);
-
-        $filters = [
-            'year' => $request->string('year')->toString() ?: (string) now()->year,
-            'month' => $request->string('month')->toString() ?: 'all',
-        ];
-
-        return $this->downloadExportSheet(
-            'acente-payi',
-            $this->reports->agencyShareExportRows($filters),
-            'Acente Payı',
-        );
-    }
-
-    public function businessPipeline(Request $request): View
-    {
-        abort_unless($request->user()?->can('business.view'), 403);
-
-        $filters = [
-            'status' => $request->string('status')->toString() ?: 'all',
-        ];
-
-        $data = $this->reports->businessPipelineSummary($filters);
-
-        return view('modules.report.business-pipeline', [
-            'filters' => $data['filters'],
-            'summary' => $data['summary'],
-            'distribution' => $data['distribution'],
-            'rows' => $data['rows'],
-            'statusOptions' => $data['status_options'],
-        ]);
-    }
-
-    public function openingStage(Request $request): View
-    {
-        abort_unless($request->user()?->can('business.view'), 403);
-
-        $data = $this->reports->openingStageReport();
-
-        return view('modules.report.opening-stage', [
-            'summary' => $data['summary'],
-            'rows' => $data['rows'],
-        ]);
-    }
-
-    public function contractExpiry(Request $request): View
-    {
-        abort_unless($request->user()?->can('business.view'), 403);
-
-        $data = $this->reports->contractExpiryReport();
-
-        return view('modules.report.contract-expiry', [
-            'summary' => $data['summary'],
-            'rows' => $data['rows'],
-        ]);
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function yearOptions(): array
-    {
-        $current = (int) now()->year;
-        $years = [];
-
-        for ($year = $current; $year >= $current - 4; $year--) {
-            $years[(string) $year] = (string) $year;
-        }
-
-        return $years;
     }
 }

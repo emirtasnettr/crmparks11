@@ -80,12 +80,19 @@
     <x-ui.card title="Hakediş Detayı">
       <dl class="space-y-3 text-sm">
         @if ($earning['pricing_model'] === 'per_package')
-          <div class="flex justify-between gap-4"><dt class="text-gray-500">Paket Sayısı</dt><dd class="font-medium">{{ money_excl_vat($earning['package_count']) }}</dd></div>
-          <div class="flex justify-between gap-4"><dt class="text-gray-500">Birim Gelir</dt><dd>{{ number_format($earning['revenue_unit_price']) }}</dd></div>
+          <div class="flex justify-between gap-4"><dt class="text-gray-500">Paket Sayısı</dt><dd class="font-medium">{{ number_format($earning['package_count']) }}</dd></div>
+          <div class="flex justify-between gap-4"><dt class="text-gray-500">Birim Gelir</dt><dd>{{ money_excl_vat($earning['revenue_unit_price']) }}</dd></div>
           <div class="flex justify-between gap-4"><dt class="text-gray-500">Birim Kurye</dt><dd>{{ money_excl_vat($earning['courier_unit_price']) }}</dd></div>
+        @elseif ($earning['pricing_model'] === 'hourly')
+          <div class="flex justify-between gap-4"><dt class="text-gray-500">Saat</dt><dd class="font-medium">{{ $earning['worked_hours'] > 0 ? number_format($earning['worked_hours'], 2, ',', '.').' sa' : '—' }}</dd></div>
+          <div class="flex justify-between gap-4"><dt class="text-gray-500">Saatlik Gelir</dt><dd>{{ money_excl_vat($earning['revenue_unit_price']) }}</dd></div>
+          <div class="flex justify-between gap-4"><dt class="text-gray-500">Saatlik Kurye</dt><dd>{{ money_excl_vat($earning['courier_unit_price']) }}</dd></div>
         @else
           <div class="flex justify-between gap-4"><dt class="text-gray-500">Sabit Gelir</dt><dd>{{ money_excl_vat($earning['revenue']) }}</dd></div>
           <div class="flex justify-between gap-4"><dt class="text-gray-500">Sabit Kurye Ödemesi</dt><dd>{{ money_excl_vat($earning['courier_payment']) }}</dd></div>
+        @endif
+        @if ($earning['pricing_model'] === 'per_package' && ($earning['worked_hours'] ?? 0) > 0)
+          <div class="flex justify-between gap-4"><dt class="text-gray-500">Saat</dt><dd class="font-medium">{{ number_format($earning['worked_hours'], 2, ',', '.') }} sa</dd></div>
         @endif
         <div class="flex justify-between gap-4"><dt class="text-gray-500">Ek Gelir</dt><dd class="text-emerald-600">+{{ money_excl_vat($earning['extra_income'] ?? 0) }}</dd></div>
         <div class="flex justify-between gap-4"><dt class="text-gray-500">Ek Gider</dt><dd class="text-red-600">−{{ money_excl_vat($earning['extra_expense'] ?? 0) }}</dd></div>

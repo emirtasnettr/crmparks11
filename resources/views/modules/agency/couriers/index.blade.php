@@ -44,7 +44,7 @@
                     name="agency_id"
                     label="Acente"
                     :selected="$filters['agency_id']"
-                    :options="array_merge(['all' => 'Tümü'], collect($agencies)->mapWithKeys(fn ($a) => [$a['id'] => $a['name']])->all())"
+                    :options="filter_select_options(collect($agencies)->mapWithKeys(fn ($a) => [$a['id'] => $a['name']])->all())"
                 />
 
                 <x-ui.select
@@ -63,14 +63,14 @@
                     name="vehicle_type"
                     label="Araç Tipi"
                     :selected="$filters['vehicle_type']"
-                    :options="array_merge(['all' => 'Tümü'], $vehicleTypes)"
+                    :options="filter_select_options($vehicleTypes)"
                 />
 
                 <x-ui.select
                     name="active_business"
                     label="Aktif İşletme"
                     :selected="$filters['active_business']"
-                    :options="array_merge(['all' => 'Tümü'], collect($businesses)->mapWithKeys(fn ($b) => [$b => $b])->all())"
+                    :options="filter_select_options(collect($businesses)->mapWithKeys(fn ($b) => [$b => $b])->all())"
                 />
             </div>
 

@@ -37,14 +37,14 @@
                     name="agency_id"
                     label="Acente"
                     :selected="$filters['agency_id']"
-                    :options="array_merge(['all' => 'Tümü'], collect($agencies)->mapWithKeys(fn ($a) => [$a['id'] => $a['name']])->all())"
+                    :options="filter_select_options(collect($agencies)->mapWithKeys(fn ($a) => [$a['id'] => $a['name']])->all())"
                 />
 
                 <x-ui.select
                     name="contract_type"
                     label="Sözleşme Türü"
                     :selected="$filters['contract_type']"
-                    :options="array_merge(['all' => 'Tümü'], $contractTypes)"
+                    :options="filter_select_options($contractTypes)"
                 />
 
                 <x-ui.select
@@ -64,14 +64,14 @@
                     name="start_date"
                     label="Başlangıç Tarihi"
                     :selected="$filters['start_date']"
-                    :options="array_merge(['all' => 'Tümü'], $startDateFilters)"
+                    :options="filter_select_options($startDateFilters)"
                 />
 
                 <x-ui.select
                     name="end_date"
                     label="Bitiş Tarihi"
                     :selected="$filters['end_date']"
-                    :options="array_merge(['all' => 'Tümü'], $endDateFilters)"
+                    :options="filter_select_options($endDateFilters)"
                 />
             </div>
 

@@ -32,7 +32,8 @@
             "Database\\Seeders\\": "database/seeders/"
         },
         "files": [
-            "app/Support/money.php"
+            "app/Support/money.php",
+            "app/Support/filter_select_options.php"
         ]
     },
     "autoload-dev": {

@@ -85,14 +85,6 @@
             </div>
         </x-ui.card>
     @else
-        @if ($activeCourierCount === 0)
-            <x-ui.card class="mt-6 border-l-4 border-l-amber-500">
-                <p class="text-sm text-gray-700 dark:text-slate-300">
-                    Bu işletmenin aktif vardiya kadrosunda henüz kurye yok. Vardiya oluşturup kurye atayarak kadro oluşturun.
-                </p>
-            </x-ui.card>
-        @endif
-
         <div class="mt-6 mb-2 flex items-end justify-between gap-3">
             <div>
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Vardiya Şablonları</h2>

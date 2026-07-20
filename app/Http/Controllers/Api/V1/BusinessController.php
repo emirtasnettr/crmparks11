@@ -25,7 +25,7 @@ class BusinessController extends ApiController
             'search' => $request->string('search')->toString(),
             'status' => $request->string('status')->toString() ?: 'all',
             'city' => $request->string('city')->toString() ?: 'all',
-            'pricing_model' => $request->string('pricing_model')->toString() ?: 'all',
+            'work_type' => $request->string('work_type')->toString() ?: 'all',
         ];
 
         return $this->paginateCollection(

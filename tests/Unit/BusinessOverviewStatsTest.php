@@ -3,10 +3,8 @@
 namespace Tests\Unit;
 
 use App\Models\EarningLine;
-use App\Models\PricingModelType;
 use App\Models\User;
 use App\Modules\Business\Models\Business;
-use App\Modules\Business\Models\BusinessPricing;
 use App\Modules\Business\Data\BusinessOverviewStats;
 use App\Modules\Business\Services\BusinessPresenter;
 use App\Modules\Courier\Models\Courier;
@@ -56,17 +54,11 @@ class BusinessOverviewStatsTest extends TestCase
     {
         $user = User::factory()->create();
         $business = Business::factory()->create(['created_by' => $user->id]);
-        $pricingModel = PricingModelType::query()->where('code', 'per_package')->firstOrFail();
 
-        $business->pricings()->delete();
-        BusinessPricing::query()->create([
-            'business_id' => $business->id,
-            'pricing_model_type_id' => $pricingModel->id,
-            'customer_unit_price' => 62.50,
-            'courier_unit_price' => 41.25,
-            'effective_from' => now()->toDateString(),
-            'is_active' => true,
-            'created_by' => $user->id,
+        $business->activeCommercialContract?->update([
+            'business_amount' => 62.50,
+            'courier_amount' => 41.25,
+            'net_profit' => 21.25,
         ]);
 
         $stats = BusinessOverviewStats::forBusiness(
@@ -80,13 +72,13 @@ class BusinessOverviewStatsTest extends TestCase
         $this->assertSame(21.25, $stats['net_per_package']);
     }
 
-    public function test_unit_prices_fall_back_to_zero_without_active_pricing(): void
+    public function test_unit_prices_fall_back_to_zero_without_active_contract(): void
     {
         $business = Business::factory()->create();
-        $business->pricings()->delete();
-        $business->load('activePricing');
+        $business->commercialContracts()->delete();
+        $business->unsetRelation('activeCommercialContract');
 
-        $unitPrices = app(BusinessPresenter::class)->unitPrices($business);
+        $unitPrices = app(BusinessPresenter::class)->unitPrices($business->fresh());
 
         $this->assertFalse($unitPrices['from_profile']);
         $this->assertSame(0.0, $unitPrices['revenue_unit']);

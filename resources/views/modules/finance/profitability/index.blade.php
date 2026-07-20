@@ -19,15 +19,15 @@
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
                 <x-ui.select name="date_range" label="Tarih Aralığı" :selected="$filters['date_range']" :options="$dateRanges" />
                 <x-ui.select name="business_id" label="İşletme" :selected="$filters['business_id']"
-                    :options="array_merge(['all' => 'Tümü'], collect($businesses)->mapWithKeys(fn ($b) => [$b['id'] => $b['name']])->all())" />
+                    :options="filter_select_options(collect($businesses)->mapWithKeys(fn ($b) => [$b['id'] => $b['name']])->all())" />
                 <x-ui.select name="courier_id" label="Kurye" :selected="$filters['courier_id']"
-                    :options="array_merge(['all' => 'Tümü'], collect($couriers)->mapWithKeys(fn ($c) => [$c['id'] => $c['name']])->all())" />
+                    :options="filter_select_options(collect($couriers)->mapWithKeys(fn ($c) => [$c['id'] => $c['name']])->all())" />
                 <x-ui.select name="agency_id" label="Acente" :selected="$filters['agency_id']"
-                    :options="array_merge(['all' => 'Tümü'], collect($agencies)->mapWithKeys(fn ($a) => [$a['id'] => $a['name']])->all())" />
+                    :options="filter_select_options(collect($agencies)->mapWithKeys(fn ($a) => [$a['id'] => $a['name']])->all())" />
                 <x-ui.select name="city" label="İl" :selected="$filters['city']"
-                    :options="array_merge(['all' => 'Tümü'], collect($cities)->mapWithKeys(fn ($c) => [$c => $c])->all())" />
+                    :options="filter_select_options(collect($cities)->mapWithKeys(fn ($c) => [$c => $c])->all())" />
                 <x-ui.select name="pricing_model" label="Çalışma Modeli" :selected="$filters['pricing_model']"
-                    :options="array_merge(['all' => 'Tümü'], $pricingModels)" />
+                    :options="filter_select_options($pricingModels)" />
                 <x-ui.select name="profit_margin" label="Kâr Marjı" :selected="$filters['profit_margin']"
                     :options="$profitMarginFilters" />
             </div>
