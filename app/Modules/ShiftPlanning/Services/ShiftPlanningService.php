@@ -8,8 +8,8 @@ use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\ShiftPlanning\Data\ShiftPlanningFormData;
 use App\Modules\ShiftPlanning\Models\BusinessShift;
-use App\Modules\ShiftPlanning\Models\BusinessShiftCourier;
 use App\Modules\ShiftPlanning\Models\BusinessShiftJokerAssignment;
+use App\Modules\ShiftPlanning\Support\ShiftCourierConflictChecker;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +19,7 @@ class ShiftPlanningService
 {
     public function __construct(
         private readonly ShiftPlanningPresenter $presenter,
+        private readonly ShiftCourierConflictChecker $conflicts,
     ) {}
 
     /**
@@ -73,32 +74,14 @@ class ShiftPlanningService
     }
 
     /**
+     * Vardiya kadrosu için tüm aktif kuryeler (işletme ataması zorunlu değil).
+     *
      * @return array<int, array{id: int, name: string, phone: string}>
      */
-    public function availableCouriers(int $businessId): array
+    public function availableCouriers(int $businessId = 0): array
     {
-        $assignedIds = BusinessCourierAssignment::query()
-            ->where('business_id', $businessId)
-            ->currentlyActive()
-            ->pluck('courier_id');
-
-        $onRosterIds = BusinessShiftCourier::query()
-            ->whereHas('shift', fn ($query) => $query->where('business_id', $businessId))
-            ->pluck('courier_id');
-
-        $courierIds = $assignedIds
-            ->merge($onRosterIds)
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values()
-            ->all();
-
-        if ($courierIds === []) {
-            return [];
-        }
-
         return Courier::query()
-            ->whereIn('id', $courierIds)
+            ->where('status', 'active')
             ->orderBy('full_name')
             ->get(['id', 'full_name', 'phone'])
             ->map(fn (Courier $courier) => [
@@ -132,7 +115,7 @@ class ShiftPlanningService
 
             $courierIds = $this->normalizeCourierIds($data['courier_ids'] ?? []);
             if ($courierIds !== []) {
-                $this->assertCouriersBelongToBusiness((int) $shift->business_id, $courierIds);
+                $this->conflicts->assertNoRosterConflicts($courierIds, $this->schedulePayload($shift));
                 $shift->rosterCouriers()->sync($courierIds);
             }
 
@@ -145,6 +128,24 @@ class ShiftPlanningService
      */
     public function update(BusinessShift $shift, array $data): BusinessShift
     {
+        $rosterIds = $shift->rosterCouriers()->pluck('couriers.id')->map(fn ($id) => (int) $id)->all();
+
+        if ($rosterIds !== []) {
+            $this->conflicts->assertNoRosterConflicts(
+                $rosterIds,
+                [
+                    'start_date' => $data['start_date'] ?? $shift->start_date,
+                    'end_date' => $data['end_date'] ?? $shift->end_date,
+                    'start_time' => $data['start_time'],
+                    'end_time' => $data['end_time'],
+                    'days_of_week' => $shift->days_of_week,
+                    'excluded_dates' => $shift->excluded_dates,
+                ],
+                $shift->id,
+                'start_time',
+            );
+        }
+
         $shift->update([
             'name' => $data['name'],
             'start_time' => $data['start_time'],
@@ -167,13 +168,19 @@ class ShiftPlanningService
     public function syncRoster(BusinessShift $shift, array $courierIds): BusinessShift
     {
         $normalized = $this->normalizeCourierIds($courierIds);
-        $existing = $shift->rosterCouriers()->pluck('couriers.id')->all();
-        $this->assertCouriersBelongToBusiness($shift->business_id, $normalized, $existing);
 
         if (count($normalized) > max(1, (int) $shift->required_headcount)) {
             throw ValidationException::withMessages([
                 'courier_ids' => "Bu vardiyada en fazla {$shift->required_headcount} kişi çalışabilir.",
             ]);
+        }
+
+        if ($normalized !== []) {
+            $this->conflicts->assertNoRosterConflicts(
+                $normalized,
+                $this->schedulePayload($shift),
+                $shift->id,
+            );
         }
 
         DB::transaction(function () use ($shift, $normalized): void {
@@ -218,7 +225,12 @@ class ShiftPlanningService
             ]);
         }
 
-        $this->assertCouriersBelongToBusiness($shift->business_id, [$jokerId]);
+        $this->conflicts->assertNoSingleDayConflict(
+            $jokerId,
+            $workDate,
+            $this->schedulePayload($shift),
+            $shift->id,
+        );
 
         return BusinessShiftJokerAssignment::query()->updateOrCreate(
             [
@@ -335,30 +347,24 @@ class ShiftPlanningService
     }
 
     /**
-     * @param  array<int, int>  $courierIds
-     * @param  array<int, int>  $alreadyOnShift
+     * @return array{
+     *     start_date: mixed,
+     *     end_date: mixed,
+     *     start_time: mixed,
+     *     end_time: mixed,
+     *     days_of_week: mixed,
+     *     excluded_dates: mixed,
+     * }
      */
-    private function assertCouriersBelongToBusiness(int $businessId, array $courierIds, array $alreadyOnShift = []): void
+    private function schedulePayload(BusinessShift $shift): array
     {
-        if ($courierIds === []) {
-            return;
-        }
-
-        $allowed = BusinessCourierAssignment::query()
-            ->where('business_id', $businessId)
-            ->currentlyActive()
-            ->pluck('courier_id')
-            ->map(fn ($id) => (int) $id)
-            ->merge(collect($alreadyOnShift)->map(fn ($id) => (int) $id))
-            ->unique()
-            ->all();
-
-        $invalid = array_values(array_diff($courierIds, $allowed));
-
-        if ($invalid !== []) {
-            throw ValidationException::withMessages([
-                'courier_ids' => 'Seçilen kuryeler bu işletmeye atanmış olmalıdır.',
-            ]);
-        }
+        return [
+            'start_date' => $shift->start_date,
+            'end_date' => $shift->end_date,
+            'start_time' => $shift->start_time,
+            'end_time' => $shift->end_time,
+            'days_of_week' => $shift->days_of_week,
+            'excluded_dates' => $shift->excluded_dates,
+        ];
     }
 }

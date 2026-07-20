@@ -2,9 +2,7 @@
 
 namespace App\Modules\ShiftPlanning\Requests;
 
-use App\Modules\Business\Models\BusinessCourierAssignment;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class StoreBusinessShiftRequest extends FormRequest
 {
@@ -53,16 +51,7 @@ class StoreBusinessShiftRequest extends FormRequest
      */
     public function rules(): array
     {
-        $businessId = (int) $this->input('business_id');
         $headcount = max(1, (int) $this->input('required_headcount', 1));
-
-        $allowedCourierIds = $businessId > 0
-            ? BusinessCourierAssignment::query()
-                ->where('business_id', $businessId)
-                ->currentlyActive()
-                ->pluck('courier_id')
-                ->all()
-            : [];
 
         return [
             'business_id' => ['required', 'integer', 'exists:businesses,id'],
@@ -75,7 +64,7 @@ class StoreBusinessShiftRequest extends FormRequest
             'notes' => ['nullable', 'string', 'max:2000'],
             'is_active' => ['sometimes', 'boolean'],
             'courier_ids' => ['nullable', 'array', 'max:'.$headcount],
-            'courier_ids.*' => ['integer', Rule::in($allowedCourierIds)],
+            'courier_ids.*' => ['integer', 'exists:couriers,id'],
         ];
     }
 
@@ -95,7 +84,7 @@ class StoreBusinessShiftRequest extends FormRequest
             'required_headcount.required' => 'Kişi sayısı zorunludur.',
             'required_headcount.min' => 'En az 1 kişi tanımlanmalıdır.',
             'courier_ids.max' => 'Atanan kurye sayısı vardiya kişi sayısını aşamaz.',
-            'courier_ids.*.in' => 'Seçilen kuryeler bu işletmeye atanmış olmalıdır.',
+            'courier_ids.*.exists' => 'Seçilen kuryeler geçerli olmalıdır.',
         ];
     }
 }

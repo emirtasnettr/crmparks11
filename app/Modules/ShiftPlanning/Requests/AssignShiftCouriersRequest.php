@@ -2,10 +2,8 @@
 
 namespace App\Modules\ShiftPlanning\Requests;
 
-use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\ShiftPlanning\Models\BusinessShift;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class AssignShiftCouriersRequest extends FormRequest
 {
@@ -31,26 +29,11 @@ class AssignShiftCouriersRequest extends FormRequest
     {
         /** @var BusinessShift|null $shift */
         $shift = BusinessShift::query()->find((int) $this->route('id'));
-        $businessId = $shift?->business_id;
         $headcount = max(1, (int) ($shift?->required_headcount ?? 1));
-
-        $existing = $shift
-            ? $shift->rosterCouriers()->pluck('couriers.id')->all()
-            : [];
-
-        $allowedCourierIds = $businessId
-            ? BusinessCourierAssignment::query()
-                ->where('business_id', $businessId)
-                ->currentlyActive()
-                ->pluck('courier_id')
-                ->merge($existing)
-                ->unique()
-                ->all()
-            : [];
 
         return [
             'courier_ids' => ['nullable', 'array', 'max:'.$headcount],
-            'courier_ids.*' => ['integer', Rule::in($allowedCourierIds)],
+            'courier_ids.*' => ['integer', 'exists:couriers,id'],
         ];
     }
 
@@ -61,7 +44,7 @@ class AssignShiftCouriersRequest extends FormRequest
     {
         return [
             'courier_ids.max' => 'Atanan kurye sayısı vardiya kişi sayısını aşamaz.',
-            'courier_ids.*.in' => 'Seçilen kuryeler bu işletmeye atanmış olmalıdır.',
+            'courier_ids.*.exists' => 'Seçilen kuryeler geçerli olmalıdır.',
         ];
     }
 }

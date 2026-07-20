@@ -62,8 +62,6 @@ class ShiftPlanningTest extends TestCase
         $business = $this->createBusiness($user);
         $courier = $this->createCourier($user, ['full_name' => 'Zeynep Ak']);
 
-        $this->assignCourier($business, $courier, $user);
-
         $response = $this->actingAs($user)->post(route('shift-planning.store'), [
             'business_id' => $business->id,
             'name' => 'Sabah',
@@ -84,6 +82,140 @@ class ShiftPlanningTest extends TestCase
             'business_shift_id' => $shift->id,
             'courier_id' => $courier->id,
         ]);
+    }
+
+    public function test_courier_can_join_shift_without_business_assignment(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $courier = $this->createCourier($user, ['full_name' => 'Emir Taş']);
+
+        $this->actingAs($user)->post(route('shift-planning.store'), [
+            'business_id' => $business->id,
+            'name' => 'Sabah',
+            'start_time' => '09:00',
+            'end_time' => '12:00',
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-08-03',
+            'required_headcount' => 1,
+            'courier_ids' => [$courier->id],
+            'is_active' => '1',
+        ])->assertRedirect(route('shift-planning.index', ['business_id' => $business->id]));
+
+        $this->assertDatabaseHas('business_shift_couriers', [
+            'courier_id' => $courier->id,
+        ]);
+        $this->assertDatabaseCount('business_courier_assignments', 0);
+    }
+
+    public function test_courier_can_work_non_overlapping_shifts_at_different_businesses(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $businessA = $this->createBusiness($user, ['brand_name' => 'A Market']);
+        $businessB = $this->createBusiness($user, ['brand_name' => 'B Market', 'company_name' => 'B Market A.Ş.']);
+        $courier = $this->createCourier($user, ['full_name' => 'Emir Taş']);
+
+        $this->actingAs($user)->post(route('shift-planning.store'), [
+            'business_id' => $businessA->id,
+            'name' => 'Sabah A',
+            'start_time' => '09:00',
+            'end_time' => '12:00',
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-08-03',
+            'required_headcount' => 1,
+            'courier_ids' => [$courier->id],
+            'is_active' => '1',
+        ])->assertRedirect();
+
+        $this->actingAs($user)->post(route('shift-planning.store'), [
+            'business_id' => $businessB->id,
+            'name' => 'Öğleden Sonra B',
+            'start_time' => '13:00',
+            'end_time' => '17:00',
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-08-03',
+            'required_headcount' => 1,
+            'courier_ids' => [$courier->id],
+            'is_active' => '1',
+        ])->assertRedirect();
+
+        $this->assertSame(2, BusinessShiftCourier::query()->where('courier_id', $courier->id)->count());
+    }
+
+    public function test_courier_cannot_have_overlapping_shifts_at_different_businesses(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $businessA = $this->createBusiness($user, ['brand_name' => 'A Market']);
+        $businessB = $this->createBusiness($user, ['brand_name' => 'B Market', 'company_name' => 'B Market A.Ş.']);
+        $courier = $this->createCourier($user, ['full_name' => 'Emir Taş']);
+
+        $this->actingAs($user)->post(route('shift-planning.store'), [
+            'business_id' => $businessA->id,
+            'name' => 'Sabah A',
+            'start_time' => '09:00',
+            'end_time' => '12:00',
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-08-03',
+            'required_headcount' => 1,
+            'courier_ids' => [$courier->id],
+            'is_active' => '1',
+        ])->assertRedirect();
+
+        $this->actingAs($user)
+            ->from(route('shift-planning.index', ['business_id' => $businessB->id]))
+            ->post(route('shift-planning.store'), [
+                'business_id' => $businessB->id,
+                'name' => 'Sabah B',
+                'start_time' => '09:00',
+                'end_time' => '12:00',
+                'start_date' => '2026-08-01',
+                'end_date' => '2026-08-03',
+                'required_headcount' => 1,
+                'courier_ids' => [$courier->id],
+                'is_active' => '1',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasErrors('courier_ids');
+
+        $this->assertSame(1, BusinessShiftCourier::query()->where('courier_id', $courier->id)->count());
+    }
+
+    public function test_adjacent_shift_times_do_not_conflict(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $businessA = $this->createBusiness($user, ['brand_name' => 'A Market']);
+        $businessB = $this->createBusiness($user, ['brand_name' => 'B Market', 'company_name' => 'B Market A.Ş.']);
+        $courier = $this->createCourier($user, ['full_name' => 'Emir Taş']);
+
+        $this->actingAs($user)->post(route('shift-planning.store'), [
+            'business_id' => $businessA->id,
+            'name' => 'Sabah',
+            'start_time' => '09:00',
+            'end_time' => '12:00',
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-08-03',
+            'required_headcount' => 1,
+            'courier_ids' => [$courier->id],
+            'is_active' => '1',
+        ])->assertRedirect();
+
+        $this->actingAs($user)->post(route('shift-planning.store'), [
+            'business_id' => $businessB->id,
+            'name' => 'Öğle',
+            'start_time' => '12:00',
+            'end_time' => '17:00',
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-08-03',
+            'required_headcount' => 1,
+            'courier_ids' => [$courier->id],
+            'is_active' => '1',
+        ])->assertRedirect();
+
+        $this->assertSame(2, BusinessShiftCourier::query()->where('courier_id', $courier->id)->count());
     }
 
     public function test_can_create_shift_with_custom_date_range(): void

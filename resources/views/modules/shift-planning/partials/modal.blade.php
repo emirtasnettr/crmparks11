@@ -97,7 +97,7 @@
                     </label>
                 </template>
                 <template x-if="!availableCouriers.length">
-                    <p class="p-3 text-sm text-gray-500">Atanabilir kurye yok.</p>
+                    <p class="p-3 text-sm text-gray-500">Aktif kurye bulunamadı.</p>
                 </template>
             </div>
 
