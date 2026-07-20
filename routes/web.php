@@ -8,6 +8,7 @@ use App\Modules\Agency\Controllers\AgencyDocumentController;
 use App\Modules\Agency\Controllers\AgencyEarningController;
 use App\Modules\Agency\Controllers\AgencyController;
 use App\Modules\Business\Controllers\BusinessActivityController;
+use App\Modules\Business\Controllers\BusinessCommercialContractController;
 use App\Modules\Business\Controllers\BusinessContactController;
 use App\Modules\Business\Controllers\BusinessContractController;
 use App\Modules\Business\Controllers\BusinessController;
@@ -162,6 +163,11 @@ Route::middleware('auth')->group(function () {
             Route::get('/sozlesmeler/{id}', [BusinessContractController::class, 'show'])->name('contracts.show');
             Route::delete('/sozlesmeler/{id}', [BusinessContractController::class, 'destroy'])->name('contracts.destroy');
             Route::post('/sozlesmeler/{id}/pasife-al', [BusinessContractController::class, 'deactivate'])->middleware('permission:business.update')->name('contracts.deactivate');
+            Route::get('/kontratlar', [BusinessCommercialContractController::class, 'index'])->name('commercial-contracts.index');
+            Route::post('/kontratlar', [BusinessCommercialContractController::class, 'store'])->middleware('permission:business.update')->name('commercial-contracts.store');
+            Route::put('/kontratlar/{id}', [BusinessCommercialContractController::class, 'update'])->middleware('permission:business.update')->name('commercial-contracts.update');
+            Route::post('/kontratlar/{id}/sonlandir', [BusinessCommercialContractController::class, 'end'])->middleware('permission:business.update')->name('commercial-contracts.end');
+            Route::get('/kontratlar/{id}', [BusinessCommercialContractController::class, 'show'])->name('commercial-contracts.show');
             Route::get('/hakedisler', [BusinessEarningController::class, 'index'])->name('earnings.index');
             Route::get('/hakedisler/export', [BusinessEarningController::class, 'export'])->name('earnings.export');
             Route::get('/hakedisler/sablon', [BusinessEarningController::class, 'template'])

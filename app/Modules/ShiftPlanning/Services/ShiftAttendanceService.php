@@ -3,6 +3,7 @@
 namespace App\Modules\ShiftPlanning\Services;
 
 use App\Models\User;
+use App\Modules\Business\Services\BusinessCommercialContractService;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\Courier\Support\CourierAvatar;
 use App\Modules\ShiftPlanning\Models\BusinessShift;
@@ -19,6 +20,7 @@ class ShiftAttendanceService
 {
     public function __construct(
         private readonly ShiftAttendancePresenter $presenter,
+        private readonly BusinessCommercialContractService $commercialContracts,
     ) {}
 
     public function resolveCourierForUser(User $user): Courier
@@ -102,9 +104,10 @@ class ShiftAttendanceService
 
         return $shifts->map(function (BusinessShift $shift) use ($day, $attendances, $jokerShiftIds) {
             $attendance = $attendances->get($shift->id);
-            $pricing = $shift->business?->activePricing;
-            $pricingCode = $pricing?->pricingModelType?->code;
+            $contract = $this->commercialContracts->forBusinessOnDate((int) $shift->business_id, $day);
+            $pricingCode = $contract?->work_type;
             $withinStart = ShiftAttendanceRules::isWithinCourierStartWindow($shift, $day);
+            $workTypes = \App\Modules\Business\Data\BusinessCommercialContractFormData::workTypes();
 
             return [
                 'shift_id' => $shift->id,
@@ -117,8 +120,8 @@ class ShiftAttendanceService
                 'work_date_formatted' => $day->format('d.m.Y'),
                 'is_joker' => $jokerShiftIds->contains($shift->id),
                 'pricing_model' => $pricingCode,
-                'pricing_model_label' => $pricing?->pricingModelType?->label ?? '—',
-                'hourly_rate' => $pricingCode === 'hourly' ? (float) $pricing?->courier_unit_price : null,
+                'pricing_model_label' => $pricingCode ? ($workTypes[$pricingCode] ?? $pricingCode) : '—',
+                'hourly_rate' => $contract?->courierHourlyRateForAttendance(),
                 'attendance' => $attendance ? $this->presenter->row($attendance) : null,
                 'can_start' => $attendance === null && $withinStart,
                 'can_end' => $attendance?->isInProgress() ?? false,
@@ -178,9 +181,9 @@ class ShiftAttendanceService
                 ]);
             }
 
-            $pricing = $shift->business?->activePricing;
-            $pricing?->loadMissing('pricingModelType');
-            $pricingCode = $pricing?->pricingModelType?->code;
+            $contract = $this->commercialContracts->forBusinessOnDate((int) $shift->business_id, $day);
+            $pricingCode = $contract?->work_type;
+            $hourlyRate = $contract?->courierHourlyRateForAttendance();
 
             $startedAt = $options['started_at'] ?? null;
             if (! $startedAt instanceof Carbon) {
@@ -190,12 +193,13 @@ class ShiftAttendanceService
             return BusinessShiftAttendance::query()->create([
                 'business_shift_id' => $shift->id,
                 'business_id' => $shift->business_id,
+                'commercial_contract_id' => $contract?->id,
                 'courier_id' => $courier->id,
                 'work_date' => $day->toDateString(),
                 'started_at' => $startedAt,
                 'status' => 'in_progress',
                 'worked_minutes' => 0,
-                'hourly_rate' => $pricingCode === 'hourly' ? $pricing?->courier_unit_price : null,
+                'hourly_rate' => $hourlyRate,
                 'pricing_model' => $pricingCode,
                 'notes' => $options['notes'] ?? null,
             ]);
@@ -837,8 +841,20 @@ class ShiftAttendanceService
                 ? (float) $attendance->hourly_rate
                 : null;
 
-            if ($hourlyRate === null && $attendance->pricing_model === 'hourly') {
-                $hourlyRate = (float) ($attendance->business?->activePricing?->courier_unit_price ?? 0);
+            if ($hourlyRate === null) {
+                $contract = $attendance->commercial_contract_id
+                    ? $this->commercialContracts->find((int) $attendance->commercial_contract_id)
+                    : $this->commercialContracts->forBusinessOnDate(
+                        (int) $attendance->business_id,
+                        $workDate,
+                    );
+                $hourlyRate = $contract?->courierHourlyRateForAttendance();
+                if ($attendance->pricing_model === null && $contract !== null) {
+                    $attendance->pricing_model = $contract->work_type;
+                }
+                if ($attendance->commercial_contract_id === null && $contract !== null) {
+                    $attendance->commercial_contract_id = $contract->id;
+                }
             }
 
             $earnings = null;
@@ -859,6 +875,8 @@ class ShiftAttendanceService
                 'worked_minutes' => $minutes,
                 'hourly_rate' => $hourlyRate,
                 'earnings_amount' => $earnings,
+                'pricing_model' => $attendance->pricing_model,
+                'commercial_contract_id' => $attendance->commercial_contract_id,
                 'notes' => $notes !== '' ? $notes : null,
             ]);
 

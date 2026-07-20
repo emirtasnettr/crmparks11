@@ -16,6 +16,7 @@ class BusinessShiftAttendance extends Model
     protected $fillable = [
         'business_shift_id',
         'business_id',
+        'commercial_contract_id',
         'courier_id',
         'work_date',
         'started_at',
@@ -48,6 +49,11 @@ class BusinessShiftAttendance extends Model
     public function business(): BelongsTo
     {
         return $this->belongsTo(Business::class);
+    }
+
+    public function commercialContract(): BelongsTo
+    {
+        return $this->belongsTo(\App\Modules\Business\Models\BusinessCommercialContract::class, 'commercial_contract_id');
     }
 
     public function courier(): BelongsTo

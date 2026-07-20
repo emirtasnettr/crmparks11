@@ -49,6 +49,7 @@
             <x-entity.tab-trigger name="overview" label="Genel Bakış" />
             @if ($canViewRestrictedTabs)
                 <x-entity.tab-trigger name="contacts" label="Yetkililer" />
+                <x-entity.tab-trigger name="commercial-contracts" label="Kontrat" />
                 <x-entity.tab-trigger name="contracts" label="Sözleşmeler" />
                 <x-entity.tab-trigger name="documents" label="Evraklar" />
                 <x-entity.tab-trigger name="activities" label="Hareket Geçmişi" />
@@ -204,6 +205,90 @@
                 'titles' => $contactTitles,
                 'businesses' => [],
             ])
+        </x-entity.tab-panel>
+
+        <x-entity.tab-panel name="commercial-contracts">
+            <div x-data="{ openCommercialContractModal: false }">
+                <x-ui.card title="Kontratlar">
+                    <x-slot:actions>
+                        @can('business.update')
+                            <x-entity.tab-add-button label="Yeni Kontrat" @click="openCommercialContractModal = true" />
+                        @endcan
+                    </x-slot:actions>
+
+                    @if (! empty($business['active_commercial_contract']))
+                        <div class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 text-sm dark:border-emerald-900/40 dark:bg-emerald-950/20">
+                            <p class="font-medium text-emerald-900 dark:text-emerald-200">Aktif kontrat</p>
+                            <p class="mt-1 text-emerald-800 dark:text-emerald-300">
+                                {{ $business['active_commercial_contract']['work_type_label'] }} ·
+                                {{ $business['active_commercial_contract']['start_date_formatted'] }} –
+                                {{ $business['active_commercial_contract']['end_date_formatted'] }} ·
+                                Alınan {{ $business['active_commercial_contract']['business_amount_formatted'] }} ·
+                                Verilen {{ $business['active_commercial_contract']['courier_amount_formatted'] }} ·
+                                Net {{ $business['active_commercial_contract']['net_profit_formatted'] }}
+                            </p>
+                        </div>
+                    @endif
+
+                    @if (count($business['commercial_contracts'] ?? []))
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead>
+                                    <tr class="border-b border-gray-200 dark:border-slate-700">
+                                        <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Tarih</th>
+                                        <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Çalışma</th>
+                                        <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Alınan</th>
+                                        <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Verilen</th>
+                                        <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Net</th>
+                                        <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Periyot</th>
+                                        <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Durum</th>
+                                        <th class="pb-2 font-medium text-gray-500 dark:text-slate-400"></th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
+                                    @foreach ($business['commercial_contracts'] as $commercial)
+                                        <tr>
+                                            <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $commercial['start_date_formatted'] }} – {{ $commercial['end_date_formatted'] }}</td>
+                                            <td class="py-2.5 text-gray-900 dark:text-white">{{ $commercial['work_type_label'] }}</td>
+                                            <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $commercial['business_amount_formatted'] }}</td>
+                                            <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $commercial['courier_amount_formatted'] }}</td>
+                                            <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $commercial['net_profit_formatted'] }}</td>
+                                            <td class="py-2.5 text-gray-600 dark:text-slate-400">{{ $commercial['payment_period_label'] }}</td>
+                                            <td class="py-2.5">
+                                                <span @class([
+                                                    'inline-flex rounded-md px-2 py-0.5 text-xs font-medium',
+                                                    'bg-emerald-100 text-emerald-800' => $commercial['is_active'],
+                                                    'bg-gray-100 text-gray-600' => ! $commercial['is_active'],
+                                                ])>{{ $commercial['status_label'] }}</span>
+                                            </td>
+                                            <td class="py-2.5 text-right">
+                                                <a href="{{ $commercial['show_url'] }}" class="text-xs font-medium text-primary-600 hover:underline">Detay</a>
+                                                @if ($commercial['is_active'])
+                                                    @can('business.update')
+                                                        <form method="POST" action="{{ route('businesses.commercial-contracts.end', $commercial['id']) }}" class="inline" onsubmit="return confirm('Kontrat sonlandırılsın mı? Geçmiş kayıtlar korunur.')">
+                                                            @csrf
+                                                            <button type="submit" class="ml-2 text-xs font-medium text-rose-600 hover:underline">Sonlandır</button>
+                                                        </form>
+                                                    @endcan
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        <p class="text-sm text-gray-500 dark:text-slate-400">Henüz kontrat yok. Vardiya hakedişi için aktif kontrat tanımlayın.</p>
+                    @endif
+                </x-ui.card>
+
+                @include('modules.business.commercial-contracts.partials.modal', [
+                    'presetBusinessId' => $business['id'],
+                    'presetBusinessLabel' => $business['display_name'] ?? $business['brand_name'],
+                    'workTypes' => $commercialWorkTypes,
+                    'paymentPeriods' => $commercialPaymentPeriods,
+                ])
+            </div>
         </x-entity.tab-panel>
 
         <x-entity.tab-panel name="contracts" alpine-page="contractPage" :alpine-config="['businessId' => $business['id']]">

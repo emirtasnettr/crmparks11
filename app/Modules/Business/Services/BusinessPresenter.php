@@ -30,6 +30,8 @@ class BusinessPresenter
     private readonly BusinessContactPresenter $contactPresenter,
     private readonly BusinessContractService $contracts,
     private readonly BusinessContractPresenter $contractPresenter,
+    private readonly BusinessCommercialContractService $commercialContracts,
+    private readonly BusinessCommercialContractPresenter $commercialContractPresenter,
     private readonly BusinessDocumentService $documents,
     private readonly BusinessDocumentPresenter $documentPresenter,
     private readonly BusinessEarningService $earnings,
@@ -169,6 +171,14 @@ class BusinessPresenter
         ->map(fn (Contract $contract) => $this->contractPresenter->showRow($contract))
         ->values()
         ->all(),
+      'commercial_contracts' => $this->commercialContracts
+        ->forBusiness($business->id)
+        ->map(fn ($contract) => $this->commercialContractPresenter->indexRow($contract))
+        ->values()
+        ->all(),
+      'active_commercial_contract' => ($active = $this->commercialContracts->activeForBusiness($business->id))
+        ? $this->commercialContractPresenter->indexRow($active)
+        : null,
       'documents' => $this->documents
         ->forBusiness($business->id)
         ->map(fn (Document $document) => $this->documentPresenter->indexRow($document))
@@ -238,6 +248,15 @@ class BusinessPresenter
    */
   public function unitPrices(Business $business): array
   {
+    $contract = $this->commercialContracts->activeForBusiness($business->id);
+    if ($contract !== null) {
+      return [
+        'revenue_unit' => (float) $contract->business_amount,
+        'courier_unit' => (float) $contract->courier_amount,
+        'from_profile' => true,
+      ];
+    }
+
     $business->loadMissing('activePricing');
 
     if ($business->activePricing !== null) {
@@ -279,6 +298,11 @@ class BusinessPresenter
 
   private function pricingModelCode(Business $business): string
   {
+    $contract = $this->commercialContracts->activeForBusiness($business->id);
+    if ($contract !== null) {
+      return $contract->work_type;
+    }
+
     $business->loadMissing('activePricing.pricingModelType');
 
     return $business->activePricing?->pricingModelType?->code ?? 'per_package';

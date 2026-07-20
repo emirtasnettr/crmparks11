@@ -4,6 +4,7 @@ namespace App\Modules\Business\Controllers;
 
 use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
+use App\Modules\Business\Data\BusinessCommercialContractFormData;
 use App\Modules\Business\Data\BusinessContactFormData;
 use App\Modules\Business\Data\BusinessContractFormData;
 use App\Modules\Business\Data\BusinessDocumentFormData;
@@ -127,7 +128,7 @@ class BusinessController extends Controller
         if ($request->user()?->hasRole('operations_specialist')) {
             $tab = $request->string('tab')->toString();
 
-            if (in_array($tab, ['contacts', 'contracts', 'documents', 'activities'], true)) {
+            if (in_array($tab, ['contacts', 'contracts', 'commercial-contracts', 'documents', 'activities'], true)) {
                 return redirect()->route('businesses.show', ['id' => $id, 'tab' => 'overview']);
             }
         }
@@ -154,6 +155,8 @@ class BusinessController extends Controller
             'contactTitles' => BusinessContactFormData::titles(),
             'contractTypes' => BusinessContractFormData::contractTypes(),
             'documentTypes' => BusinessDocumentFormData::documentTypes(),
+            'commercialWorkTypes' => BusinessCommercialContractFormData::workTypes(),
+            'commercialPaymentPeriods' => BusinessCommercialContractFormData::paymentPeriods(),
         ]);
     }
 

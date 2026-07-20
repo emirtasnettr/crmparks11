@@ -7,6 +7,7 @@ use App\Models\City;
 use App\Models\District;
 use App\Models\User;
 use App\Modules\ShiftPlanning\Models\BusinessShift;
+use App\Modules\ShiftPlanning\Models\BusinessShiftCourier;
 use App\Support\HasBrandDisplayName;
 use Database\Factories\BusinessFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -89,6 +90,18 @@ class Business extends Model
         return $this->hasMany(BusinessShift::class);
     }
 
+    public function commercialContracts(): HasMany
+    {
+        return $this->hasMany(BusinessCommercialContract::class);
+    }
+
+    public function activeCommercialContract(): HasOne
+    {
+        return $this->hasOne(BusinessCommercialContract::class)
+            ->where('status', BusinessCommercialContract::STATUS_ACTIVE)
+            ->latestOfMany('start_date');
+    }
+
     public function contacts(): HasMany
     {
         return $this->hasMany(BusinessContact::class);
@@ -109,7 +122,7 @@ class Business extends Model
      */
     public function activeCourierCount(): int
     {
-        return (int) \App\Modules\ShiftPlanning\Models\BusinessShiftCourier::query()
+        return (int) BusinessShiftCourier::query()
             ->whereHas('shift', function ($query): void {
                 $query->where('business_id', $this->id)
                     ->where('is_active', true)

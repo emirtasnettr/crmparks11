@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Models\PricingModelType;
 use App\Models\User;
 use App\Modules\Business\Models\Business;
+use App\Modules\Business\Models\BusinessCommercialContract;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\Courier\Services\CourierUserProvisioner;
 use App\Modules\ShiftPlanning\Models\BusinessShift;
@@ -57,11 +57,15 @@ class CourierPortalShiftAttendanceTest extends TestCase
             'status' => 'active',
         ]);
 
-        $hourlyType = PricingModelType::query()->where('code', 'hourly')->firstOrFail();
-        $business->activePricing()?->update([
-            'pricing_model_type_id' => $hourlyType->id,
-            'customer_unit_price' => 200,
-            'courier_unit_price' => 150,
+        BusinessCommercialContract::factory()->hourly()->create([
+            'business_id' => $business->id,
+            'start_date' => '2026-07-01',
+            'end_date' => null,
+            'business_amount' => 200,
+            'courier_amount' => 150,
+            'net_profit' => 50,
+            'status' => 'active',
+            'created_by' => $admin->id,
         ]);
 
         $shift = BusinessShift::query()->create([
@@ -143,11 +147,14 @@ class CourierPortalShiftAttendanceTest extends TestCase
         $courier = Courier::factory()->create(['created_by' => $admin->id, 'status' => 'active']);
         $business = Business::factory()->create(['created_by' => $admin->id, 'status' => 'active']);
 
-        $hourlyType = PricingModelType::query()->where('code', 'hourly')->firstOrFail();
-        $business->activePricing()?->update([
-            'pricing_model_type_id' => $hourlyType->id,
-            'courier_unit_price' => 100,
-            'customer_unit_price' => 150,
+        BusinessCommercialContract::factory()->hourly()->create([
+            'business_id' => $business->id,
+            'start_date' => '2026-07-01',
+            'business_amount' => 150,
+            'courier_amount' => 100,
+            'net_profit' => 50,
+            'status' => 'active',
+            'created_by' => $admin->id,
         ]);
 
         $shift = BusinessShift::query()->create([
