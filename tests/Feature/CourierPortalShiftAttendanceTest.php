@@ -239,4 +239,29 @@ class CourierPortalShiftAttendanceTest extends TestCase
 
         $this->assertDatabaseCount('business_shift_attendances', 0);
     }
+
+    public function test_courier_portal_uses_mobile_nav_without_admin_chrome(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('super_admin');
+
+        $courier = Courier::factory()->create([
+            'created_by' => $admin->id,
+            'status' => 'active',
+            'full_name' => 'Portal Kurye',
+            'first_name' => 'Portal',
+            'last_name' => 'Kurye',
+        ]);
+        $user = app(CourierUserProvisioner::class)->ensureForCourier($courier);
+
+        $response = $this->actingAs($user)->get(route('courier-portal.dashboard'));
+
+        $response->assertOk();
+        $response->assertSee('Merhaba, Portal Kurye', false);
+        $response->assertSee('Çıkış Yap', false);
+        $response->assertDontSee('aria-label="Menüyü aç"', false);
+        $response->assertDontSee('aria-label="Ara"', false);
+        $response->assertDontSee('title="Bildirimler"', false);
+        $response->assertDontSee('>Radar</a>', false);
+    }
 }
