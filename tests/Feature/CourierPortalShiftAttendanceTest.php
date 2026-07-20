@@ -258,10 +258,11 @@ class CourierPortalShiftAttendanceTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Vardiya', false);
+        $response->assertSee('Gelecek Vardiyalar', false);
         $response->assertSee('Kazançlarım', false);
         $response->assertSee('Profil', false);
-        $response->assertSee('Bugünkü Vardiyalar', false);
         $response->assertSee('aria-label="Kurye menü"', false);
+        $response->assertDontSee('Bugünkü Vardiyalar', false);
         $response->assertDontSee('Merhaba,', false);
         $response->assertDontSee('Bu Ay Çalışma', false);
         $response->assertDontSee('Saatlik Hakediş', false);
@@ -281,5 +282,53 @@ class CourierPortalShiftAttendanceTest extends TestCase
             ->assertOk()
             ->assertSee('Profil', false)
             ->assertSee('Çıkış Yap', false);
+    }
+
+    public function test_courier_portal_lists_next_seven_upcoming_shifts(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-17 10:00:00'));
+
+        $admin = User::factory()->create();
+        $admin->assignRole('super_admin');
+
+        $courier = Courier::factory()->create([
+            'created_by' => $admin->id,
+            'status' => 'active',
+        ]);
+        $user = app(CourierUserProvisioner::class)->ensureForCourier($courier);
+
+        $business = Business::factory()->create([
+            'created_by' => $admin->id,
+            'status' => 'active',
+        ]);
+
+        $shift = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'name' => 'Akşam',
+            'start_time' => '16:00',
+            'end_time' => '23:00',
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-08-31',
+            'required_headcount' => 1,
+            'days_of_week' => [0, 1, 2, 3, 4, 5, 6],
+            'is_active' => true,
+            'created_by' => $admin->id,
+        ]);
+
+        BusinessShiftCourier::query()->create([
+            'business_shift_id' => $shift->id,
+            'courier_id' => $courier->id,
+        ]);
+
+        $payload = app(ShiftAttendanceService::class)->portalPayload($courier);
+        $this->assertCount(7, $payload['upcoming']);
+        $this->assertSame('2026-07-18', $payload['upcoming'][0]['work_date']);
+        $this->assertSame('2026-07-24', $payload['upcoming'][6]['work_date']);
+
+        $this->actingAs($user)
+            ->get(route('courier-portal.dashboard'))
+            ->assertOk()
+            ->assertSee('Gelecek Vardiyalar', false)
+            ->assertSee('Akşam', false);
     }
 }

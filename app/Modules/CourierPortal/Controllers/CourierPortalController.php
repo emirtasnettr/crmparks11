@@ -21,6 +21,7 @@ class CourierPortalController extends Controller
 
         return view('modules.courier-portal.dashboard', [
             'today' => $payload['today'],
+            'upcoming' => $payload['upcoming'],
         ]);
     }
 

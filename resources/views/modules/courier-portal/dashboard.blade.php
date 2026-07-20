@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="space-y-5 sm:space-y-6">
-    <x-ui.card title="Bugünkü Vardiyalar">
+    <x-ui.card title="Vardiya">
         @forelse ($today as $item)
             <div class="flex flex-col gap-3 border-b border-gray-100 py-4 last:border-0 last:pb-0 first:pt-0 sm:flex-row sm:items-center sm:justify-between">
                 <div class="min-w-0">
@@ -55,6 +55,30 @@
             </div>
         @empty
             <p class="text-sm text-gray-500">Bugün için atanmış vardiya bulunmuyor.</p>
+        @endforelse
+    </x-ui.card>
+
+    <x-ui.card title="Gelecek Vardiyalar">
+        @forelse ($upcoming as $item)
+            <div class="flex flex-col gap-1 border-b border-gray-100 py-4 last:border-0 last:pb-0 first:pt-0">
+                <p class="text-xs font-medium uppercase tracking-wide text-primary-600">
+                    {{ $item['work_date_formatted'] }}
+                </p>
+                <p class="font-semibold text-gray-900">
+                    {{ $item['shift_name'] }}
+                </p>
+                <p class="text-sm text-gray-500">
+                    {{ $item['business_name'] }} · {{ $item['start_time'] }}–{{ $item['end_time'] }}
+                </p>
+                <p class="text-xs text-gray-500">
+                    {{ $item['pricing_model_label'] }}
+                    @if ($item['hourly_rate'] !== null)
+                        · {{ number_format($item['hourly_rate'], 2, ',', '.') }} ₺/saat
+                    @endif
+                </p>
+            </div>
+        @empty
+            <p class="text-sm text-gray-500">Yaklaşan vardiya bulunmuyor.</p>
         @endforelse
     </x-ui.card>
 </div>

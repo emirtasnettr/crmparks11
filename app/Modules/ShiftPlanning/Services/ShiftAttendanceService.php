@@ -36,7 +36,12 @@ class ShiftAttendanceService
     }
 
     /**
-     * @return array{today: list<array<string, mixed>>, recent: list<array<string, mixed>>, summary: array<string, mixed>}
+     * @return array{
+     *     today: list<array<string, mixed>>,
+     *     upcoming: list<array<string, mixed>>,
+     *     recent: list<array<string, mixed>>,
+     *     summary: array<string, mixed>
+     * }
      */
     public function portalPayload(Courier $courier, ?Carbon $day = null): array
     {
@@ -44,7 +49,9 @@ class ShiftAttendanceService
 
         return [
             'today' => $this->todayShiftsForCourier($courier, $day)
-                ->map(fn (array $row) => $row)
+                ->values()
+                ->all(),
+            'upcoming' => $this->upcomingShiftsForCourier($courier, $day, 7)
                 ->values()
                 ->all(),
             'recent' => $this->recentAttendances($courier, 30)
@@ -86,30 +93,96 @@ class ShiftAttendanceService
             ->keyBy('business_shift_id');
 
         return $shifts->map(function (BusinessShift $shift) use ($day, $attendances) {
-            $attendance = $attendances->get($shift->id);
-            $contract = $this->commercialContracts->forBusinessOnDate((int) $shift->business_id, $day);
-            $pricingCode = $contract?->work_type;
-            $withinStart = ShiftAttendanceRules::isWithinCourierStartWindow($shift, $day);
-            $workTypes = \App\Modules\Business\Data\BusinessCommercialContractFormData::workTypes();
-
-            return [
-                'shift_id' => $shift->id,
-                'shift_name' => $shift->name,
-                'business_id' => $shift->business_id,
-                'business_name' => $shift->business?->displayName() ?? '—',
-                'start_time' => substr((string) $shift->start_time, 0, 5),
-                'end_time' => substr((string) $shift->end_time, 0, 5),
-                'work_date' => $day->toDateString(),
-                'work_date_formatted' => $day->format('d.m.Y'),
-                'pricing_model' => $pricingCode,
-                'pricing_model_label' => $pricingCode ? ($workTypes[$pricingCode] ?? $pricingCode) : '—',
-                'hourly_rate' => $contract?->courierHourlyRateForAttendance(),
-                'attendance' => $attendance ? $this->presenter->row($attendance) : null,
-                'can_start' => $attendance === null && $withinStart,
-                'can_end' => $attendance?->isInProgress() ?? false,
-                'start_window_opens_at' => ShiftAttendanceRules::earliestStartAt($shift, $day)->format('H:i'),
-            ];
+            return $this->portalShiftRow($shift, $day, $attendances->get($shift->id), actionable: true);
         });
+    }
+
+    /**
+     * Yaklaşan vardiya oluşumları (bugünden sonraki günler), en fazla $limit adet.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function upcomingShiftsForCourier(Courier $courier, ?Carbon $fromDay = null, int $limit = 7): Collection
+    {
+        $fromDay ??= Carbon::today();
+        $limit = max(1, $limit);
+
+        $shiftIds = DB::table('business_shift_couriers')
+            ->where('courier_id', $courier->id)
+            ->pluck('business_shift_id');
+
+        if ($shiftIds->isEmpty()) {
+            return collect();
+        }
+
+        $shifts = BusinessShift::query()
+            ->with(['business'])
+            ->whereIn('id', $shiftIds)
+            ->where('is_active', true)
+            ->orderBy('start_time')
+            ->get();
+
+        if ($shifts->isEmpty()) {
+            return collect();
+        }
+
+        $upcoming = collect();
+        $cursor = $fromDay->copy()->startOfDay()->addDay();
+        $maxScanDays = 90;
+
+        for ($i = 0; $i < $maxScanDays && $upcoming->count() < $limit; $i++) {
+            $day = $cursor->copy()->addDays($i);
+
+            foreach ($shifts as $shift) {
+                if (! $shift->runsOn($day)) {
+                    continue;
+                }
+
+                $upcoming->push($this->portalShiftRow($shift, $day, null, actionable: false));
+
+                if ($upcoming->count() >= $limit) {
+                    break;
+                }
+            }
+        }
+
+        return $upcoming
+            ->sortBy(fn (array $row) => $row['work_date'].' '.$row['start_time'])
+            ->values()
+            ->take($limit);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function portalShiftRow(
+        BusinessShift $shift,
+        Carbon $day,
+        ?BusinessShiftAttendance $attendance,
+        bool $actionable,
+    ): array {
+        $contract = $this->commercialContracts->forBusinessOnDate((int) $shift->business_id, $day);
+        $pricingCode = $contract?->work_type;
+        $withinStart = $actionable && ShiftAttendanceRules::isWithinCourierStartWindow($shift, $day);
+        $workTypes = \App\Modules\Business\Data\BusinessCommercialContractFormData::workTypes();
+
+        return [
+            'shift_id' => $shift->id,
+            'shift_name' => $shift->name,
+            'business_id' => $shift->business_id,
+            'business_name' => $shift->business?->displayName() ?? '—',
+            'start_time' => substr((string) $shift->start_time, 0, 5),
+            'end_time' => substr((string) $shift->end_time, 0, 5),
+            'work_date' => $day->toDateString(),
+            'work_date_formatted' => $day->copy()->locale('tr')->translatedFormat('d M Y, l'),
+            'pricing_model' => $pricingCode,
+            'pricing_model_label' => $pricingCode ? ($workTypes[$pricingCode] ?? $pricingCode) : '—',
+            'hourly_rate' => $contract?->courierHourlyRateForAttendance(),
+            'attendance' => $attendance ? $this->presenter->row($attendance) : null,
+            'can_start' => $actionable && $attendance === null && $withinStart,
+            'can_end' => $actionable && ($attendance?->isInProgress() ?? false),
+            'start_window_opens_at' => ShiftAttendanceRules::earliestStartAt($shift, $day)->format('H:i'),
+        ];
     }
 
     /**
