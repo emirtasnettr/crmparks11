@@ -3,11 +3,9 @@
 namespace App\Modules\ShiftPlanning\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\ShiftPlanning\Data\ShiftPlanningFormData;
 use App\Modules\ShiftPlanning\Requests\AssignShiftCouriersRequest;
 use App\Modules\ShiftPlanning\Requests\DestroyBusinessShiftRequest;
 use App\Modules\ShiftPlanning\Requests\StoreBusinessShiftRequest;
-use App\Modules\ShiftPlanning\Requests\StoreShiftJokerRequest;
 use App\Modules\ShiftPlanning\Requests\UpdateBusinessShiftRequest;
 use App\Modules\ShiftPlanning\Services\ShiftAttendanceService;
 use App\Modules\ShiftPlanning\Services\ShiftPlanningPresenter;
@@ -43,13 +41,6 @@ class ShiftPlanningController extends Controller
                 ->all()
             : [];
 
-        $jokerRows = $business
-            ? $this->shifts->jokersForBusiness($business->id, $week['week_start'], $week['week_end'])
-                ->map(fn ($joker) => $this->presenter->jokerRow($joker))
-                ->values()
-                ->all()
-            : [];
-
         $attendanceSummaries = $business
             ? $this->attendances->weekOccurrenceSummaries(
                 $business->id,
@@ -61,7 +52,6 @@ class ShiftPlanningController extends Controller
 
         $calendarDays = [];
         foreach ($week['days'] as $day) {
-            $dayJokers = collect($jokerRows)->where('work_date', $day['date'])->values()->all();
             $occurrences = [];
 
             foreach ($shiftRows as $shiftRow) {
@@ -69,7 +59,7 @@ class ShiftPlanningController extends Controller
                     continue;
                 }
 
-                $occurrence = $this->presenter->dayOccurrence($shiftRow, $day['date'], $dayJokers);
+                $occurrence = $this->presenter->dayOccurrence($shiftRow, $day['date']);
                 $summary = $attendanceSummaries[$shiftRow['id'].'|'.$day['date']] ?? null;
                 $occurrence['attendance'] = $summary;
                 $occurrences[] = $occurrence;
@@ -100,7 +90,6 @@ class ShiftPlanningController extends Controller
             'calendarDays' => $calendarDays,
             'availableCouriers' => $availableCouriers,
             'activeCourierCount' => $activeCourierCount,
-            'jokerReasons' => ShiftPlanningFormData::jokerReasons(),
             'canCreate' => $request->user()?->can('shift_planning.create') ?? false,
             'canUpdate' => $request->user()?->can('shift_planning.update') ?? false,
             'canDelete' => $request->user()?->can('shift_planning.delete') ?? false,
@@ -170,39 +159,6 @@ class ShiftPlanningController extends Controller
                 'week' => $request->input('week'),
             ]))
             ->with('success', 'Vardiya kadrosu güncellendi.');
-    }
-
-    public function storeJoker(StoreShiftJokerRequest $request, int $id): RedirectResponse
-    {
-        $shift = $this->shifts->find($id);
-        abort_if($shift === null, 404);
-
-        $this->shifts->assignJoker($shift, $request->validated(), $request->user());
-
-        return redirect()
-            ->route('shift-planning.index', array_filter([
-                'business_id' => $shift->business_id,
-                'week' => $request->input('week'),
-            ]))
-            ->with('success', 'Joker personel atandı.');
-    }
-
-    public function destroyJoker(Request $request, int $jokerId): RedirectResponse
-    {
-        abort_unless($request->user()?->can('shift_planning.update'), 403);
-
-        $joker = $this->shifts->findJoker($jokerId);
-        abort_if($joker === null, 404);
-
-        $businessId = $joker->shift?->business_id;
-        $this->shifts->deleteJoker($joker);
-
-        return redirect()
-            ->route('shift-planning.index', array_filter([
-                'business_id' => $businessId,
-                'week' => $request->input('week'),
-            ]))
-            ->with('success', 'Joker ataması kaldırıldı.');
     }
 
     public function destroy(DestroyBusinessShiftRequest $request, int $id): RedirectResponse

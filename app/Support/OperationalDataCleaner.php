@@ -22,7 +22,6 @@ final class OperationalDataCleaner
         return [
             'activity_logs',
             'business_shift_day_couriers',
-            'business_shift_joker_assignments',
             'business_shift_couriers',
             'business_shifts',
             'finance_collection_payments',

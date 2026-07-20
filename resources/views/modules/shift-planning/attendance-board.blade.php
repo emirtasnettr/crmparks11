@@ -50,14 +50,6 @@
 
                         <div class="mt-3 space-y-1">
                             <p class="text-xs text-gray-600">{{ $card['time_range'] }}</p>
-                            @if ($card['is_joker'])
-                                <p class="text-[11px] font-medium text-amber-700">
-                                    Joker
-                                    @if ($card['covers'])
-                                        · {{ $card['covers'] }}
-                                    @endif
-                                </p>
-                            @endif
                         </div>
 
                         @if ($card['attendance'] && in_array($card['bucket'], ['active', 'late_start', 'completed'], true))

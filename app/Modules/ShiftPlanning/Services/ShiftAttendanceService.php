@@ -8,7 +8,6 @@ use App\Modules\Courier\Models\Courier;
 use App\Modules\Courier\Support\CourierAvatar;
 use App\Modules\ShiftPlanning\Models\BusinessShift;
 use App\Modules\ShiftPlanning\Models\BusinessShiftAttendance;
-use App\Modules\ShiftPlanning\Models\BusinessShiftJokerAssignment;
 use App\Modules\ShiftPlanning\Support\ShiftAttendanceRules;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -61,25 +60,9 @@ class ShiftAttendanceService
      */
     public function todayShiftsForCourier(Courier $courier, Carbon $day): Collection
     {
-        $rosterShiftIds = DB::table('business_shift_couriers')
+        $shiftIds = DB::table('business_shift_couriers')
             ->where('courier_id', $courier->id)
             ->pluck('business_shift_id');
-
-        $jokerShiftIds = BusinessShiftJokerAssignment::query()
-            ->where('joker_courier_id', $courier->id)
-            ->whereDate('work_date', $day->toDateString())
-            ->pluck('business_shift_id');
-
-        $absentShiftIds = BusinessShiftJokerAssignment::query()
-            ->where('absent_courier_id', $courier->id)
-            ->whereDate('work_date', $day->toDateString())
-            ->pluck('business_shift_id');
-
-        $shiftIds = $rosterShiftIds
-            ->reject(fn ($id) => $absentShiftIds->contains($id))
-            ->merge($jokerShiftIds)
-            ->unique()
-            ->values();
 
         if ($shiftIds->isEmpty()) {
             return collect();
@@ -102,7 +85,7 @@ class ShiftAttendanceService
             ->get()
             ->keyBy('business_shift_id');
 
-        return $shifts->map(function (BusinessShift $shift) use ($day, $attendances, $jokerShiftIds) {
+        return $shifts->map(function (BusinessShift $shift) use ($day, $attendances) {
             $attendance = $attendances->get($shift->id);
             $contract = $this->commercialContracts->forBusinessOnDate((int) $shift->business_id, $day);
             $pricingCode = $contract?->work_type;
@@ -118,7 +101,6 @@ class ShiftAttendanceService
                 'end_time' => substr((string) $shift->end_time, 0, 5),
                 'work_date' => $day->toDateString(),
                 'work_date_formatted' => $day->format('d.m.Y'),
-                'is_joker' => $jokerShiftIds->contains($shift->id),
                 'pricing_model' => $pricingCode,
                 'pricing_model_label' => $pricingCode ? ($workTypes[$pricingCode] ?? $pricingCode) : '—',
                 'hourly_rate' => $contract?->courierHourlyRateForAttendance(),
@@ -341,13 +323,6 @@ class ShiftAttendanceService
             ->filter(fn (BusinessShift $shift) => $shift->runsOn($day))
             ->values();
 
-        $jokers = BusinessShiftJokerAssignment::query()
-            ->with(['absentCourier', 'jokerCourier'])
-            ->whereIn('business_shift_id', $shifts->pluck('id'))
-            ->whereDate('work_date', $date)
-            ->get()
-            ->groupBy('business_shift_id');
-
         $attendances = BusinessShiftAttendance::query()
             ->whereDate('work_date', $date)
             ->whereIn('business_shift_id', $shifts->pluck('id'))
@@ -366,33 +341,8 @@ class ShiftAttendanceService
 
         foreach ($shifts as $shift) {
             $shiftStart = ShiftAttendanceRules::shiftStartAt($shift, $day);
-            $shiftJokers = $jokers->get($shift->id, collect());
-            $absentIds = $shiftJokers->pluck('absent_courier_id')->map(fn ($id) => (int) $id)->all();
 
-            $working = $shift->rosterCouriers
-                ->reject(fn (Courier $courier) => in_array((int) $courier->id, $absentIds, true))
-                ->values();
-
-            $workingRows = $working->map(fn (Courier $courier) => [
-                'courier' => $courier,
-                'is_joker' => false,
-                'covers' => null,
-            ])->all();
-
-            foreach ($shiftJokers as $joker) {
-                if ($joker->jokerCourier === null) {
-                    continue;
-                }
-                $workingRows[] = [
-                    'courier' => $joker->jokerCourier,
-                    'is_joker' => true,
-                    'covers' => $joker->absentCourier?->full_name,
-                ];
-            }
-
-            foreach ($workingRows as $row) {
-                /** @var Courier $courier */
-                $courier = $row['courier'];
+            foreach ($shift->rosterCouriers as $courier) {
                 $key = $shift->id.'-'.$courier->id;
                 /** @var BusinessShiftAttendance|null $attendance */
                 $attendance = $attendances->get($key)?->first();
@@ -429,8 +379,6 @@ class ShiftAttendanceService
                     'end_time' => substr((string) $shift->end_time, 0, 5),
                     'time_range' => substr((string) $shift->start_time, 0, 5).'–'.substr((string) $shift->end_time, 0, 5),
                     'shift_start_sort' => $shiftStart->timestamp,
-                    'is_joker' => $row['is_joker'],
-                    'covers' => $row['covers'],
                     'bucket' => $bucket,
                     'bucket_label' => match ($bucket) {
                         'not_started' => 'Girmedi',
@@ -536,13 +484,6 @@ class ShiftAttendanceService
             ->filter(fn (BusinessShift $shift) => $shift->runsOn($day))
             ->values();
 
-        $jokers = BusinessShiftJokerAssignment::query()
-            ->with(['absentCourier', 'jokerCourier'])
-            ->whereIn('business_shift_id', $shifts->pluck('id'))
-            ->whereDate('work_date', $date)
-            ->get()
-            ->groupBy('business_shift_id');
-
         $attendances = BusinessShiftAttendance::query()
             ->where('business_id', $businessId)
             ->whereDate('work_date', $date)
@@ -554,28 +495,13 @@ class ShiftAttendanceService
         $shiftRows = [];
 
         foreach ($shifts as $shift) {
-            $shiftJokers = $jokers->get($shift->id, collect());
-            $absentIds = $shiftJokers->pluck('absent_courier_id')->map(fn ($id) => (int) $id)->all();
-
             $working = $shift->rosterCouriers
-                ->reject(fn (Courier $courier) => in_array((int) $courier->id, $absentIds, true))
                 ->map(fn (Courier $courier) => [
                     'id' => (int) $courier->id,
                     'name' => $courier->full_name,
-                    'is_joker' => false,
-                    'covers' => null,
                 ])
                 ->values()
                 ->all();
-
-            foreach ($shiftJokers as $joker) {
-                $working[] = [
-                    'id' => (int) $joker->joker_courier_id,
-                    'name' => $joker->jokerCourier?->full_name ?? '—',
-                    'is_joker' => true,
-                    'covers' => $joker->absentCourier?->full_name,
-                ];
-            }
 
             $couriers = [];
             foreach ($working as $courierRow) {
@@ -601,8 +527,6 @@ class ShiftAttendanceService
                 $couriers[] = [
                     'courier_id' => $courierRow['id'],
                     'courier_name' => $courierRow['name'],
-                    'is_joker' => $courierRow['is_joker'],
-                    'covers' => $courierRow['covers'],
                     'status' => $status,
                     'status_label' => ShiftAttendanceRules::statusLabel($status),
                     'attendance' => $attendance ? $this->presenter->row($attendance) : null,
@@ -661,12 +585,6 @@ class ShiftAttendanceService
             ->get()
             ->keyBy('id');
 
-        $jokers = BusinessShiftJokerAssignment::query()
-            ->whereIn('business_shift_id', $shiftIds)
-            ->whereBetween('work_date', [$from, $to])
-            ->get()
-            ->groupBy(fn (BusinessShiftJokerAssignment $row) => $row->business_shift_id.'|'.$row->work_date->toDateString());
-
         $attendances = BusinessShiftAttendance::query()
             ->where('business_id', $businessId)
             ->whereIn('business_shift_id', $shiftIds)
@@ -688,20 +606,12 @@ class ShiftAttendanceService
                     continue;
                 }
 
-                $dayJokers = $jokers->get($shift->id.'|'.$date, collect());
-                $absentIds = $dayJokers->pluck('absent_courier_id')->map(fn ($id) => (int) $id)->all();
                 $workingIds = $shift->rosterCouriers
-                    ->reject(fn (Courier $courier) => in_array((int) $courier->id, $absentIds, true))
                     ->pluck('id')
                     ->map(fn ($id) => (int) $id)
                     ->values()
                     ->all();
 
-                foreach ($dayJokers as $joker) {
-                    $workingIds[] = (int) $joker->joker_courier_id;
-                }
-
-                $workingIds = array_values(array_unique($workingIds));
                 $expected = count($workingIds);
                 $inProgress = 0;
                 $completed = 0;
@@ -901,24 +811,12 @@ class ShiftAttendanceService
             ]);
         }
 
-        $isJoker = BusinessShiftJokerAssignment::query()
-            ->where('business_shift_id', $shift->id)
-            ->where('joker_courier_id', $courier->id)
-            ->whereDate('work_date', $day->toDateString())
-            ->exists();
-
-        $isAbsent = BusinessShiftJokerAssignment::query()
-            ->where('business_shift_id', $shift->id)
-            ->where('absent_courier_id', $courier->id)
-            ->whereDate('work_date', $day->toDateString())
-            ->exists();
-
         $onRoster = DB::table('business_shift_couriers')
             ->where('business_shift_id', $shift->id)
             ->where('courier_id', $courier->id)
             ->exists();
 
-        if ($isAbsent || (! $onRoster && ! $isJoker)) {
+        if (! $onRoster) {
             throw ValidationException::withMessages([
                 'shift' => 'Bu vardiyaya atanmış değilsiniz.',
             ]);

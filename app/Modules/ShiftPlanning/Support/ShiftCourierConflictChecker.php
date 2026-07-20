@@ -4,7 +4,6 @@ namespace App\Modules\ShiftPlanning\Support;
 
 use App\Modules\Courier\Models\Courier;
 use App\Modules\ShiftPlanning\Models\BusinessShift;
-use App\Modules\ShiftPlanning\Models\BusinessShiftJokerAssignment;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -53,50 +52,6 @@ final class ShiftCourierConflictChecker
                 ),
             ]);
         }
-    }
-
-    /**
-     * @param  array{
-     *     start_date?: mixed,
-     *     end_date?: mixed,
-     *     start_time?: mixed,
-     *     end_time?: mixed,
-     *     days_of_week?: mixed,
-     *     excluded_dates?: mixed,
-     * }  $schedule
-     */
-    public function assertNoSingleDayConflict(
-        int $courierId,
-        CarbonInterface|string $workDate,
-        array $schedule,
-        ?int $excludeShiftId = null,
-        string $errorKey = 'joker_courier_id',
-    ): void {
-        $date = Carbon::parse($workDate)->startOfDay();
-        $probe = $this->scheduleAsShift($schedule);
-
-        if (! $probe->runsOn($date)) {
-            return;
-        }
-
-        $conflict = $this->firstConflictOnDate($courierId, $probe, $date, $excludeShiftId);
-
-        if ($conflict === null) {
-            return;
-        }
-
-        $courierName = Courier::query()->whereKey($courierId)->value('full_name') ?? ('#'.$courierId);
-
-        throw ValidationException::withMessages([
-            $errorKey => sprintf(
-                '%s bu tarihte/saatte başka bir vardiyada (%s · %s %s–%s).',
-                $courierName,
-                $conflict['business'],
-                $conflict['shift'],
-                $conflict['start_time'],
-                $conflict['end_time'],
-            ),
-        ]);
     }
 
     /**
@@ -174,27 +129,6 @@ final class ShiftCourierConflictChecker
     }
 
     /**
-     * @return array{business: string, shift: string, start_time: string, end_time: string}|null
-     */
-    private function firstConflictOnDate(
-        int $courierId,
-        BusinessShift $probe,
-        CarbonInterface $date,
-        ?int $excludeShiftId,
-    ): ?array {
-        $day = $date->copy()->startOfDay();
-        $others = $this->otherCommitments($courierId, $excludeShiftId, $day, $day);
-
-        foreach ($others as $other) {
-            if ($this->intervalsOverlapOnDate($probe, $other['shift'], $day)) {
-                return $this->conflictPayload($other['shift']);
-            }
-        }
-
-        return null;
-    }
-
-    /**
      * @return list<array{shift: BusinessShift}>
      */
     private function otherCommitments(
@@ -218,55 +152,9 @@ final class ShiftCourierConflictChecker
             })
             ->get();
 
-        $commitments = $rosterShifts
+        return $rosterShifts
             ->map(fn (BusinessShift $shift) => ['shift' => $shift])
             ->all();
-
-        $jokerShiftIds = BusinessShiftJokerAssignment::query()
-            ->where('joker_courier_id', $courierId)
-            ->whereDate('work_date', '>=', $from->toDateString())
-            ->whereDate('work_date', '<=', $to->toDateString())
-            ->when($excludeShiftId !== null, fn ($query) => $query->where('business_shift_id', '!=', $excludeShiftId))
-            ->pluck('business_shift_id')
-            ->unique()
-            ->all();
-
-        if ($jokerShiftIds === []) {
-            return $commitments;
-        }
-
-        $jokerShifts = BusinessShift::query()
-            ->with('business')
-            ->whereIn('id', $jokerShiftIds)
-            ->get()
-            ->keyBy('id');
-
-        $jokerRows = BusinessShiftJokerAssignment::query()
-            ->where('joker_courier_id', $courierId)
-            ->whereDate('work_date', '>=', $from->toDateString())
-            ->whereDate('work_date', '<=', $to->toDateString())
-            ->when($excludeShiftId !== null, fn ($query) => $query->where('business_shift_id', '!=', $excludeShiftId))
-            ->get();
-
-        foreach ($jokerRows as $row) {
-            $shift = $jokerShifts->get($row->business_shift_id);
-            if ($shift === null) {
-                continue;
-            }
-
-            // Joker tek güne özel: o güne daraltılmış sanal vardiya.
-            $dayShift = $shift->replicate();
-            $dayShift->id = $shift->id;
-            $dayShift->setRelation('business', $shift->business);
-            $dayShift->start_date = Carbon::parse($row->work_date)->startOfDay();
-            $dayShift->end_date = Carbon::parse($row->work_date)->startOfDay();
-            $dayShift->days_of_week = null;
-            $dayShift->excluded_dates = [];
-
-            $commitments[] = ['shift' => $dayShift];
-        }
-
-        return $commitments;
     }
 
     private function intervalsOverlapOnDate(

@@ -8,7 +8,6 @@ use App\Modules\Courier\Models\Courier;
 use App\Modules\ShiftPlanning\Data\ShiftPlanningFormData;
 use App\Modules\ShiftPlanning\Models\BusinessShift;
 use App\Modules\ShiftPlanning\Models\BusinessShiftCourier;
-use App\Modules\ShiftPlanning\Models\BusinessShiftJokerAssignment;
 use App\Modules\ShiftPlanning\Support\ShiftCourierConflictChecker;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -59,7 +58,7 @@ class ShiftPlanningService
     public function find(int $id): ?BusinessShift
     {
         return BusinessShift::query()
-            ->with(['business', 'rosterCouriers', 'jokerAssignments.absentCourier', 'jokerAssignments.jokerCourier'])
+            ->with(['business', 'rosterCouriers'])
             ->find($id);
     }
 
@@ -221,101 +220,14 @@ class ShiftPlanningService
             );
         }
 
-        DB::transaction(function () use ($shift, $normalized): void {
-            $shift->rosterCouriers()->sync($normalized);
-
-            // Kadrodan çıkan kuryelerin gelecekteki joker kayıtlarını temizle.
-            BusinessShiftJokerAssignment::query()
-                ->where('business_shift_id', $shift->id)
-                ->whereDate('work_date', '>=', now()->toDateString())
-                ->whereNotIn('absent_courier_id', $normalized)
-                ->delete();
-        });
+        $shift->rosterCouriers()->sync($normalized);
 
         return $shift->fresh(['rosterCouriers']);
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     */
-    public function assignJoker(BusinessShift $shift, array $data, User $user): BusinessShiftJokerAssignment
-    {
-        $workDate = Carbon::parse($data['work_date'])->toDateString();
-        $absentId = (int) $data['absent_courier_id'];
-        $jokerId = (int) $data['joker_courier_id'];
-
-        if ($absentId === $jokerId) {
-            throw ValidationException::withMessages([
-                'joker_courier_id' => 'Joker personel, izinli kurye ile aynı olamaz.',
-            ]);
-        }
-
-        $rosterIds = $shift->rosterCouriers()->pluck('couriers.id')->map(fn ($id) => (int) $id)->all();
-        if (! in_array($absentId, $rosterIds, true)) {
-            throw ValidationException::withMessages([
-                'absent_courier_id' => 'İzinli kurye bu vardiyanın kadrosunda olmalıdır.',
-            ]);
-        }
-
-        if (in_array($jokerId, $rosterIds, true)) {
-            throw ValidationException::withMessages([
-                'joker_courier_id' => 'Joker personel zaten bu vardiyanın kadrosunda olmamalıdır.',
-            ]);
-        }
-
-        $this->conflicts->assertNoSingleDayConflict(
-            $jokerId,
-            $workDate,
-            $this->schedulePayload($shift),
-            $shift->id,
-        );
-
-        return BusinessShiftJokerAssignment::query()->updateOrCreate(
-            [
-                'business_shift_id' => $shift->id,
-                'work_date' => $workDate,
-                'absent_courier_id' => $absentId,
-            ],
-            [
-                'joker_courier_id' => $jokerId,
-                'reason' => $data['reason'] ?? 'izin',
-                'notes' => $data['notes'] ?? null,
-                'created_by' => $user->id,
-            ],
-        );
-    }
-
-    public function deleteJoker(BusinessShiftJokerAssignment $assignment): void
-    {
-        $assignment->delete();
-    }
-
-    public function findJoker(int $id): ?BusinessShiftJokerAssignment
-    {
-        return BusinessShiftJokerAssignment::query()
-            ->with(['shift', 'absentCourier', 'jokerCourier'])
-            ->find($id);
-    }
-
-    /**
-     * @return Collection<int, BusinessShiftJokerAssignment>
-     */
-    public function jokersForBusiness(int $businessId, ?string $from = null, ?string $to = null): Collection
-    {
-        return BusinessShiftJokerAssignment::query()
-            ->whereHas('shift', fn ($q) => $q->where('business_id', $businessId))
-            ->with(['shift', 'absentCourier', 'jokerCourier'])
-            ->when($from, fn ($q) => $q->whereDate('work_date', '>=', $from))
-            ->when($to, fn ($q) => $q->whereDate('work_date', '<=', $to))
-            ->orderBy('work_date')
-            ->orderBy('id')
-            ->get();
     }
 
     public function delete(BusinessShift $shift): void
     {
         DB::transaction(function () use ($shift): void {
-            $shift->jokerAssignments()->delete();
             $shift->shiftCouriers()->delete();
             $shift->dayCouriers()->delete();
             $shift->delete();

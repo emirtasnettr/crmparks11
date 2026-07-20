@@ -27,7 +27,6 @@ use App\Modules\Finance\Models\FinanceRevenue;
 use App\Modules\ShiftPlanning\Models\BusinessShift;
 use App\Modules\ShiftPlanning\Models\BusinessShiftAttendance;
 use App\Modules\ShiftPlanning\Models\BusinessShiftCourier;
-use App\Modules\ShiftPlanning\Models\BusinessShiftJokerAssignment;
 use App\Modules\Stock\Models\StockAssignment;
 use App\Modules\Stock\Models\StockProduct;
 use App\Support\DemoDataCleaner;
@@ -142,12 +141,11 @@ class DemoDataSeeder extends Seeder
         $shifts = BusinessShift::query()->where('notes', self::MARKER)->count();
         $attendances = BusinessShiftAttendance::query()->where('notes', self::MARKER)->count();
         $earnings = EarningLine::query()->where('description', 'like', self::MARKER.'%')->count();
-        $jokers = BusinessShiftJokerAssignment::query()->where('notes', self::MARKER)->count();
         $stock = StockProduct::query()->where('notes', self::MARKER)->count();
 
         $this->command?->info(
             "Demo veri hazır: {$active} aktif / {$opening} açılış işletme, "
-            ."{$courierCount} kurye, {$shifts} vardiya, {$attendances} katılım, {$jokers} joker, "
+            ."{$courierCount} kurye, {$shifts} vardiya, {$attendances} katılım, "
             ."{$earnings} hakediş, {$stock} stok ürünü + finans."
         );
     }
@@ -574,10 +572,7 @@ class DemoDataSeeder extends Seeder
 
                 $available = count($businessCourierIds);
                 $wanted = (int) $def['required_headcount'];
-                // Joker testi için mümkünse en az 1 kuryeyi kadro dışında bırak.
-                $required = $available >= 2
-                    ? min($wanted, $available - 1)
-                    : max(1, $available);
+                $required = max(1, min($wanted, $available));
 
                 $shift = BusinessShift::query()->create([
                     'business_id' => $business->id,
@@ -613,7 +608,6 @@ class DemoDataSeeder extends Seeder
             }
         }
 
-        $this->seedJokerAssignments($admin, $createdShifts);
         $this->seedShiftAttendances($createdShifts);
         $this->seedLiveOperationsBoard($admin, $businesses, $roster);
     }
@@ -788,62 +782,6 @@ class DemoDataSeeder extends Seeder
     /**
      * @param  list<array{shift: BusinessShift, roster: list<int>, business: Business, business_courier_ids: list<int>, business_index: int, def_index: int}>  $createdShifts
      */
-    private function seedJokerAssignments(User $admin, array $createdShifts): void
-    {
-        foreach ($createdShifts as $item) {
-            $roster = $item['roster'];
-            $allCouriers = $item['business_courier_ids'];
-
-            if (count($roster) < 1 || count($allCouriers) < 2) {
-                continue;
-            }
-
-            $absentId = $roster[0];
-            $jokerCandidates = array_values(array_filter(
-                $allCouriers,
-                fn (int $id): bool => $id !== $absentId && ! in_array($id, $roster, true)
-            ));
-
-            if ($jokerCandidates === []) {
-                continue;
-            }
-
-            $jokerId = $jokerCandidates[0];
-            $dates = [
-                now()->subDays(5)->toDateString(),
-                now()->addDays(2)->toDateString(),
-                now()->addDays(9)->toDateString(),
-            ];
-
-            if ($item['business_index'] > 1) {
-                $dates = array_slice($dates, 0, 1);
-            }
-
-            foreach ($dates as $date) {
-                if (! $item['shift']->runsOn($date)) {
-                    continue;
-                }
-
-                BusinessShiftJokerAssignment::query()->updateOrCreate(
-                    [
-                        'business_shift_id' => $item['shift']->id,
-                        'work_date' => $date,
-                        'absent_courier_id' => $absentId,
-                    ],
-                    [
-                        'joker_courier_id' => $jokerId,
-                        'reason' => 'izin',
-                        'notes' => self::MARKER,
-                        'created_by' => $admin->id,
-                    ]
-                );
-            }
-        }
-    }
-
-    /**
-     * @param  list<array{shift: BusinessShift, roster: list<int>, business: Business, business_courier_ids: list<int>, business_index: int, def_index: int}>  $createdShifts
-     */
     private function seedShiftAttendances(array $createdShifts): void
     {
         $today = now()->startOfDay();
@@ -867,11 +805,6 @@ class DemoDataSeeder extends Seeder
                 $plannedMinutes = 360;
             }
 
-            $jokersByDate = BusinessShiftJokerAssignment::query()
-                ->where('business_shift_id', $shift->id)
-                ->get()
-                ->groupBy(fn (BusinessShiftJokerAssignment $row) => $row->work_date->toDateString());
-
             for ($daysAgo = 21; $daysAgo >= 1; $daysAgo--) {
                 $day = $today->copy()->subDays($daysAgo);
 
@@ -879,19 +812,7 @@ class DemoDataSeeder extends Seeder
                     continue;
                 }
 
-                $dateKey = $day->toDateString();
-                $dayJokers = $jokersByDate->get($dateKey, collect());
-                $absentIds = $dayJokers->pluck('absent_courier_id')->map(fn ($id) => (int) $id)->all();
-                $workingIds = array_values(array_filter(
-                    $item['roster'],
-                    fn (int $id): bool => ! in_array($id, $absentIds, true)
-                ));
-
-                foreach ($dayJokers as $joker) {
-                    $workingIds[] = (int) $joker->joker_courier_id;
-                }
-
-                $workingIds = array_values(array_unique($workingIds));
+                $workingIds = array_values($item['roster']);
 
                 foreach ($workingIds as $courierIndex => $courierId) {
                     // Gerçekçi boşluk: bazı günlerde bazı kuryeler gelmemiş olsun.

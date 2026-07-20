@@ -9,7 +9,6 @@ use App\Modules\Business\Models\Business;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\ShiftPlanning\Models\BusinessShift;
 use App\Modules\ShiftPlanning\Models\BusinessShiftCourier;
-use App\Modules\ShiftPlanning\Models\BusinessShiftJokerAssignment;
 use Database\Seeders\CitySeeder;
 use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
@@ -329,92 +328,6 @@ class ShiftPlanningTest extends TestCase
         $this->assertDatabaseCount('business_shift_couriers', 0);
     }
 
-    public function test_can_assign_joker_for_absent_roster_courier(): void
-    {
-        $user = User::factory()->create();
-        $user->assignRole('super_admin');
-        $business = $this->createBusiness($user);
-        $roster = $this->createCourier($user, ['full_name' => 'Kadrolu Kurye']);
-        $joker = $this->createCourier($user, ['full_name' => 'Joker Kurye']);
-
-        $shift = BusinessShift::query()->create([
-            'business_id' => $business->id,
-            'name' => 'Öğlen',
-            'start_time' => '12:00',
-            'end_time' => '20:00',
-            'required_headcount' => 1,
-            'is_active' => true,
-            'created_by' => $user->id,
-        ]);
-        BusinessShiftCourier::query()->create([
-            'business_shift_id' => $shift->id,
-            'courier_id' => $roster->id,
-        ]);
-
-        $this->actingAs($user)
-            ->post(route('shift-planning.jokers.store', $shift->id), [
-                'work_date' => '2026-07-20',
-                'absent_courier_id' => $roster->id,
-                'joker_courier_id' => $joker->id,
-                'reason' => 'hasta',
-                'notes' => 'Ateş',
-            ])
-            ->assertRedirect(route('shift-planning.index', ['business_id' => $business->id]));
-
-        $this->assertTrue(
-            BusinessShiftJokerAssignment::query()
-                ->where('business_shift_id', $shift->id)
-                ->whereDate('work_date', '2026-07-20')
-                ->where('absent_courier_id', $roster->id)
-                ->where('joker_courier_id', $joker->id)
-                ->where('reason', 'hasta')
-                ->exists()
-        );
-
-        $this->actingAs($user)
-            ->get(route('shift-planning.index', [
-                'business_id' => $business->id,
-                'week' => '2026-07-20',
-            ]))
-            ->assertOk()
-            ->assertSee('Joker Kurye')
-            ->assertSee('Kadrolu Kurye');
-    }
-
-    public function test_joker_cannot_be_existing_roster_member(): void
-    {
-        $user = User::factory()->create();
-        $user->assignRole('super_admin');
-        $business = $this->createBusiness($user);
-        $c1 = $this->createCourier($user, ['full_name' => 'A']);
-        $c2 = $this->createCourier($user, ['full_name' => 'B']);
-
-        $shift = BusinessShift::query()->create([
-            'business_id' => $business->id,
-            'name' => 'Sabah',
-            'start_time' => '09:00',
-            'end_time' => '17:00',
-            'required_headcount' => 2,
-            'is_active' => true,
-            'created_by' => $user->id,
-        ]);
-        BusinessShiftCourier::query()->insert([
-            ['business_shift_id' => $shift->id, 'courier_id' => $c1->id, 'created_at' => now(), 'updated_at' => now()],
-            ['business_shift_id' => $shift->id, 'courier_id' => $c2->id, 'created_at' => now(), 'updated_at' => now()],
-        ]);
-
-        $this->actingAs($user)
-            ->from(route('shift-planning.index', ['business_id' => $business->id]))
-            ->post(route('shift-planning.jokers.store', $shift->id), [
-                'work_date' => '2026-07-21',
-                'absent_courier_id' => $c1->id,
-                'joker_courier_id' => $c2->id,
-                'reason' => 'izin',
-            ])
-            ->assertRedirect()
-            ->assertSessionHasErrors('joker_courier_id');
-    }
-
     public function test_can_delete_shift(): void
     {
         $user = User::factory()->create();
@@ -436,43 +349,6 @@ class ShiftPlanningTest extends TestCase
             ->assertRedirect(route('shift-planning.index', ['business_id' => $business->id]));
 
         $this->assertSoftDeleted('business_shifts', ['id' => $shift->id]);
-    }
-
-    public function test_can_remove_joker_assignment(): void
-    {
-        $user = User::factory()->create();
-        $user->assignRole('super_admin');
-        $business = $this->createBusiness($user);
-        $roster = $this->createCourier($user, ['full_name' => 'Kadrolu']);
-        $joker = $this->createCourier($user, ['full_name' => 'Joker']);
-
-        $shift = BusinessShift::query()->create([
-            'business_id' => $business->id,
-            'name' => 'Sabah',
-            'start_time' => '09:00',
-            'end_time' => '17:00',
-            'required_headcount' => 1,
-            'is_active' => true,
-            'created_by' => $user->id,
-        ]);
-        BusinessShiftCourier::query()->create([
-            'business_shift_id' => $shift->id,
-            'courier_id' => $roster->id,
-        ]);
-        $assignment = BusinessShiftJokerAssignment::query()->create([
-            'business_shift_id' => $shift->id,
-            'work_date' => '2026-07-22',
-            'absent_courier_id' => $roster->id,
-            'joker_courier_id' => $joker->id,
-            'reason' => 'izin',
-            'created_by' => $user->id,
-        ]);
-
-        $this->actingAs($user)
-            ->delete(route('shift-planning.jokers.destroy', $assignment->id))
-            ->assertRedirect();
-
-        $this->assertDatabaseMissing('business_shift_joker_assignments', ['id' => $assignment->id]);
     }
 
     private function createBusiness(User $user, array $overrides = []): Business

@@ -97,9 +97,6 @@
                             <td class="px-4 py-3 text-gray-700 dark:text-slate-300 sm:px-6">{{ $row['work_date_formatted'] }}</td>
                             <td class="px-4 py-3">
                                 <p class="font-medium text-gray-900 dark:text-white">{{ $row['courier_name'] }}</p>
-                                @if ($row['is_joker'])
-                                    <p class="text-[11px] text-amber-700 dark:text-amber-400">{{ $row['joker_label'] }}</p>
-                                @endif
                             </td>
                             <td class="px-4 py-3 text-gray-700 dark:text-slate-300">{{ $row['phone'] }}</td>
                             <td class="px-4 py-3 text-gray-700 dark:text-slate-300">{{ $row['business_name'] }}</td>

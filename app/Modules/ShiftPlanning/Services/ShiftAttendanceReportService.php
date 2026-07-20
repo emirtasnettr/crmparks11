@@ -5,7 +5,6 @@ namespace App\Modules\ShiftPlanning\Services;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\ShiftPlanning\Models\BusinessShift;
 use App\Modules\ShiftPlanning\Models\BusinessShiftAttendance;
-use App\Modules\ShiftPlanning\Models\BusinessShiftJokerAssignment;
 use App\Modules\ShiftPlanning\Support\ShiftAttendanceRules;
 use Carbon\Carbon;
 
@@ -98,7 +97,6 @@ class ShiftAttendanceReportService
                 'Geç (dk)',
                 'Çalışılan süre',
                 'Hakediş',
-                'Joker',
             ],
             'rows' => collect($report['rows'])
                 ->map(fn (array $row) => [
@@ -115,7 +113,6 @@ class ShiftAttendanceReportService
                     $row['late_minutes'] ?? '',
                     $row['worked_duration_label'],
                     $row['earnings_formatted'],
-                    $row['joker_label'],
                 ])
                 ->all(),
         ];
@@ -138,13 +135,6 @@ class ShiftAttendanceReportService
             ->filter(fn (BusinessShift $shift) => $shift->runsOn($day))
             ->values();
 
-        $jokers = BusinessShiftJokerAssignment::query()
-            ->with(['absentCourier', 'jokerCourier'])
-            ->whereIn('business_shift_id', $shifts->pluck('id'))
-            ->whereDate('work_date', $date)
-            ->get()
-            ->groupBy('business_shift_id');
-
         $attendances = BusinessShiftAttendance::query()
             ->whereDate('work_date', $date)
             ->whereIn('business_shift_id', $shifts->pluck('id'))
@@ -156,38 +146,13 @@ class ShiftAttendanceReportService
 
         foreach ($shifts as $shift) {
             $shiftStart = ShiftAttendanceRules::shiftStartAt($shift, $day);
-            $shiftJokers = $jokers->get($shift->id, collect());
-            $absentIds = $shiftJokers->pluck('absent_courier_id')->map(fn ($id) => (int) $id)->all();
-
-            $workingRows = $shift->rosterCouriers
-                ->reject(fn (Courier $courier) => in_array((int) $courier->id, $absentIds, true))
-                ->map(fn (Courier $courier) => [
-                    'courier' => $courier,
-                    'is_joker' => false,
-                    'covers' => null,
-                ])
-                ->values()
-                ->all();
-
-            foreach ($shiftJokers as $joker) {
-                if ($joker->jokerCourier === null) {
-                    continue;
-                }
-                $workingRows[] = [
-                    'courier' => $joker->jokerCourier,
-                    'is_joker' => true,
-                    'covers' => $joker->absentCourier?->full_name,
-                ];
-            }
 
             $business = $shift->business;
             $location = collect([$business?->city?->name, $business?->district?->name])
                 ->filter()
                 ->implode(' / ');
 
-            foreach ($workingRows as $row) {
-                /** @var Courier $courier */
-                $courier = $row['courier'];
+            foreach ($shift->rosterCouriers as $courier) {
                 $key = $shift->id.'-'.$courier->id;
                 /** @var BusinessShiftAttendance|null $attendance */
                 $attendance = $attendances->get($key)?->first();
@@ -222,11 +187,6 @@ class ShiftAttendanceReportService
                     'late_minutes_label' => $lateMinutes !== null ? $lateMinutes.' dk' : '—',
                     'worked_duration_label' => $presented['worked_duration_label'] ?? '—',
                     'earnings_formatted' => $presented['earnings_formatted'] ?? '—',
-                    'is_joker' => $row['is_joker'],
-                    'covers' => $row['covers'],
-                    'joker_label' => $row['is_joker']
-                        ? ('Joker'.($row['covers'] ? ' ('.$row['covers'].')' : ''))
-                        : '—',
                 ];
             }
         }

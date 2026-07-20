@@ -29,7 +29,6 @@
         selectedBusinessId: @js($selectedBusinessId),
         shifts: @js($shiftsForJs),
         availableCouriers: @js($availableCouriers),
-        jokerReasons: @js($jokerReasons),
         canCreate: @js($canCreate),
         canUpdate: @js($canUpdate),
         canDelete: @js($canDelete),
@@ -38,7 +37,6 @@
         storeUrl: @js(route('shift-planning.store')),
         updateUrlTemplate: @js(url('/vardiya-planlama/__ID__')),
         assignUrlTemplate: @js(url('/vardiya-planlama/__ID__/kuryeler')),
-        jokerUrlTemplate: @js(url('/vardiya-planlama/__ID__/joker')),
         destroyUrlTemplate: @js(url('/vardiya-planlama/__ID__')),
         eligibleCouriersUrl: @js(route('shift-planning.eligible-couriers')),
     })"
@@ -47,7 +45,7 @@
         <div>
             <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Vardiya Planlama</h1>
             <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">
-                İşletmenin sabit vardiyalarını ve kadrosunu tanımlayın; izin/hastalık günlerinde joker atayın.
+                İşletmenin sabit vardiyalarını ve kadrosunu tanımlayın.
             </p>
         </div>
 
@@ -139,7 +137,6 @@
                         <div class="flex flex-wrap gap-2 pt-1">
                             @if ($canUpdate)
                                 <x-ui.button type="button" size="sm" variant="secondary" x-on:click="openAssign({{ $shift['id'] }})">Kadro</x-ui.button>
-                                <x-ui.button type="button" size="sm" variant="secondary" x-on:click="openJoker({{ $shift['id'] }})">Joker Ata</x-ui.button>
                                 <x-ui.button type="button" size="sm" variant="secondary" x-on:click="openEdit({{ $shift['id'] }})">Düzenle</x-ui.button>
                             @endif
                             @if ($canDelete)
@@ -161,7 +158,7 @@
             <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Haftalık Görünüm</h2>
-                    <p class="text-sm text-gray-500 dark:text-slate-400">Sabit kadro + joker + katılım özeti (başladı / gelmedi)</p>
+                    <p class="text-sm text-gray-500 dark:text-slate-400">Sabit kadro + katılım özeti (başladı / gelmedi)</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                     <a href="{{ route('shift-planning.index', ['business_id' => $selectedBusinessId, 'week' => $week['prev_week']]) }}" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-slate-600">← Önceki</a>
@@ -201,11 +198,8 @@
                                             </p>
                                         @endif
                                         @foreach ($occurrence['working_couriers'] as $courier)
-                                            <p class="mt-0.5 {{ ! empty($courier['is_joker']) ? 'font-medium text-amber-800' : '' }}">
+                                            <p class="mt-0.5">
                                                 {{ $courier['name'] }}
-                                                @if (! empty($courier['is_joker']))
-                                                    <span class="opacity-80">(joker → {{ $courier['covers'] }})</span>
-                                                @endif
                                             </p>
                                         @endforeach
                                         @if ($occurrence['working_couriers'] === [])

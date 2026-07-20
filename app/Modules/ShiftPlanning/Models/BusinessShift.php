@@ -67,11 +67,6 @@ class BusinessShift extends Model
         return $this->hasMany(BusinessShiftCourier::class);
     }
 
-    public function jokerAssignments(): HasMany
-    {
-        return $this->hasMany(BusinessShiftJokerAssignment::class);
-    }
-
     /** @deprecated day-based staffing — kept for legacy migration data */
     public function dayCouriers(): HasMany
     {

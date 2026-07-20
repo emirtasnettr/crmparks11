@@ -48,16 +48,4 @@ class ShiftPlanningFormData
             '0' => 'Pasif',
         ];
     }
-
-    /**
-     * @return array<string, string>
-     */
-    public static function jokerReasons(): array
-    {
-        return [
-            'izin' => 'İzinli',
-            'hasta' => 'Hasta',
-            'diger' => 'Diğer',
-        ];
-    }
 }

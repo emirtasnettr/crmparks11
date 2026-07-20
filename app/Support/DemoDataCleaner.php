@@ -25,7 +25,6 @@ use App\Modules\ShiftPlanning\Models\BusinessShift;
 use App\Modules\ShiftPlanning\Models\BusinessShiftAttendance;
 use App\Modules\ShiftPlanning\Models\BusinessShiftCourier;
 use App\Modules\ShiftPlanning\Models\BusinessShiftDayCourier;
-use App\Modules\ShiftPlanning\Models\BusinessShiftJokerAssignment;
 use App\Modules\Stock\Models\StockAssignment;
 use App\Modules\Stock\Models\StockProduct;
 use App\Models\User;
@@ -115,10 +114,6 @@ final class DemoDataCleaner
                     });
                 })
                 ->pluck('id');
-
-            $counts['shift_jokers'] = BusinessShiftJokerAssignment::query()
-                ->whereIn('business_shift_id', $shiftIds)
-                ->delete();
 
             $counts['shift_attendances'] = BusinessShiftAttendance::withTrashed()
                 ->where(function ($query) use ($shiftIds, $courierIds, $businessIds): void {

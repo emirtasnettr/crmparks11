@@ -25,9 +25,6 @@
                 <div>
                     <p class="font-semibold text-gray-900 dark:text-white">
                         {{ $item['shift_name'] }}
-                        @if ($item['is_joker'])
-                            <span class="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-600/10 dark:text-amber-400">Joker</span>
-                        @endif
                     </p>
                     <p class="mt-0.5 text-sm text-gray-500 dark:text-slate-400">
                         {{ $item['business_name'] }} · {{ $item['start_time'] }}–{{ $item['end_time'] }}

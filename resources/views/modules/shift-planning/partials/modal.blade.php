@@ -135,66 +135,6 @@
     </div>
 </div>
 
-{{-- Joker ata --}}
-<div
-    x-show="openJokerModal"
-    x-cloak
-    class="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center"
->
-    <div class="fixed inset-0 bg-gray-900/50" x-on:click="closeJokerModal()"></div>
-    <div class="relative w-full max-w-lg rounded-xl border border-gray-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-800">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Joker Personel Ata</h3>
-        <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">
-            <span x-text="jokerForm.shift_name"></span> — izinli/hasta kuryenin yerine
-        </p>
-
-        <form method="POST" :action="jokerFormAction()" class="mt-4 space-y-4">
-            @csrf
-            <input type="hidden" name="week" value="{{ $week['week_start'] }}">
-
-            <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">Tarih *</label>
-                <input type="date" name="work_date" x-model="jokerForm.work_date" required class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-white">
-            </div>
-            <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">İzinli / Hasta Kurye *</label>
-                <select name="absent_courier_id" x-model="jokerForm.absent_courier_id" required class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-white">
-                    <option value="">Seçin</option>
-                    <template x-for="courier in jokerForm.roster" :key="'absent-'+courier.id">
-                        <option :value="courier.id" x-text="courier.name"></option>
-                    </template>
-                </select>
-            </div>
-            <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">Joker Personel *</label>
-                <select name="joker_courier_id" x-model="jokerForm.joker_courier_id" required class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-white">
-                    <option value="">Seçin</option>
-                    <template x-for="courier in jokerPool()" :key="'joker-'+courier.id">
-                        <option :value="courier.id" x-text="courier.name"></option>
-                    </template>
-                </select>
-            </div>
-            <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">Sebep *</label>
-                <select name="reason" x-model="jokerForm.reason" required class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-white">
-                    <template x-for="(label, key) in jokerReasons" :key="key">
-                        <option :value="key" x-text="label"></option>
-                    </template>
-                </select>
-            </div>
-            <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">Not</label>
-                <textarea name="notes" rows="2" x-model="jokerForm.notes" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-white"></textarea>
-            </div>
-
-            <div class="flex justify-end gap-2">
-                <x-ui.button type="button" variant="secondary" x-on:click="closeJokerModal()">Vazgeç</x-ui.button>
-                <x-ui.button type="submit">Joker Ata</x-ui.button>
-            </div>
-        </form>
-    </div>
-</div>
-
 {{-- Sil --}}
 <div
     x-show="openDeleteModal"
@@ -204,7 +144,7 @@
     <div class="fixed inset-0 bg-gray-900/50" x-on:click="closeDeleteModal()"></div>
     <div class="relative w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-800">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Vardiyayı Sil</h3>
-        <p class="mt-2 text-sm text-gray-500 dark:text-slate-400">Bu vardiya şablonu, kadrosu ve joker atamaları silinecek.</p>
+        <p class="mt-2 text-sm text-gray-500 dark:text-slate-400">Bu vardiya şablonu ve kadrosu silinecek.</p>
         <form method="POST" :action="destroyFormAction()" class="mt-4 flex justify-end gap-2">
             @csrf
             @method('DELETE')

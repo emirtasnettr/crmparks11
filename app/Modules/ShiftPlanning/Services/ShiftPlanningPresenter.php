@@ -2,9 +2,7 @@
 
 namespace App\Modules\ShiftPlanning\Services;
 
-use App\Modules\ShiftPlanning\Data\ShiftPlanningFormData;
 use App\Modules\ShiftPlanning\Models\BusinessShift;
-use App\Modules\ShiftPlanning\Models\BusinessShiftJokerAssignment;
 use Carbon\Carbon;
 
 class ShiftPlanningPresenter
@@ -59,68 +57,19 @@ class ShiftPlanningPresenter
     }
 
     /**
-     * @return array<string, mixed>
-     */
-    public function jokerRow(BusinessShiftJokerAssignment $assignment): array
-    {
-        $reasons = ShiftPlanningFormData::jokerReasons();
-
-        return [
-            'id' => $assignment->id,
-            'shift_id' => $assignment->business_shift_id,
-            'shift_name' => $assignment->shift?->name ?? '—',
-            'work_date' => $assignment->work_date?->toDateString(),
-            'work_date_formatted' => $assignment->work_date?->format('d.m.Y') ?? '—',
-            'absent_courier_id' => $assignment->absent_courier_id,
-            'absent_courier_name' => $assignment->absentCourier?->full_name ?? '—',
-            'joker_courier_id' => $assignment->joker_courier_id,
-            'joker_courier_name' => $assignment->jokerCourier?->full_name ?? '—',
-            'reason' => $assignment->reason,
-            'reason_label' => $reasons[$assignment->reason] ?? $assignment->reason,
-            'notes' => $assignment->notes,
-        ];
-    }
-
-    /**
      * @param  array<string, mixed>  $shiftRow
-     * @param  array<int, array<string, mixed>>  $jokersForDate
      * @return array<string, mixed>
      */
-    public function dayOccurrence(array $shiftRow, string $date, array $jokersForDate = []): array
+    public function dayOccurrence(array $shiftRow, string $date): array
     {
-        $absentIds = collect($jokersForDate)
-            ->where('shift_id', $shiftRow['id'])
-            ->pluck('absent_courier_id')
-            ->map(fn ($id) => (int) $id)
-            ->all();
-
-        $jokers = collect($jokersForDate)
-            ->where('shift_id', $shiftRow['id'])
-            ->values()
-            ->all();
-
         $working = collect($shiftRow['couriers'] ?? [])
-            ->reject(fn (array $courier) => in_array((int) $courier['id'], $absentIds, true))
             ->values()
             ->all();
-
-        foreach ($jokers as $joker) {
-            $working[] = [
-                'id' => $joker['joker_courier_id'],
-                'name' => $joker['joker_courier_name'],
-                'phone' => '—',
-                'is_joker' => true,
-                'covers' => $joker['absent_courier_name'],
-                'reason_label' => $joker['reason_label'],
-            ];
-        }
 
         return [
             ...$shiftRow,
             'work_date' => $date,
             'working_couriers' => $working,
-            'jokers' => $jokers,
-            'absent_count' => count($absentIds),
         ];
     }
 

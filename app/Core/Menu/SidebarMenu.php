@@ -106,7 +106,6 @@ class SidebarMenu
                             'shift-planning.store',
                             'shift-planning.update',
                             'shift-planning.assign-couriers',
-                            'shift-planning.jokers.*',
                             'shift-planning.destroy',
                         ],
                     ],
