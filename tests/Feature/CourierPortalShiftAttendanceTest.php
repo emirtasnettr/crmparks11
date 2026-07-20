@@ -257,14 +257,29 @@ class CourierPortalShiftAttendanceTest extends TestCase
         $response = $this->actingAs($user)->get(route('courier-portal.dashboard'));
 
         $response->assertOk();
-        $response->assertSee('Merhaba, Portal Kurye', false);
-        $response->assertSee('Vardiyalarım', false);
-        $response->assertSee('Hesap', false);
-        $response->assertSee('Çıkış Yap', false);
+        $response->assertSee('Vardiya', false);
+        $response->assertSee('Kazançlarım', false);
+        $response->assertSee('Profil', false);
+        $response->assertSee('Bugünkü Vardiyalar', false);
         $response->assertSee('aria-label="Kurye menü"', false);
+        $response->assertDontSee('Merhaba,', false);
+        $response->assertDontSee('Bu Ay Çalışma', false);
+        $response->assertDontSee('Saatlik Hakediş', false);
         $response->assertDontSee('aria-label="Menüyü aç"', false);
         $response->assertDontSee('aria-label="Ara"', false);
         $response->assertDontSee('title="Bildirimler"', false);
         $response->assertDontSee('>Radar</a>', false);
+
+        $this->actingAs($user)
+            ->get(route('courier-portal.earnings'))
+            ->assertOk()
+            ->assertSee('Kazançlarım', false)
+            ->assertSee('Bu Ay Çalışma', false);
+
+        $this->actingAs($user)
+            ->get(route('courier-portal.profile'))
+            ->assertOk()
+            ->assertSee('Profil', false)
+            ->assertSee('Çıkış Yap', false);
     }
 }

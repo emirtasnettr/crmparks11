@@ -20,13 +20,34 @@ class CourierPortalController extends Controller
         $payload = $this->attendances->portalPayload($courier);
 
         return view('modules.courier-portal.dashboard', [
+            'today' => $payload['today'],
+        ]);
+    }
+
+    public function earnings(Request $request): View
+    {
+        $courier = $this->attendances->resolveCourierForUser($request->user());
+        $payload = $this->attendances->portalPayload($courier);
+
+        return view('modules.courier-portal.earnings', [
+            'recent' => $payload['recent'],
+            'summary' => $payload['summary'],
+        ]);
+    }
+
+    public function profile(Request $request): View
+    {
+        $courier = $this->attendances->resolveCourierForUser($request->user());
+        $courier->loadMissing('user');
+
+        return view('modules.courier-portal.profile', [
             'courier' => [
                 'id' => $courier->id,
                 'full_name' => $courier->full_name,
+                'phone' => $courier->phone,
+                'email' => $courier->email,
+                'login_email' => $courier->user?->email,
             ],
-            'today' => $payload['today'],
-            'recent' => $payload['recent'],
-            'summary' => $payload['summary'],
         ]);
     }
 

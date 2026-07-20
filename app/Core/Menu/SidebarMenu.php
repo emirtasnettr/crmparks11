@@ -28,7 +28,7 @@ class SidebarMenu
             [
                 'key' => 'courier_portal',
                 'type' => 'link',
-                'label' => 'Vardiyalarım',
+                'label' => 'Vardiya',
                 'icon' => 'calendar-days',
                 'route' => 'courier-portal.dashboard',
                 'active' => ['courier-portal.*'],

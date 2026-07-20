@@ -74,6 +74,8 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('kurye-panel')->name('courier-portal.')->middleware('permission:courier.view_own')->group(function () {
         Route::get('/', [CourierPortalController::class, 'dashboard'])->name('dashboard');
+        Route::get('/kazanclarim', [CourierPortalController::class, 'earnings'])->name('earnings');
+        Route::get('/profil', [CourierPortalController::class, 'profile'])->name('profile');
         Route::post('/vardiyalar/{shiftId}/baslat', [CourierPortalController::class, 'startShift'])->name('shifts.start');
         Route::post('/katilimlar/{attendanceId}/bitir', [CourierPortalController::class, 'endShift'])->name('shifts.end');
     });
