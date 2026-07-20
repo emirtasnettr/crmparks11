@@ -23,7 +23,7 @@ class ClearDemoDataCommand extends Command
             return self::FAILURE;
         }
 
-        $this->warn('Bu komut yalnızca geliştirme/test içindir. Canlıya asla uygulanmamalıdır.');
+        $this->warn('DEMO_SEED örnek verisi silinecek. Süper Admin ve kataloglar (şehir, rol) kalır.');
 
         if (! $this->option('force') && ! $this->confirm('Örnek (demo) veriler silinsin mi?', false)) {
             $this->info('İptal edildi.');
@@ -35,7 +35,7 @@ class ClearDemoDataCommand extends Command
         $total = array_sum($counts);
 
         $this->newLine();
-        $this->info("Örnek veriler temizlendi ({$total} kayıt).");
+        $this->info("Örnek veriler temizlendi ({$total} kayıt). Süper Admin korundu.");
 
         foreach ($counts as $table => $count) {
             if ($count > 0) {
@@ -44,7 +44,7 @@ class ClearDemoDataCommand extends Command
         }
 
         $this->newLine();
-        $this->comment('Yeniden yüklemek için: php artisan crmlog:seed-demo');
+        $this->comment('Yeniden yüklemek için: php artisan crmlog:seed-demo --force');
 
         return self::SUCCESS;
     }

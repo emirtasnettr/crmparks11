@@ -78,10 +78,35 @@ class ShiftPlanningTest extends TestCase
         $this->assertNotNull($shift);
         $response->assertRedirect(route('shift-planning.index', ['business_id' => $business->id]));
         $this->assertSame(2, $shift->required_headcount);
+        $this->assertSame(now()->toDateString(), $shift->start_date?->toDateString());
+        $this->assertSame(now()->addMonth()->toDateString(), $shift->end_date?->toDateString());
         $this->assertDatabaseHas('business_shift_couriers', [
             'business_shift_id' => $shift->id,
             'courier_id' => $courier->id,
         ]);
+    }
+
+    public function test_can_create_shift_with_custom_date_range(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+
+        $this->actingAs($user)->post(route('shift-planning.store'), [
+            'business_id' => $business->id,
+            'name' => 'Haftalık',
+            'start_time' => '10:00',
+            'end_time' => '18:00',
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-08-15',
+            'required_headcount' => 1,
+            'is_active' => '1',
+        ])->assertRedirect(route('shift-planning.index', ['business_id' => $business->id]));
+
+        $shift = BusinessShift::query()->first();
+        $this->assertNotNull($shift);
+        $this->assertSame('2026-08-01', $shift->start_date?->toDateString());
+        $this->assertSame('2026-08-15', $shift->end_date?->toDateString());
     }
 
     public function test_roster_cannot_exceed_headcount(): void

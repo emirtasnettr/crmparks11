@@ -22,6 +22,14 @@ use App\Modules\Finance\Models\FinanceInvoice;
 use App\Modules\Finance\Models\FinancePayment;
 use App\Modules\Finance\Models\FinancePaymentLine;
 use App\Modules\Finance\Models\FinanceRevenue;
+use App\Modules\ShiftPlanning\Models\BusinessShift;
+use App\Modules\ShiftPlanning\Models\BusinessShiftAttendance;
+use App\Modules\ShiftPlanning\Models\BusinessShiftCourier;
+use App\Modules\ShiftPlanning\Models\BusinessShiftDayCourier;
+use App\Modules\ShiftPlanning\Models\BusinessShiftJokerAssignment;
+use App\Modules\Stock\Models\StockAssignment;
+use App\Modules\Stock\Models\StockProduct;
+use App\Models\User;
 use Database\Seeders\DemoDataSeeder;
 use Illuminate\Support\Facades\DB;
 
@@ -51,11 +59,30 @@ final class DemoDataCleaner
             $courierIds = Courier::withTrashed()
                 ->where('notes', $marker)
                 ->pluck('id');
+            $courierUserIds = Courier::withTrashed()
+                ->where('notes', $marker)
+                ->whereNotNull('user_id')
+                ->pluck('user_id')
+                ->unique()
+                ->values();
+            $shiftIds = BusinessShift::withTrashed()
+                ->where(function ($query) use ($marker, $businessIds): void {
+                    $query->where('notes', $marker)
+                        ->orWhereIn('business_id', $businessIds);
+                })
+                ->pluck('id');
+            $stockProductIds = StockProduct::withTrashed()
+                ->where('notes', $marker)
+                ->pluck('id');
             $assignmentIds = BusinessCourierAssignment::withTrashed()
                 ->where('notes', $marker)
                 ->pluck('id');
             $earningIds = EarningLine::withTrashed()
-                ->where('description', $marker)
+                ->where(function ($query) use ($marker, $businessIds, $courierIds): void {
+                    $query->where('description', 'like', $marker.'%')
+                        ->orWhereIn('business_id', $businessIds)
+                        ->orWhereIn('courier_id', $courierIds);
+                })
                 ->pluck('id');
             $revenueIds = FinanceRevenue::query()
                 ->where(function ($query) use ($marker, $businessIds): void {
@@ -92,6 +119,42 @@ final class DemoDataCleaner
                     });
                 })
                 ->pluck('id');
+
+            $counts['shift_jokers'] = BusinessShiftJokerAssignment::query()
+                ->whereIn('business_shift_id', $shiftIds)
+                ->delete();
+
+            $counts['shift_attendances'] = BusinessShiftAttendance::withTrashed()
+                ->where(function ($query) use ($shiftIds, $courierIds, $businessIds): void {
+                    $query->whereIn('business_shift_id', $shiftIds)
+                        ->orWhereIn('courier_id', $courierIds)
+                        ->orWhereIn('business_id', $businessIds);
+                })
+                ->forceDelete();
+
+            $counts['shift_day_couriers'] = BusinessShiftDayCourier::query()
+                ->whereIn('business_shift_id', $shiftIds)
+                ->delete();
+
+            $counts['shift_couriers'] = BusinessShiftCourier::query()
+                ->whereIn('business_shift_id', $shiftIds)
+                ->delete();
+
+            $counts['business_shifts'] = BusinessShift::withTrashed()
+                ->whereIn('id', $shiftIds)
+                ->forceDelete();
+
+            $counts['stock_assignments'] = StockAssignment::withTrashed()
+                ->where(function ($query) use ($stockProductIds, $courierIds, $marker): void {
+                    $query->whereIn('stock_product_id', $stockProductIds)
+                        ->orWhereIn('courier_id', $courierIds)
+                        ->orWhere('notes', $marker);
+                })
+                ->forceDelete();
+
+            $counts['stock_products'] = StockProduct::withTrashed()
+                ->whereIn('id', $stockProductIds)
+                ->forceDelete();
 
             $counts['finance_collection_payments'] = FinanceCollectionPayment::query()
                 ->whereIn('collection_id', $collectionIds)
@@ -210,6 +273,33 @@ final class DemoDataCleaner
             $counts['couriers'] = Courier::withTrashed()
                 ->whereIn('id', $courierIds)
                 ->forceDelete();
+
+            $linkedProfileUserIds = User::query()
+                ->withTrashed()
+                ->where('profileable_type', Courier::class)
+                ->whereIn('profileable_id', $courierIds)
+                ->pluck('id');
+
+            $demoCourierUserIds = $courierUserIds
+                ->merge($linkedProfileUserIds)
+                ->unique()
+                ->values();
+
+            $demoCourierUsers = User::query()
+                ->withTrashed()
+                ->whereIn('id', $demoCourierUserIds)
+                ->get()
+                ->reject(fn (User $user): bool => $user->hasRole('super_admin'));
+
+            $counts['courier_users'] = $demoCourierUsers->count();
+
+            foreach ($demoCourierUsers as $user) {
+                DB::table('model_has_roles')
+                    ->where('model_type', User::class)
+                    ->where('model_id', $user->id)
+                    ->delete();
+                $user->forceDelete();
+            }
         });
 
         return $counts;

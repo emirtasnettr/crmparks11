@@ -37,6 +37,11 @@ class ShiftPlanningPresenter
             'end_time' => $end,
             'start_time_raw' => substr((string) $shift->start_time, 0, 5),
             'end_time_raw' => substr((string) $shift->end_time, 0, 5),
+            'start_date' => $shift->start_date?->toDateString(),
+            'end_date' => $shift->end_date?->toDateString(),
+            'date_range_label' => ($shift->start_date && $shift->end_date)
+                ? $shift->start_date->format('d.m.Y').' – '.$shift->end_date->format('d.m.Y')
+                : null,
             'time_range' => $overnight
                 ? "{$start} – {$end} (ertesi gün)"
                 : "{$start} – {$end}",

@@ -25,10 +25,9 @@ class StoreUserRequest extends FormRequest
             'phone' => ['required', 'string', 'max:30', 'unique:users,phone'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'roles' => ['required', 'array', 'min:1'],
-            'roles.*' => ['string', Rule::in(array_keys(UserManagementFormData::roleLabels()))],
+            'roles.*' => ['string', Rule::in(array_keys(UserManagementFormData::assignableRoleLabels()))],
             'status' => ['required', Rule::in(array_keys(UserManagementFormData::statuses()))],
             'linked_business_id' => ['nullable', 'integer', 'exists:businesses,id'],
-            'linked_courier_id' => ['nullable', 'integer', 'exists:couriers,id'],
             'linked_agency_id' => ['nullable', 'integer', 'exists:agencies,id'],
         ];
     }
@@ -47,8 +46,17 @@ class StoreUserRequest extends FormRequest
             'roles' => 'roller',
             'status' => 'durum',
             'linked_business_id' => 'bağlı işletme',
-            'linked_courier_id' => 'bağlı kurye',
             'linked_agency_id' => 'bağlı acente',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'roles.*.in' => 'Kurye hesapları Kullanıcılar ekranından oluşturulamaz. Kuryeler modülünden kurye ekleyin.',
         ];
     }
 }

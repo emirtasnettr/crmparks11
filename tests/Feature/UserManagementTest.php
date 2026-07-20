@@ -99,6 +99,75 @@ class UserManagementTest extends TestCase
         $response->assertSee('Ahmet Kurye');
     }
 
+    public function test_courier_role_cannot_be_assigned_via_user_management(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('super_admin');
+
+        $response = $this->actingAs($admin)->post(route('users.store'), [
+            'first_name' => 'Yeni',
+            'last_name' => 'Kurye',
+            'email' => 'manuel-kurye@test.com',
+            'phone' => '0532 999 88 77',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'roles' => ['courier'],
+            'status' => 'active',
+        ]);
+
+        $response->assertSessionHasErrors('roles.0');
+        $this->assertDatabaseMissing('users', ['email' => 'manuel-kurye@test.com']);
+    }
+
+    public function test_create_user_form_excludes_courier_role_option(): void
+    {
+        $service = app(UserManagementService::class);
+
+        $this->assertArrayNotHasKey('courier', $service->assignableRoles());
+        $this->assertArrayHasKey('courier', $service->roles());
+
+        $admin = User::factory()->create();
+        $admin->assignRole('super_admin');
+
+        $response = $this->actingAs($admin)->get(route('users.index'));
+
+        $response->assertOk();
+        $response->assertSee('Kurye hesapları Kuryeler modülünden oluşur');
+    }
+
+    public function test_courier_managed_account_is_not_editable_via_user_management(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('super_admin');
+
+        $courierUser = User::factory()->withRole('courier')->create([
+            'name' => 'Kart Kurye',
+            'user_type' => UserType::Courier,
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('users.show', $courierUser->id));
+
+        $response->assertOk();
+        $response->assertSee('Kurye Hesabı');
+        $response->assertSee('Kuryeler modülünden');
+        $response->assertDontSee('Kullanıcıyı Düzenle');
+    }
+
+    public function test_orphan_courier_accounts_can_be_deactivated(): void
+    {
+        User::factory()->withRole('courier')->create([
+            'name' => 'Yetim Kurye',
+            'user_type' => UserType::Courier,
+            'profileable_type' => null,
+            'profileable_id' => null,
+        ]);
+
+        $count = app(UserManagementService::class)->deactivateOrphanCourierAccounts();
+
+        $this->assertSame(1, $count);
+        $this->assertSoftDeleted('users', ['name' => 'Yetim Kurye']);
+    }
+
     public function test_users_can_be_filtered_by_status(): void
     {
         $user = User::factory()->create();

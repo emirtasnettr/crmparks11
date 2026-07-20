@@ -86,6 +86,42 @@ class UserManagementService
     }
 
     /**
+     * @return array<string, string>
+     */
+    public function assignableRoles(): array
+    {
+        return UserManagementFormData::assignableRoleLabels();
+    }
+
+    /**
+     * Kurye kaydı olmayan (manuel eklenmiş) kurye-rolü hesaplarını pasife alır.
+     */
+    public function deactivateOrphanCourierAccounts(): int
+    {
+        $orphans = User::role('courier')
+            ->where(function (Builder $query): void {
+                $query->whereNull('profileable_type')
+                    ->orWhere('profileable_type', '!=', Courier::class)
+                    ->orWhereNull('profileable_id');
+            })
+            ->get();
+
+        $count = 0;
+
+        foreach ($orphans as $orphan) {
+            if ($orphan->trashed()) {
+                continue;
+            }
+
+            $orphan->update(['status' => Status::Inactive]);
+            $orphan->delete();
+            $count++;
+        }
+
+        return $count;
+    }
+
+    /**
      * @return array<int, array{id: int, name: string}>
      */
     public function businesses(): array
@@ -138,6 +174,8 @@ class UserManagementService
     public function create(array $data, User $actor): User
     {
         return DB::transaction(function () use ($data, $actor): User {
+            $this->assertNoCourierRoleAssignment($data['roles'] ?? []);
+
             [$userType, $profileableType, $profileableId] = $this->resolveProfile($data);
 
             $user = User::query()->create([
@@ -180,9 +218,13 @@ class UserManagementService
 
             if (! $this->canUpdate($user, $actor)) {
                 throw ValidationException::withMessages([
-                    'user' => 'Bu kullanıcı güncellenemez.',
+                    'user' => $this->isCourierManagedAccount($user)
+                        ? 'Kurye hesapları yalnızca Kuryeler modülünden yönetilir.'
+                        : 'Bu kullanıcı güncellenemez.',
                 ]);
             }
+
+            $this->assertNoCourierRoleAssignment($data['roles'] ?? []);
 
             [$userType, $profileableType, $profileableId] = $this->resolveProfile($data);
             $status = Status::from($data['status']);
@@ -322,7 +364,30 @@ class UserManagementService
 
     public function canUpdate(User $user, User $actor): bool
     {
+        if ($this->isCourierManagedAccount($user)) {
+            return false;
+        }
+
         return $actor->can('user.update');
+    }
+
+    public function isCourierManagedAccount(User $user): bool
+    {
+        return $user->hasRole('courier')
+            || $user->user_type === UserType::Courier
+            || $user->profileable_type === Courier::class;
+    }
+
+    /**
+     * @param  list<string>  $roles
+     */
+    private function assertNoCourierRoleAssignment(array $roles): void
+    {
+        if (in_array('courier', $roles, true)) {
+            throw ValidationException::withMessages([
+                'roles' => 'Kurye hesapları Kullanıcılar ekranından oluşturulamaz. Kuryeler modülünden kurye ekleyin.',
+            ]);
+        }
     }
 
     public function canDelete(User $user, User $actor): bool
@@ -394,12 +459,6 @@ class UserManagementService
             $businessId = ! empty($data['linked_business_id']) ? (int) $data['linked_business_id'] : null;
 
             return [UserType::Business, $businessId ? Business::class : null, $businessId];
-        }
-
-        if (! empty($data['linked_courier_id']) || in_array('courier', $roles, true)) {
-            $courierId = ! empty($data['linked_courier_id']) ? (int) $data['linked_courier_id'] : null;
-
-            return [UserType::Courier, $courierId ? Courier::class : null, $courierId];
         }
 
         if (! empty($data['linked_agency_id']) || in_array('agency', $roles, true)) {

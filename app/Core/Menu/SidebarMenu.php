@@ -23,6 +23,17 @@ class SidebarMenu
                 'route' => 'dashboard',
                 'active' => ['dashboard'],
                 'permission' => 'dashboard.view',
+                'except_roles' => ['courier'],
+            ],
+            [
+                'key' => 'courier_portal',
+                'type' => 'link',
+                'label' => 'Vardiyalarım',
+                'icon' => 'calendar-days',
+                'route' => 'courier-portal.dashboard',
+                'active' => ['courier-portal.*'],
+                'permission' => 'courier.view_own',
+                'roles' => ['courier'],
             ],
             [
                 'key' => 'businesses',
@@ -80,13 +91,43 @@ class SidebarMenu
                 ])),
             ],
             [
-                'key' => 'shift_planning',
-                'type' => 'link',
-                'label' => 'Vardiya Planlama',
+                'key' => 'shifts',
+                'type' => 'group',
+                'label' => 'Vardiya',
                 'icon' => 'calendar-days',
-                'route' => 'shift-planning.index',
-                'active' => ['shift-planning.*'],
                 'permission' => 'shift_planning.view',
+                'active' => ['shift-planning.*'],
+                'children' => [
+                    [
+                        'label' => 'Vardiya Planlama',
+                        'route' => 'shift-planning.index',
+                        'active' => [
+                            'shift-planning.index',
+                            'shift-planning.store',
+                            'shift-planning.update',
+                            'shift-planning.assign-couriers',
+                            'shift-planning.jokers.*',
+                            'shift-planning.destroy',
+                        ],
+                    ],
+                    [
+                        'label' => 'Canlı Operasyon',
+                        'route' => 'shift-planning.attendance',
+                        'active' => [
+                            'shift-planning.attendance',
+                            'shift-planning.attendance.start',
+                            'shift-planning.attendance.end',
+                        ],
+                    ],
+                    [
+                        'label' => 'Vardiya Raporu',
+                        'route' => 'shift-planning.report',
+                        'active' => [
+                            'shift-planning.report',
+                            'shift-planning.report.export',
+                        ],
+                    ],
+                ],
             ],
             [
                 'key' => 'business_contracts',

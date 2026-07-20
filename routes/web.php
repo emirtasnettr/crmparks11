@@ -50,6 +50,9 @@ use App\Modules\User\Controllers\UserManagementController;
 use App\Modules\Notification\Controllers\NotificationController;
 use App\Modules\Report\Controllers\ReportController;
 use App\Modules\Search\Controllers\SearchController;
+use App\Modules\CourierPortal\Controllers\CourierPortalController;
+use App\Modules\ShiftPlanning\Controllers\ShiftAttendanceController;
+use App\Modules\ShiftPlanning\Controllers\ShiftAttendanceReportController;
 use App\Modules\ShiftPlanning\Controllers\ShiftPlanningController;
 use App\Modules\Stock\Controllers\StockProductController;
 use Illuminate\Support\Facades\Route;
@@ -70,6 +73,12 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:dashboard.view')
         ->name('dashboard');
 
+    Route::prefix('kurye-panel')->name('courier-portal.')->middleware('permission:courier.view_own')->group(function () {
+        Route::get('/', [CourierPortalController::class, 'dashboard'])->name('dashboard');
+        Route::post('/vardiyalar/{shiftId}/baslat', [CourierPortalController::class, 'startShift'])->name('shifts.start');
+        Route::post('/katilimlar/{attendanceId}/bitir', [CourierPortalController::class, 'endShift'])->name('shifts.end');
+    });
+
     Route::get('/arama', SearchController::class)->name('search');
 
     Route::prefix('form-basvurulari')->middleware('permission:form_application.view')->name('form-applications.')->group(function () {
@@ -82,6 +91,11 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('vardiya-planlama')->name('shift-planning.')->middleware('permission:shift_planning.view')->group(function () {
         Route::get('/', [ShiftPlanningController::class, 'index'])->name('index');
+        Route::get('/katilim', [ShiftAttendanceController::class, 'board'])->name('attendance');
+        Route::get('/rapor', [ShiftAttendanceReportController::class, 'index'])->name('report');
+        Route::get('/rapor/export', [ShiftAttendanceReportController::class, 'export'])->name('report.export');
+        Route::post('/katilim/baslat', [ShiftAttendanceController::class, 'start'])->middleware('permission:shift_planning.update')->name('attendance.start');
+        Route::post('/katilim/bitir', [ShiftAttendanceController::class, 'end'])->middleware('permission:shift_planning.update')->name('attendance.end');
         Route::post('/', [ShiftPlanningController::class, 'store'])->middleware('permission:shift_planning.create')->name('store');
         Route::put('/{id}', [ShiftPlanningController::class, 'update'])->middleware('permission:shift_planning.update')->name('update');
         Route::put('/{id}/kuryeler', [ShiftPlanningController::class, 'assignCouriers'])->middleware('permission:shift_planning.update')->name('assign-couriers');

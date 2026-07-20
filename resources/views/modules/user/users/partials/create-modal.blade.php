@@ -11,7 +11,7 @@
         <div class="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4 dark:border-slate-700 dark:bg-slate-800">
             <div>
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Yeni Kullanıcı</h3>
-                <p class="mt-0.5 text-xs text-gray-500 dark:text-slate-400">Sisteme yeni bir kullanıcı hesabı ekleyin.</p>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-slate-400">Personel ve portal hesapları için. Kurye hesapları Kuryeler modülünden oluşur.</p>
             </div>
             <button type="button" @click="closeModals()" class="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700">
                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -39,7 +39,7 @@
             <div class="space-y-1.5">
                 <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Rol * <span class="font-normal text-gray-500">(birden fazla seçilebilir)</span></label>
                 <div class="grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-3 sm:grid-cols-2 dark:border-slate-600">
-                    @foreach ($roles as $key => $label)
+                    @foreach ($assignableRoles as $key => $label)
                         <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-300">
                             <input type="checkbox" name="roles[]" value="{{ $key }}" @checked(in_array($key, old('roles', []), true)) class="rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-slate-600 dark:bg-slate-800" />
                             {{ $label }}
@@ -51,22 +51,13 @@
                 @enderror
             </div>
 
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div class="space-y-1.5">
                     <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Bağlı İşletme</label>
                     <select name="linked_business_id" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
                         <option value="">Seçilmedi</option>
                         @foreach ($businesses as $business)
                             <option value="{{ $business['id'] }}" @selected(old('linked_business_id') == $business['id'])>{{ $business['name'] }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="space-y-1.5">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Bağlı Kurye</label>
-                    <select name="linked_courier_id" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
-                        <option value="">Seçilmedi</option>
-                        @foreach ($couriers as $courier)
-                            <option value="{{ $courier['id'] }}" @selected(old('linked_courier_id') == $courier['id'])>{{ $courier['name'] }}</option>
                         @endforeach
                     </select>
                 </div>

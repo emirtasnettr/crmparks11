@@ -4,6 +4,7 @@ namespace App\Modules\Dashboard\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Dashboard\Services\DashboardService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -11,8 +12,12 @@ class DashboardController extends Controller
 {
     public function __construct(private readonly DashboardService $dashboardService) {}
 
-    public function index(Request $request): View
+    public function index(Request $request): View|RedirectResponse
     {
+        if ($request->user()?->hasRole('courier') && $request->user()->can('courier.view_own')) {
+            return redirect()->route('courier-portal.dashboard');
+        }
+
         $isSalesDashboard = $request->user()?->hasRole('sales_manager') ?? false;
 
         $payload = [

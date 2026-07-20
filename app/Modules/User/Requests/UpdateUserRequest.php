@@ -2,6 +2,7 @@
 
 namespace App\Modules\User\Requests;
 
+use App\Modules\User\Data\UserManagementFormData;
 use Illuminate\Validation\Rule;
 
 class UpdateUserRequest extends StoreUserRequest
@@ -25,10 +26,9 @@ class UpdateUserRequest extends StoreUserRequest
             'phone' => ['required', 'string', 'max:30', Rule::unique('users', 'phone')->ignore($userId)],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'roles' => ['required', 'array', 'min:1'],
-            'roles.*' => ['string', Rule::in(array_keys(\App\Modules\User\Data\UserManagementFormData::roleLabels()))],
-            'status' => ['required', Rule::in(array_keys(\App\Modules\User\Data\UserManagementFormData::statuses()))],
+            'roles.*' => ['string', Rule::in(array_keys(UserManagementFormData::assignableRoleLabels()))],
+            'status' => ['required', Rule::in(array_keys(UserManagementFormData::statuses()))],
             'linked_business_id' => ['nullable', 'integer', 'exists:businesses,id'],
-            'linked_courier_id' => ['nullable', 'integer', 'exists:couriers,id'],
             'linked_agency_id' => ['nullable', 'integer', 'exists:agencies,id'],
         ];
     }

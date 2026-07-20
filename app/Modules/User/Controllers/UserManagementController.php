@@ -41,10 +41,10 @@ class UserManagementController extends Controller
             'users' => $result['users'],
             'filters' => $filters,
             'roles' => $this->userService->roles(),
+            'assignableRoles' => $this->userService->assignableRoles(),
             'statuses' => UserManagementFormData::statuses(),
             'lastLoginFilters' => UserManagementFormData::lastLoginFilters(),
             'businesses' => $this->userService->businesses(),
-            'couriers' => $this->userService->couriers(),
             'agencies' => $this->userService->agencies(),
             'summary' => $result['summary'],
             'total' => $result['total'],
@@ -151,10 +151,9 @@ class UserManagementController extends Controller
 
         return view('modules.user.users.show', [
             'user' => $user,
-            'roles' => $this->userService->roles(),
+            'roles' => $this->userService->assignableRoles(),
             'statuses' => UserManagementFormData::statuses(),
             'businesses' => $this->userService->businesses(),
-            'couriers' => $this->userService->couriers(),
             'agencies' => $this->userService->agencies(),
         ]);
     }

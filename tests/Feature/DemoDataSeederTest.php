@@ -118,6 +118,46 @@ class DemoDataSeederTest extends TestCase
         $this->assertSame(0, Courier::withTrashed()->where('notes', DemoDataSeeder::MARKER)->count());
         $this->assertDatabaseMissing('earning_lines', ['description' => DemoDataSeeder::MARKER]);
         $this->assertDatabaseMissing('finance_revenues', ['description' => DemoDataSeeder::MARKER]);
+        $this->assertDatabaseMissing('business_shifts', ['notes' => DemoDataSeeder::MARKER]);
+        $this->assertDatabaseMissing('stock_products', ['notes' => DemoDataSeeder::MARKER]);
         $this->assertDatabaseHas('users', ['email' => 'admin@crmlog.com']);
+        $this->assertDatabaseHas('users', ['email' => 'mudur@crmlog.com']);
+    }
+
+    public function test_demo_data_includes_shifts_and_stock(): void
+    {
+        $this->seed([
+            \Database\Seeders\LookupTableSeeder::class,
+            \Database\Seeders\CitySeeder::class,
+            \Database\Seeders\RoleAndPermissionSeeder::class,
+            \Database\Seeders\AdminUserSeeder::class,
+            DemoDataSeeder::class,
+        ]);
+
+        $this->assertGreaterThan(0, \App\Modules\ShiftPlanning\Models\BusinessShift::query()->where('notes', DemoDataSeeder::MARKER)->count());
+        $this->assertGreaterThan(0, \App\Modules\Stock\Models\StockProduct::query()->where('notes', DemoDataSeeder::MARKER)->count());
+        $this->assertGreaterThan(0, \App\Modules\Stock\Models\StockAssignment::query()->where('notes', DemoDataSeeder::MARKER)->count());
+    }
+
+    public function test_wipe_data_keeps_only_super_admin(): void
+    {
+        $this->seed([
+            \Database\Seeders\LookupTableSeeder::class,
+            \Database\Seeders\CitySeeder::class,
+            \Database\Seeders\RoleAndPermissionSeeder::class,
+            \Database\Seeders\AdminUserSeeder::class,
+            DemoDataSeeder::class,
+        ]);
+
+        $this->artisan('crmlog:wipe-data', ['--force' => true])
+            ->assertSuccessful();
+
+        $this->assertSame(0, Business::withTrashed()->count());
+        $this->assertSame(0, Agency::withTrashed()->count());
+        $this->assertSame(0, Courier::withTrashed()->count());
+        $this->assertDatabaseHas('users', ['email' => 'admin@crmlog.com']);
+        $this->assertDatabaseMissing('users', ['email' => 'mudur@crmlog.com']);
+        $this->assertDatabaseMissing('users', ['email' => 'operasyon@crmlog.com']);
+        $this->assertSame(1, \App\Models\User::query()->count());
     }
 }

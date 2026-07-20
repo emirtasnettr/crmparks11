@@ -28,6 +28,17 @@
                     <input type="time" name="end_time" x-model="shiftForm.end_time" required class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-white">
                 </div>
             </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">Tarih başlangıç *</label>
+                    <input type="date" name="start_date" x-model="shiftForm.start_date" required class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-white">
+                </div>
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">Tarih bitiş *</label>
+                    <input type="date" name="end_date" x-model="shiftForm.end_date" required class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-white">
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 dark:text-slate-400">Varsayılan aralık 1 aydır; istediğiniz tarih aralığını seçebilirsiniz.</p>
             <x-ui.input name="required_headcount" type="number" label="Kişi Sayısı *" x-model="shiftForm.required_headcount" min="1" max="100" required />
             <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">Not</label>

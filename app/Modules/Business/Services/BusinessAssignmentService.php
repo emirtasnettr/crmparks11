@@ -8,8 +8,10 @@ use App\Modules\Business\Models\Business;
 use App\Modules\Business\Models\BusinessCourierAssignment;
 use App\Modules\Courier\Models\Courier;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class BusinessAssignmentService
 {
@@ -112,17 +114,49 @@ class BusinessAssignmentService
     }
 
     /**
+     * Atama formu için: halihazırda aktif işletmesi olmayan kuryeler.
+     *
+     * @return array<int, array{id: int, name: string, phone: string, courier_type: string, agency_id: int|null}>
+     */
+    public function couriersAvailableForAssignment(): array
+    {
+        $busyIds = BusinessCourierAssignment::query()
+            ->currentlyActive()
+            ->pluck('courier_id');
+
+        return Courier::query()
+            ->whereNotIn('id', $busyIds)
+            ->orderBy('full_name')
+            ->get(['id', 'full_name', 'phone', 'courier_type', 'agency_id'])
+            ->map(fn (Courier $courier) => [
+                'id' => $courier->id,
+                'name' => $courier->full_name,
+                'phone' => $courier->phone ?? '—',
+                'courier_type' => $courier->courier_type,
+                'agency_id' => $courier->agency_id,
+            ])
+            ->all();
+    }
+
+    /**
      * @param  array<string, mixed>  $data
      */
     public function create(array $data, User $user): BusinessCourierAssignment
     {
         return DB::transaction(function () use ($data, $user): BusinessCourierAssignment {
+            $status = (string) ($data['status'] ?? 'active');
+            $endDate = $data['end_date'] ?? null;
+
+            if ($this->wouldBeCurrentlyActive($status, $endDate)) {
+                $this->assertCourierHasNoOtherActiveAssignment((int) $data['courier_id']);
+            }
+
             return BusinessCourierAssignment::query()->create([
                 'business_id' => (int) $data['business_id'],
                 'courier_id' => (int) $data['courier_id'],
                 'start_date' => $data['start_date'],
-                'end_date' => $data['end_date'] ?? null,
-                'status' => $data['status'] ?? 'active',
+                'end_date' => $endDate,
+                'status' => $status,
                 'notes' => $data['notes'] ?? null,
                 'assigned_by' => $user->id,
             ]);
@@ -135,10 +169,17 @@ class BusinessAssignmentService
     public function update(BusinessCourierAssignment $assignment, array $data): BusinessCourierAssignment
     {
         return DB::transaction(function () use ($assignment, $data): BusinessCourierAssignment {
+            $status = (string) ($data['status'] ?? $assignment->status);
+            $endDate = array_key_exists('end_date', $data) ? $data['end_date'] : $assignment->end_date?->toDateString();
+
+            if ($this->wouldBeCurrentlyActive($status, $endDate)) {
+                $this->assertCourierHasNoOtherActiveAssignment((int) $assignment->courier_id, (int) $assignment->id);
+            }
+
             $assignment->update([
                 'start_date' => $data['start_date'],
                 'end_date' => $data['end_date'] ?? null,
-                'status' => $data['status'] ?? $assignment->status,
+                'status' => $status,
                 'notes' => $data['notes'] ?? $assignment->notes,
             ]);
 
@@ -156,6 +197,35 @@ class BusinessAssignmentService
 
             return $assignment->fresh(['business', 'courier.agency']);
         });
+    }
+
+    public function wouldBeCurrentlyActive(string $status, mixed $endDate): bool
+    {
+        if ($status !== 'active') {
+            return false;
+        }
+
+        if ($endDate === null || $endDate === '') {
+            return true;
+        }
+
+        return now()->toDateString() <= Carbon::parse((string) $endDate)->toDateString();
+    }
+
+    public function assertCourierHasNoOtherActiveAssignment(int $courierId, ?int $ignoreAssignmentId = null): void
+    {
+        $exists = BusinessCourierAssignment::query()
+            ->currentlyActive()
+            ->where('courier_id', $courierId)
+            ->when($ignoreAssignmentId !== null, fn (Builder $query) => $query->where('id', '!=', $ignoreAssignmentId))
+            ->lockForUpdate()
+            ->exists();
+
+        if ($exists) {
+            throw ValidationException::withMessages([
+                'courier_id' => 'Bu kurye zaten bir işletmeye atanmış. Bir kurye aynı anda yalnızca bir işletmede çalışabilir.',
+            ]);
+        }
     }
 
     /**

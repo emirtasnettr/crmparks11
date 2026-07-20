@@ -35,6 +35,14 @@ final class EarningCalculator
             $revenueTotal = round($packageCount * $revenueUnit, 2);
             $courierTotal = round($packageCount * $courierUnit, 2);
             $earningType = 'package_based';
+        } elseif ($pricingModel === 'hourly') {
+            $hours = (float) ($data['worked_hours'] ?? $data['hours'] ?? 0);
+            $revenueUnit = (float) ($data['revenue_unit_price'] ?? 0);
+            $courierUnit = (float) ($data['courier_unit_price'] ?? $data['unit_price'] ?? 0);
+            $packageCount = 0;
+            $revenueTotal = round($hours * $revenueUnit, 2);
+            $courierTotal = round($hours * $courierUnit, 2);
+            $earningType = 'hourly';
         } else {
             $packageCount = 0;
             $revenueUnit = 0.0;

@@ -51,7 +51,7 @@ class BusinessAssignmentController extends Controller
             'filters' => $filters,
             'businesses' => $this->assignments->businesses(),
             'agencies' => $this->assignments->agencies(),
-            'couriers' => $this->assignments->couriers(),
+            'couriers' => $this->assignments->couriersAvailableForAssignment(),
             'activeCount' => $this->assignments->countActive(),
             'total' => $total,
             'page' => $page,

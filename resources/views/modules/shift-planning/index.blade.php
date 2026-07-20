@@ -9,7 +9,10 @@
         'name' => $shift['name'],
         'start_time' => $shift['start_time_raw'],
         'end_time' => $shift['end_time_raw'],
+        'start_date' => $shift['start_date'],
+        'end_date' => $shift['end_date'],
         'time_range' => $shift['time_range'],
+        'date_range_label' => $shift['date_range_label'],
         'required_headcount' => $shift['required_headcount'],
         'assigned_count' => $shift['assigned_count'],
         'staffing_label' => $shift['staffing_label'],
@@ -30,6 +33,8 @@
         canCreate: @js($canCreate),
         canUpdate: @js($canUpdate),
         canDelete: @js($canDelete),
+        defaultStartDate: @js(now()->toDateString()),
+        defaultEndDate: @js(now()->addMonth()->toDateString()),
         storeUrl: @js(route('shift-planning.store')),
         updateUrlTemplate: @js(url('/vardiya-planlama/__ID__')),
         assignUrlTemplate: @js(url('/vardiya-planlama/__ID__/kuryeler')),
@@ -46,6 +51,11 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
+            @if ($selectedBusinessId)
+                <a href="{{ route('shift-planning.attendance') }}">
+                    <x-ui.button type="button" variant="secondary">Canlı Operasyon</x-ui.button>
+                </a>
+            @endif
             <template x-if="canCreate && selectedBusinessId">
                 <x-ui.button type="button" x-on:click="openCreate()">
                     Yeni Vardiya
@@ -153,12 +163,13 @@
                 <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Haftalık Görünüm</h2>
-                        <p class="text-sm text-gray-500 dark:text-slate-400">Sabit kadro + o güne ait joker atamaları</p>
+                        <p class="text-sm text-gray-500 dark:text-slate-400">Sabit kadro + joker + katılım özeti (başladı / gelmedi)</p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
                         <a href="{{ route('shift-planning.index', ['business_id' => $selectedBusinessId, 'week' => $week['prev_week']]) }}" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-slate-600">← Önceki</a>
                         <span class="min-w-[10rem] text-center text-sm font-semibold text-gray-900 dark:text-white">{{ $week['label'] }}</span>
                         <a href="{{ route('shift-planning.index', ['business_id' => $selectedBusinessId, 'week' => $week['next_week']]) }}" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-slate-600">Sonraki →</a>
+                        <a href="{{ route('shift-planning.attendance') }}" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-primary-700 dark:border-slate-600 dark:text-primary-300">Canlı Operasyon</a>
                     </div>
                 </div>
 
@@ -169,13 +180,28 @@
                             'border-primary-300 bg-primary-50/40' => $day['is_today'],
                             'border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-800' => ! $day['is_today'],
                         ])>
-                            <p class="text-xs font-medium text-gray-500 dark:text-slate-400">{{ $day['label_short'] }}</p>
-                            <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $day['day_number'] }} {{ $day['month_short'] }}</p>
+                            <div class="flex items-start justify-between gap-2">
+                                <div>
+                                    <p class="text-xs font-medium text-gray-500 dark:text-slate-400">{{ $day['label_short'] }}</p>
+                                    <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $day['day_number'] }} {{ $day['month_short'] }}</p>
+                                </div>
+                                <a href="{{ route('shift-planning.attendance') }}" class="text-[11px] font-medium text-primary-600 hover:underline">Takip</a>
+                            </div>
                             <div class="mt-2 space-y-2">
                                 @forelse ($day['shifts'] as $occurrence)
                                     <div class="rounded-lg border px-2 py-1.5 text-xs {{ $occurrence['color'] }}">
                                         <p class="font-semibold">{{ $occurrence['name'] }}</p>
                                         <p class="opacity-80">{{ $occurrence['time_range'] }}</p>
+                                        @if (! empty($occurrence['attendance']))
+                                            <p @class([
+                                                'mt-1 font-medium',
+                                                'text-sky-800' => ! empty($occurrence['attendance']['is_future']),
+                                                'text-rose-800' => empty($occurrence['attendance']['is_future']) && ($occurrence['attendance']['missing'] ?? 0) > 0,
+                                                'text-emerald-800' => empty($occurrence['attendance']['is_future']) && ($occurrence['attendance']['missing'] ?? 0) === 0 && ($occurrence['attendance']['expected'] ?? 0) > 0,
+                                            ])>
+                                                {{ $occurrence['attendance']['label'] }}
+                                            </p>
+                                        @endif
                                         @foreach ($occurrence['working_couriers'] as $courier)
                                             <p class="mt-0.5 {{ ! empty($courier['is_joker']) ? 'font-medium text-amber-800' : '' }}">
                                                 {{ $courier['name'] }}

@@ -9,7 +9,7 @@
         'routes' => [
             'resetPassword' => url('/kullanici-yonetimi/kullanicilar'),
         ],
-        'openCreate' => $errors->hasAny(['first_name', 'last_name', 'phone', 'email', 'password', 'roles', 'linked_business_id', 'linked_courier_id', 'linked_agency_id', 'status']),
+        'openCreate' => $errors->hasAny(['first_name', 'last_name', 'phone', 'email', 'password', 'roles', 'linked_business_id', 'linked_agency_id', 'status']),
     ]))"
     @user-row-action.window="handleRowAction($event.detail)"
 >

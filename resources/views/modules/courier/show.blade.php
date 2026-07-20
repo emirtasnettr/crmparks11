@@ -48,6 +48,7 @@
     <x-entity.tabs default="overview">
         <x-entity.tab-list>
             <x-entity.tab-trigger name="overview" label="Genel Bakış" />
+            <x-entity.tab-trigger name="shift_earnings" label="Vardiya / Hakediş" />
             <x-entity.tab-trigger name="work_history" label="Çalışma Geçmişi" />
             <x-entity.tab-trigger name="documents" label="Belgeler" />
             <x-entity.tab-trigger name="bank_accounts" label="Banka Bilgileri" />
@@ -126,6 +127,78 @@
                     <p class="text-sm text-gray-600 dark:text-slate-300">{{ $courier['notes'] }}</p>
                 </x-ui.card>
             </div>
+        </x-entity.tab-panel>
+
+        <x-entity.tab-panel name="shift_earnings">
+            <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <x-ui.finance-stat-card title="Çalışma" :value="$shiftAttendance['summary']['total_hours'].' sa'" :excl-vat="false" accent="blue" />
+                <x-ui.finance-stat-card title="Vardiya Sayısı" :value="(string) $shiftAttendance['summary']['sessions']" :excl-vat="false" accent="violet" />
+                <x-ui.finance-stat-card title="Saatlik Hakediş" :value="$shiftAttendance['summary']['total_earnings_formatted']" accent="success" />
+            </div>
+
+            <x-ui.card title="Vardiya Katılımları">
+                <form method="GET" action="{{ route('couriers.show', $courier['id']) }}" class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <input type="hidden" name="tab" value="shift_earnings">
+                    <x-ui.input type="date" name="attendance_from" label="Başlangıç" :value="$shiftAttendance['from']" />
+                    <x-ui.input type="date" name="attendance_to" label="Bitiş" :value="$shiftAttendance['to']" />
+                    <div class="flex items-end">
+                        <x-ui.button type="submit" variant="secondary" class="w-full sm:w-auto">Filtrele</x-ui.button>
+                    </div>
+                </form>
+                <p class="mb-4 text-sm text-gray-500 dark:text-slate-400">
+                    Dönem: {{ $shiftAttendance['summary']['from_formatted'] }} – {{ $shiftAttendance['summary']['to_formatted'] }}.
+                    Saatlik anlaşmalı işletmelerde kazanç, çalışılan süre × saat ücreti ile hesaplanır.
+                </p>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[720px] text-left text-sm">
+                        <thead>
+                            <tr class="border-b border-gray-200 dark:border-slate-700">
+                                <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Tarih</th>
+                                <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">İşletme / Vardiya</th>
+                                <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Başlangıç–Bitiş</th>
+                                <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Süre</th>
+                                <th class="pb-2 font-medium text-gray-500 dark:text-slate-400 text-right">Kazanç</th>
+                                <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Durum</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
+                            @forelse ($shiftAttendance['rows'] as $row)
+                                <tr @class([
+                                    'bg-amber-50/70 dark:bg-amber-600/10' => $row['status'] === 'in_progress',
+                                ])>
+                                    <td class="py-2.5 text-gray-900 dark:text-white">{{ $row['work_date_formatted'] }}</td>
+                                    <td class="py-2.5">
+                                        <p class="font-medium text-gray-900 dark:text-white">{{ $row['business_name'] }}</p>
+                                        <p class="text-xs text-gray-500 dark:text-slate-400">{{ $row['shift_name'] }}</p>
+                                    </td>
+                                    <td class="py-2.5 text-gray-600 dark:text-slate-300">
+                                        {{ $row['started_at_formatted'] }}
+                                        @if ($row['ended_at_formatted'] !== '—')
+                                            – {{ $row['ended_at_formatted'] }}
+                                        @endif
+                                    </td>
+                                    <td class="py-2.5 text-gray-700 dark:text-slate-300">{{ $row['worked_duration_label'] }}</td>
+                                    <td class="py-2.5 text-right font-medium tabular-nums text-gray-900 dark:text-white">{{ $row['earnings_formatted'] }}</td>
+                                    <td class="py-2.5">
+                                        <span @class([
+                                            'inline-flex rounded-md px-2 py-0.5 text-xs font-medium',
+                                            'bg-amber-50 text-amber-700 dark:bg-amber-600/10 dark:text-amber-400' => $row['status'] === 'in_progress',
+                                            'bg-emerald-50 text-emerald-700 dark:bg-emerald-600/10 dark:text-emerald-400' => $row['status'] === 'completed',
+                                            'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300' => ! in_array($row['status'], ['in_progress', 'completed'], true),
+                                        ])>
+                                            {{ $row['status_label'] }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="py-8 text-center text-sm text-gray-500 dark:text-slate-400">Bu dönemde vardiya katılımı yok.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </x-ui.card>
         </x-entity.tab-panel>
 
         <x-entity.tab-panel name="work_history">

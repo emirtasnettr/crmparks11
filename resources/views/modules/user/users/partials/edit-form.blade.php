@@ -1,4 +1,15 @@
-@if ($user['can_update'] ?? false)
+@if ($user['is_courier_account'] ?? false)
+    <x-ui.card title="Kurye Hesabı" class="mt-6">
+        <p class="mb-4 text-sm text-gray-600 dark:text-slate-300">
+            Bu hesap kurye kaydıyla birlikte otomatik oluşturulmuştur. Düzenleme Kuryeler modülünden yapılır.
+        </p>
+        @if ($user['courier_profile_url'] ?? null)
+            <x-ui.button href="{{ $user['courier_profile_url'] }}" variant="secondary">Kurye Kartına Git</x-ui.button>
+        @else
+            <x-ui.button href="{{ route('couriers.index') }}" variant="secondary">Kuryeler Listesi</x-ui.button>
+        @endif
+    </x-ui.card>
+@elseif ($user['can_update'] ?? false)
     <x-ui.card title="Kullanıcıyı Düzenle" id="edit" class="mt-6">
         <form method="POST" action="{{ route('users.update', $user['id']) }}" class="space-y-4">
             @csrf
@@ -31,22 +42,13 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div class="space-y-1.5">
                     <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Bağlı İşletme</label>
                     <select name="linked_business_id" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
                         <option value="">Seçilmedi</option>
                         @foreach ($businesses as $business)
                             <option value="{{ $business['id'] }}" @selected($user['linked_business_id'] == $business['id'])>{{ $business['name'] }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="space-y-1.5">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Bağlı Kurye</label>
-                    <select name="linked_courier_id" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white">
-                        <option value="">Seçilmedi</option>
-                        @foreach ($couriers as $courier)
-                            <option value="{{ $courier['id'] }}" @selected($user['linked_courier_id'] == $courier['id'])>{{ $courier['name'] }}</option>
                         @endforeach
                     </select>
                 </div>

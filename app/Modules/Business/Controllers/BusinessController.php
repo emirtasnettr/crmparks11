@@ -156,7 +156,7 @@ class BusinessController extends Controller
             'contactTitles' => BusinessContactFormData::titles(),
             'contractTypes' => BusinessContractFormData::contractTypes(),
             'documentTypes' => BusinessDocumentFormData::documentTypes(),
-            'assignmentCouriers' => $this->assignments->couriers(),
+            'assignmentCouriers' => $this->assignments->couriersAvailableForAssignment(),
             'assignmentAgencies' => $this->assignments->agencies(),
         ]);
     }

@@ -9,6 +9,7 @@ use App\Modules\ShiftPlanning\Requests\DestroyBusinessShiftRequest;
 use App\Modules\ShiftPlanning\Requests\StoreBusinessShiftRequest;
 use App\Modules\ShiftPlanning\Requests\StoreShiftJokerRequest;
 use App\Modules\ShiftPlanning\Requests\UpdateBusinessShiftRequest;
+use App\Modules\ShiftPlanning\Services\ShiftAttendanceService;
 use App\Modules\ShiftPlanning\Services\ShiftPlanningPresenter;
 use App\Modules\ShiftPlanning\Services\ShiftPlanningService;
 use Illuminate\Http\RedirectResponse;
@@ -20,6 +21,7 @@ class ShiftPlanningController extends Controller
     public function __construct(
         private readonly ShiftPlanningService $shifts,
         private readonly ShiftPlanningPresenter $presenter,
+        private readonly ShiftAttendanceService $attendances,
     ) {}
 
     public function index(Request $request): View
@@ -55,6 +57,15 @@ class ShiftPlanningController extends Controller
                 ->all()
             : [];
 
+        $attendanceSummaries = $business
+            ? $this->attendances->weekOccurrenceSummaries(
+                $business->id,
+                collect($shiftRows)->pluck('id')->map(fn ($id) => (int) $id)->all(),
+                $week['week_start'],
+                $week['week_end'],
+            )
+            : [];
+
         $calendarDays = [];
         foreach ($week['days'] as $day) {
             $dayJokers = collect($jokerRows)->where('work_date', $day['date'])->values()->all();
@@ -65,7 +76,10 @@ class ShiftPlanningController extends Controller
                     continue;
                 }
 
-                $occurrences[] = $this->presenter->dayOccurrence($shiftRow, $day['date'], $dayJokers);
+                $occurrence = $this->presenter->dayOccurrence($shiftRow, $day['date'], $dayJokers);
+                $summary = $attendanceSummaries[$shiftRow['id'].'|'.$day['date']] ?? null;
+                $occurrence['attendance'] = $summary;
+                $occurrences[] = $occurrence;
             }
 
             usort($occurrences, fn ($a, $b) => strcmp($a['start_time_raw'], $b['start_time_raw']));

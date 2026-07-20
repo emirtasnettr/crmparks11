@@ -13,6 +13,7 @@ use App\Modules\Courier\Requests\StoreCourierRequest;
 use App\Modules\Courier\Requests\UpdateCourierRequest;
 use App\Modules\Courier\Services\CourierPresenter;
 use App\Modules\Courier\Services\CourierService;
+use App\Modules\ShiftPlanning\Services\ShiftAttendanceService;
 use App\Support\RequestFilter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,6 +27,7 @@ class CourierController extends Controller
     public function __construct(
         private readonly CourierService $couriers,
         private readonly CourierPresenter $presenter,
+        private readonly ShiftAttendanceService $shiftAttendances,
     ) {}
 
     public function index(Request $request): View
@@ -119,7 +121,7 @@ class CourierController extends Controller
             ->with('success', 'Kurye başarıyla oluşturuldu.');
     }
 
-    public function show(int $id): View
+    public function show(Request $request, int $id): View
     {
         $courier = $this->couriers->find($id);
 
@@ -127,8 +129,23 @@ class CourierController extends Controller
             abort(404);
         }
 
+        $fromInput = $request->string('attendance_from')->toString();
+        $toInput = $request->string('attendance_to')->toString();
+
+        $from = filled($fromInput)
+            ? \Carbon\Carbon::parse($fromInput)->startOfDay()
+            : now()->startOfMonth();
+        $to = filled($toInput)
+            ? \Carbon\Carbon::parse($toInput)->startOfDay()
+            : now()->endOfMonth();
+
+        if ($from->gt($to)) {
+            [$from, $to] = [$to->copy()->startOfMonth(), $from->copy()->endOfMonth()];
+        }
+
         return view('modules.courier.show', [
             'courier' => $this->presenter->showPayload($courier),
+            'shiftAttendance' => $this->shiftAttendances->courierReport($courier, $from, $to),
             'documentTypes' => CourierDocumentFormData::documentTypes(),
             'banks' => CourierBankAccountFormData::banks(),
             'bankStatuses' => CourierBankAccountFormData::statuses(),

@@ -86,10 +86,30 @@ class UserManagementPresenter
             'created_at' => $user->created_at?->toDateTimeString(),
             'created_at_formatted' => $user->created_at?->format('d.m.Y') ?? '—',
             'email_verified_at' => $user->email_verified_at?->toDateTimeString(),
-            'can_update' => auth()->user()?->can('user.update') ?? false,
+            'can_update' => $this->canUpdateUser($user),
             'can_delete' => (auth()->user()?->can('user.delete') ?? false) && auth()->id() !== $user->id,
             'can_force_delete' => $this->canForceDelete($user),
+            'is_courier_account' => $this->isCourierManagedAccount($user),
+            'courier_profile_url' => $linked['courier_id']
+                ? route('couriers.show', $linked['courier_id'])
+                : null,
         ];
+    }
+
+    private function canUpdateUser(User $user): bool
+    {
+        if ($this->isCourierManagedAccount($user)) {
+            return false;
+        }
+
+        return auth()->user()?->can('user.update') ?? false;
+    }
+
+    private function isCourierManagedAccount(User $user): bool
+    {
+        return $user->hasRole('courier')
+            || $user->user_type === UserType::Courier
+            || $user->profileable_type === Courier::class;
     }
 
     private function canForceDelete(User $user): bool

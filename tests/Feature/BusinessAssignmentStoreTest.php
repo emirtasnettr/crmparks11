@@ -128,6 +128,70 @@ class BusinessAssignmentStoreTest extends TestCase
         $showResponse->assertSee('Murat Kaya');
     }
 
+    public function test_courier_cannot_have_two_active_business_assignments(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $businessA = $this->createBusiness($user, ['brand_name' => 'İşletme A']);
+        $businessB = $this->createBusiness($user, ['brand_name' => 'İşletme B']);
+        $courier = $this->createCourier($user, ['full_name' => 'Tek İşletme Kurye']);
+
+        BusinessCourierAssignment::factory()->create([
+            'business_id' => $businessA->id,
+            'courier_id' => $courier->id,
+            'start_date' => '2026-01-01',
+            'end_date' => null,
+            'status' => 'active',
+            'assigned_by' => $user->id,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->from(route('businesses.assignments.index'))
+            ->post(route('businesses.assignments.store'), [
+                'business_id' => $businessB->id,
+                'courier_id' => $courier->id,
+                'start_date' => '2026-03-01',
+                'status' => 'active',
+            ]);
+
+        $response->assertRedirect(route('businesses.assignments.index'));
+        $response->assertSessionHasErrors('courier_id');
+        $this->assertDatabaseCount('business_courier_assignments', 1);
+    }
+
+    public function test_courier_can_be_reassigned_after_previous_assignment_ends(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $businessA = $this->createBusiness($user, ['brand_name' => 'Eski İşletme']);
+        $businessB = $this->createBusiness($user, ['brand_name' => 'Yeni İşletme']);
+        $courier = $this->createCourier($user, ['full_name' => 'Yeniden Atanan']);
+
+        BusinessCourierAssignment::factory()->create([
+            'business_id' => $businessA->id,
+            'courier_id' => $courier->id,
+            'start_date' => '2025-01-01',
+            'end_date' => '2025-12-31',
+            'status' => 'inactive',
+            'assigned_by' => $user->id,
+        ]);
+
+        $response = $this->actingAs($user)->post(route('businesses.assignments.store'), [
+            'business_id' => $businessB->id,
+            'courier_id' => $courier->id,
+            'start_date' => '2026-01-01',
+            'status' => 'active',
+        ]);
+
+        $response->assertRedirect(route('businesses.assignments.index', ['business_id' => $businessB->id]));
+        $this->assertDatabaseCount('business_courier_assignments', 2);
+        $this->assertDatabaseHas('business_courier_assignments', [
+            'business_id' => $businessB->id,
+            'courier_id' => $courier->id,
+            'status' => 'active',
+        ]);
+    }
+
     /**
      * @param  array<string, mixed>  $overrides
      */

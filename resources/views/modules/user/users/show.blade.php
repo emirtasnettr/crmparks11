@@ -24,6 +24,8 @@
         <div class="flex shrink-0 flex-wrap gap-2">
             @if ($user['can_update'] ?? false)
                 <x-ui.button href="#edit">Düzenle</x-ui.button>
+            @elseif (($user['is_courier_account'] ?? false) && ($user['courier_profile_url'] ?? null))
+                <x-ui.button href="{{ $user['courier_profile_url'] }}" variant="secondary">Kurye Kartına Git</x-ui.button>
             @endif
             <x-ui.button href="{{ route('permissions.index') }}" variant="secondary">Rolleri Yönet</x-ui.button>
         </div>

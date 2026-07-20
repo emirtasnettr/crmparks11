@@ -5,7 +5,7 @@ namespace App\Modules\User\Data;
 class UserManagementFormData
 {
     /**
-     * Spatie Permission role slug => görünen ad.
+     * Spatie Permission role slug => görünen ad (filtre / görüntüleme).
      *
      * @return array<string, string>
      */
@@ -20,6 +20,19 @@ class UserManagementFormData
             'courier' => 'Kurye',
             'agency' => 'Acente',
         ];
+    }
+
+    /**
+     * Kullanıcı yönetimi formundan atanabilir roller.
+     * Kurye hesapları yalnızca Kuryeler modülünden oluşturulur.
+     *
+     * @return array<string, string>
+     */
+    public static function assignableRoleLabels(): array
+    {
+        return collect(self::roleLabels())
+            ->except(['courier'])
+            ->all();
     }
 
     /**
