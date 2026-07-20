@@ -14,7 +14,7 @@
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
         <x-ui.finance-stat-card title="Bu Ay Çalışma" :value="$summary['total_hours'].' sa'" :excl-vat="false" accent="blue" />
         <x-ui.finance-stat-card title="Vardiya Sayısı" :value="(string) $summary['sessions']" :excl-vat="false" accent="violet" />
-        <x-ui.finance-stat-card title="Saatlik Hakediş" :value="$summary['total_earnings_formatted']" :excl-vat="false" accent="success" />
+        <x-ui.finance-stat-card title="Bu Ay Hakediş" :value="$summary['total_earnings_formatted']" :excl-vat="false" accent="success" />
     </div>
 
     <x-ui.card title="Son Çalışmalar">
