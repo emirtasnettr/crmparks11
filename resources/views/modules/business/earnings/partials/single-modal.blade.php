@@ -69,16 +69,46 @@
                     </select>
                 </div>
 
-                <div x-show="single.pricing_model === 'per_package'" x-cloak class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <x-ui.input name="package_count" type="number" min="0" label="Paket Sayısı" x-model="single.package_count" />
-                    <x-ui.input name="revenue_unit_price" type="number" step="0.01" min="0" label="İşletmeden Birim Ücret (₺, KDV Hariç)" x-model="single.revenue_unit_price" />
-                    <x-ui.input name="courier_unit_price" type="number" step="0.01" min="0" label="Kurye Birim Ücreti (₺, KDV Hariç)" x-model="single.courier_unit_price" />
-                </div>
+                <template x-if="single.pricing_model === 'per_package'">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <x-ui.input name="package_count" type="number" min="0" step="1" label="Paket Sayısı" x-model="single.package_count" />
+                        <x-ui.input name="revenue_unit_price" type="number" step="0.01" min="0" label="İşletmeden Birim Ücret (₺, KDV Hariç)" x-model="single.revenue_unit_price" />
+                        <x-ui.input name="courier_unit_price" type="number" step="0.01" min="0" label="Kurye Birim Ücreti (₺, KDV Hariç)" x-model="single.courier_unit_price" />
+                    </div>
+                </template>
 
-                <div x-show="single.pricing_model !== 'per_package'" x-cloak class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <x-ui.input name="revenue_total" type="number" step="0.01" min="0" label="İşletmeden Alınacak (₺, KDV Hariç)" x-model="single.revenue_total" />
-                    <x-ui.input name="courier_payment" type="number" step="0.01" min="0" label="Kurye Ödemesi (₺, KDV Hariç)" x-model="single.courier_payment" />
-                </div>
+                <template x-if="single.pricing_model === 'hourly'">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div class="space-y-1.5">
+                            <x-ui.input name="worked_hours" type="number" min="0" step="0.01" label="Çalışılan Saat *" x-model="single.worked_hours" />
+                            <p x-show="singleErrors.worked_hours" x-cloak class="text-sm text-red-600" x-text="singleErrors.worked_hours"></p>
+                        </div>
+                        <div class="space-y-1.5">
+                            <x-ui.input name="revenue_unit_price" type="number" step="0.01" min="0" label="İşletme Saatlik Ücret (₺, KDV Hariç) *" x-model="single.revenue_unit_price" />
+                            <p x-show="singleErrors.revenue_unit_price" x-cloak class="text-sm text-red-600" x-text="singleErrors.revenue_unit_price"></p>
+                        </div>
+                        <div class="space-y-1.5 sm:col-span-2">
+                            <x-ui.input name="courier_unit_price" type="number" step="0.01" min="0" label="Kurye Saatlik Ücret (₺, KDV Hariç) *" x-model="single.courier_unit_price" />
+                            <p x-show="singleErrors.courier_unit_price" x-cloak class="text-sm text-red-600" x-text="singleErrors.courier_unit_price"></p>
+                        </div>
+                        <div class="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800/50 sm:col-span-2">
+                            <p class="text-xs text-gray-500 dark:text-slate-400">Otomatik hesap (saat × ücret)</p>
+                            <p class="mt-1 text-gray-800 dark:text-slate-200">
+                                Gelir:
+                                <span class="font-semibold tabular-nums" x-text="formatMoney(calcSingle().revenue)"></span>
+                                · Kurye:
+                                <span class="font-semibold tabular-nums" x-text="formatMoney(calcSingle().courier)"></span>
+                            </p>
+                        </div>
+                    </div>
+                </template>
+
+                <template x-if="single.pricing_model === 'monthly_fixed' || single.pricing_model === 'daily'">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <x-ui.input name="revenue_total" type="number" step="0.01" min="0" label="İşletmeden Alınacak (₺, KDV Hariç)" x-model="single.revenue_total" />
+                        <x-ui.input name="courier_payment" type="number" step="0.01" min="0" label="Kurye Ödemesi (₺, KDV Hariç)" x-model="single.courier_payment" />
+                    </div>
+                </template>
 
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     <x-ui.input name="extra_income" type="number" step="0.01" min="0" label="Ek Gelir (₺, KDV Hariç)" x-model="single.extra_income" />

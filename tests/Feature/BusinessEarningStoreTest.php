@@ -95,7 +95,7 @@ class BusinessEarningStoreTest extends TestCase
         $indexResponse->assertSee($courier->full_name);
     }
 
-    public function test_hourly_earning_persists_form_totals(): void
+    public function test_hourly_earning_persists_hours_times_rates(): void
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
@@ -107,8 +107,9 @@ class BusinessEarningStoreTest extends TestCase
             'courier_id' => $courier->id,
             'work_date' => '2026-07-21',
             'pricing_model' => 'hourly',
-            'revenue_total' => 1800,
-            'courier_payment' => 1200,
+            'worked_hours' => 8,
+            'revenue_unit_price' => 225,
+            'courier_unit_price' => 150,
             'extra_income' => 0,
             'extra_expense' => 0,
             'deduction' => 0,
@@ -120,9 +121,32 @@ class BusinessEarningStoreTest extends TestCase
         $line = \App\Models\EarningLine::query()->first();
         $this->assertNotNull($line);
         $this->assertSame('hourly', $line->pricing_model);
+        $this->assertEquals(8.0, (float) $line->worked_hours);
+        $this->assertEquals(225.0, (float) $line->revenue_unit_price);
+        $this->assertEquals(150.0, (float) $line->courier_unit_price);
         $this->assertEquals(1800.0, (float) $line->revenue_total);
         $this->assertEquals(1200.0, (float) $line->courier_total);
         $this->assertEquals(600.0, (float) $line->profit);
+    }
+
+    public function test_hourly_earning_requires_worked_hours(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $courier = $this->createCourier($user);
+
+        $response = $this->actingAs($user)->post(route('businesses.earnings.store'), [
+            'business_id' => $business->id,
+            'courier_id' => $courier->id,
+            'work_date' => '2026-07-21',
+            'pricing_model' => 'hourly',
+            'revenue_unit_price' => 225,
+            'courier_unit_price' => 150,
+        ]);
+
+        $response->assertSessionHasErrors('worked_hours');
+        $this->assertDatabaseCount('earning_lines', 0);
     }
 
     /**

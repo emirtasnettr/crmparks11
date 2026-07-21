@@ -24,6 +24,7 @@ class StoreBusinessEarningRequest extends FormRequest
             'work_date' => ['required', 'date'],
             'pricing_model' => ['required', Rule::in(array_keys(BusinessEarningFormData::pricingModels()))],
             'package_count' => ['nullable', 'integer', 'min:0'],
+            'worked_hours' => ['nullable', 'numeric', 'min:0'],
             'revenue_unit_price' => ['nullable', 'numeric', 'min:0'],
             'courier_unit_price' => ['nullable', 'numeric', 'min:0'],
             'revenue_total' => ['nullable', 'numeric', 'min:0'],
@@ -34,6 +35,27 @@ class StoreBusinessEarningRequest extends FormRequest
             'description' => ['nullable', 'string', 'max:2000'],
             'status' => ['nullable', Rule::in(array_keys(BusinessEarningFormData::statuses()))],
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator): void {
+            if ($this->input('pricing_model') !== 'hourly') {
+                return;
+            }
+
+            if ((float) $this->input('worked_hours') <= 0) {
+                $validator->errors()->add('worked_hours', 'Saatlik hakediş için çalışılan saat girilmelidir.');
+            }
+
+            if ($this->input('revenue_unit_price') === null || $this->input('revenue_unit_price') === '') {
+                $validator->errors()->add('revenue_unit_price', 'İşletme saatlik ücreti girilmelidir.');
+            }
+
+            if ($this->input('courier_unit_price') === null || $this->input('courier_unit_price') === '') {
+                $validator->errors()->add('courier_unit_price', 'Kurye saatlik ücreti girilmelidir.');
+            }
+        });
     }
 
     /**

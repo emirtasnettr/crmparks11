@@ -1515,6 +1515,7 @@ Alpine.data('earningPage', (preset = {}) => ({
         work_date: todayDateInput(),
         pricing_model: 'per_package',
         package_count: '',
+        worked_hours: '',
         revenue_unit_price: '',
         courier_unit_price: '',
         revenue_total: '',
@@ -1540,6 +1541,7 @@ Alpine.data('earningPage', (preset = {}) => ({
             work_date: todayDateInput(),
             pricing_model: 'per_package',
             package_count: '',
+            worked_hours: '',
             revenue_unit_price: '',
             courier_unit_price: '',
             revenue_total: '',
@@ -1569,6 +1571,7 @@ Alpine.data('earningPage', (preset = {}) => ({
             work_date: row.work_date || fallbackDate,
             pricing_model: row.pricing_model ?? 'per_package',
             package_count: row.package_count ?? '',
+            worked_hours: row.worked_hours ?? '',
             revenue_unit_price: row.revenue_unit_price ?? '',
             courier_unit_price: row.courier_unit_price ?? '',
             revenue_total: row.revenue ?? '',
@@ -1629,6 +1632,10 @@ Alpine.data('earningPage', (preset = {}) => ({
         if (s.pricing_model === 'per_package') {
             revenue = (parseFloat(s.package_count) || 0) * (parseFloat(s.revenue_unit_price) || 0);
             courier = (parseFloat(s.package_count) || 0) * (parseFloat(s.courier_unit_price) || 0);
+        } else if (s.pricing_model === 'hourly') {
+            const hours = parseFloat(s.worked_hours) || 0;
+            revenue = hours * (parseFloat(s.revenue_unit_price) || 0);
+            courier = hours * (parseFloat(s.courier_unit_price) || 0);
         } else {
             revenue = parseFloat(s.revenue_total) || 0;
             courier = parseFloat(s.courier_payment) || 0;
@@ -1640,7 +1647,7 @@ Alpine.data('earningPage', (preset = {}) => ({
         const expense = courier + extraExpense;
         const profit = revenue - courier - extraExpense + extraIncome - deduction;
 
-        return { revenue, expense, profit };
+        return { revenue, courier, expense, profit };
     },
 
     formatMoney(amount) {
@@ -1653,6 +1660,18 @@ Alpine.data('earningPage', (preset = {}) => ({
         if (!this.single.business_id) this.singleErrors.business_id = 'İşletme seçilmelidir.';
         if (!this.single.courier_id) this.singleErrors.courier_id = 'Kurye seçilmelidir.';
         if (!this.single.work_date) this.singleErrors.work_date = 'Hakediş tarihi seçilmelidir.';
+
+        if (this.single.pricing_model === 'hourly') {
+            if (!this.single.worked_hours || parseFloat(this.single.worked_hours) <= 0) {
+                this.singleErrors.worked_hours = 'Çalışılan saat girilmelidir.';
+            }
+            if (this.single.revenue_unit_price === '' || this.single.revenue_unit_price === null) {
+                this.singleErrors.revenue_unit_price = 'İşletme saatlik ücreti girilmelidir.';
+            }
+            if (this.single.courier_unit_price === '' || this.single.courier_unit_price === null) {
+                this.singleErrors.courier_unit_price = 'Kurye saatlik ücreti girilmelidir.';
+            }
+        }
 
         return Object.keys(this.singleErrors).length === 0;
     },
