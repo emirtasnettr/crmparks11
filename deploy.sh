@@ -11,9 +11,14 @@ echo "==> Composer bağımlılıkları..."
 composer install --no-dev --optimize-autoloader
 
 echo "==> Frontend derleniyor..."
+# Önceki npm install denemeleri package-lock.json'u kirletebilir; repo sürümüne dön.
+git checkout -- package-lock.json 2>/dev/null || true
+
 if ! npm ci --no-audit --no-fund; then
   echo "==> npm ci uyumsuz, npm install ile devam ediliyor..."
   npm install --no-audit --no-fund
+  # VPS'te lock kirli kalmasın; kalıcı düzeltme repodaki lock ile yapılır.
+  git checkout -- package-lock.json 2>/dev/null || true
 fi
 npm run build
 
