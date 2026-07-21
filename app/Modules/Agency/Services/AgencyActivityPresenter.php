@@ -6,6 +6,7 @@ use App\Models\Contract;
 use App\Models\Document;
 use App\Models\EarningLine;
 use App\Modules\ActivityLog\Models\ActivityLog;
+use App\Modules\ActivityLog\Support\ActivityChangeFormatter;
 use App\Modules\Agency\Data\AgencyActivityFormData;
 use App\Modules\Agency\Models\Agency;
 use App\Modules\Agency\Models\AgencyContact;
@@ -118,12 +119,6 @@ class AgencyActivityPresenter
      */
     private function formatChangeValue(?array $values): ?string
     {
-        if ($values === null || $values === []) {
-            return null;
-        }
-
-        return collect($values)
-            ->map(fn ($value, $key) => is_string($key) ? "{$key}: {$value}" : (string) $value)
-            ->implode(', ');
+        return ActivityChangeFormatter::toDisplayString($values);
     }
 }

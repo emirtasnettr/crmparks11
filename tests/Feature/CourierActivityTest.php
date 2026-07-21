@@ -170,6 +170,33 @@ class CourierActivityTest extends TestCase
         $response->assertDontSee('Başka kullanıcı güncelledi.');
     }
 
+    public function test_activities_index_handles_nested_change_values(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $courier = $this->createCourier($user, ['full_name' => 'İç İçe JSON Kurye']);
+
+        ActivityLog::factory()->create([
+            'user_id' => $user->id,
+            'action' => 'courier_updated',
+            'subject_type' => Courier::class,
+            'subject_id' => $courier->id,
+            'description' => 'İç içe değerlerle güncellendi.',
+            'old_values' => ['profile' => ['city' => 'İstanbul']],
+            'new_values' => [
+                'profile' => ['city' => 'Ankara'],
+                'tags' => ['a', 'b'],
+                'active' => true,
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('couriers.activities.index'))
+            ->assertOk()
+            ->assertSee('İç İçe JSON Kurye')
+            ->assertSee('İç içe değerlerle güncellendi.');
+    }
+
     /**
      * @param  array<string, mixed>  $overrides
      */

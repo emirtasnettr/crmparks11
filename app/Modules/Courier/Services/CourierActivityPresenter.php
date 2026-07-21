@@ -3,13 +3,12 @@
 namespace App\Modules\Courier\Services;
 
 use App\Models\Document;
-use App\Models\User;
 use App\Modules\ActivityLog\Models\ActivityLog;
+use App\Modules\ActivityLog\Support\ActivityChangeFormatter;
 use App\Modules\Courier\Data\CourierActivityFormData;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\Courier\Models\CourierBankAccount;
 use App\Modules\Courier\Models\CourierVehicle;
-use Carbon\Carbon;
 
 class CourierActivityPresenter
 {
@@ -88,12 +87,6 @@ class CourierActivityPresenter
      */
     private function formatChangeValue(?array $values): ?string
     {
-        if ($values === null || $values === []) {
-            return null;
-        }
-
-        return collect($values)
-            ->map(fn ($value, $key) => is_string($key) ? "{$key}: {$value}" : (string) $value)
-            ->implode(', ');
+        return ActivityChangeFormatter::toDisplayString($values);
     }
 }
