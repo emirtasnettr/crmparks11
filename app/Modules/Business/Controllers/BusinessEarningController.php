@@ -15,6 +15,7 @@ use App\Modules\Business\Services\BusinessEarningPresenter;
 use App\Modules\Business\Services\BusinessEarningService;
 use App\Modules\Business\Support\BusinessFeatures;
 use App\Modules\Finance\Services\FinancialAdjustmentService;
+use App\Support\EarningListDateRange;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -45,6 +46,7 @@ class BusinessEarningController extends Controller
             'period_year' => $request->string('period_year')->toString() ?: 'all',
             'status' => $request->string('status')->toString() ?: 'all',
             'pricing_model' => $request->string('pricing_model')->toString() ?: 'all',
+            ...EarningListDateRange::fromRequest($request),
         ];
 
         $perPage = 25;
@@ -91,6 +93,7 @@ class BusinessEarningController extends Controller
             'period_year' => $request->string('period_year')->toString() ?: 'all',
             'status' => $request->string('status')->toString() ?: 'all',
             'pricing_model' => $request->string('pricing_model')->toString() ?: 'all',
+            ...EarningListDateRange::fromRequest($request),
         ];
 
         return $this->downloadExportSheet(

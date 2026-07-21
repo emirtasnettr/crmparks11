@@ -7,6 +7,7 @@ use App\Modules\Business\Requests\ApproveBusinessEarningRequest;
 use App\Modules\Business\Requests\StoreBusinessEarningRequest;
 use App\Modules\Business\Services\BusinessEarningPresenter;
 use App\Modules\Business\Services\BusinessEarningService;
+use App\Support\EarningListDateRange;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -29,6 +30,7 @@ class EarningController extends ApiController
             'status' => $request->string('status')->toString() ?: 'all',
             'period_month' => $request->string('period_month')->toString() ?: 'all',
             'period_year' => $request->string('period_year')->toString() ?: 'all',
+            ...EarningListDateRange::fromRequest($request),
         ];
 
         return $this->paginateCollection(

@@ -91,13 +91,18 @@ class BusinessEarningStoreTest extends TestCase
         $line->load('status');
         $this->assertSame('approved', $line->status?->code);
 
-        $indexResponse = $this->actingAs($user)->get(route('businesses.earnings.index'));
+        $indexResponse = $this->actingAs($user)->get(route('businesses.earnings.index', [
+            'date_from' => '2026-06-01',
+            'date_to' => '2026-06-30',
+        ]));
         $indexResponse->assertOk();
         $indexResponse->assertSee($business->displayName());
         $indexResponse->assertSee($courier->full_name);
 
         $courierIndex = $this->actingAs($user)->get(route('couriers.earnings.index', [
             'courier_id' => $courier->id,
+            'date_from' => '2026-06-01',
+            'date_to' => '2026-06-30',
         ]));
         $courierIndex->assertOk();
         $courierIndex->assertSee($business->displayName());

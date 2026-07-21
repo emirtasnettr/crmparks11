@@ -13,6 +13,7 @@ use App\Modules\Business\Models\Business;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\Setting\Services\SettingsManager;
 use App\Support\EarningCalculator;
+use App\Support\EarningListDateRange;
 use App\Support\EarningStatusMapper;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -438,7 +439,8 @@ class BusinessEarningService
                 function (Builder $query) use ($filters): void {
                     $query->where('pricing_model', $filters['pricing_model']);
                 },
-            );
+            )
+            ->tap(fn (Builder $query) => EarningListDateRange::apply($query, $filters));
     }
 
     /**

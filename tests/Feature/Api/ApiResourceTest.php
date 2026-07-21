@@ -171,6 +171,7 @@ class ApiResourceTest extends TestCase
         $create = $this->postJson('/api/v1/earnings', [
             'business_id' => $business->id,
             'courier_id' => $courier->id,
+            'work_date' => now()->toDateString(),
             'period_month' => 7,
             'period_year' => 2026,
             'pricing_model' => 'per_package',
@@ -182,9 +183,9 @@ class ApiResourceTest extends TestCase
 
         $create->assertCreated();
         $id = $create->json('data.id');
+        $this->assertSame('approved', $create->json('data.status'));
 
         $this->postJson('/api/v1/earnings/'.$id.'/approve')
-            ->assertOk()
-            ->assertJsonPath('data.status', 'approved');
+            ->assertStatus(422);
     }
 }

@@ -6,6 +6,7 @@ use App\Models\EarningLine;
 use App\Modules\Agency\Models\Agency;
 use App\Modules\Business\Models\Business;
 use App\Modules\Courier\Models\Courier;
+use App\Support\EarningListDateRange;
 use App\Support\EarningStatusMapper;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -161,6 +162,7 @@ class CourierEarningService
                 } elseif ($filters['payment_status'] === 'cancelled') {
                     $query->whereHas('status', fn (Builder $inner) => $inner->where('code', 'cancelled'));
                 }
-            });
+            })
+            ->tap(fn (Builder $query) => EarningListDateRange::apply($query, $filters));
     }
 }

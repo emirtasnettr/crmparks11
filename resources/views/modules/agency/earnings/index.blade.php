@@ -39,7 +39,9 @@
     {{-- Filtre --}}
     <x-ui.card :padding="false">
         <form method="GET" action="{{ route('agencies.earnings.index') }}" class="p-4 sm:p-6">
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
+                <x-ui.input type="date" name="date_from" label="Başlangıç" :value="$filters['date_from']" />
+                <x-ui.input type="date" name="date_to" label="Bitiş" :value="$filters['date_to']" />
                 <x-ui.select name="agency_id" label="Acente" :selected="$filters['agency_id']"
                     :options="filter_select_options(collect($agencies)->mapWithKeys(fn ($a) => [$a['id'] => $a['name']])->all())" />
                 <x-ui.select name="period_month" label="Ay" :selected="$filters['period_month']"

@@ -4,6 +4,7 @@ namespace App\Modules\Agency\Services;
 
 use App\Models\EarningLine;
 use App\Modules\Agency\Models\Agency;
+use App\Support\EarningListDateRange;
 use Illuminate\Support\Collection;
 
 class AgencyEarningService
@@ -99,6 +100,7 @@ class AgencyEarningService
             ->when(! empty($filters['period_year']) && $filters['period_year'] !== 'all', function ($query) use ($filters): void {
                 $query->where('period_year', (int) $filters['period_year']);
             })
+            ->tap(fn ($query) => EarningListDateRange::apply($query, $filters))
             ->get();
     }
 

@@ -13,6 +13,7 @@ use App\Modules\Courier\Services\CourierEarningPresenter;
 use App\Modules\Courier\Services\CourierEarningService;
 use App\Modules\Courier\Support\CourierFeatures;
 use App\Modules\Finance\Services\FinancialAdjustmentService;
+use App\Support\EarningListDateRange;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -46,6 +47,7 @@ class CourierEarningController extends Controller
             'period_year' => $request->string('period_year')->toString() ?: 'all',
             'payment_status' => $request->string('payment_status')->toString() ?: 'all',
             'courier_type' => $request->string('courier_type')->toString() ?: 'all',
+            ...EarningListDateRange::fromRequest($request),
         ];
 
         $perPage = 25;
@@ -93,6 +95,7 @@ class CourierEarningController extends Controller
             'period_year' => $request->string('period_year')->toString() ?: 'all',
             'payment_status' => $request->string('payment_status')->toString() ?: 'all',
             'courier_type' => $request->string('courier_type')->toString() ?: 'all',
+            ...EarningListDateRange::fromRequest($request),
         ];
 
         return $this->downloadExportSheet(

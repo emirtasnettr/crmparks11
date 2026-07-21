@@ -11,6 +11,7 @@ use App\Modules\Agency\Services\AgencyEarningService;
 use App\Modules\Agency\Support\AgencyFeatures;
 use App\Modules\Business\Requests\ImportBusinessEarningRequest;
 use App\Modules\Business\Services\BusinessEarningImportService;
+use App\Support\EarningListDateRange;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -39,6 +40,7 @@ class AgencyEarningController extends Controller
             'period_year' => $request->string('period_year')->toString() ?: 'all',
             'status' => $request->string('status')->toString() ?: 'all',
             'payment_status' => $request->string('payment_status')->toString() ?: 'all',
+            ...EarningListDateRange::fromRequest($request),
         ];
 
         $perPage = 25;
@@ -76,6 +78,7 @@ class AgencyEarningController extends Controller
             'period_year' => $request->string('period_year')->toString() ?: 'all',
             'status' => $request->string('status')->toString() ?: 'all',
             'payment_status' => $request->string('payment_status')->toString() ?: 'all',
+            ...EarningListDateRange::fromRequest($request),
         ];
 
         return $this->downloadExportSheet(

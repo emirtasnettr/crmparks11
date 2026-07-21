@@ -40,6 +40,8 @@
     <x-ui.card :padding="false">
         <form method="GET" action="{{ route('couriers.earnings.index') }}" class="p-4 sm:p-6">
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
+                <x-ui.input type="date" name="date_from" label="Başlangıç" :value="$filters['date_from']" />
+                <x-ui.input type="date" name="date_to" label="Bitiş" :value="$filters['date_to']" />
                 <x-ui.select name="courier_id" label="Kurye" :selected="$filters['courier_id']"
                     :options="filter_select_options(collect($couriers)->mapWithKeys(fn ($c) => [$c['id'] => $c['name']])->all())" />
                 <x-ui.select name="business_id" label="İşletme" :selected="$filters['business_id']"
