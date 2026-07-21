@@ -24,6 +24,18 @@
     @if (in_array($formMethod, ['PUT', 'PATCH', 'DELETE'], true))
         @method($formMethod)
     @endif
+
+    @if ($errors->any())
+        <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300">
+            <p class="font-medium">Kayıt güncellenemedi. Lütfen formu kontrol edin.</p>
+            <ul class="mt-2 list-disc space-y-1 pl-5">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     {{-- Kart 1: Genel Bilgiler --}}
     <x-ui.card title="Genel Bilgiler">
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">

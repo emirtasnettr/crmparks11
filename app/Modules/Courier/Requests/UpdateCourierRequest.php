@@ -22,6 +22,13 @@ class UpdateCourierRequest extends FormRequest
     {
         $courierId = (int) $this->route('id');
         $courier = $courierId > 0 ? Courier::query()->find($courierId) : null;
+        $ignoreUserId = $courier?->user_id
+            ?? ($courierId > 0
+                ? User::query()
+                    ->where('profileable_type', Courier::class)
+                    ->where('profileable_id', $courierId)
+                    ->value('id')
+                : null);
 
         return [
             'first_name' => ['required', 'string', 'max:100'],
@@ -38,7 +45,7 @@ class UpdateCourierRequest extends FormRequest
                 'required',
                 'email',
                 'max:255',
-                Rule::unique(User::class, 'email')->ignore($courier?->user_id),
+                Rule::unique(User::class, 'email')->ignore($ignoreUserId),
                 Rule::unique(Courier::class, 'email')->ignore($courierId),
             ],
             'courier_type' => ['required', Rule::in(array_keys(CourierFormData::courierTypes()))],

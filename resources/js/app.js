@@ -1810,19 +1810,21 @@ Alpine.data('courierForm', (districtsByCity = {}, initial = {}, isEdit = false) 
     validate() {
         this.errors = {};
 
-        if (!this.form.first_name.trim()) {
+        const text = (value) => String(value ?? '').trim();
+
+        if (!text(this.form.first_name)) {
             this.errors.first_name = 'Ad zorunludur.';
         }
 
-        if (!this.form.last_name.trim()) {
+        if (!text(this.form.last_name)) {
             this.errors.last_name = 'Soyad zorunludur.';
         }
 
-        if (!this.form.phone.trim()) {
+        if (!text(this.form.phone)) {
             this.errors.phone = 'Telefon zorunludur.';
         }
 
-        const email = this.form.email.trim();
+        const email = text(this.form.email);
 
         if (!email) {
             this.errors.email = 'E-posta zorunludur.';

@@ -183,7 +183,7 @@ class CourierPresenter
             'tc_number' => $base['tc_number'],
             'birth_date' => $base['birth_date'],
             'phone' => $base['phone'],
-            'email' => $base['email'],
+            'email' => $base['email'] ?? '',
             'courier_type' => $base['courier_type'],
             'agency_id' => $base['agency_id'] ? (string) $base['agency_id'] : '',
             'tax_office' => $base['tax_office'] ?? '',

@@ -81,7 +81,7 @@ class CourierUserProvisioner
         $user->update([
             'name' => $courier->full_name,
             'email' => $this->resolveEmail($courier),
-            'phone' => $this->resolvePhone($courier),
+            'phone' => $this->resolvePhone($courier, $user),
             'status' => $this->mapStatus($courier),
         ]);
 
@@ -99,7 +99,7 @@ class CourierUserProvisioner
         }
     }
 
-    private function resolvePhone(Courier $courier): ?string
+    private function resolvePhone(Courier $courier, ?User $ignoreUser = null): ?string
     {
         $phone = trim((string) $courier->phone);
 
@@ -107,7 +107,15 @@ class CourierUserProvisioner
             return null;
         }
 
-        if (User::query()->where('phone', $phone)->exists()) {
+        $taken = User::query()
+            ->where('phone', $phone)
+            ->when(
+                $ignoreUser?->id !== null,
+                fn ($query) => $query->whereKeyNot($ignoreUser->id),
+            )
+            ->exists();
+
+        if ($taken) {
             return null;
         }
 

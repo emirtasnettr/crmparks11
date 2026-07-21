@@ -46,6 +46,7 @@ class CourierUpdateTest extends TestCase
             'first_name' => 'Ahmet',
             'last_name' => 'Yıldız',
             'phone' => '0532 100 10 01',
+            'email' => 'ahmet.yildiz@test.local',
             'courier_type' => 'independent',
             'vehicle_type' => 'motorcycle',
             'start_date' => '2024-01-15',
@@ -83,6 +84,7 @@ class CourierUpdateTest extends TestCase
             'first_name' => 'Kaan',
             'last_name' => 'Aydın',
             'phone' => '0546 200 20 14',
+            'email' => 'kaan.aydin@test.local',
             'courier_type' => 'independent',
             'vehicle_type' => 'motorcycle',
             'start_date' => '2024-01-15',
@@ -102,6 +104,43 @@ class CourierUpdateTest extends TestCase
         $indexResponse->assertOk();
         $indexResponse->assertSee('Kaan Aydın');
         $indexResponse->assertSee('İzinli');
+    }
+
+    public function test_courier_update_syncs_linked_user_without_wiping_phone(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $courier = $this->createCourier($user, [
+            'first_name' => 'Selin',
+            'last_name' => 'Kara',
+            'phone' => '0533 111 22 33',
+            'email' => 'selin.kara@test.local',
+        ]);
+
+        $courierUser = app(\App\Modules\Courier\Services\CourierUserProvisioner::class)
+            ->ensureForCourier($courier);
+
+        $this->assertSame('0533 111 22 33', $courierUser->phone);
+
+        $this->actingAs($user)->put(route('couriers.update', $courier->id), [
+            'first_name' => 'Selin',
+            'last_name' => 'Kara Güncel',
+            'phone' => '0533 111 22 33',
+            'email' => 'selin.kara@test.local',
+            'courier_type' => 'independent',
+            'vehicle_type' => 'motorcycle',
+            'start_date' => '2024-01-15',
+            'status' => 'active',
+        ])->assertRedirect(route('couriers.show', $courier->id));
+
+        $courier->refresh();
+        $courierUser->refresh();
+
+        $this->assertSame('Selin Kara Güncel', $courier->full_name);
+        $this->assertSame('Selin Kara Güncel', $courierUser->name);
+        $this->assertSame('0533 111 22 33', $courierUser->phone);
+        $this->assertSame('selin.kara@test.local', $courierUser->email);
     }
 
     /**
