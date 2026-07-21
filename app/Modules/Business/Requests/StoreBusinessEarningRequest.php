@@ -40,7 +40,25 @@ class StoreBusinessEarningRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator): void {
-            if ($this->input('pricing_model') !== 'hourly') {
+            $model = (string) $this->input('pricing_model');
+
+            if ($model === 'per_package') {
+                if ((int) $this->input('package_count') <= 0) {
+                    $validator->errors()->add('package_count', 'Paket başı hakediş için paket sayısı girilmelidir.');
+                }
+
+                if ($this->input('revenue_unit_price') === null || $this->input('revenue_unit_price') === '') {
+                    $validator->errors()->add('revenue_unit_price', 'İşletme paket ücreti girilmelidir.');
+                }
+
+                if ($this->input('courier_unit_price') === null || $this->input('courier_unit_price') === '') {
+                    $validator->errors()->add('courier_unit_price', 'Kurye paket ücreti girilmelidir.');
+                }
+
+                return;
+            }
+
+            if ($model !== 'hourly') {
                 return;
             }
 

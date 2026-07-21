@@ -71,9 +71,27 @@
 
                 <template x-if="single.pricing_model === 'per_package'">
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <x-ui.input name="package_count" type="number" min="0" step="1" label="Paket Sayısı" x-model="single.package_count" />
-                        <x-ui.input name="revenue_unit_price" type="number" step="0.01" min="0" label="İşletmeden Birim Ücret (₺, KDV Hariç)" x-model="single.revenue_unit_price" />
-                        <x-ui.input name="courier_unit_price" type="number" step="0.01" min="0" label="Kurye Birim Ücreti (₺, KDV Hariç)" x-model="single.courier_unit_price" />
+                        <div class="space-y-1.5">
+                            <x-ui.input name="package_count" type="number" min="0" step="1" label="Paket Sayısı *" x-model="single.package_count" />
+                            <p x-show="singleErrors.package_count" x-cloak class="text-sm text-red-600" x-text="singleErrors.package_count"></p>
+                        </div>
+                        <div class="space-y-1.5">
+                            <x-ui.input name="revenue_unit_price" type="number" step="0.01" min="0" label="İşletme Paket Ücreti (₺, KDV Hariç) *" x-model="single.revenue_unit_price" />
+                            <p x-show="singleErrors.revenue_unit_price" x-cloak class="text-sm text-red-600" x-text="singleErrors.revenue_unit_price"></p>
+                        </div>
+                        <div class="space-y-1.5 sm:col-span-2">
+                            <x-ui.input name="courier_unit_price" type="number" step="0.01" min="0" label="Kurye Paket Ücreti (₺, KDV Hariç) *" x-model="single.courier_unit_price" />
+                            <p x-show="singleErrors.courier_unit_price" x-cloak class="text-sm text-red-600" x-text="singleErrors.courier_unit_price"></p>
+                        </div>
+                        <div class="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800/50 sm:col-span-2">
+                            <p class="text-xs text-gray-500 dark:text-slate-400">Otomatik hesap (paket × ücret)</p>
+                            <p class="mt-1 text-gray-800 dark:text-slate-200">
+                                Gelir:
+                                <span class="font-semibold tabular-nums" x-text="formatMoney(calcSingle().revenue)"></span>
+                                · Kurye:
+                                <span class="font-semibold tabular-nums" x-text="formatMoney(calcSingle().courier)"></span>
+                            </p>
+                        </div>
                     </div>
                 </template>
 

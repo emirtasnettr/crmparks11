@@ -1661,6 +1661,18 @@ Alpine.data('earningPage', (preset = {}) => ({
         if (!this.single.courier_id) this.singleErrors.courier_id = 'Kurye seçilmelidir.';
         if (!this.single.work_date) this.singleErrors.work_date = 'Hakediş tarihi seçilmelidir.';
 
+        if (this.single.pricing_model === 'per_package') {
+            if (!this.single.package_count || parseFloat(this.single.package_count) <= 0) {
+                this.singleErrors.package_count = 'Paket sayısı girilmelidir.';
+            }
+            if (this.single.revenue_unit_price === '' || this.single.revenue_unit_price === null) {
+                this.singleErrors.revenue_unit_price = 'İşletme paket ücreti girilmelidir.';
+            }
+            if (this.single.courier_unit_price === '' || this.single.courier_unit_price === null) {
+                this.singleErrors.courier_unit_price = 'Kurye paket ücreti girilmelidir.';
+            }
+        }
+
         if (this.single.pricing_model === 'hourly') {
             if (!this.single.worked_hours || parseFloat(this.single.worked_hours) <= 0) {
                 this.singleErrors.worked_hours = 'Çalışılan saat girilmelidir.';

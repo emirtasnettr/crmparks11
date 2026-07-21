@@ -95,6 +95,26 @@ class BusinessEarningStoreTest extends TestCase
         $indexResponse->assertSee($courier->full_name);
     }
 
+    public function test_per_package_earning_requires_package_count(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $courier = $this->createCourier($user);
+
+        $response = $this->actingAs($user)->post(route('businesses.earnings.store'), [
+            'business_id' => $business->id,
+            'courier_id' => $courier->id,
+            'work_date' => '2026-07-21',
+            'pricing_model' => 'per_package',
+            'revenue_unit_price' => 45,
+            'courier_unit_price' => 38,
+        ]);
+
+        $response->assertSessionHasErrors('package_count');
+        $this->assertDatabaseCount('earning_lines', 0);
+    }
+
     public function test_hourly_earning_persists_hours_times_rates(): void
     {
         $user = User::factory()->create();
