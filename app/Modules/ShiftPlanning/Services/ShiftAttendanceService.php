@@ -1017,25 +1017,41 @@ class ShiftAttendanceService
                     continue;
                 }
 
-                $workingIds = $shift->rosterCouriers
-                    ->pluck('id')
-                    ->map(fn ($id) => (int) $id)
+                $workingCouriers = $shift->rosterCouriers
+                    ->map(fn (Courier $courier) => [
+                        'id' => (int) $courier->id,
+                        'name' => $courier->full_name,
+                    ])
                     ->values()
                     ->all();
 
                 $required = max(1, (int) $shift->required_headcount);
-                $assigned = count($workingIds);
+                $assigned = count($workingCouriers);
                 $missingAssignments = max(0, $required - $assigned);
                 $inProgress = 0;
                 $completed = 0;
+                $shiftEnded = now()->gte(ShiftAttendanceRules::shiftEndAt($shift, $cursor));
+                $courierRows = [];
 
-                foreach ($workingIds as $courierId) {
+                foreach ($workingCouriers as $courierRow) {
+                    $courierId = $courierRow['id'];
                     $attendance = $attendances->get($shift->id.'|'.$date.'|'.$courierId)?->first();
                     if ($attendance?->isInProgress()) {
                         $inProgress++;
                     } elseif ($attendance?->isCompleted()) {
                         $completed++;
                     }
+
+                    $missing = $attendance === null && ! $isFuture;
+                    $courierRows[] = [
+                        'id' => $courierId,
+                        'name' => $courierRow['name'],
+                        'attendance_id' => $attendance?->id,
+                        'status' => $attendance?->status,
+                        'can_start' => $missing && ! $shiftEnded,
+                        'can_mark_attended' => $missing && $shiftEnded,
+                        'can_end' => $attendance?->isInProgress() ?? false,
+                    ];
                 }
 
                 $started = $inProgress + $completed;
@@ -1057,6 +1073,7 @@ class ShiftAttendanceService
                     'missing' => $operationalShortage,
                     'planned' => $planned,
                     'is_future' => $isFuture,
+                    'couriers' => $courierRows,
                     'label' => $this->occurrenceSummaryLabel(
                         $required,
                         $assigned,

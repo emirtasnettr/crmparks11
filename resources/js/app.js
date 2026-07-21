@@ -4477,7 +4477,6 @@ Alpine.data('policySettingsPage', (policies = {}) => ({
 
 Alpine.data('shiftPlanningPage', (config = {}) => ({
     openShiftModal: false,
-    openCourierModal: false,
     openDeleteModal: false,
     shiftMode: 'create',
     selectedBusinessId: config.selectedBusinessId,
@@ -4486,7 +4485,6 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
     eligibleCouriers: config.availableCouriers || [],
     eligibleCouriersLoading: false,
     courierSearch: '',
-    assignCourierSearch: '',
     eligibleFetchToken: 0,
     canCreate: config.canCreate,
     canUpdate: config.canUpdate,
@@ -4495,7 +4493,6 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
     defaultEndDate: config.defaultEndDate || '',
     storeUrl: config.storeUrl,
     updateUrlTemplate: config.updateUrlTemplate,
-    assignUrlTemplate: config.assignUrlTemplate,
     destroyUrlTemplate: config.destroyUrlTemplate,
     eligibleCouriersUrl: config.eligibleCouriersUrl || '',
     deleteShiftId: null,
@@ -4511,35 +4508,29 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
         is_active: true,
         courier_ids: [],
     },
-    courierForm: {
-        id: null,
-        shift_name: '',
-        required_headcount: 1,
-        courier_ids: [],
-        start_date: '',
-        end_date: '',
-        start_time: '',
-        end_time: '',
-    },
     init() {
         this.$watch(
             () => [
                 this.openShiftModal,
                 this.shiftMode,
+                this.shiftForm.id,
                 this.shiftForm.start_date,
                 this.shiftForm.end_date,
                 this.shiftForm.start_time,
                 this.shiftForm.end_time,
             ].join('|'),
             () => {
-                if (this.openShiftModal && this.shiftMode === 'create') {
-                    this.refreshEligibleCouriers({
-                        start_date: this.shiftForm.start_date,
-                        end_date: this.shiftForm.end_date,
-                        start_time: this.shiftForm.start_time,
-                        end_time: this.shiftForm.end_time,
-                    });
+                if (! this.openShiftModal) {
+                    return;
                 }
+
+                this.refreshEligibleCouriers({
+                    start_date: this.shiftForm.start_date,
+                    end_date: this.shiftForm.end_date,
+                    start_time: this.shiftForm.start_time,
+                    end_time: this.shiftForm.end_time,
+                    exclude_shift_id: this.shiftMode === 'edit' ? this.shiftForm.id : null,
+                });
             },
         );
 
@@ -4580,6 +4571,7 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
         const shift = this.shifts.find((item) => item.id === id);
         if (!shift) return;
         this.shiftMode = 'edit';
+        this.courierSearch = '';
         this.shiftForm = {
             id: shift.id,
             name: shift.name,
@@ -4593,29 +4585,13 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
             courier_ids: [...(shift.courier_ids || [])].map(String),
         };
         this.openShiftModal = true;
-    },
-    openAssign(id) {
-        const shift = this.shifts.find((item) => item.id === id);
-        if (!shift) return;
-        this.assignCourierSearch = '';
-        this.courierForm = {
-            id: shift.id,
-            shift_name: shift.name,
-            required_headcount: shift.required_headcount || 1,
-            courier_ids: [...(shift.courier_ids || [])].map(String),
-            start_date: shift.start_date || this.defaultStartDate,
-            end_date: shift.end_date || this.defaultEndDate,
-            start_time: shift.start_time,
-            end_time: shift.end_time,
-        };
-        this.openCourierModal = true;
         this.refreshEligibleCouriers({
-            start_date: this.courierForm.start_date,
-            end_date: this.courierForm.end_date,
-            start_time: this.courierForm.start_time,
-            end_time: this.courierForm.end_time,
+            start_date: this.shiftForm.start_date,
+            end_date: this.shiftForm.end_date,
+            start_time: this.shiftForm.start_time,
+            end_time: this.shiftForm.end_time,
             exclude_shift_id: shift.id,
-        }, 'assign');
+        });
     },
     openDeleteConfirm(id) {
         this.deleteShiftId = id;
@@ -4624,14 +4600,11 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
     closeShiftModal() {
         this.openShiftModal = false;
     },
-    closeCourierModal() {
-        this.openCourierModal = false;
-    },
     closeDeleteModal() {
         this.openDeleteModal = false;
         this.deleteShiftId = null;
     },
-    async refreshEligibleCouriers(schedule, mode = 'create') {
+    async refreshEligibleCouriers(schedule) {
         if (!this.eligibleCouriersUrl) {
             this.eligibleCouriers = this.availableCouriers || [];
             return;
@@ -4680,7 +4653,7 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
             }
 
             this.eligibleCouriers = payload.couriers || [];
-            this.pruneSelectedCouriers(mode);
+            this.pruneSelectedCouriers();
         } catch (error) {
             if (token !== this.eligibleFetchToken) {
                 return;
@@ -4692,24 +4665,14 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
             }
         }
     },
-    pruneSelectedCouriers(mode = 'create') {
+    pruneSelectedCouriers() {
         const allowed = new Set((this.eligibleCouriers || []).map((courier) => String(courier.id)));
-        if (mode === 'assign') {
-            this.courierForm.courier_ids = (this.courierForm.courier_ids || [])
-                .map(String)
-                .filter((id) => allowed.has(id));
-            return;
-        }
-
         this.shiftForm.courier_ids = (this.shiftForm.courier_ids || [])
             .map(String)
             .filter((id) => allowed.has(id));
     },
     filteredCreateCouriers() {
         return this.filterCouriersBySearch(this.eligibleCouriers, this.courierSearch);
-    },
-    filteredAssignCouriers() {
-        return this.filterCouriersBySearch(this.eligibleCouriers, this.assignCourierSearch);
     },
     filterCouriersBySearch(couriers, query) {
         const needle = String(query || '').trim().toLocaleLowerCase('tr-TR');
@@ -4728,9 +4691,6 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
             return this.updateUrlTemplate.replace('__ID__', this.shiftForm.id);
         }
         return this.storeUrl;
-    },
-    courierFormAction() {
-        return this.assignUrlTemplate.replace('__ID__', this.courierForm.id);
     },
     destroyFormAction() {
         return this.destroyUrlTemplate.replace('__ID__', this.deleteShiftId);

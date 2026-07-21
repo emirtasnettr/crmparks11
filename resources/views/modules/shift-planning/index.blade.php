@@ -6,6 +6,7 @@
 @php
     $shiftsForJs = collect($shifts)->map(fn ($shift) => [
         'id' => $shift['id'],
+        'business_id' => $shift['business_id'] ?? $selectedBusinessId,
         'name' => $shift['name'],
         'start_time' => $shift['start_time_raw'],
         'end_time' => $shift['end_time_raw'],
@@ -36,7 +37,6 @@
         defaultEndDate: @js(now()->toDateString()),
         storeUrl: @js(route('shift-planning.store')),
         updateUrlTemplate: @js(url('/vardiya-planlama/__ID__')),
-        assignUrlTemplate: @js(url('/vardiya-planlama/__ID__/kuryeler')),
         destroyUrlTemplate: @js(url('/vardiya-planlama/__ID__')),
         eligibleCouriersUrl: @js(route('shift-planning.eligible-couriers')),
     })"
@@ -137,17 +137,55 @@
                                             </p>
                                         @endif
                                         @foreach ($occurrence['working_couriers'] as $courier)
-                                            <p class="mt-0.5">
-                                                {{ $courier['name'] }}
-                                            </p>
+                                            <div class="mt-1 flex items-start justify-between gap-1">
+                                                <p class="min-w-0 flex-1 truncate" title="{{ $courier['name'] }}">
+                                                    {{ $courier['name'] }}
+                                                </p>
+                                                @if ($canUpdate && ( ! empty($courier['can_start']) || ! empty($courier['can_mark_attended']) || ! empty($courier['can_end']) ))
+                                                    <div class="flex shrink-0 flex-wrap justify-end gap-0.5">
+                                                        @if (! empty($courier['can_start']))
+                                                            <form method="POST" action="{{ route('shift-planning.attendance.start') }}">
+                                                                @csrf
+                                                                <input type="hidden" name="business_id" value="{{ $occurrence['business_id'] ?? $selectedBusinessId }}">
+                                                                <input type="hidden" name="shift_id" value="{{ $occurrence['id'] }}">
+                                                                <input type="hidden" name="courier_id" value="{{ $courier['id'] }}">
+                                                                <input type="hidden" name="work_date" value="{{ $occurrence['work_date'] ?? $day['date'] }}">
+                                                                <input type="hidden" name="return_to" value="planning">
+                                                                <input type="hidden" name="week" value="{{ $week['week_start'] }}">
+                                                                <button type="submit" class="rounded bg-emerald-600/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800 hover:bg-emerald-600/20">Giriş</button>
+                                                            </form>
+                                                        @elseif (! empty($courier['can_mark_attended']))
+                                                            <form method="POST" action="{{ route('shift-planning.attendance.mark-attended') }}">
+                                                                @csrf
+                                                                <input type="hidden" name="business_id" value="{{ $occurrence['business_id'] ?? $selectedBusinessId }}">
+                                                                <input type="hidden" name="shift_id" value="{{ $occurrence['id'] }}">
+                                                                <input type="hidden" name="courier_id" value="{{ $courier['id'] }}">
+                                                                <input type="hidden" name="work_date" value="{{ $occurrence['work_date'] ?? $day['date'] }}">
+                                                                <input type="hidden" name="return_to" value="planning">
+                                                                <input type="hidden" name="week" value="{{ $week['week_start'] }}">
+                                                                <button type="submit" class="rounded bg-sky-600/10 px-1.5 py-0.5 text-[10px] font-semibold text-sky-800 hover:bg-sky-600/20">Geldi</button>
+                                                            </form>
+                                                        @elseif (! empty($courier['can_end']) && ! empty($courier['attendance_id']))
+                                                            <form method="POST" action="{{ route('shift-planning.attendance.end') }}">
+                                                                @csrf
+                                                                <input type="hidden" name="business_id" value="{{ $occurrence['business_id'] ?? $selectedBusinessId }}">
+                                                                <input type="hidden" name="attendance_id" value="{{ $courier['attendance_id'] }}">
+                                                                <input type="hidden" name="work_date" value="{{ $occurrence['work_date'] ?? $day['date'] }}">
+                                                                <input type="hidden" name="return_to" value="planning">
+                                                                <input type="hidden" name="week" value="{{ $week['week_start'] }}">
+                                                                <button type="submit" class="rounded bg-gray-900/5 px-1.5 py-0.5 text-[10px] font-semibold text-gray-700 hover:bg-gray-900/10">Bitir</button>
+                                                            </form>
+                                                        @endif
+                                                    </div>
+                                                @endif
+                                            </div>
                                         @endforeach
                                         @if ($occurrence['working_couriers'] === [])
-                                            <p class="mt-0.5 opacity-70">Kadro boş</p>
+                                            <p class="mt-0.5 opacity-70">Atama yok</p>
                                         @endif
                                         @if ($canUpdate || $canDelete)
                                             <div class="mt-1.5 flex flex-wrap gap-1">
                                                 @if ($canUpdate)
-                                                    <button type="button" class="rounded px-1.5 py-0.5 font-medium underline-offset-2 hover:underline" x-on:click="openAssign({{ $occurrence['id'] }})">Kadro</button>
                                                     <button type="button" class="rounded px-1.5 py-0.5 font-medium underline-offset-2 hover:underline" x-on:click="openEdit({{ $occurrence['id'] }})">Düzenle</button>
                                                 @endif
                                                 @if ($canDelete)

@@ -24,12 +24,19 @@ class UpdateBusinessShiftRequest extends FormRequest
             $endDate = $startDate;
         }
 
+        $headcount = max(1, (int) $this->input('required_headcount', 1));
+
         $this->merge([
             'is_active' => $this->boolean('is_active', true),
             'start_time' => $this->normalizeTime($this->input('start_time')),
             'end_time' => $this->normalizeTime($this->input('end_time')),
             'start_date' => $startDate,
             'end_date' => $endDate,
+            'required_headcount' => $headcount,
+            'courier_ids' => array_values(array_filter(
+                (array) $this->input('courier_ids', []),
+                fn ($id) => filled($id),
+            )),
         ]);
     }
 
@@ -47,6 +54,8 @@ class UpdateBusinessShiftRequest extends FormRequest
      */
     public function rules(): array
     {
+        $headcount = max(1, (int) $this->input('required_headcount', 1));
+
         return [
             'name' => ['required', 'string', 'max:120'],
             'start_time' => ['required', 'date_format:H:i'],
@@ -56,6 +65,8 @@ class UpdateBusinessShiftRequest extends FormRequest
             'required_headcount' => ['required', 'integer', 'min:1', 'max:100'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'is_active' => ['sometimes', 'boolean'],
+            'courier_ids' => ['nullable', 'array', 'max:'.$headcount],
+            'courier_ids.*' => ['integer', 'exists:couriers,id'],
         ];
     }
 
@@ -73,6 +84,8 @@ class UpdateBusinessShiftRequest extends FormRequest
             'end_date.after_or_equal' => 'Bitiş tarihi başlangıç tarihinden önce olamaz.',
             'required_headcount.required' => 'Kişi sayısı zorunludur.',
             'required_headcount.min' => 'En az 1 kişi tanımlanmalıdır.',
+            'courier_ids.max' => 'Atanan kurye sayısı vardiya kişi sayısını aşamaz.',
+            'courier_ids.*.exists' => 'Seçilen kuryeler geçerli olmalıdır.',
         ];
     }
 }

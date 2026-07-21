@@ -70,7 +70,60 @@
 
     .live-ops-card__body {
         min-width: 0;
+        flex: 1 1 auto;
         padding-right: 4.5rem;
+    }
+
+    .live-ops-card__actions {
+        margin-top: 0.75rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.375rem;
+        padding-top: 0.625rem;
+        border-top: 1px solid rgb(0 0 0 / 0.08);
+    }
+
+    .live-ops-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.375rem;
+        border: 1px solid transparent;
+        padding: 0.25rem 0.625rem;
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1.25;
+        transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .live-ops-action--start {
+        border-color: #86efac;
+        background-color: #ecfdf5;
+        color: #047857;
+    }
+
+    .live-ops-action--start:hover {
+        background-color: #d1fae5;
+    }
+
+    .live-ops-action--mark {
+        border-color: #93c5fd;
+        background-color: #eff6ff;
+        color: #1d4ed8;
+    }
+
+    .live-ops-action--mark:hover {
+        background-color: #dbeafe;
+    }
+
+    .live-ops-action--end {
+        border-color: #d1d5db;
+        background-color: #f9fafb;
+        color: #374151;
+    }
+
+    .live-ops-action--end:hover {
+        background-color: #f3f4f6;
     }
 
     .live-ops-card--not_started {

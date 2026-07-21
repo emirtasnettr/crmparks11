@@ -64,41 +64,41 @@
                                 @endif
                             </p>
                         @endif
-
-                        @if ($canManage)
-                            <div class="mt-3 flex flex-col gap-1.5">
-                                @if (! empty($card['can_start']))
-                                    <form method="POST" action="{{ route('shift-planning.attendance.start') }}">
-                                        @csrf
-                                        <input type="hidden" name="business_id" value="{{ $card['business_id'] }}">
-                                        <input type="hidden" name="shift_id" value="{{ $card['shift_id'] }}">
-                                        <input type="hidden" name="courier_id" value="{{ $card['courier_id'] }}">
-                                        <input type="hidden" name="work_date" value="{{ $board['work_date'] }}">
-                                        <x-ui.button type="submit" size="sm" class="w-full">Giriş yaptır</x-ui.button>
-                                    </form>
-                                @endif
-                                @if (! empty($card['can_mark_attended']))
-                                    <form method="POST" action="{{ route('shift-planning.attendance.mark-attended') }}">
-                                        @csrf
-                                        <input type="hidden" name="business_id" value="{{ $card['business_id'] }}">
-                                        <input type="hidden" name="shift_id" value="{{ $card['shift_id'] }}">
-                                        <input type="hidden" name="courier_id" value="{{ $card['courier_id'] }}">
-                                        <input type="hidden" name="work_date" value="{{ $board['work_date'] }}">
-                                        <x-ui.button type="submit" size="sm" class="w-full">Geldi işaretle</x-ui.button>
-                                    </form>
-                                @endif
-                                @if (! empty($card['can_end']) && ! empty($card['attendance']['id']))
-                                    <form method="POST" action="{{ route('shift-planning.attendance.end') }}">
-                                        @csrf
-                                        <input type="hidden" name="business_id" value="{{ $card['business_id'] }}">
-                                        <input type="hidden" name="attendance_id" value="{{ $card['attendance']['id'] }}">
-                                        <input type="hidden" name="work_date" value="{{ $board['work_date'] }}">
-                                        <x-ui.button type="submit" size="sm" variant="secondary" class="w-full">Sonlandır</x-ui.button>
-                                    </form>
-                                @endif
-                            </div>
-                        @endif
                     </div>
+
+                    @if ($canManage && (! empty($card['can_start']) || ! empty($card['can_mark_attended']) || (! empty($card['can_end']) && ! empty($card['attendance']['id']))))
+                        <div class="live-ops-card__actions">
+                            @if (! empty($card['can_start']))
+                                <form method="POST" action="{{ route('shift-planning.attendance.start') }}">
+                                    @csrf
+                                    <input type="hidden" name="business_id" value="{{ $card['business_id'] }}">
+                                    <input type="hidden" name="shift_id" value="{{ $card['shift_id'] }}">
+                                    <input type="hidden" name="courier_id" value="{{ $card['courier_id'] }}">
+                                    <input type="hidden" name="work_date" value="{{ $board['work_date'] }}">
+                                    <button type="submit" class="live-ops-action live-ops-action--start">Giriş</button>
+                                </form>
+                            @endif
+                            @if (! empty($card['can_mark_attended']))
+                                <form method="POST" action="{{ route('shift-planning.attendance.mark-attended') }}">
+                                    @csrf
+                                    <input type="hidden" name="business_id" value="{{ $card['business_id'] }}">
+                                    <input type="hidden" name="shift_id" value="{{ $card['shift_id'] }}">
+                                    <input type="hidden" name="courier_id" value="{{ $card['courier_id'] }}">
+                                    <input type="hidden" name="work_date" value="{{ $board['work_date'] }}">
+                                    <button type="submit" class="live-ops-action live-ops-action--mark">Geldi</button>
+                                </form>
+                            @endif
+                            @if (! empty($card['can_end']) && ! empty($card['attendance']['id']))
+                                <form method="POST" action="{{ route('shift-planning.attendance.end') }}">
+                                    @csrf
+                                    <input type="hidden" name="business_id" value="{{ $card['business_id'] }}">
+                                    <input type="hidden" name="attendance_id" value="{{ $card['attendance']['id'] }}">
+                                    <input type="hidden" name="work_date" value="{{ $board['work_date'] }}">
+                                    <button type="submit" class="live-ops-action live-ops-action--end">Bitir</button>
+                                </form>
+                            @endif
+                        </div>
+                    @endif
                 </div>
             @endforeach
         </div>

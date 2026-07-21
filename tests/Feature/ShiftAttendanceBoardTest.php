@@ -257,7 +257,7 @@ class ShiftAttendanceBoardTest extends TestCase
         $this->actingAs($user)
             ->get(route('shift-planning.attendance'))
             ->assertOk()
-            ->assertSee('Geldi işaretle');
+            ->assertSee('Geldi');
 
         $this->actingAs($user)
             ->post(route('shift-planning.attendance.mark-attended'), [

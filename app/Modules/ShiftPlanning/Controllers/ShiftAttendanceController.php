@@ -50,9 +50,7 @@ class ShiftAttendanceController extends Controller
             $data['notes'] ?? null,
         );
 
-        return redirect()
-            ->route('shift-planning.attendance')
-            ->with('success', 'Vardiya personel tarafından başlatıldı.');
+        return $this->redirectAfterStaffAction($request, 'Vardiya personel tarafından başlatıldı.');
     }
 
     public function markAttended(Request $request): RedirectResponse
@@ -78,9 +76,7 @@ class ShiftAttendanceController extends Controller
             $data['notes'] ?? null,
         );
 
-        return redirect()
-            ->route('shift-planning.attendance')
-            ->with('success', 'Kurye geldi olarak işaretlendi.');
+        return $this->redirectAfterStaffAction($request, 'Kurye geldi olarak işaretlendi.');
     }
 
     public function end(Request $request): RedirectResponse
@@ -105,8 +101,26 @@ class ShiftAttendanceController extends Controller
             array_key_exists('package_count', $data) ? (int) $data['package_count'] : null,
         );
 
+        return $this->redirectAfterStaffAction($request, 'Vardiya personel tarafından sonlandırıldı.');
+    }
+
+    private function redirectAfterStaffAction(Request $request, string $message): RedirectResponse
+    {
+        $fallback = route('shift-planning.attendance');
+        $businessId = $request->integer('business_id') ?: null;
+        $week = $request->string('week')->toString() ?: null;
+
+        if ($request->string('return_to')->toString() === 'planning' && $businessId) {
+            return redirect()
+                ->route('shift-planning.index', array_filter([
+                    'business_id' => $businessId,
+                    'week' => $week,
+                ]))
+                ->with('success', $message);
+        }
+
         return redirect()
-            ->route('shift-planning.attendance')
-            ->with('success', 'Vardiya personel tarafından sonlandırıldı.');
+            ->back(fallback: $fallback)
+            ->with('success', $message);
     }
 }

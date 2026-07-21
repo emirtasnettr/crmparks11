@@ -169,41 +169,55 @@ class ShiftPlanningService
      */
     public function update(BusinessShift $shift, array $data): BusinessShift
     {
-        $rosterIds = $shift->rosterCouriers()->pluck('couriers.id')->map(fn ($id) => (int) $id)->all();
+        return DB::transaction(function () use ($shift, $data) {
+            $courierIds = array_key_exists('courier_ids', $data)
+                ? $this->normalizeCourierIds($data['courier_ids'] ?? [])
+                : $shift->rosterCouriers()->pluck('couriers.id')->map(fn ($id) => (int) $id)->all();
 
-        if ($rosterIds !== []) {
-            $this->conflicts->assertNoRosterConflicts(
-                $rosterIds,
-                [
-                    'start_date' => $data['start_date'] ?? $shift->start_date,
-                    'end_date' => $data['end_date'] ?? $shift->end_date,
-                    'start_time' => $data['start_time'],
-                    'end_time' => $data['end_time'],
-                    'days_of_week' => $shift->days_of_week,
-                    'excluded_dates' => $shift->excluded_dates,
-                ],
-                $shift->id,
-                'start_time',
-            );
-        }
+            if ($courierIds !== []) {
+                $this->conflicts->assertNoRosterConflicts(
+                    $courierIds,
+                    [
+                        'start_date' => $data['start_date'] ?? $shift->start_date,
+                        'end_date' => $data['end_date'] ?? $shift->end_date,
+                        'start_time' => $data['start_time'],
+                        'end_time' => $data['end_time'],
+                        'days_of_week' => $shift->days_of_week,
+                        'excluded_dates' => $shift->excluded_dates,
+                    ],
+                    $shift->id,
+                    'start_time',
+                );
+            }
 
-        $shift->update([
-            'name' => $data['name'],
-            'start_time' => $data['start_time'],
-            'end_time' => $data['end_time'],
-            'start_date' => $data['start_date'] ?? $shift->start_date,
-            'end_date' => $data['end_date'] ?? $shift->end_date,
-            'required_headcount' => max(1, (int) ($data['required_headcount'] ?? $shift->required_headcount)),
-            'notes' => $data['notes'] ?? null,
-            'is_active' => array_key_exists('is_active', $data)
-                ? (bool) $data['is_active']
-                : $shift->is_active,
-        ]);
+            $shift->update([
+                'name' => $data['name'],
+                'start_time' => $data['start_time'],
+                'end_time' => $data['end_time'],
+                'start_date' => $data['start_date'] ?? $shift->start_date,
+                'end_date' => $data['end_date'] ?? $shift->end_date,
+                'required_headcount' => max(1, (int) ($data['required_headcount'] ?? $shift->required_headcount)),
+                'notes' => $data['notes'] ?? null,
+                'is_active' => array_key_exists('is_active', $data)
+                    ? (bool) $data['is_active']
+                    : $shift->is_active,
+            ]);
 
-        $shift = $shift->fresh(['rosterCouriers']);
-        $this->attendances->materializeRetrospectiveCompletions($shift);
+            if (array_key_exists('courier_ids', $data)) {
+                if (count($courierIds) > max(1, (int) $shift->required_headcount)) {
+                    throw ValidationException::withMessages([
+                        'courier_ids' => "Bu vardiyada en fazla {$shift->required_headcount} kişi çalışabilir.",
+                    ]);
+                }
 
-        return $shift;
+                $shift->rosterCouriers()->sync($courierIds);
+            }
+
+            $shift = $shift->fresh(['rosterCouriers']);
+            $this->attendances->materializeRetrospectiveCompletions($shift);
+
+            return $shift;
+        });
     }
 
     /**

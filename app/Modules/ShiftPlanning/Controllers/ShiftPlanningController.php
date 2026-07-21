@@ -71,6 +71,9 @@ class ShiftPlanningController extends Controller
                 $occurrence = $this->presenter->dayOccurrence($shiftRow, $day['date']);
                 $summary = $attendanceSummaries[$shiftRow['id'].'|'.$day['date']] ?? null;
                 $occurrence['attendance'] = $summary;
+                if (is_array($summary['couriers'] ?? null)) {
+                    $occurrence['working_couriers'] = $summary['couriers'];
+                }
                 $occurrences[] = $occurrence;
             }
 
