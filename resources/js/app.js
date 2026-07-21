@@ -45,7 +45,45 @@ const formatMoneyExclVat = (amount, decimals = 2) => window.formatMoneyExcluding
 Alpine.data('topNav', () => ({
     mobileOpen: false,
     openDropdown: null,
+    sidebarCollapsed: (() => {
+        try {
+            return localStorage.getItem('crmlog.sidebarCollapsed') === '1';
+        } catch (e) {
+            return false;
+        }
+    })(),
+    sidebarAnimating: false,
     toast: null,
+    _sidebarAnimTimer: null,
+
+    setSidebarCollapsed(collapsed) {
+        if (this.sidebarCollapsed === collapsed) {
+            return;
+        }
+
+        this.sidebarAnimating = true;
+        this.sidebarCollapsed = collapsed;
+
+        try {
+            localStorage.setItem('crmlog.sidebarCollapsed', collapsed ? '1' : '0');
+            document.documentElement.classList.toggle('sidebar-collapsed', collapsed);
+        } catch (e) {
+            // Ignore storage failures (private mode, etc.).
+        }
+
+        if (this._sidebarAnimTimer) {
+            window.clearTimeout(this._sidebarAnimTimer);
+        }
+
+        this._sidebarAnimTimer = window.setTimeout(() => {
+            this.sidebarAnimating = false;
+            this._sidebarAnimTimer = null;
+        }, 220);
+    },
+
+    toggleSidebar() {
+        this.setSidebarCollapsed(! this.sidebarCollapsed);
+    },
 
     toggleDropdown(key) {
         this.openDropdown = this.openDropdown === key ? null : key;

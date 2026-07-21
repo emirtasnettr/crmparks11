@@ -11,7 +11,25 @@
     <script>
         document.documentElement.classList.remove('dark');
         try { localStorage.removeItem('theme'); } catch (e) {}
+        try {
+            if (localStorage.getItem('crmlog.sidebarCollapsed') === '1') {
+                document.documentElement.classList.add('sidebar-collapsed');
+            }
+        } catch (e) {}
     </script>
+    <style>
+        .app-sidebar {
+            width: 16rem;
+        }
+        html.sidebar-collapsed .app-sidebar {
+            width: 0 !important;
+            min-width: 0 !important;
+            border-color: transparent !important;
+        }
+        .app-sidebar--animating {
+            transition: width 200ms ease-in-out, border-color 200ms ease-in-out;
+        }
+    </style>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('styles')
 </head>
@@ -21,14 +39,18 @@
     @crmlog-action.window="handleCrmlogAction($event.detail)"
     @keydown.escape.window="mobileOpen = false"
 >
-    <div class="flex min-h-screen flex-col">
-        @include('layouts.partials.top-nav')
+    <div class="flex min-h-screen">
+        @include('layouts.partials.sidebar')
 
-        <main class="flex-1 p-4 sm:p-6 lg:p-8">
-            @include('layouts.partials.flash-messages')
+        <div class="flex min-w-0 flex-1 flex-col">
+            @include('layouts.partials.top-nav')
 
-            @yield('content')
-        </main>
+            <main class="flex-1 p-4 sm:p-6 lg:p-8">
+                @include('layouts.partials.flash-messages')
+
+                @yield('content')
+            </main>
+        </div>
     </div>
 
     <div
