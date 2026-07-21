@@ -132,61 +132,61 @@
                                                 Önümüzdeki 7 günde tanımlı vardiya yok.
                                             </p>
                                         @else
-                                            <div class="space-y-3">
+                                            <div class="grid grid-cols-4 gap-3">
                                                 @foreach ($row['week_schedule'] as $day)
                                                     <div @class([
-                                                        'overflow-hidden rounded-xl border bg-white dark:bg-slate-800/70',
+                                                        'flex h-full flex-col overflow-hidden rounded-xl border bg-white dark:bg-slate-800/70',
                                                         'border-primary-200 dark:border-primary-500/30' => $day['is_today'],
                                                         'border-slate-200 dark:border-slate-700' => ! $day['is_today'],
                                                     ])>
                                                         <div @class([
-                                                            'flex items-center justify-between gap-3 border-b px-4 py-2.5',
+                                                            'flex items-center justify-between gap-2 border-b px-3 py-2',
                                                             'border-primary-100 bg-primary-50/70 dark:border-primary-500/20 dark:bg-primary-500/10' => $day['is_today'],
                                                             'border-slate-100 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-800' => ! $day['is_today'],
                                                         ])>
-                                                            <div class="flex items-center gap-2">
-                                                                <span class="text-sm font-semibold text-slate-900 dark:text-white">
+                                                            <div class="min-w-0">
+                                                                <p class="truncate text-sm font-semibold text-slate-900 dark:text-white">
                                                                     {{ $day['label'] }}
-                                                                </span>
+                                                                </p>
                                                                 @if ($day['is_today'])
-                                                                    <span class="rounded-full bg-primary-600 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                                                                    <span class="mt-0.5 inline-flex rounded-full bg-primary-600 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
                                                                         Bugün
                                                                     </span>
                                                                 @endif
                                                             </div>
-                                                            <span class="text-xs tabular-nums text-slate-500 dark:text-slate-400">
+                                                            <span class="shrink-0 text-[11px] tabular-nums text-slate-500 dark:text-slate-400">
                                                                 {{ $day['shift_count'] }} vardiya
                                                             </span>
                                                         </div>
 
-                                                        <div class="divide-y divide-slate-100 dark:divide-slate-700/80">
+                                                        <div class="flex-1 divide-y divide-slate-100 dark:divide-slate-700/80">
                                                             @foreach ($day['shifts'] as $shift)
-                                                                <div class="px-4 py-3">
-                                                                    <div class="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-                                                                        <div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                                                                            <span class="font-medium text-slate-900 dark:text-white">{{ $shift['name'] }}</span>
+                                                                <div class="px-3 py-2.5">
+                                                                    <div class="mb-1.5 flex flex-wrap items-baseline justify-between gap-1">
+                                                                        <div class="min-w-0">
+                                                                            <p class="truncate font-medium text-slate-900 dark:text-white">{{ $shift['name'] }}</p>
                                                                             @if ($shift['time'])
-                                                                                <span class="text-xs tabular-nums text-slate-500 dark:text-slate-400">{{ $shift['time'] }}</span>
+                                                                                <p class="text-[11px] tabular-nums text-slate-500 dark:text-slate-400">{{ $shift['time'] }}</p>
                                                                             @endif
                                                                         </div>
-                                                                        <span class="text-xs text-slate-500 dark:text-slate-400">
+                                                                        <span class="shrink-0 text-[11px] text-slate-500 dark:text-slate-400">
                                                                             {{ $shift['courier_count'] }} kurye
                                                                         </span>
                                                                     </div>
 
                                                                     @if ($shift['couriers'] === [])
-                                                                        <p class="text-xs text-amber-700 dark:text-amber-400">Henüz kurye atanmamış.</p>
+                                                                        <p class="text-[11px] text-amber-700 dark:text-amber-400">Henüz kurye atanmamış.</p>
                                                                     @else
-                                                                        <div class="flex flex-wrap gap-1.5">
+                                                                        <div class="flex flex-col gap-1">
                                                                             @foreach ($shift['couriers'] as $courier)
                                                                                 <span
-                                                                                    class="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-700 dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-200"
+                                                                                    class="inline-flex min-w-0 items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-700 dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-200"
                                                                                     title="{{ $courier['phone'] }}"
                                                                                 >
-                                                                                    <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-200 text-[10px] font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+                                                                                    <span class="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[9px] font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-200">
                                                                                         {{ mb_strtoupper(mb_substr($courier['name'], 0, 1)) }}
                                                                                     </span>
-                                                                                    {{ $courier['name'] }}
+                                                                                    <span class="truncate">{{ $courier['name'] }}</span>
                                                                                 </span>
                                                                             @endforeach
                                                                         </div>
