@@ -42,6 +42,8 @@ class CourierPortalShiftAttendanceTest extends TestCase
 
     public function test_courier_can_start_and_end_assigned_shift(): void
     {
+        Carbon::setTestNow(Carbon::parse('2026-07-17 16:00:00'));
+
         $admin = User::factory()->create();
         $admin->assignRole('super_admin');
 
@@ -117,7 +119,7 @@ class CourierPortalShiftAttendanceTest extends TestCase
         $this->assertNotNull($attendance->ended_at);
         $this->assertEquals(40.99, (float) $attendance->end_latitude);
         $this->assertEquals(29.03, (float) $attendance->end_longitude);
-        // Hakediş = planlanan vardiya süresi (7 sa), erken/geç buffer yok.
+        // Hakediş = planlanan vardiya penceresinde fiilen çalışılan süre (7 sa).
         $this->assertSame(420, (int) $attendance->worked_minutes);
         $this->assertEquals(1050.0, (float) $attendance->earnings_amount);
     }

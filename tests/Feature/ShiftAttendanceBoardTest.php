@@ -6,6 +6,7 @@ use App\Models\City;
 use App\Models\District;
 use App\Models\User;
 use App\Modules\Business\Models\Business;
+use App\Modules\Business\Models\BusinessCommercialContract;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\ShiftPlanning\Models\BusinessShift;
 use App\Modules\ShiftPlanning\Models\BusinessShiftAttendance;
@@ -15,6 +16,7 @@ use Database\Seeders\CitySeeder;
 use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class ShiftAttendanceBoardTest extends TestCase
@@ -215,11 +217,14 @@ class ShiftAttendanceBoardTest extends TestCase
         $this->assertSame('in_progress', $attendance->status);
         $this->assertStringContainsString('Personel müdahalesi', (string) $attendance->notes);
 
+        $attendance->update(['started_at' => Carbon::parse('2026-07-17 16:00:00')]);
+
         $this->actingAs($user)
             ->post(route('shift-planning.attendance.end'), [
                 'business_id' => $business->id,
                 'attendance_id' => $attendance->id,
                 'work_date' => $date,
+                'ended_at' => '2026-07-17 23:00:00',
             ])
             ->assertRedirect(route('shift-planning.attendance'));
 
@@ -227,6 +232,91 @@ class ShiftAttendanceBoardTest extends TestCase
         $this->assertSame('completed', $attendance->status);
         $this->assertNotNull($attendance->ended_at);
         $this->assertSame(420, (int) $attendance->worked_minutes);
+    }
+
+    public function test_staff_can_end_early_and_start_replacement_courier(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-17 10:00:00'));
+
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        BusinessCommercialContract::query()->where('business_id', $business->id)->delete();
+        BusinessCommercialContract::factory()->hourly()->create([
+            'business_id' => $business->id,
+            'start_date' => '2026-07-01',
+            'end_date' => null,
+            'business_amount' => 200,
+            'courier_amount' => 100,
+            'net_profit' => 100,
+            'status' => 'active',
+            'created_by' => $user->id,
+        ]);
+        $ahmet = $this->createCourier($user, ['full_name' => 'Ahmet Kurye']);
+        $mehmet = $this->createCourier($user, ['full_name' => 'Mehmet Kurye']);
+
+        $shift = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'name' => 'Sabah',
+            'start_time' => '09:00',
+            'end_time' => '12:00',
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-07-31',
+            'required_headcount' => 1,
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+        BusinessShiftCourier::query()->create([
+            'business_shift_id' => $shift->id,
+            'courier_id' => $ahmet->id,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('shift-planning.attendance.start'), [
+                'business_id' => $business->id,
+                'shift_id' => $shift->id,
+                'courier_id' => $ahmet->id,
+                'work_date' => '2026-07-17',
+            ])
+            ->assertRedirect();
+
+        $attendance = BusinessShiftAttendance::query()->where('courier_id', $ahmet->id)->first();
+        $attendance->update(['started_at' => Carbon::parse('2026-07-17 09:00:00')]);
+
+        $this->actingAs($user)
+            ->from(route('shift-planning.attendance'))
+            ->post(route('shift-planning.attendance.end'), [
+                'business_id' => $business->id,
+                'attendance_id' => $attendance->id,
+                'work_date' => '2026-07-17',
+                'ended_at' => '2026-07-17 10:00:00',
+                'end_reason' => 'accident',
+                'replacement_courier_id' => $mehmet->id,
+            ])
+            ->assertRedirect(route('shift-planning.attendance'))
+            ->assertSessionHasNoErrors();
+
+        $attendance->refresh();
+        $this->assertSame('completed', $attendance->status);
+        $this->assertSame(60, (int) $attendance->worked_minutes);
+        $this->assertSame('accident', $attendance->end_reason);
+        $this->assertNotNull($attendance->replaced_by_attendance_id);
+        $this->assertEquals(100.0, (float) $attendance->earnings_amount);
+
+        $replacement = BusinessShiftAttendance::query()->where('courier_id', $mehmet->id)->first();
+        $this->assertNotNull($replacement);
+        $this->assertSame('in_progress', $replacement->status);
+        $this->assertSame($attendance->id, (int) $replacement->replaces_attendance_id);
+        $this->assertTrue(
+            Carbon::parse($replacement->started_at)->equalTo(Carbon::parse('2026-07-17 10:00:00'))
+        );
+
+        $this->assertTrue(
+            DB::table('business_shift_couriers')
+                ->where('business_shift_id', $shift->id)
+                ->where('courier_id', $mehmet->id)
+                ->exists()
+        );
     }
 
     public function test_staff_can_mark_missing_courier_as_attended_after_shift_end(): void

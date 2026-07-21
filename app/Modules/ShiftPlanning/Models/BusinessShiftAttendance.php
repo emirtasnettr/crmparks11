@@ -28,6 +28,9 @@ class BusinessShiftAttendance extends Model
         'earnings_amount',
         'pricing_model',
         'notes',
+        'end_reason',
+        'replaces_attendance_id',
+        'replaced_by_attendance_id',
         'start_latitude',
         'start_longitude',
         'start_accuracy_meters',
@@ -75,6 +78,16 @@ class BusinessShiftAttendance extends Model
     public function courier(): BelongsTo
     {
         return $this->belongsTo(Courier::class);
+    }
+
+    public function replacesAttendance(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'replaces_attendance_id');
+    }
+
+    public function replacedByAttendance(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'replaced_by_attendance_id');
     }
 
     public function isInProgress(): bool

@@ -4475,13 +4475,105 @@ Alpine.data('policySettingsPage', (policies = {}) => ({
     },
 }));
 
+Alpine.data('staffAttendanceEnd', (config = {}) => ({
+    openEndModal: false,
+    replacementSearch: '',
+    availableCouriers: config.availableCouriers || [],
+    endReasons: config.endReasons || {},
+    endForm: {
+        business_id: '',
+        attendance_id: '',
+        work_date: '',
+        courier_id: '',
+        courier_name: '',
+        shift_name: '',
+        ended_at: '',
+        min_ended_at: '',
+        shift_end_at: '',
+        end_reason: '',
+        replacement_courier_id: '',
+        package_count: '',
+        pricing_model: '',
+        notes: '',
+        return_to: '',
+        week: '',
+    },
+    openEndAttendance(payload = {}) {
+        const nowLocal = this.toDateTimeLocal(new Date());
+        const minEnded = payload.started_at || payload.shift_start_at || '';
+        let endedAt = payload.ended_at || nowLocal;
+        if (payload.shift_end_at && endedAt > payload.shift_end_at) {
+            endedAt = payload.shift_end_at;
+        }
+        if (minEnded && endedAt < minEnded) {
+            endedAt = minEnded;
+        }
+
+        this.replacementSearch = '';
+        this.endForm = {
+            business_id: String(payload.business_id || ''),
+            attendance_id: String(payload.attendance_id || ''),
+            work_date: payload.work_date || '',
+            courier_id: String(payload.courier_id || ''),
+            courier_name: payload.courier_name || '',
+            shift_name: payload.shift_name || '',
+            ended_at: endedAt,
+            min_ended_at: minEnded,
+            shift_end_at: payload.shift_end_at || '',
+            end_reason: '',
+            replacement_courier_id: '',
+            package_count: '',
+            pricing_model: payload.pricing_model || '',
+            notes: '',
+            return_to: payload.return_to || '',
+            week: payload.week || '',
+        };
+        this.openEndModal = true;
+    },
+    closeEndModal() {
+        this.openEndModal = false;
+    },
+    needsEndReason() {
+        if (this.endForm.replacement_courier_id) {
+            return true;
+        }
+        if (this.endForm.ended_at && this.endForm.shift_end_at && this.endForm.ended_at < this.endForm.shift_end_at) {
+            return true;
+        }
+        return false;
+    },
+    filteredReplacementCouriers() {
+        const excludeId = String(this.endForm.courier_id || '');
+        const needle = String(this.replacementSearch || '').trim().toLocaleLowerCase('tr-TR');
+
+        return (this.availableCouriers || []).filter((courier) => {
+            if (String(courier.id) === excludeId) {
+                return false;
+            }
+            if (!needle) {
+                return true;
+            }
+            const name = String(courier.name || '').toLocaleLowerCase('tr-TR');
+            const phone = String(courier.phone || '').toLocaleLowerCase('tr-TR');
+            return name.includes(needle) || phone.includes(needle);
+        });
+    },
+    toDateTimeLocal(date) {
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    },
+}));
+
 Alpine.data('shiftPlanningPage', (config = {}) => ({
     openShiftModal: false,
     openDeleteModal: false,
+    openEndModal: false,
+    replacementSearch: '',
     shiftMode: 'create',
     selectedBusinessId: config.selectedBusinessId,
     shifts: config.shifts || [],
     availableCouriers: config.availableCouriers || [],
+    endReasons: config.endReasons || {},
     eligibleCouriers: config.availableCouriers || [],
     eligibleCouriersLoading: false,
     courierSearch: '',
@@ -4496,6 +4588,24 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
     destroyUrlTemplate: config.destroyUrlTemplate,
     eligibleCouriersUrl: config.eligibleCouriersUrl || '',
     deleteShiftId: null,
+    endForm: {
+        business_id: '',
+        attendance_id: '',
+        work_date: '',
+        courier_id: '',
+        courier_name: '',
+        shift_name: '',
+        ended_at: '',
+        min_ended_at: '',
+        shift_end_at: '',
+        end_reason: '',
+        replacement_courier_id: '',
+        package_count: '',
+        pricing_model: '',
+        notes: '',
+        return_to: '',
+        week: '',
+    },
     shiftForm: {
         id: null,
         name: '',
@@ -4603,6 +4713,70 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
     closeDeleteModal() {
         this.openDeleteModal = false;
         this.deleteShiftId = null;
+    },
+    openEndAttendance(payload = {}) {
+        const nowLocal = this.toDateTimeLocal(new Date());
+        const minEnded = payload.started_at || payload.shift_start_at || '';
+        let endedAt = payload.ended_at || nowLocal;
+        if (payload.shift_end_at && endedAt > payload.shift_end_at) {
+            endedAt = payload.shift_end_at;
+        }
+        if (minEnded && endedAt < minEnded) {
+            endedAt = minEnded;
+        }
+
+        this.replacementSearch = '';
+        this.endForm = {
+            business_id: String(payload.business_id || ''),
+            attendance_id: String(payload.attendance_id || ''),
+            work_date: payload.work_date || '',
+            courier_id: String(payload.courier_id || ''),
+            courier_name: payload.courier_name || '',
+            shift_name: payload.shift_name || '',
+            ended_at: endedAt,
+            min_ended_at: minEnded,
+            shift_end_at: payload.shift_end_at || '',
+            end_reason: '',
+            replacement_courier_id: '',
+            package_count: '',
+            pricing_model: payload.pricing_model || '',
+            notes: '',
+            return_to: payload.return_to || '',
+            week: payload.week || '',
+        };
+        this.openEndModal = true;
+    },
+    closeEndModal() {
+        this.openEndModal = false;
+    },
+    needsEndReason() {
+        if (this.endForm.replacement_courier_id) {
+            return true;
+        }
+        if (this.endForm.ended_at && this.endForm.shift_end_at && this.endForm.ended_at < this.endForm.shift_end_at) {
+            return true;
+        }
+        return false;
+    },
+    filteredReplacementCouriers() {
+        const excludeId = String(this.endForm.courier_id || '');
+        const needle = String(this.replacementSearch || '').trim().toLocaleLowerCase('tr-TR');
+
+        return (this.availableCouriers || []).filter((courier) => {
+            if (String(courier.id) === excludeId) {
+                return false;
+            }
+            if (!needle) {
+                return true;
+            }
+            const name = String(courier.name || '').toLocaleLowerCase('tr-TR');
+            const phone = String(courier.phone || '').toLocaleLowerCase('tr-TR');
+            return name.includes(needle) || phone.includes(needle);
+        });
+    },
+    toDateTimeLocal(date) {
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
     },
     async refreshEligibleCouriers(schedule) {
         if (!this.eligibleCouriersUrl) {

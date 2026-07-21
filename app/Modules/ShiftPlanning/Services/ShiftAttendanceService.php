@@ -200,7 +200,7 @@ class ShiftAttendanceService
     }
 
     /**
-     * @param  array{staff_assist?: bool, notes?: string|null, started_at?: Carbon|null}  $options
+     * @param  array{staff_assist?: bool, notes?: string|null, started_at?: Carbon|null, replaces_attendance_id?: int|null}  $options
      */
     public function start(Courier $courier, int $shiftId, ?Carbon $day = null, array $options = []): BusinessShiftAttendance
     {
@@ -273,6 +273,9 @@ class ShiftAttendanceService
                 'hourly_rate' => $hourlyRate,
                 'pricing_model' => $pricingCode,
                 'notes' => $options['notes'] ?? null,
+                'replaces_attendance_id' => isset($options['replaces_attendance_id'])
+                    ? (int) $options['replaces_attendance_id']
+                    : null,
                 'start_latitude' => $geo['latitude'],
                 'start_longitude' => $geo['longitude'],
                 'start_accuracy_meters' => $geo['accuracy_meters'],
@@ -441,23 +444,176 @@ class ShiftAttendanceService
         return $this->completeAttendance($attendanceId, $courier->id, $options);
     }
 
-    public function endForCourier(int $attendanceId, User $staff, ?string $note = null, ?int $packageCount = null): BusinessShiftAttendance
+    /**
+     * Personel: devam eden vardiyayı bitiş saati seçerek sonlandırır; isteğe bağlı yerine kurye başlatır.
+     *
+     * @param  array{
+     *     ended_at: Carbon,
+     *     end_reason?: string|null,
+     *     replacement_courier_id?: int|null,
+     *     package_count?: int|null,
+     *     notes?: string|null
+     * }  $payload
+     * @return array{ended: BusinessShiftAttendance, replacement: BusinessShiftAttendance|null}
+     */
+    public function endForCourier(int $attendanceId, User $staff, array $payload): array
     {
+        $endedAt = $payload['ended_at'] ?? null;
+        if (! $endedAt instanceof Carbon) {
+            throw ValidationException::withMessages([
+                'ended_at' => 'Bitiş saati zorunludur.',
+            ]);
+        }
+
+        $endReason = filled($payload['end_reason'] ?? null) ? (string) $payload['end_reason'] : null;
+        $replacementCourierId = isset($payload['replacement_courier_id']) && $payload['replacement_courier_id'] !== ''
+            ? (int) $payload['replacement_courier_id']
+            : null;
+        $packageCount = array_key_exists('package_count', $payload) && $payload['package_count'] !== null && $payload['package_count'] !== ''
+            ? (int) $payload['package_count']
+            : null;
+        $note = filled($payload['notes'] ?? null) ? (string) $payload['notes'] : null;
+
+        if ($endReason !== null && ! in_array($endReason, ShiftAttendanceRules::endReasonCodes(), true)) {
+            throw ValidationException::withMessages([
+                'end_reason' => 'Geçersiz bitiş sebebi.',
+            ]);
+        }
+
+        $attendance = BusinessShiftAttendance::query()
+            ->with('shift')
+            ->find($attendanceId);
+
+        if ($attendance === null || ! $attendance->isInProgress()) {
+            throw ValidationException::withMessages([
+                'attendance' => 'Bu vardiya kaydı sonlandırılamaz.',
+            ]);
+        }
+
+        $shift = $attendance->shift;
+        $workDate = $attendance->work_date ?? Carbon::today();
+
+        if ($shift === null) {
+            throw ValidationException::withMessages([
+                'attendance' => 'Bu vardiya kaydı sonlandırılamaz.',
+            ]);
+        }
+
+        $shiftStart = ShiftAttendanceRules::shiftStartAt($shift, $workDate);
+        $shiftEnd = ShiftAttendanceRules::shiftEndAt($shift, $workDate);
+        $startedAt = $attendance->started_at?->copy() ?? $shiftStart->copy();
+
+        if ($endedAt->lt($startedAt)) {
+            throw ValidationException::withMessages([
+                'ended_at' => 'Bitiş saati başlangıçtan önce olamaz.',
+            ]);
+        }
+
+        if ($endedAt->lt($shiftStart)) {
+            throw ValidationException::withMessages([
+                'ended_at' => 'Bitiş saati vardiya başlangıcından önce olamaz.',
+            ]);
+        }
+
+        if ($endedAt->gt($shiftEnd)) {
+            $endedAt = $shiftEnd->copy();
+        }
+
+        $isEarlyEnd = $endedAt->lt($shiftEnd);
+
+        if ($isEarlyEnd && $endReason === null) {
+            throw ValidationException::withMessages([
+                'end_reason' => 'Erken bitişte sebep seçilmelidir.',
+            ]);
+        }
+
+        if ($replacementCourierId !== null) {
+            if ($endReason === null) {
+                throw ValidationException::withMessages([
+                    'end_reason' => 'Yerine kurye eklerken sebep zorunludur.',
+                ]);
+            }
+
+            if ($replacementCourierId === (int) $attendance->courier_id) {
+                throw ValidationException::withMessages([
+                    'replacement_courier_id' => 'Yerine aynı kurye seçilemez.',
+                ]);
+            }
+
+            if ($endedAt->gte($shiftEnd)) {
+                throw ValidationException::withMessages([
+                    'replacement_courier_id' => 'Vardiya bitişinde yerine kurye eklenemez.',
+                ]);
+            }
+        }
+
+        $reasonLabel = ShiftAttendanceRules::endReasonLabel($endReason);
         $staffNote = 'Personel müdahalesi: '.$staff->name.' sonlandırdı';
+        if ($reasonLabel) {
+            $staffNote .= ' — Sebep: '.$reasonLabel;
+        }
         if (filled($note)) {
             $staffNote .= ' — '.$note;
         }
 
         $options = [
             'staff_assist' => true,
+            'ended_at' => $endedAt,
+            'end_reason' => $endReason,
             'notes_append' => $staffNote,
+            'use_billable_minutes' => true,
         ];
 
         if ($packageCount !== null) {
             $options['package_count'] = $packageCount;
         }
 
-        return $this->completeAttendance($attendanceId, null, $options);
+        $ended = $this->completeAttendance($attendanceId, null, $options);
+
+        $replacement = null;
+        if ($replacementCourierId !== null) {
+            $replacementCourier = Courier::query()->findOrFail($replacementCourierId);
+            $this->ensureCourierOnRoster($shift, $replacementCourier);
+
+            $handoffNote = 'Personel müdahalesi: '.$staff->name.' yerine ekledi'
+                .' (önceki: #'.$ended->id
+                .($reasonLabel ? ', sebep: '.$reasonLabel : '')
+                .')';
+
+            $replacement = $this->start($replacementCourier, (int) $shift->id, $workDate->copy(), [
+                'staff_assist' => true,
+                'started_at' => $endedAt->copy(),
+                'notes' => $handoffNote,
+                'replaces_attendance_id' => $ended->id,
+            ]);
+
+            $ended->update(['replaced_by_attendance_id' => $replacement->id]);
+            $ended = $ended->fresh(['shift', 'business', 'courier']);
+        }
+
+        return [
+            'ended' => $ended,
+            'replacement' => $replacement,
+        ];
+    }
+
+    private function ensureCourierOnRoster(BusinessShift $shift, Courier $courier): void
+    {
+        $exists = DB::table('business_shift_couriers')
+            ->where('business_shift_id', $shift->id)
+            ->where('courier_id', $courier->id)
+            ->exists();
+
+        if ($exists) {
+            return;
+        }
+
+        DB::table('business_shift_couriers')->insert([
+            'business_shift_id' => $shift->id,
+            'courier_id' => $courier->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     /**
@@ -791,6 +947,9 @@ class ShiftAttendanceService
                     'can_start' => $missing && $now->lt($shiftEnd),
                     'can_mark_attended' => $missing && $now->gte($shiftEnd),
                     'can_end' => $attendance?->isInProgress() ?? false,
+                    'shift_start_at' => $shiftStart->format('Y-m-d\TH:i'),
+                    'shift_end_at' => $shiftEnd->format('Y-m-d\TH:i'),
+                    'pricing_model' => $attendance?->pricing_model,
                 ];
             }
         }
@@ -1048,6 +1207,10 @@ class ShiftAttendanceService
                         'name' => $courierRow['name'],
                         'attendance_id' => $attendance?->id,
                         'status' => $attendance?->status,
+                        'pricing_model' => $attendance?->pricing_model,
+                        'started_at' => $attendance?->started_at?->format('Y-m-d\TH:i'),
+                        'shift_start_at' => ShiftAttendanceRules::shiftStartAt($shift, $cursor)->format('Y-m-d\TH:i'),
+                        'shift_end_at' => ShiftAttendanceRules::shiftEndAt($shift, $cursor)->format('Y-m-d\TH:i'),
                         'can_start' => $missing && ! $shiftEnded,
                         'can_mark_attended' => $missing && $shiftEnded,
                         'can_end' => $attendance?->isInProgress() ?? false,
@@ -1186,8 +1349,10 @@ class ShiftAttendanceService
      *     auto_end?: bool,
      *     staff_assist?: bool,
      *     ended_at?: Carbon|null,
+     *     end_reason?: string|null,
      *     notes_append?: string|null,
      *     package_count?: mixed,
+     *     use_billable_minutes?: bool,
      *     latitude?: mixed,
      *     longitude?: mixed,
      *     accuracy?: mixed
@@ -1248,10 +1413,16 @@ class ShiftAttendanceService
                 $endedAt = now();
             }
 
-            // Hakediş süresi: yalnızca planlanan vardiya aralığı.
-            $minutes = $shift !== null
-                ? ShiftAttendanceRules::scheduledMinutes($shift, $workDate)
-                : max(1, (int) ($attendance->started_at ?? $endedAt)->diffInMinutes($endedAt, absolute: true));
+            $startedAt = $attendance->started_at?->copy() ?? $endedAt->copy();
+            $useBillable = (bool) ($options['use_billable_minutes'] ?? true);
+
+            if ($shift !== null && $useBillable) {
+                $minutes = ShiftAttendanceRules::billableMinutes($shift, $workDate, $startedAt, $endedAt);
+            } elseif ($shift !== null) {
+                $minutes = ShiftAttendanceRules::scheduledMinutes($shift, $workDate);
+            } else {
+                $minutes = max(1, (int) $startedAt->diffInMinutes($endedAt, absolute: true));
+            }
 
             $contract = $attendance->commercial_contract_id
                 ? $this->commercialContracts->find((int) $attendance->commercial_contract_id)
@@ -1268,12 +1439,16 @@ class ShiftAttendanceService
             }
 
             $pricingModel = $attendance->pricing_model ?: $contract?->work_type;
+            $isEarlyEnd = $shift !== null
+                && $endedAt->lt(ShiftAttendanceRules::shiftEndAt($shift, $workDate));
+
             $packageCount = $this->resolvePackageCountOnComplete(
                 $options,
                 $pricingModel,
                 $contract,
                 $autoEnd,
                 $staffAssist,
+                $isEarlyEnd,
             );
 
             $hourlyRate = $attendance->hourly_rate !== null
@@ -1305,6 +1480,7 @@ class ShiftAttendanceService
                 'pricing_model' => $pricingModel,
                 'commercial_contract_id' => $attendance->commercial_contract_id,
                 'notes' => $notes !== '' ? $notes : null,
+                'end_reason' => $options['end_reason'] ?? $attendance->end_reason,
                 'end_latitude' => $endGeo['latitude'],
                 'end_longitude' => $endGeo['longitude'],
                 'end_accuracy_meters' => $endGeo['accuracy_meters'],
@@ -1327,6 +1503,7 @@ class ShiftAttendanceService
         mixed $contract,
         bool $autoEnd,
         bool $staffAssist,
+        bool $isEarlyEnd = false,
     ): ?int {
         $provided = array_key_exists('package_count', $options)
             && $options['package_count'] !== null
@@ -1350,6 +1527,13 @@ class ShiftAttendanceService
         }
 
         if ($pricingModel === 'per_package') {
+            // Erken bitişte garanti paket uygulanmaz; fiili paket girilmeli.
+            if ($isEarlyEnd && $staffAssist) {
+                throw ValidationException::withMessages([
+                    'package_count' => 'Erken bitişte paket sayısı zorunludur.',
+                ]);
+            }
+
             if ($autoEnd || $staffAssist) {
                 $guaranteed = $contract?->guaranteed_package_count;
 

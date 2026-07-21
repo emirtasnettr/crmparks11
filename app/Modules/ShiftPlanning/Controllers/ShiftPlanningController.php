@@ -96,6 +96,7 @@ class ShiftPlanningController extends Controller
             'week' => $week,
             'calendarDays' => $calendarDays,
             'availableCouriers' => $availableCouriers,
+            'endReasons' => \App\Modules\ShiftPlanning\Support\ShiftAttendanceRules::endReasonLabels(),
             'canCreate' => $request->user()?->can('shift_planning.create') ?? false,
             'canUpdate' => $request->user()?->can('shift_planning.update') ?? false,
             'canDelete' => $request->user()?->can('shift_planning.delete') ?? false,

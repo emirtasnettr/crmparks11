@@ -6,15 +6,19 @@ use App\Http\Controllers\Controller;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\ShiftPlanning\Models\BusinessShiftAttendance;
 use App\Modules\ShiftPlanning\Services\ShiftAttendanceService;
+use App\Modules\ShiftPlanning\Services\ShiftPlanningService;
+use App\Modules\ShiftPlanning\Support\ShiftAttendanceRules;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class ShiftAttendanceController extends Controller
 {
     public function __construct(
         private readonly ShiftAttendanceService $attendances,
+        private readonly ShiftPlanningService $shifts,
     ) {}
 
     public function board(Request $request): View
@@ -24,6 +28,8 @@ class ShiftAttendanceController extends Controller
         return view('modules.shift-planning.attendance-board', [
             'board' => $board,
             'canManage' => $request->user()?->can('shift_planning.update') ?? false,
+            'availableCouriers' => $this->shifts->availableCouriers(),
+            'endReasons' => ShiftAttendanceRules::endReasonLabels(),
         ]);
     }
 
@@ -87,6 +93,9 @@ class ShiftAttendanceController extends Controller
             'business_id' => ['required', 'integer', 'exists:businesses,id'],
             'attendance_id' => ['required', 'integer', 'exists:business_shift_attendances,id'],
             'work_date' => ['required', 'date'],
+            'ended_at' => ['required', 'date'],
+            'end_reason' => ['nullable', 'string', Rule::in(ShiftAttendanceRules::endReasonCodes())],
+            'replacement_courier_id' => ['nullable', 'integer', 'exists:couriers,id'],
             'notes' => ['nullable', 'string', 'max:500'],
             'package_count' => ['nullable', 'integer', 'min:0', 'max:100000'],
         ]);
@@ -94,14 +103,23 @@ class ShiftAttendanceController extends Controller
         $attendance = BusinessShiftAttendance::query()->findOrFail((int) $data['attendance_id']);
         abort_unless((int) $attendance->business_id === (int) $data['business_id'], 404);
 
-        $this->attendances->endForCourier(
+        $result = $this->attendances->endForCourier(
             (int) $data['attendance_id'],
             $request->user(),
-            $data['notes'] ?? null,
-            array_key_exists('package_count', $data) ? (int) $data['package_count'] : null,
+            [
+                'ended_at' => Carbon::parse($data['ended_at']),
+                'end_reason' => $data['end_reason'] ?? null,
+                'replacement_courier_id' => $data['replacement_courier_id'] ?? null,
+                'package_count' => $data['package_count'] ?? null,
+                'notes' => $data['notes'] ?? null,
+            ],
         );
 
-        return $this->redirectAfterStaffAction($request, 'Vardiya personel tarafından sonlandırıldı.');
+        $message = $result['replacement'] !== null
+            ? 'Vardiya sonlandırıldı ve yerine kurye başlatıldı.'
+            : 'Vardiya personel tarafından sonlandırıldı.';
+
+        return $this->redirectAfterStaffAction($request, $message);
     }
 
     private function redirectAfterStaffAction(Request $request, string $message): RedirectResponse

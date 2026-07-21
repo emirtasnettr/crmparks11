@@ -3,6 +3,7 @@
 namespace App\Modules\ShiftPlanning\Services;
 
 use App\Modules\ShiftPlanning\Models\BusinessShiftAttendance;
+use App\Modules\ShiftPlanning\Support\ShiftAttendanceRules;
 
 class ShiftAttendancePresenter
 {
@@ -46,6 +47,8 @@ class ShiftAttendancePresenter
                 : '—',
             'pricing_model' => $attendance->pricing_model,
             'is_hourly' => $attendance->pricing_model === 'hourly',
+            'end_reason' => $attendance->end_reason,
+            'end_reason_label' => ShiftAttendanceRules::endReasonLabel($attendance->end_reason),
             'can_end' => $attendance->isInProgress(),
         ];
     }

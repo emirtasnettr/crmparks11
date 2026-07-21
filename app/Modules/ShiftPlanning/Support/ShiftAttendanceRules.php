@@ -10,12 +10,13 @@ use Carbon\CarbonInterface;
  * Vardiya katılım zaman pencereleri ve hakediş süresi kuralları.
  *
  * - Başlatma: vardiya başlangıcından en erken 15 dk önce
- * - Sonlandırma: vardiya bitiş saatinden önce yapılamaz
+ * - Sonlandırma (kurye): vardiya bitiş saatinden önce yapılamaz
  * - Otomatik bitiş: vardiya bitişinden 15 dk sonra
- * - Hakediş: yalnızca planlanan vardiya süresi
+ * - Hakediş: planlanan vardiya penceresi içinde fiilen çalışılan süre
  *   (erken başlama / geç bitiş buffer'ı süreye ve ücrete yansımaz)
  *
- * Örnek: 09:00–10:00 vardiyası → 08:50'de başlayıp 10:10'da bitsa bile 60 dk sayılır.
+ * Örnek: 09:00–12:00 vardiyası, 10:00'da erken bitiş → 60 dk.
+ * Örnek: 09:00–10:00 vardiyası → 08:50'de başlayıp 10:10'da bitsa bile 60 dk.
  */
 final class ShiftAttendanceRules
 {
@@ -28,6 +29,44 @@ final class ShiftAttendanceRules
 
     /** GPS doğruluğu bu değeri aşarsa başlatma reddedilir. */
     public const START_MAX_ACCURACY_METERS = 150;
+
+    public const END_REASON_ACCIDENT = 'accident';
+
+    public const END_REASON_ILLNESS = 'illness';
+
+    public const END_REASON_VEHICLE_BREAKDOWN = 'vehicle_breakdown';
+
+    public const END_REASON_OTHER = 'other';
+
+    /**
+     * @return array<string, string>
+     */
+    public static function endReasonLabels(): array
+    {
+        return [
+            self::END_REASON_ACCIDENT => 'Kaza',
+            self::END_REASON_ILLNESS => 'Rahatsızlık',
+            self::END_REASON_VEHICLE_BREAKDOWN => 'Motosiklet arızası',
+            self::END_REASON_OTHER => 'Diğer',
+        ];
+    }
+
+    public static function endReasonLabel(?string $reason): ?string
+    {
+        if ($reason === null || $reason === '') {
+            return null;
+        }
+
+        return self::endReasonLabels()[$reason] ?? $reason;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function endReasonCodes(): array
+    {
+        return array_keys(self::endReasonLabels());
+    }
 
     public static function shiftStartAt(BusinessShift $shift, CarbonInterface $workDate): Carbon
     {
@@ -56,13 +95,35 @@ final class ShiftAttendanceRules
         return self::shiftEndAt($shift, $workDate)->copy()->addMinutes(self::AUTO_END_GRACE_MINUTES);
     }
 
-    /** Planlanan vardiya süresi (dakika) — hakediş için. */
+    /** Planlanan vardiya süresi (dakika) — tam vardiya referansı. */
     public static function scheduledMinutes(BusinessShift $shift, CarbonInterface $workDate): int
     {
         $start = self::shiftStartAt($shift, $workDate);
         $end = self::shiftEndAt($shift, $workDate);
 
         return max(1, (int) $start->diffInMinutes($end, absolute: true));
+    }
+
+    /**
+     * Hakedişe yansıyan süre: planlanan pencere içinde fiilen çalışılan dakika.
+     */
+    public static function billableMinutes(
+        BusinessShift $shift,
+        CarbonInterface $workDate,
+        CarbonInterface $startedAt,
+        CarbonInterface $endedAt,
+    ): int {
+        $shiftStart = self::shiftStartAt($shift, $workDate);
+        $shiftEnd = self::shiftEndAt($shift, $workDate);
+
+        $billableStart = Carbon::parse($startedAt)->max($shiftStart);
+        $billableEnd = Carbon::parse($endedAt)->min($shiftEnd);
+
+        if ($billableEnd->lte($billableStart)) {
+            return 1;
+        }
+
+        return max(1, (int) $billableStart->diffInMinutes($billableEnd, absolute: true));
     }
 
     public static function isFutureDay(CarbonInterface $workDate, ?CarbonInterface $now = null): bool

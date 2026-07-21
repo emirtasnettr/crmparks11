@@ -3,7 +3,13 @@
 @section('title', 'Canlı Operasyon')
 
 @section('content')
-<div class="space-y-6">
+<div
+    class="space-y-6"
+    x-data="staffAttendanceEnd({
+        availableCouriers: @js($availableCouriers ?? []),
+        endReasons: @js($endReasons ?? []),
+    })"
+>
     <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
             <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Canlı Operasyon</h1>
@@ -61,6 +67,9 @@
                                     @if (($card['attendance']['earnings_formatted'] ?? '—') !== '—')
                                         · {{ $card['attendance']['earnings_formatted'] }}
                                     @endif
+                                    @if (! empty($card['attendance']['end_reason_label']))
+                                        · {{ $card['attendance']['end_reason_label'] }}
+                                    @endif
                                 @endif
                             </p>
                         @endif
@@ -89,13 +98,22 @@
                                 </form>
                             @endif
                             @if (! empty($card['can_end']) && ! empty($card['attendance']['id']))
-                                <form method="POST" action="{{ route('shift-planning.attendance.end') }}">
-                                    @csrf
-                                    <input type="hidden" name="business_id" value="{{ $card['business_id'] }}">
-                                    <input type="hidden" name="attendance_id" value="{{ $card['attendance']['id'] }}">
-                                    <input type="hidden" name="work_date" value="{{ $board['work_date'] }}">
-                                    <button type="submit" class="live-ops-action live-ops-action--end">Bitir</button>
-                                </form>
+                                <button
+                                    type="button"
+                                    class="live-ops-action live-ops-action--end"
+                                    x-on:click="openEndAttendance({
+                                        business_id: {{ (int) $card['business_id'] }},
+                                        attendance_id: {{ (int) $card['attendance']['id'] }},
+                                        work_date: @js($board['work_date']),
+                                        courier_id: {{ (int) $card['courier_id'] }},
+                                        courier_name: @js($card['courier_name']),
+                                        shift_name: @js($card['shift_name'] ?? ''),
+                                        started_at: @js($card['attendance']['started_at'] ? \Carbon\Carbon::parse($card['attendance']['started_at'])->format('Y-m-d\TH:i') : ($card['shift_start_at'] ?? '')),
+                                        shift_start_at: @js($card['shift_start_at'] ?? ''),
+                                        shift_end_at: @js($card['shift_end_at'] ?? ''),
+                                        pricing_model: @js($card['pricing_model'] ?? ($card['attendance']['pricing_model'] ?? '')),
+                                    })"
+                                >Bitir</button>
                             @endif
                         </div>
                     @endif
@@ -103,5 +121,7 @@
             @endforeach
         </div>
     @endif
+
+    @include('modules.shift-planning.partials.end-attendance-modal')
 </div>
 @endsection

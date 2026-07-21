@@ -30,6 +30,7 @@
         selectedBusinessId: @js($selectedBusinessId),
         shifts: @js($shiftsForJs),
         availableCouriers: @js($availableCouriers),
+        endReasons: @js($endReasons ?? []),
         canCreate: @js($canCreate),
         canUpdate: @js($canUpdate),
         canDelete: @js($canDelete),
@@ -166,15 +167,24 @@
                                                                 <button type="submit" class="rounded bg-sky-600/10 px-1.5 py-0.5 text-[10px] font-semibold text-sky-800 hover:bg-sky-600/20">Geldi</button>
                                                             </form>
                                                         @elseif (! empty($courier['can_end']) && ! empty($courier['attendance_id']))
-                                                            <form method="POST" action="{{ route('shift-planning.attendance.end') }}">
-                                                                @csrf
-                                                                <input type="hidden" name="business_id" value="{{ $occurrence['business_id'] ?? $selectedBusinessId }}">
-                                                                <input type="hidden" name="attendance_id" value="{{ $courier['attendance_id'] }}">
-                                                                <input type="hidden" name="work_date" value="{{ $occurrence['work_date'] ?? $day['date'] }}">
-                                                                <input type="hidden" name="return_to" value="planning">
-                                                                <input type="hidden" name="week" value="{{ $week['week_start'] }}">
-                                                                <button type="submit" class="rounded bg-gray-900/5 px-1.5 py-0.5 text-[10px] font-semibold text-gray-700 hover:bg-gray-900/10">Bitir</button>
-                                                            </form>
+                                                            <button
+                                                                type="button"
+                                                                class="rounded bg-gray-900/5 px-1.5 py-0.5 text-[10px] font-semibold text-gray-700 hover:bg-gray-900/10"
+                                                                x-on:click="openEndAttendance({
+                                                                    business_id: {{ (int) ($occurrence['business_id'] ?? $selectedBusinessId) }},
+                                                                    attendance_id: {{ (int) $courier['attendance_id'] }},
+                                                                    work_date: @js($occurrence['work_date'] ?? $day['date']),
+                                                                    courier_id: {{ (int) $courier['id'] }},
+                                                                    courier_name: @js($courier['name']),
+                                                                    shift_name: @js($occurrence['name'] ?? ''),
+                                                                    started_at: @js($courier['started_at'] ?? $courier['shift_start_at'] ?? ''),
+                                                                    shift_start_at: @js($courier['shift_start_at'] ?? ''),
+                                                                    shift_end_at: @js($courier['shift_end_at'] ?? ''),
+                                                                    pricing_model: @js($courier['pricing_model'] ?? ''),
+                                                                    return_to: 'planning',
+                                                                    week: @js($week['week_start']),
+                                                                })"
+                                                            >Bitir</button>
                                                         @endif
                                                     </div>
                                                 @endif
@@ -206,5 +216,6 @@
     @endif
 
     @include('modules.shift-planning.partials.modal')
+    @include('modules.shift-planning.partials.end-attendance-modal')
 </div>
 @endsection
