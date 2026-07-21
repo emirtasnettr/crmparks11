@@ -37,21 +37,33 @@ final class EarningCalculator
             $revenueTotal = round($packageCount * $revenueUnit, 2);
             $courierTotal = round($packageCount * $courierUnit, 2);
             $earningType = 'package_based';
-        } elseif ($pricingModel === 'hourly') {
-            $revenueUnit = (float) ($data['revenue_unit_price'] ?? 0);
-            $courierUnit = (float) ($data['courier_unit_price'] ?? $data['unit_price'] ?? 0);
-            $packageCount = 0;
-            $revenueTotal = round($workedHours * $revenueUnit, 2);
-            $courierTotal = round($workedHours * $courierUnit, 2);
-            $earningType = 'hourly';
         } else {
             $packageCount = 0;
-            $workedHours = 0.0;
-            $revenueUnit = 0.0;
-            $courierUnit = 0.0;
-            $revenueTotal = (float) ($data['revenue_total'] ?? 0);
-            $courierTotal = (float) ($data['courier_payment'] ?? $data['earning_amount'] ?? 0);
-            $earningType = 'fixed_period';
+            $revenueUnit = (float) ($data['revenue_unit_price'] ?? 0);
+            $courierUnit = (float) ($data['courier_unit_price'] ?? $data['unit_price'] ?? 0);
+            $revenueTotalInput = (float) ($data['revenue_total'] ?? 0);
+            $courierTotalInput = (float) ($data['courier_payment'] ?? $data['earning_amount'] ?? 0);
+
+            // Vardiya senkronu: saat × birim. Tekli form: doğrudan tutar alanları.
+            $useHourlyRates = $pricingModel === 'hourly'
+                && $workedHours > 0
+                && $revenueTotalInput <= 0
+                && $courierTotalInput <= 0
+                && ($revenueUnit > 0 || $courierUnit > 0);
+
+            if ($useHourlyRates) {
+                $revenueTotal = round($workedHours * $revenueUnit, 2);
+                $courierTotal = round($workedHours * $courierUnit, 2);
+                $earningType = 'hourly';
+            } else {
+                $revenueTotal = round($revenueTotalInput, 2);
+                $courierTotal = round($courierTotalInput, 2);
+                $earningType = match ($pricingModel) {
+                    'hourly' => 'hourly',
+                    'daily' => 'daily',
+                    default => 'fixed_period',
+                };
+            }
         }
 
         $netCourierPayment = round($courierTotal + $extraPayment - $deduction, 2);

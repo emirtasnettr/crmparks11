@@ -95,6 +95,36 @@ class BusinessEarningStoreTest extends TestCase
         $indexResponse->assertSee($courier->full_name);
     }
 
+    public function test_hourly_earning_persists_form_totals(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $courier = $this->createCourier($user);
+
+        $response = $this->actingAs($user)->post(route('businesses.earnings.store'), [
+            'business_id' => $business->id,
+            'courier_id' => $courier->id,
+            'work_date' => '2026-07-21',
+            'pricing_model' => 'hourly',
+            'revenue_total' => 1800,
+            'courier_payment' => 1200,
+            'extra_income' => 0,
+            'extra_expense' => 0,
+            'deduction' => 0,
+            'description' => 'Saatlik tekli',
+        ]);
+
+        $response->assertRedirect();
+
+        $line = \App\Models\EarningLine::query()->first();
+        $this->assertNotNull($line);
+        $this->assertSame('hourly', $line->pricing_model);
+        $this->assertEquals(1800.0, (float) $line->revenue_total);
+        $this->assertEquals(1200.0, (float) $line->courier_total);
+        $this->assertEquals(600.0, (float) $line->profit);
+    }
+
     /**
      * @param  array<string, mixed>  $overrides
      */
