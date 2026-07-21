@@ -88,11 +88,20 @@ class BusinessEarningStoreTest extends TestCase
         $line = \App\Models\EarningLine::query()->first();
         $this->assertNotNull($line);
         $this->assertSame('2026-06-15', $line->work_date?->toDateString());
+        $line->load('status');
+        $this->assertSame('approved', $line->status?->code);
 
         $indexResponse = $this->actingAs($user)->get(route('businesses.earnings.index'));
         $indexResponse->assertOk();
         $indexResponse->assertSee($business->displayName());
         $indexResponse->assertSee($courier->full_name);
+
+        $courierIndex = $this->actingAs($user)->get(route('couriers.earnings.index', [
+            'courier_id' => $courier->id,
+        ]));
+        $courierIndex->assertOk();
+        $courierIndex->assertSee($business->displayName());
+        $courierIndex->assertSee($courier->full_name);
     }
 
     public function test_per_package_earning_requires_package_count(): void

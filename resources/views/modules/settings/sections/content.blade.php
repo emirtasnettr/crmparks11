@@ -149,7 +149,8 @@
                 <div class="space-y-2">
                     <x-ui.radio-group name="approval_process" label="Hakediş Onay Süreci" :selected="$settings['approval_process']" :options="['single' => 'Tek Onay', 'dual' => 'Çift Onay', 'auto' => 'Otomatik Onay']" />
                     <p class="text-sm text-gray-500 dark:text-slate-400">
-                        Tek onay: bir yetkili yeterlidir. Çift onay: iki farklı yetkili gerekir. Otomatik onay: oluşturulan hakedişler doğrudan onaylanır.
+                        Manuel girilen hakedişler (tekli / içe aktarma) her zaman doğrudan onaylanır; işletme ve kurye listelerinde onaylı görünür.
+                        Tek / çift onay yalnızca vardiyadan senkronlanan veya onay bekleyen hakedişler için geçerlidir. Çift onayda ikinci onay farklı bir kullanıcıdan gelmelidir.
                     </p>
                 </div>
             </div>

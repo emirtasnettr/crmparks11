@@ -301,6 +301,41 @@ class BusinessEarningWorkflowTest extends TestCase
         $this->assertSame(1, FinanceRevenue::query()->where('earning_line_id', $line->id)->count());
     }
 
+    public function test_manual_create_is_always_fully_approved_even_with_dual_process(): void
+    {
+        $this->setApprovalProcess('dual');
+
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $courier = $this->createCourier($user);
+
+        $response = $this->actingAs($user)->post(route('businesses.earnings.store'), [
+            'business_id' => $business->id,
+            'courier_id' => $courier->id,
+            'work_date' => '2026-08-05',
+            'pricing_model' => 'per_package',
+            'package_count' => 80,
+            'revenue_unit_price' => 45,
+            'courier_unit_price' => 38,
+            'status' => 'pending',
+        ]);
+
+        $line = EarningLine::query()->first();
+        $this->assertNotNull($line);
+        $response->assertRedirect(route('businesses.earnings.index', [
+            'business_id' => $business->id,
+            'period_month' => 8,
+            'period_year' => 2026,
+        ]));
+
+        $line->load('status');
+        $this->assertSame('approved', $line->status?->code);
+        $this->assertSame($user->id, $line->approved_by);
+        $this->assertSame(1, FinanceRevenue::query()->where('earning_line_id', $line->id)->count());
+        $this->assertSame(1, FinancePayment::query()->where('earning_line_id', $line->id)->count());
+    }
+
     public function test_auto_approval_approves_on_create(): void
     {
         $this->setApprovalProcess('auto');

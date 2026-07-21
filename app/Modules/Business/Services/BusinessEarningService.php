@@ -169,10 +169,8 @@ class BusinessEarningService
             $line = $line->fresh(['business', 'courier.agency', 'status']);
             $this->earningNotifications->notifyCreated($line, $user);
 
-            if (
-                $this->approvalProcess() === 'auto'
-                && in_array($statusCode, ['draft', 'pending_review'], true)
-            ) {
+            // Tekli / import ile girilen hakedişler onay beklemez; işletme ve kurye tarafında onaylı görünür.
+            if (in_array($statusCode, ['draft', 'pending_review'], true)) {
                 return $this->finalizeApproval($line, $user);
             }
 
