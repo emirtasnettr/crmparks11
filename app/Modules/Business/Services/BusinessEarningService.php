@@ -145,13 +145,15 @@ class BusinessEarningService
 
             $amounts = EarningCalculator::fromForm($data, $courier->agency_id !== null);
             $paidAt = ($data['status'] ?? 'draft') === 'paid' ? now() : null;
+            $workDate = $this->resolveWorkDate($data);
 
             $line = EarningLine::query()->create(array_merge($amounts, [
                 'business_id' => (int) $data['business_id'],
                 'courier_id' => $courier->id,
                 'pricing_model' => $data['pricing_model'] ?? 'per_package',
-                'period_month' => (int) $data['period_month'],
-                'period_year' => (int) $data['period_year'],
+                'work_date' => $workDate->toDateString(),
+                'period_month' => (int) $workDate->month,
+                'period_year' => (int) $workDate->year,
                 'description' => $data['description'] ?? null,
                 'status_id' => $statusId,
                 'paid_at' => $paidAt,
@@ -198,9 +200,11 @@ class BusinessEarningService
 
             $courier = Courier::query()->findOrFail((int) $data['courier_id']);
             $amounts = EarningCalculator::fromForm($data, $courier->agency_id !== null);
+            $workDate = $this->resolveWorkDate($data);
             $oldValues = $line->only([
                 'business_id',
                 'courier_id',
+                'work_date',
                 'period_month',
                 'period_year',
                 'pricing_model',
@@ -215,8 +219,9 @@ class BusinessEarningService
                 'business_id' => (int) $data['business_id'],
                 'courier_id' => $courier->id,
                 'pricing_model' => $data['pricing_model'] ?? 'per_package',
-                'period_month' => (int) $data['period_month'],
-                'period_year' => (int) $data['period_year'],
+                'work_date' => $workDate->toDateString(),
+                'period_month' => (int) $workDate->month,
+                'period_year' => (int) $workDate->year,
                 'description' => $data['description'] ?? null,
             ]));
 
@@ -394,7 +399,9 @@ class BusinessEarningService
     {
         $line->loadMissing(['business', 'courier']);
 
-        $period = sprintf('%02d/%d', $line->period_month, $line->period_year);
+        $period = $line->work_date
+            ? $line->work_date->format('d.m.Y')
+            : sprintf('%02d/%d', $line->period_month, $line->period_year);
         $business = $line->business?->displayName() ?? 'İşletme';
         $courier = $line->courier?->full_name ?? 'Kurye';
 
@@ -434,5 +441,20 @@ class BusinessEarningService
                     $query->where('pricing_model', $filters['pricing_model']);
                 },
             );
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function resolveWorkDate(array $data): \Carbon\Carbon
+    {
+        if (! empty($data['work_date'])) {
+            return \Carbon\Carbon::parse((string) $data['work_date'])->startOfDay();
+        }
+
+        $year = (int) ($data['period_year'] ?? now()->year);
+        $month = (int) ($data['period_month'] ?? now()->month);
+
+        return \Carbon\Carbon::create($year, $month, 1)->startOfDay();
     }
 }

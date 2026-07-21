@@ -136,6 +136,7 @@ class AttendanceEarningSyncService
             'courier_id' => $courierId,
             'business_pricing_id' => null,
             'pricing_model' => $pricingModel,
+            'work_date' => $sample->work_date->toDateString(),
             'period_month' => $periodMonth,
             'period_year' => $periodYear,
             'description' => $description,

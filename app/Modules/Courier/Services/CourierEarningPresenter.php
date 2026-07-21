@@ -71,7 +71,10 @@ class CourierEarningPresenter
             'courier_type' => $line->courier?->courier_type ?? 'independent',
             'period_month' => $line->period_month,
             'period_year' => $line->period_year,
-            'period_label' => ($months[$line->period_month] ?? '').' '.$line->period_year,
+            'work_date' => $line->work_date?->toDateString(),
+            'period_label' => $line->work_date
+                ? $line->work_date->format('d.m.Y')
+                : trim(($months[$line->period_month] ?? '').' '.$line->period_year),
             'pricing_model' => $line->pricing_model,
             'pricing_model_label' => BusinessCommercialContractFormData::workTypes()[$line->pricing_model]
                 ?? ($line->pricing_model ?: '—'),

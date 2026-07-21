@@ -25,6 +25,15 @@ L.Icon.Default.mergeOptions({
 
 const lockedPresetId = (preset, key) => (preset?.[key] ? String(preset[key]) : '');
 
+const todayDateInput = () => {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+};
+
 const requireEntityId = (errors, field, lockedId, value, message) => {
     if (!lockedId && !value) {
         errors[field] = message;
@@ -1091,6 +1100,84 @@ Alpine.data('agencyCourierPage', (preset = {}) => {
 };
 });
 
+Alpine.data('commercialContractPage', (preset = {}) => {
+    const contractsById = preset.contractsById ?? {};
+    const routes = preset.routes ?? {};
+    const today = preset.today ?? new Date().toISOString().slice(0, 10);
+
+    const blankForm = () => ({
+        start_date: today,
+        end_date: '',
+        work_type: 'hourly',
+        business_amount: '',
+        courier_amount: '',
+        guaranteed_hourly_package_fee: '',
+        payment_period: 'monthly',
+        notes: '',
+    });
+
+    return {
+        contractsById,
+        routes,
+        today,
+        openCommercialContractModal: false,
+        editCommercialId: null,
+        commercialForm: blankForm(),
+
+        get commercialFormAction() {
+            if (this.editCommercialId && this.routes.update) {
+                return `${this.routes.update}/${this.editCommercialId}`;
+            }
+
+            return this.routes.store ?? '';
+        },
+
+        openCreate() {
+            this.editCommercialId = null;
+            this.commercialForm = blankForm();
+            this.openCommercialContractModal = true;
+        },
+
+        openEdit(id) {
+            const row = this.contractsById[id];
+
+            if (!row || !row.can_update) {
+                return;
+            }
+
+            this.editCommercialId = id;
+            this.commercialForm = {
+                start_date: row.start_date ?? today,
+                end_date: row.end_date ?? '',
+                work_type: row.work_type ?? 'hourly',
+                business_amount: row.business_amount ?? '',
+                courier_amount: row.courier_amount ?? '',
+                guaranteed_hourly_package_fee: row.guaranteed_hourly_package_fee ?? '',
+                payment_period: row.payment_period ?? 'monthly',
+                notes: row.notes ?? '',
+            };
+            this.openCommercialContractModal = true;
+        },
+
+        closeCommercialContractModal() {
+            this.openCommercialContractModal = false;
+            this.editCommercialId = null;
+            this.commercialForm = blankForm();
+        },
+
+        get commercialNetProfit() {
+            const a = parseFloat(this.commercialForm.business_amount);
+            const b = parseFloat(this.commercialForm.courier_amount);
+
+            if (Number.isNaN(a) || Number.isNaN(b)) {
+                return '';
+            }
+
+            return (a - b).toFixed(2);
+        },
+    };
+});
+
 Alpine.data('contractPage', (preset = {}) => {
     const lockedBusinessId = lockedPresetId(preset, 'businessId');
     const contractsById = preset.contractsById ?? {};
@@ -1276,8 +1363,7 @@ Alpine.data('agencyEarningPage', (preset = {}) => ({
     singleErrors: {},
     single: {
         agency_id: '',
-        period_month: '',
-        period_year: '',
+        work_date: todayDateInput(),
         courier_count: '',
         package_count: '',
         gross_amount: '',
@@ -1297,8 +1383,7 @@ Alpine.data('agencyEarningPage', (preset = {}) => ({
     resetSingle() {
         this.single = {
             agency_id: '',
-            period_month: '',
-            period_year: '',
+            work_date: todayDateInput(),
             courier_count: '',
             package_count: '',
             gross_amount: '',
@@ -1329,12 +1414,8 @@ Alpine.data('agencyEarningPage', (preset = {}) => ({
             this.singleErrors.agency_id = 'Acente seçilmelidir.';
         }
 
-        if (!this.single.period_month) {
-            this.singleErrors.period_month = 'Ay seçilmelidir.';
-        }
-
-        if (!this.single.period_year) {
-            this.singleErrors.period_year = 'Yıl seçilmelidir.';
+        if (!this.single.work_date) {
+            this.singleErrors.work_date = 'Hakediş tarihi seçilmelidir.';
         }
 
         return Object.keys(this.singleErrors).length === 0;
@@ -1431,8 +1512,7 @@ Alpine.data('earningPage', (preset = {}) => ({
     single: {
         business_id: '',
         courier_id: '',
-        period_month: '',
-        period_year: '',
+        work_date: todayDateInput(),
         pricing_model: 'per_package',
         package_count: '',
         revenue_unit_price: '',
@@ -1457,8 +1537,7 @@ Alpine.data('earningPage', (preset = {}) => ({
         this.single = {
             business_id: '',
             courier_id: '',
-            period_month: '',
-            period_year: '',
+            work_date: todayDateInput(),
             pricing_model: 'per_package',
             package_count: '',
             revenue_unit_price: '',
@@ -1479,12 +1558,15 @@ Alpine.data('earningPage', (preset = {}) => ({
             return;
         }
 
+        const fallbackDate = row.period_year && row.period_month
+            ? `${row.period_year}-${String(row.period_month).padStart(2, '0')}-01`
+            : todayDateInput();
+
         this.editId = id;
         this.single = {
             business_id: String(row.business_id ?? ''),
             courier_id: String(row.courier_id ?? ''),
-            period_month: String(row.period_month ?? ''),
-            period_year: String(row.period_year ?? ''),
+            work_date: row.work_date || fallbackDate,
             pricing_model: row.pricing_model ?? 'per_package',
             package_count: row.package_count ?? '',
             revenue_unit_price: row.revenue_unit_price ?? '',
@@ -1570,8 +1652,7 @@ Alpine.data('earningPage', (preset = {}) => ({
 
         if (!this.single.business_id) this.singleErrors.business_id = 'İşletme seçilmelidir.';
         if (!this.single.courier_id) this.singleErrors.courier_id = 'Kurye seçilmelidir.';
-        if (!this.single.period_month) this.singleErrors.period_month = 'Ay seçilmelidir.';
-        if (!this.single.period_year) this.singleErrors.period_year = 'Yıl seçilmelidir.';
+        if (!this.single.work_date) this.singleErrors.work_date = 'Hakediş tarihi seçilmelidir.';
 
         return Object.keys(this.singleErrors).length === 0;
     },
@@ -1593,8 +1674,7 @@ Alpine.data('courierEarningPage', (preset = {}) => ({
     single: {
         courier_id: '',
         business_id: '',
-        period_month: '',
-        period_year: '',
+        work_date: todayDateInput(),
         package_count: '',
         unit_price: '',
         earning_amount: '',
@@ -1615,8 +1695,7 @@ Alpine.data('courierEarningPage', (preset = {}) => ({
         this.single = {
             courier_id: '',
             business_id: '',
-            period_month: '',
-            period_year: '',
+            work_date: todayDateInput(),
             package_count: '',
             unit_price: '',
             earning_amount: '',
@@ -1660,12 +1739,8 @@ Alpine.data('courierEarningPage', (preset = {}) => ({
             this.singleErrors.business_id = 'İşletme seçilmelidir.';
         }
 
-        if (!this.single.period_month) {
-            this.singleErrors.period_month = 'Ay seçilmelidir.';
-        }
-
-        if (!this.single.period_year) {
-            this.singleErrors.period_year = 'Yıl seçilmelidir.';
+        if (!this.single.work_date) {
+            this.singleErrors.work_date = 'Hakediş tarihi seçilmelidir.';
         }
 
         return Object.keys(this.singleErrors).length === 0;

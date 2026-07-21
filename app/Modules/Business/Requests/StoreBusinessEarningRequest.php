@@ -21,8 +21,7 @@ class StoreBusinessEarningRequest extends FormRequest
         return [
             'business_id' => ['required', 'integer', 'exists:businesses,id'],
             'courier_id' => ['required', 'integer', 'exists:couriers,id'],
-            'period_month' => ['required', 'integer', 'between:1,12'],
-            'period_year' => ['required', 'integer', 'min:2020', 'max:2100'],
+            'work_date' => ['required', 'date'],
             'pricing_model' => ['required', Rule::in(array_keys(BusinessEarningFormData::pricingModels()))],
             'package_count' => ['nullable', 'integer', 'min:0'],
             'revenue_unit_price' => ['nullable', 'numeric', 'min:0'],
@@ -45,8 +44,8 @@ class StoreBusinessEarningRequest extends FormRequest
         return [
             'business_id.required' => 'İşletme seçilmelidir.',
             'courier_id.required' => 'Kurye seçilmelidir.',
-            'period_month.required' => 'Ay seçilmelidir.',
-            'period_year.required' => 'Yıl seçilmelidir.',
+            'work_date.required' => 'Hakediş tarihi seçilmelidir.',
+            'work_date.date' => 'Geçerli bir tarih girin.',
         ];
     }
 }

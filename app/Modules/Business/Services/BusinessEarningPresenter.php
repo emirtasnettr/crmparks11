@@ -55,7 +55,10 @@ class BusinessEarningPresenter
             'agency_name' => $line->courier?->agency?->displayName() ?? '—',
             'period_month' => $line->period_month,
             'period_year' => $line->period_year,
-            'period_label' => ($months[$line->period_month] ?? '').' '.$line->period_year,
+            'work_date' => $line->work_date?->toDateString(),
+            'period_label' => $line->work_date
+                ? $line->work_date->format('d.m.Y')
+                : trim(($months[$line->period_month] ?? '').' '.$line->period_year),
             'pricing_model' => $pricingModel,
             'pricing_model_label' => BusinessEarningFormData::pricingModels()[$pricingModel] ?? $pricingModel,
             'package_count' => (int) $line->package_count,

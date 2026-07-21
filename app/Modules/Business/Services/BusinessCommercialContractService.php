@@ -124,8 +124,8 @@ class BusinessCommercialContractService
     }
 
     /**
-     * Aktif kontratın tutar alanları değiştirilemez; yalnızca bitiş/not güncellenir.
-     * Tutar değişimi için yeni kontrat oluşturulmalıdır.
+     * Yalnızca Süper Admin aktif kontratı yerinde düzenleyebilir (tutarlar dahil).
+     * Diğer roller tutar değişimi için yeni kontrat oluşturmalıdır.
      *
      * @param  array<string, mixed>  $data
      */
@@ -137,19 +137,35 @@ class BusinessCommercialContractService
             ]);
         }
 
+        $startDate = Carbon::parse((string) $data['start_date'])->startOfDay();
         $endDate = filled($data['end_date'] ?? null)
             ? Carbon::parse((string) $data['end_date'])->startOfDay()
             : null;
 
-        if ($endDate !== null && $endDate->lt($contract->start_date->copy()->startOfDay())) {
+        if ($endDate !== null && $endDate->lt($startDate)) {
             throw ValidationException::withMessages([
                 'end_date' => 'Bitiş tarihi başlangıç tarihinden önce olamaz.',
             ]);
         }
 
+        $businessAmount = round((float) $data['business_amount'], 2);
+        $courierAmount = round((float) $data['courier_amount'], 2);
+        $workType = (string) $data['work_type'];
+        $guaranteeFee = $workType === BusinessCommercialContract::WORK_PER_PACKAGE
+            && filled($data['guaranteed_hourly_package_fee'] ?? null)
+            ? round((float) $data['guaranteed_hourly_package_fee'], 2)
+            : null;
+
         $contract->update([
+            'start_date' => $startDate->toDateString(),
             'end_date' => $endDate?->toDateString(),
-            'notes' => $data['notes'] ?? $contract->notes,
+            'work_type' => $workType,
+            'business_amount' => $businessAmount,
+            'courier_amount' => $courierAmount,
+            'net_profit' => round($businessAmount - $courierAmount, 2),
+            'guaranteed_hourly_package_fee' => $guaranteeFee,
+            'payment_period' => (string) $data['payment_period'],
+            'notes' => $data['notes'] ?? null,
         ]);
 
         return $contract->fresh();

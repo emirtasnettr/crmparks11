@@ -27,28 +27,15 @@
                 <p x-show="singleErrors.agency_id" x-cloak class="text-sm text-red-600" x-text="singleErrors.agency_id"></p>
             </div>
 
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div class="space-y-1.5">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Ay *</label>
-                    <select x-model="single.period_month" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white" :class="singleErrors.period_month ? 'border-red-300' : ''">
-                        <option value="">Ay seçin</option>
-                        @foreach ($months as $num => $monthName)
-                            <option value="{{ $num }}">{{ $monthName }}</option>
-                        @endforeach
-                    </select>
-                    <p x-show="singleErrors.period_month" x-cloak class="text-sm text-red-600" x-text="singleErrors.period_month"></p>
-                </div>
-
-                <div class="space-y-1.5">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Yıl *</label>
-                    <select x-model="single.period_year" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white" :class="singleErrors.period_year ? 'border-red-300' : ''">
-                        <option value="">Yıl seçin</option>
-                        @foreach ([2026, 2025, 2024] as $year)
-                            <option value="{{ $year }}">{{ $year }}</option>
-                        @endforeach
-                    </select>
-                    <p x-show="singleErrors.period_year" x-cloak class="text-sm text-red-600" x-text="singleErrors.period_year"></p>
-                </div>
+            <div class="space-y-1.5">
+                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Hakediş Tarihi *</label>
+                <input
+                    type="date"
+                    x-model="single.work_date"
+                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                    :class="singleErrors.work_date ? 'border-red-300' : ''"
+                />
+                <p x-show="singleErrors.work_date" x-cloak class="text-sm text-red-600" x-text="singleErrors.work_date"></p>
             </div>
 
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">

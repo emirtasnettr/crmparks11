@@ -45,6 +45,7 @@ class BusinessCommercialContractPresenter
             'status_label' => $statuses[$contract->status] ?? $contract->status,
             'is_active' => $contract->isActive(),
             'notes' => $contract->notes,
+            'can_update' => $contract->isActive() && (auth()->user()?->hasRole('super_admin') ?? false),
             'show_url' => route('businesses.commercial-contracts.show', $contract->id),
         ];
     }

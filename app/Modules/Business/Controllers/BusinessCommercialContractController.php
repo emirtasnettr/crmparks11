@@ -38,6 +38,7 @@ class BusinessCommercialContractController extends Controller
             'workTypes' => BusinessCommercialContractFormData::workTypes(),
             'paymentPeriods' => BusinessCommercialContractFormData::paymentPeriods(),
             'canManage' => $request->user()?->can('business.update') ?? false,
+            'canEdit' => $request->user()?->hasRole('super_admin') ?? false,
             'activeContract' => $businessId && ($active = $this->contracts->activeForBusiness($businessId))
                 ? $this->presenter->indexRow($active)
                 : null,
@@ -63,6 +64,9 @@ class BusinessCommercialContractController extends Controller
         return view('modules.business.commercial-contracts.show', [
             'contract' => $this->presenter->detail($contract),
             'canManage' => $request->user()?->can('business.update') ?? false,
+            'canEdit' => ($request->user()?->hasRole('super_admin') ?? false) && $contract->isActive(),
+            'workTypes' => BusinessCommercialContractFormData::workTypes(),
+            'paymentPeriods' => BusinessCommercialContractFormData::paymentPeriods(),
         ]);
     }
 

@@ -95,6 +95,7 @@ class AttendanceEarningSyncTest extends TestCase
         $this->assertSame($packageBusiness->id, $packageLine->business_id);
         $this->assertSame(7, $hourlyLine->period_month);
         $this->assertSame(2026, $hourlyLine->period_year);
+        $this->assertNotNull($hourlyLine->work_date);
 
         // 2 × 6h × 220 = 2640
         $this->assertEquals(2640.0, (float) $hourlyLine->net_courier_payment);

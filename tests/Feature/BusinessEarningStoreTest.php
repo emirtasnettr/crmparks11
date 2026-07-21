@@ -37,8 +37,7 @@ class BusinessEarningStoreTest extends TestCase
         $response = $this->actingAs($user)->post(route('businesses.earnings.store'), [
             'business_id' => $business->id,
             'courier_id' => $courier->id,
-            'period_month' => 6,
-            'period_year' => 2026,
+            'work_date' => '2026-06-15',
             'pricing_model' => 'per_package',
             'package_count' => 100,
             'revenue_unit_price' => 45,
@@ -59,8 +58,7 @@ class BusinessEarningStoreTest extends TestCase
         $response = $this->actingAs($user)->post(route('businesses.earnings.store'), [
             'business_id' => $business->id,
             'courier_id' => $courier->id,
-            'period_month' => 6,
-            'period_year' => 2026,
+            'work_date' => '2026-06-15',
             'pricing_model' => 'per_package',
             'package_count' => 100,
             'revenue_unit_price' => 45,
@@ -82,12 +80,19 @@ class BusinessEarningStoreTest extends TestCase
             'business_id' => $business->id,
             'courier_id' => $courier->id,
             'package_count' => 100,
+            'period_month' => 6,
+            'period_year' => 2026,
             'description' => 'Test hakediş',
         ]);
 
+        $line = \App\Models\EarningLine::query()->first();
+        $this->assertNotNull($line);
+        $this->assertSame('2026-06-15', $line->work_date?->toDateString());
+
         $indexResponse = $this->actingAs($user)->get(route('businesses.earnings.index'));
         $indexResponse->assertOk();
-        $indexResponse->assertSee($business->company_name);
+        $indexResponse->assertSee($business->displayName());
+        $indexResponse->assertSee($courier->full_name);
     }
 
     /**

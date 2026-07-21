@@ -48,8 +48,7 @@ class BusinessEarningWorkflowTest extends TestCase
         $response = $this->actingAs($user)->put(route('businesses.earnings.update', $line->id), [
             'business_id' => $business->id,
             'courier_id' => $courier->id,
-            'period_month' => 7,
-            'period_year' => 2026,
+            'work_date' => '2026-07-10',
             'pricing_model' => 'per_package',
             'package_count' => 120,
             'revenue_unit_price' => 50,
@@ -66,8 +65,13 @@ class BusinessEarningWorkflowTest extends TestCase
         $this->assertDatabaseHas('earning_lines', [
             'id' => $line->id,
             'package_count' => 120,
+            'period_month' => 7,
+            'period_year' => 2026,
             'description' => 'Güncellendi',
         ]);
+
+        $line->refresh();
+        $this->assertSame('2026-07-10', $line->work_date?->toDateString());
 
         $this->assertDatabaseHas('activity_logs', [
             'action' => 'earning_updated',
@@ -211,8 +215,7 @@ class BusinessEarningWorkflowTest extends TestCase
         $response = $this->actingAs($user)->put(route('businesses.earnings.update', $line->id), [
             'business_id' => $business->id,
             'courier_id' => $courier->id,
-            'period_month' => 7,
-            'period_year' => 2026,
+            'work_date' => '2026-07-10',
             'pricing_model' => 'per_package',
             'package_count' => 50,
             'revenue_unit_price' => 45,
@@ -245,8 +248,7 @@ class BusinessEarningWorkflowTest extends TestCase
         $this->actingAs($user)->post(route('businesses.earnings.store'), [
             'business_id' => $business->id,
             'courier_id' => $courier->id,
-            'period_month' => 8,
-            'period_year' => 2026,
+            'work_date' => '2026-08-05',
             'pricing_model' => 'per_package',
             'package_count' => 80,
             'revenue_unit_price' => 45,
@@ -311,8 +313,7 @@ class BusinessEarningWorkflowTest extends TestCase
         $response = $this->actingAs($user)->post(route('businesses.earnings.store'), [
             'business_id' => $business->id,
             'courier_id' => $courier->id,
-            'period_month' => 8,
-            'period_year' => 2026,
+            'work_date' => '2026-08-05',
             'pricing_model' => 'per_package',
             'package_count' => 80,
             'revenue_unit_price' => 45,

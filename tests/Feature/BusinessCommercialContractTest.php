@@ -79,6 +79,72 @@ class BusinessCommercialContractTest extends TestCase
         $this->assertEquals(80.0, (float) $second->guaranteed_hourly_package_fee);
     }
 
+    public function test_super_admin_can_update_active_contract_amounts(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+
+        $contract = BusinessCommercialContract::factory()->hourly()->create([
+            'business_id' => $business->id,
+            'start_date' => '2026-07-01',
+            'end_date' => null,
+            'business_amount' => 100,
+            'courier_amount' => 70,
+            'net_profit' => 30,
+            'payment_period' => 'monthly',
+            'status' => 'active',
+            'created_by' => $user->id,
+        ]);
+
+        $this->actingAs($user)->put(route('businesses.commercial-contracts.update', $contract->id), [
+            'start_date' => '2026-07-01',
+            'end_date' => null,
+            'work_type' => 'hourly',
+            'business_amount' => 220,
+            'courier_amount' => 150,
+            'payment_period' => 'weekly',
+            'notes' => 'Süper admin düzeltmesi',
+        ])->assertRedirect(route('businesses.show', ['id' => $business->id, 'tab' => 'commercial-contracts']));
+
+        $contract->refresh();
+        $this->assertEquals(220.0, (float) $contract->business_amount);
+        $this->assertEquals(150.0, (float) $contract->courier_amount);
+        $this->assertEquals(70.0, (float) $contract->net_profit);
+        $this->assertSame('weekly', $contract->payment_period);
+        $this->assertSame('Süper admin düzeltmesi', $contract->notes);
+        $this->assertSame('active', $contract->status);
+    }
+
+    public function test_non_super_admin_cannot_update_commercial_contract(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('sales_manager');
+        $business = $this->createBusiness($user);
+
+        $contract = BusinessCommercialContract::factory()->hourly()->create([
+            'business_id' => $business->id,
+            'start_date' => '2026-07-01',
+            'end_date' => null,
+            'business_amount' => 100,
+            'courier_amount' => 70,
+            'net_profit' => 30,
+            'status' => 'active',
+            'created_by' => $user->id,
+        ]);
+
+        $this->actingAs($user)->put(route('businesses.commercial-contracts.update', $contract->id), [
+            'start_date' => '2026-07-01',
+            'work_type' => 'hourly',
+            'business_amount' => 999,
+            'courier_amount' => 1,
+            'payment_period' => 'monthly',
+        ])->assertForbidden();
+
+        $contract->refresh();
+        $this->assertEquals(100.0, (float) $contract->business_amount);
+    }
+
     public function test_guarantee_fee_only_applies_to_per_package_contracts(): void
     {
         $user = User::factory()->create();

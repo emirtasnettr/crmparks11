@@ -77,7 +77,7 @@
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 sm:px-6">Kurye</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">İşletme</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Çalışma Modeli</th>
-                        <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Ay / Yıl</th>
+                        <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Tarih</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 text-right">Paket Sayısı</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 text-right">Saat</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 text-right">Hakediş Tutarı</th>

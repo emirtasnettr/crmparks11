@@ -25,6 +25,7 @@ class EarningLine extends Model
         'pricing_model',
         'period_month',
         'period_year',
+        'work_date',
         'package_count',
         'worked_hours',
         'revenue_unit_price',
@@ -51,6 +52,7 @@ class EarningLine extends Model
     {
         return [
             'worked_hours' => 'decimal:2',
+            'work_date' => 'date',
             'first_approved_at' => 'datetime',
             'approved_at' => 'datetime',
             'paid_at' => 'datetime',

@@ -56,7 +56,7 @@ class BusinessEarningTest extends TestCase
         $response->assertOk();
         $response->assertSee('Hakedişler');
         $response->assertSee('Tekli Hakediş');
-        $response->assertSee($business->company_name);
+        $response->assertSee($business->displayName());
         $response->assertSee($courier->full_name);
     }
 
@@ -79,7 +79,7 @@ class BusinessEarningTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Hakediş Detayı');
-        $response->assertSee($business->company_name);
+        $response->assertSee($business->displayName());
         $response->assertSee($courier->full_name);
     }
 

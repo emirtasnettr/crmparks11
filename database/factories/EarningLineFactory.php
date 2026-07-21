@@ -33,6 +33,7 @@ class EarningLineFactory extends Factory
             'pricing_model' => 'per_package',
             'period_month' => 6,
             'period_year' => 2026,
+            'work_date' => '2026-06-01',
             'package_count' => $packageCount,
             'worked_hours' => 0,
             'revenue_unit_price' => $revenueUnit,

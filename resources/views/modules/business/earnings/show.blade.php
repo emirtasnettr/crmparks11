@@ -77,7 +77,7 @@
     <x-ui.card title="İşletme Bilgisi">
       <dl class="space-y-3 text-sm">
         <div class="flex justify-between gap-4"><dt class="text-gray-500">Firma</dt><dd class="text-right font-medium text-gray-900 dark:text-white">{{ $earning['business_name'] }}</dd></div>
-        <div class="flex justify-between gap-4"><dt class="text-gray-500">Dönem</dt><dd class="font-medium text-gray-900 dark:text-white">{{ $earning['period_label'] }}</dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-gray-500">Tarih</dt><dd class="font-medium text-gray-900 dark:text-white">{{ $earning['period_label'] }}</dd></div>
         <div class="flex justify-between gap-4"><dt class="text-gray-500">Model</dt><dd><x-business.pricing-badge :model="$earning['pricing_model']" /></dd></div>
       </dl>
     </x-ui.card>

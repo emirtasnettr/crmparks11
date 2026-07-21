@@ -235,11 +235,20 @@
         </x-entity.tab-panel>
 
         <x-entity.tab-panel name="commercial-contracts">
-            <div x-data="{ openCommercialContractModal: false }">
+            <div
+                x-data="commercialContractPage(@js([
+                    'contractsById' => collect($business['commercial_contracts'] ?? [])->keyBy('id'),
+                    'routes' => [
+                        'store' => route('businesses.commercial-contracts.store'),
+                        'update' => url('/isletmeler/kontratlar'),
+                    ],
+                    'today' => now()->toDateString(),
+                ]))"
+            >
                 <x-ui.card title="Kontratlar">
                     <x-slot:actions>
                         @can('business.update')
-                            <x-entity.tab-add-button label="Yeni Kontrat" @click="openCommercialContractModal = true" />
+                            <x-entity.tab-add-button label="Yeni Kontrat" @click="openCreate()" />
                         @endcan
                     </x-slot:actions>
 
@@ -288,8 +297,11 @@
                                                     'bg-gray-100 text-gray-600' => ! $commercial['is_active'],
                                                 ])>{{ $commercial['status_label'] }}</span>
                                             </td>
-                                            <td class="py-2.5 text-right">
+                                            <td class="py-2.5 text-right whitespace-nowrap">
                                                 <a href="{{ $commercial['show_url'] }}" class="text-xs font-medium text-primary-600 hover:underline">Detay</a>
+                                                @if ($commercial['can_update'] ?? false)
+                                                    <button type="button" class="ml-2 text-xs font-medium text-primary-600 hover:underline" x-on:click="openEdit({{ $commercial['id'] }})">Düzenle</button>
+                                                @endif
                                                 @if ($commercial['is_active'])
                                                     @can('business.update')
                                                         <form method="POST" action="{{ route('businesses.commercial-contracts.end', $commercial['id']) }}" class="inline" onsubmit="return confirm('Kontrat sonlandırılsın mı? Geçmiş kayıtlar korunur.')">
