@@ -87,6 +87,6 @@ class BusinessShiftAttendance extends Model
 
     public function workedHours(): float
     {
-        return round($this->worked_minutes / 60, 2);
+        return round(((int) ($this->worked_minutes ?? 0)) / 60, 2);
     }
 }

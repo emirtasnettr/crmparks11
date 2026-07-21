@@ -32,7 +32,7 @@ class ShiftAttendancePresenter
                 'cancelled' => 'İptal',
                 default => $attendance->status,
             },
-            'worked_minutes' => $attendance->worked_minutes,
+            'worked_minutes' => (int) ($attendance->worked_minutes ?? 0),
             'worked_hours' => $attendance->workedHours(),
             'worked_duration_label' => $this->durationLabel($attendance->worked_minutes),
             'hourly_rate' => $attendance->hourly_rate !== null ? (float) $attendance->hourly_rate : null,
@@ -49,8 +49,10 @@ class ShiftAttendancePresenter
         ];
     }
 
-    private function durationLabel(int $minutes): string
+    private function durationLabel(?int $minutes): string
     {
+        $minutes = (int) ($minutes ?? 0);
+
         if ($minutes <= 0) {
             return '—';
         }

@@ -12,6 +12,7 @@ use App\Modules\Finance\Models\FinancialAdjustment;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class FinancialAdjustmentService
@@ -42,6 +43,10 @@ class FinancialAdjustmentService
      */
     public function listForEarningLine(int $earningLineId): array
     {
+        if (! Schema::hasTable('financial_adjustments')) {
+            return [];
+        }
+
         return $this->presentList(
             FinancialAdjustment::query()
                 ->with('creator:id,name')
@@ -57,6 +62,10 @@ class FinancialAdjustmentService
      */
     public function listForTarget(string $targetType, int $targetId): array
     {
+        if (! Schema::hasTable('financial_adjustments')) {
+            return [];
+        }
+
         return $this->presentList(
             FinancialAdjustment::query()
                 ->with('creator:id,name')

@@ -2,7 +2,6 @@
 
 namespace App\Modules\Courier\Services;
 
-use App\Models\EarningLine;
 use App\Modules\Courier\Data\CourierFormData;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\Courier\Support\CourierAvatar;
@@ -12,8 +11,6 @@ class CourierPresenter
 {
     public function __construct(
         private readonly CourierMediaService $media,
-        private readonly CourierEarningService $earnings,
-        private readonly CourierEarningPresenter $earningPresenter,
         private readonly CourierDocumentService $documents,
         private readonly CourierDocumentPresenter $documentPresenter,
         private readonly CourierVehicleService $vehicles,
@@ -161,13 +158,7 @@ class CourierPresenter
                 ->all(),
             'vehicles_url' => route('couriers.vehicles.index', ['courier_id' => $id]),
             'activities_url' => route('couriers.activities.index', ['courier_id' => $id]),
-        ], CourierFeatures::earningsEnabled() ? [
-            'earnings' => $this->earnings
-                ->forCourier($courier->id)
-                ->map(fn (EarningLine $line) => $this->earningPresenter->showRow($line))
-                ->values()
-                ->all(),
-        ] : []);
+        ]);
     }
 
     /**

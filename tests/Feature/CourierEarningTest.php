@@ -121,6 +121,57 @@ class CourierEarningTest extends TestCase
         $response->assertSeeText('18,50 sa');
     }
 
+    public function test_authenticated_user_can_view_courier_earning_show(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $courier = $this->createCourier($user, ['full_name' => 'Detay Kurye']);
+
+        $line = EarningLine::factory()->create([
+            'business_id' => $business->id,
+            'courier_id' => $courier->id,
+            'work_date' => '2026-07-15',
+            'created_by' => $user->id,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('couriers.earnings.show', $line->id));
+
+        $response->assertOk();
+        $response->assertSee('Hakediş Detayı');
+        $response->assertSee('Detay Kurye');
+        $response->assertSee('15.07.2026');
+        $response->assertSee('Tutar Düzeltmeleri');
+    }
+
+    public function test_courier_earning_show_works_when_financial_adjustments_table_missing(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $courier = $this->createCourier($user, ['full_name' => 'Migrasyon Kurye']);
+
+        $line = EarningLine::factory()->create([
+            'business_id' => $business->id,
+            'courier_id' => $courier->id,
+            'created_by' => $user->id,
+        ]);
+
+        \Illuminate\Support\Facades\Schema::rename('financial_adjustments', 'financial_adjustments_missing_bak');
+
+        try {
+            $this->actingAs($user)
+                ->get(route('couriers.earnings.show', $line->id))
+                ->assertOk()
+                ->assertSee('Hakediş Detayı')
+                ->assertSee('Migrasyon Kurye');
+        } finally {
+            if (\Illuminate\Support\Facades\Schema::hasTable('financial_adjustments_missing_bak')) {
+                \Illuminate\Support\Facades\Schema::rename('financial_adjustments_missing_bak', 'financial_adjustments');
+            }
+        }
+    }
+
     private function createBusiness(User $user): Business
     {
         $city = City::query()->where('name', 'İstanbul')->firstOrFail();
