@@ -150,7 +150,7 @@
             <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Haftalık Görünüm</h2>
-                    <p class="text-sm text-gray-500 dark:text-slate-400">Sabit kadro + katılım özeti (başladı / gelmedi)</p>
+                    <p class="text-sm text-gray-500 dark:text-slate-400">Gerekli kişi · atama eksiği · katılım (geldi / katılmadı)</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                     <a href="{{ route('shift-planning.index', ['business_id' => $selectedBusinessId, 'week' => $week['prev_week']]) }}" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-slate-600">← Önceki</a>
@@ -182,9 +182,10 @@
                                         @if (! empty($occurrence['attendance']))
                                             <p @class([
                                                 'mt-1 font-medium',
-                                                'text-sky-800' => ! empty($occurrence['attendance']['is_future']),
+                                                'text-sky-800' => ! empty($occurrence['attendance']['is_future']) && ($occurrence['attendance']['missing_assignments'] ?? 0) === 0,
+                                                'text-amber-800' => ! empty($occurrence['attendance']['is_future']) && ($occurrence['attendance']['missing_assignments'] ?? 0) > 0,
                                                 'text-rose-800' => empty($occurrence['attendance']['is_future']) && ($occurrence['attendance']['missing'] ?? 0) > 0,
-                                                'text-emerald-800' => empty($occurrence['attendance']['is_future']) && ($occurrence['attendance']['missing'] ?? 0) === 0 && ($occurrence['attendance']['expected'] ?? 0) > 0,
+                                                'text-emerald-800' => empty($occurrence['attendance']['is_future']) && ($occurrence['attendance']['missing'] ?? 0) === 0,
                                             ])>
                                                 {{ $occurrence['attendance']['label'] }}
                                             </p>

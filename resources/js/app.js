@@ -52,7 +52,6 @@ Alpine.data('topNav', () => ({
             return false;
         }
     })(),
-    sidebarAnimating: false,
     toast: null,
     _sidebarAnimTimer: null,
 
@@ -61,7 +60,11 @@ Alpine.data('topNav', () => ({
             return;
         }
 
-        this.sidebarAnimating = true;
+        const sidebar = document.querySelector('.app-sidebar');
+        if (sidebar) {
+            sidebar.classList.add('app-sidebar--animating');
+        }
+
         this.sidebarCollapsed = collapsed;
 
         try {
@@ -76,7 +79,9 @@ Alpine.data('topNav', () => ({
         }
 
         this._sidebarAnimTimer = window.setTimeout(() => {
-            this.sidebarAnimating = false;
+            if (sidebar) {
+                sidebar.classList.remove('app-sidebar--animating');
+            }
             this._sidebarAnimTimer = null;
         }, 220);
     },

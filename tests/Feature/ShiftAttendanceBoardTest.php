@@ -248,8 +248,56 @@ class ShiftAttendanceBoardTest extends TestCase
                 'week' => now()->toDateString(),
             ]))
             ->assertOk()
-            ->assertSee('gelmedi')
+            ->assertSee('katılmadı')
             ->assertSee('Canlı Operasyon');
+    }
+
+    public function test_weekly_calendar_counts_unfilled_slots_and_no_shows_against_required_headcount(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-17 12:00:00'));
+
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $courierA = $this->createCourier($user, ['full_name' => 'Kurye A']);
+        $courierB = $this->createCourier($user, ['full_name' => 'Kurye B']);
+
+        $shift = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'name' => 'Akşam',
+            'start_time' => '10:00',
+            'end_time' => '16:00',
+            'required_headcount' => 3,
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        BusinessShiftCourier::query()->create([
+            'business_shift_id' => $shift->id,
+            'courier_id' => $courierA->id,
+        ]);
+        BusinessShiftCourier::query()->create([
+            'business_shift_id' => $shift->id,
+            'courier_id' => $courierB->id,
+        ]);
+
+        BusinessShiftAttendance::query()->create([
+            'business_shift_id' => $shift->id,
+            'business_id' => $business->id,
+            'courier_id' => $courierA->id,
+            'work_date' => now()->toDateString(),
+            'started_at' => now()->subHour(),
+            'status' => 'in_progress',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('shift-planning.index', [
+                'business_id' => $business->id,
+                'week' => now()->toDateString(),
+            ]))
+            ->assertOk()
+            ->assertSee('2/3 atandı · 1 eksik')
+            ->assertSee('1/3 geldi · 2 eksik · 1 katılmadı');
     }
 
     public function test_courier_show_attendance_tab_accepts_date_filter(): void

@@ -8,16 +8,19 @@
 
 {{-- Desktop sidebar --}}
 <aside
-    class="app-sidebar sticky top-0 z-30 hidden h-screen w-64 min-w-0 shrink-0 flex-col overflow-hidden border-r border-gray-200 bg-white lg:flex"
-    :class="sidebarAnimating ? 'app-sidebar--animating' : ''"
+    class="app-sidebar sticky top-0 z-30 h-screen min-w-0 shrink-0 flex-col border-r border-gray-200 bg-white"
     aria-label="Ana menü"
 >
     <div class="flex h-16 w-64 shrink-0 items-center justify-between gap-2 border-b border-gray-200 px-4">
         <a href="{{ route('dashboard') }}" class="flex min-w-0 items-center gap-2.5">
             @if ($branding['has_logo'])
-                <x-app.brand-logo size="sidebar" />
+                <span
+                    class="app-sidebar-brand-logo"
+                    role="img"
+                    aria-label="{{ $branding['system_name'] }}"
+                ></span>
             @else
-                <x-app.brand-logo size="md" />
+                <x-app.brand-logo size="md" surface="light" />
                 <span class="truncate text-sm font-semibold text-gray-900">
                     {{ $branding['system_name'] }}
                 </span>
@@ -133,7 +136,7 @@
     >
         <div class="flex h-16 items-center justify-between border-b border-gray-200 px-4">
             <a href="{{ route('dashboard') }}" class="flex min-w-0 items-center gap-2" @click="mobileOpen = false">
-                <x-app.brand-logo size="md" />
+                <x-app.brand-logo size="md" surface="light" />
                 <span class="truncate text-sm font-semibold text-gray-900">{{ $branding['system_name'] }}</span>
             </a>
             <button

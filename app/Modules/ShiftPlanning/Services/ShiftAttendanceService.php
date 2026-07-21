@@ -747,7 +747,20 @@ class ShiftAttendanceService
 
     /**
      * @param  list<int>  $shiftIds
-     * @return array<string, array{expected: int, started: int, in_progress: int, completed: int, missing: int, planned: int, label: string, is_future: bool}>
+     * @return array<string, array{
+     *     required: int,
+     *     assigned: int,
+     *     expected: int,
+     *     started: int,
+     *     in_progress: int,
+     *     completed: int,
+     *     missing_assignments: int,
+     *     assigned_not_started: int,
+     *     missing: int,
+     *     planned: int,
+     *     label: string,
+     *     is_future: bool
+     * }>
      */
     public function weekOccurrenceSummaries(int $businessId, array $shiftIds, string $from, string $to): array
     {
@@ -789,7 +802,9 @@ class ShiftAttendanceService
                     ->values()
                     ->all();
 
-                $expected = count($workingIds);
+                $required = max(1, (int) $shift->required_headcount);
+                $assigned = count($workingIds);
+                $missingAssignments = max(0, $required - $assigned);
                 $inProgress = 0;
                 $completed = 0;
 
@@ -803,22 +818,33 @@ class ShiftAttendanceService
                 }
 
                 $started = $inProgress + $completed;
-                $missing = $isFuture ? 0 : max(0, $expected - $started);
-                $planned = $isFuture ? max(0, $expected - $started) : 0;
+                $assignedNotStarted = $isFuture ? 0 : max(0, $assigned - $started);
+                $operationalShortage = $isFuture
+                    ? $missingAssignments
+                    : max(0, $required - $started);
+                $planned = $isFuture ? max(0, $assigned - $started) : 0;
 
                 $summaries[$shift->id.'|'.$date] = [
-                    'expected' => $expected,
+                    'required' => $required,
+                    'assigned' => $assigned,
+                    'expected' => $required,
                     'started' => $started,
                     'in_progress' => $inProgress,
                     'completed' => $completed,
-                    'missing' => $missing,
+                    'missing_assignments' => $missingAssignments,
+                    'assigned_not_started' => $assignedNotStarted,
+                    'missing' => $operationalShortage,
                     'planned' => $planned,
                     'is_future' => $isFuture,
-                    'label' => $expected === 0
-                        ? 'Kadro boş'
-                        : ($isFuture
-                            ? sprintf('%d planlandı', $expected)
-                            : sprintf('%d/%d geldi · %d gelmedi', $started, $expected, $missing)),
+                    'label' => $this->occurrenceSummaryLabel(
+                        $required,
+                        $assigned,
+                        $started,
+                        $missingAssignments,
+                        $assignedNotStarted,
+                        $operationalShortage,
+                        $isFuture,
+                    ),
                 ];
             }
 
@@ -826,6 +852,36 @@ class ShiftAttendanceService
         }
 
         return $summaries;
+    }
+
+    private function occurrenceSummaryLabel(
+        int $required,
+        int $assigned,
+        int $started,
+        int $missingAssignments,
+        int $assignedNotStarted,
+        int $operationalShortage,
+        bool $isFuture,
+    ): string {
+        if ($isFuture) {
+            if ($missingAssignments > 0) {
+                return sprintf('%d/%d atandı · %d kişi eksik', $assigned, $required, $missingAssignments);
+            }
+
+            return sprintf('%d/%d atandı', $assigned, $required);
+        }
+
+        $parts = [sprintf('%d/%d geldi', $started, $required)];
+
+        if ($operationalShortage > 0) {
+            $parts[] = sprintf('%d eksik', $operationalShortage);
+        }
+
+        if ($assignedNotStarted > 0) {
+            $parts[] = sprintf('%d katılmadı', $assignedNotStarted);
+        }
+
+        return implode(' · ', $parts);
     }
 
     /**

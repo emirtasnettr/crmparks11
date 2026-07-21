@@ -3,7 +3,6 @@
 namespace App\Modules\Report\Services;
 
 use App\Modules\Business\Models\Business;
-use App\Modules\Courier\Models\Courier;
 use App\Modules\ShiftPlanning\Models\BusinessShift;
 use App\Modules\ShiftPlanning\Models\BusinessShiftAttendance;
 use App\Modules\ShiftPlanning\Support\ShiftAttendanceRules;
@@ -12,54 +11,27 @@ use Illuminate\Support\Collection;
 
 class ReportService
 {
-    private const WEEKDAY_LABELS = [
-        0 => 'Pazar',
-        1 => 'Pazartesi',
-        2 => 'Salı',
-        3 => 'Çarşamba',
-        4 => 'Perşembe',
-        5 => 'Cuma',
-        6 => 'Cumartesi',
-    ];
-
-    private const MONTH_LABELS = [
-        1 => 'Oca',
-        2 => 'Şub',
-        3 => 'Mar',
-        4 => 'Nis',
-        5 => 'May',
-        6 => 'Haz',
-        7 => 'Tem',
-        8 => 'Ağu',
-        9 => 'Eyl',
-        10 => 'Eki',
-        11 => 'Kas',
-        12 => 'Ara',
-    ];
-
     /**
      * @return array{
      *     work_date: string,
      *     work_date_formatted: string,
      *     rows: array<int, array<string, mixed>>,
-     *     summary: array{businesses: int, planned: int, active: int, roster: int, missing: int}
+     *     summary: array{businesses: int, shifts: int, required: int, assigned: int, missing: int}
      * }
      */
     public function radar(?Carbon $day = null): array
     {
         $day ??= Carbon::today();
+        $now = now();
         $date = $day->toDateString();
-        $weekDates = collect(range(0, 6))
-            ->map(fn (int $offset) => $day->copy()->addDays($offset)->startOfDay())
-            ->values();
+        $isFuture = ShiftAttendanceRules::isFutureDay($day, $now);
 
-        $allActiveShifts = BusinessShift::query()
+        $todayShifts = BusinessShift::query()
             ->with(['rosterCouriers:id,full_name,phone'])
             ->where('is_active', true)
-            ->get();
-
-        $todayShifts = $allActiveShifts
+            ->get()
             ->filter(fn (BusinessShift $shift) => $shift->runsOn($day))
+            ->sortBy(fn (BusinessShift $shift) => (string) $shift->start_time)
             ->values();
 
         $businessIdsWithShiftToday = $todayShifts
@@ -75,9 +47,9 @@ class ReportService
                 'rows' => [],
                 'summary' => [
                     'businesses' => 0,
-                    'planned' => 0,
-                    'active' => 0,
-                    'roster' => 0,
+                    'shifts' => 0,
+                    'required' => 0,
+                    'assigned' => 0,
                     'missing' => 0,
                 ],
             ];
@@ -87,56 +59,64 @@ class ReportService
             ->whereIn('id', $businessIdsWithShiftToday)
             ->orderBy('brand_name')
             ->orderBy('company_name')
-            ->get();
+            ->get()
+            ->keyBy('id');
 
-        $shiftsByBusiness = $allActiveShifts
-            ->filter(fn (BusinessShift $shift) => in_array((int) $shift->business_id, $businessIdsWithShiftToday, true))
-            ->groupBy('business_id');
+        $attendances = BusinessShiftAttendance::query()
+            ->whereDate('work_date', $date)
+            ->whereIn('business_shift_id', $todayShifts->pluck('id'))
+            ->whereIn('status', ['in_progress', 'completed'])
+            ->get()
+            ->groupBy(fn (BusinessShiftAttendance $row) => $row->business_shift_id.'|'.$row->courier_id);
 
-        $activePeople = $this->activeCouriersByBusiness($date, $businessIdsWithShiftToday);
-        $assignedPeople = $this->assignedCouriersByBusiness($todayShifts, $day);
-
+        $shiftsByBusiness = $todayShifts->groupBy('business_id');
         $rows = [];
-        foreach ($businesses as $business) {
-            // Planlanmış = restoran için ihtiyaç duyulan kurye sayısı (kapasite; kişi listesi yok).
-            $planned = max(0, (int) ($business->planned_courier_count ?? 0));
-            if ($planned <= 0) {
+
+        foreach ($businessIdsWithShiftToday as $businessId) {
+            /** @var Business|null $business */
+            $business = $businesses->get($businessId);
+            if ($business === null) {
                 continue;
             }
 
-            $activePeopleForBusiness = array_values($activePeople[$business->id] ?? []);
-            $assignedPeopleForBusiness = array_values($assignedPeople[$business->id] ?? []);
-
-            $activeIds = collect($activePeopleForBusiness)->pluck('id')->all();
-
-            // Atanan: bugünkü vardiya kadrosundaki kuryeler; vardiyada olanlarla çakışmaz.
-            $assignedUnique = collect($assignedPeopleForBusiness)
-                ->reject(fn (array $person): bool => in_array($person['id'], $activeIds, true))
-                ->values()
-                ->all();
-
-            // Vardiyada öncelikli; kalan kapasite Atanan'a gider. Toplam ≤ Planlanmış.
-            $activePeopleCapped = array_slice($activePeopleForBusiness, 0, $planned);
-            $active = count($activePeopleCapped);
-            $remainingCapacity = max(0, $planned - $active);
-            $assignedPeopleCapped = array_slice($assignedUnique, 0, $remainingCapacity);
-            $assigned = count($assignedPeopleCapped);
-            $missing = max(0, $planned - $active - $assigned);
-
             /** @var Collection<int, BusinessShift> $businessShifts */
-            $businessShifts = $shiftsByBusiness->get($business->id, collect());
+            $businessShifts = $shiftsByBusiness->get($businessId, collect());
+            $todayShiftRows = [];
+            $requiredTotal = 0;
+            $assignedTotal = 0;
+            $missingAssignmentsTotal = 0;
+            $startedTotal = 0;
+            $operationalShortageTotal = 0;
+
+            foreach ($businessShifts as $shift) {
+                $shiftDetail = $this->buildTodayShiftDetail(
+                    $shift,
+                    $day,
+                    $now,
+                    $isFuture,
+                    $attendances,
+                );
+
+                $todayShiftRows[] = $shiftDetail;
+                $requiredTotal += $shiftDetail['required'];
+                $assignedTotal += $shiftDetail['assigned'];
+                $missingAssignmentsTotal += $shiftDetail['missing_assignments'];
+                $startedTotal += $shiftDetail['started'];
+                $operationalShortageTotal += $shiftDetail['operational_shortage'];
+            }
 
             $rows[] = [
                 'business_id' => $business->id,
                 'business_name' => $business->displayName(),
                 'business_url' => route('businesses.show', $business->id),
-                'planned_courier_count' => $planned,
-                'active_on_shift_count' => $active,
-                'roster_planned_count' => $assigned,
-                'missing_courier_count' => $missing,
-                'active_couriers' => $activePeopleCapped,
-                'roster_couriers' => $assignedPeopleCapped,
-                'week_schedule' => $this->weekScheduleForBusiness($businessShifts, $weekDates),
+                'shift_count' => count($todayShiftRows),
+                'required_count' => $requiredTotal,
+                'assigned_count' => $assignedTotal,
+                'started_count' => $startedTotal,
+                'missing_assignments' => $missingAssignmentsTotal,
+                'missing_count' => $operationalShortageTotal,
+                'operational_shortage' => $operationalShortageTotal,
+                'today_shifts' => $todayShiftRows,
             ];
         }
 
@@ -146,175 +126,172 @@ class ReportService
             'rows' => $rows,
             'summary' => [
                 'businesses' => count($rows),
-                'planned' => (int) collect($rows)->sum('planned_courier_count'),
-                'active' => (int) collect($rows)->sum('active_on_shift_count'),
-                'roster' => (int) collect($rows)->sum('roster_planned_count'),
-                'missing' => (int) collect($rows)->sum('missing_courier_count'),
+                'shifts' => (int) collect($rows)->sum('shift_count'),
+                'required' => (int) collect($rows)->sum('required_count'),
+                'assigned' => (int) collect($rows)->sum('assigned_count'),
+                'missing' => (int) collect($rows)->sum('missing_count'),
             ],
         ];
     }
 
     /**
-     * @param  Collection<int, BusinessShift>  $businessShifts
-     * @param  Collection<int, Carbon>  $weekDates
-     * @return list<array<string, mixed>>
+     * @param  Collection<string, Collection<int, BusinessShiftAttendance>>  $attendances
+     * @return array<string, mixed>
      */
-    private function weekScheduleForBusiness(Collection $businessShifts, Collection $weekDates): array
-    {
-        $days = [];
+    private function buildTodayShiftDetail(
+        BusinessShift $shift,
+        Carbon $day,
+        Carbon $now,
+        bool $isFuture,
+        Collection $attendances,
+    ): array {
+        $required = max(1, (int) $shift->required_headcount);
+        $shiftStart = ShiftAttendanceRules::shiftStartAt($shift, $day);
+        $roster = $shift->rosterCouriers->sortBy('full_name')->values();
+        $assigned = $roster->count();
+        $missingAssignments = max(0, $required - $assigned);
 
-        foreach ($weekDates as $index => $date) {
-            $dayShifts = $businessShifts
-                ->filter(fn (BusinessShift $shift) => $shift->runsOn($date))
-                ->sortBy(fn (BusinessShift $shift) => (string) $shift->start_time)
-                ->values();
+        $couriers = [];
+        $started = 0;
+        $lateCount = 0;
+        $notStartedCount = 0;
 
-            if ($dayShifts->isEmpty()) {
-                continue;
+        foreach ($roster as $courier) {
+            /** @var BusinessShiftAttendance|null $attendance */
+            $attendance = $attendances->get($shift->id.'|'.$courier->id)?->first();
+            $status = $this->courierLiveStatus($attendance, $shiftStart, $now, $isFuture);
+            $lateMinutes = null;
+
+            if ($attendance?->started_at !== null && $attendance->started_at->gt($shiftStart)) {
+                $lateMinutes = (int) $shiftStart->diffInMinutes($attendance->started_at, absolute: true);
             }
 
-            $shifts = [];
-            foreach ($dayShifts as $shift) {
-                $couriers = $shift->rosterCouriers
-                    ->sortBy('full_name')
-                    ->map(fn (Courier $courier) => [
-                        'id' => $courier->id,
-                        'name' => $courier->full_name,
-                        'phone' => $courier->phone ?: '—',
-                    ])
-                    ->values()
-                    ->all();
-
-                $shifts[] = [
-                    'id' => $shift->id,
-                    'name' => $shift->name ?: 'Vardiya',
-                    'time' => $this->formatShiftTime($shift),
-                    'courier_count' => count($couriers),
-                    'couriers' => $couriers,
-                ];
+            if (in_array($status, ['active', 'late', 'completed'], true)) {
+                $started++;
             }
 
-            $days[] = [
-                'date' => $date->toDateString(),
-                'label' => $this->dayLabel($date, $index === 0),
-                'weekday' => self::WEEKDAY_LABELS[(int) $date->dayOfWeek] ?? '',
-                'is_today' => $index === 0,
-                'shift_count' => count($shifts),
-                'shifts' => $shifts,
+            if ($status === 'late') {
+                $lateCount++;
+            }
+
+            if ($status === 'not_started') {
+                $notStartedCount++;
+            }
+
+            $couriers[] = [
+                'id' => $courier->id,
+                'name' => $courier->full_name,
+                'phone' => $courier->phone ?: '—',
+                'status' => $status,
+                'status_label' => $this->courierStatusLabel($status, $lateMinutes),
+                'late_minutes' => $lateMinutes,
             ];
         }
 
-        return $days;
-    }
-
-    private function dayLabel(Carbon $date, bool $isToday): string
-    {
-        $weekday = self::WEEKDAY_LABELS[(int) $date->dayOfWeek] ?? '';
-        $month = self::MONTH_LABELS[(int) $date->month] ?? $date->format('M');
-        $dayMonth = $date->format('j').' '.$month;
-
-        if ($isToday) {
-            return 'Bugün · '.$dayMonth;
-        }
-
-        if ($date->isTomorrow()) {
-            return 'Yarın · '.$dayMonth;
-        }
-
-        return $weekday.' · '.$dayMonth;
-    }
-
-    /**
-     * @param  list<int>  $businessIds
-     * @return array<int, array<int, array{id: int, name: string, phone: string, shift_name: string|null, shift_time: string|null}>>
-     */
-    private function activeCouriersByBusiness(string $date, array $businessIds = []): array
-    {
-        $rows = BusinessShiftAttendance::query()
-            ->with(['courier:id,full_name,phone', 'shift:id,name,start_time,end_time'])
-            ->whereDate('work_date', $date)
-            ->where('status', 'in_progress')
-            ->when($businessIds !== [], fn ($query) => $query->whereIn('business_id', $businessIds))
-            ->get();
-
-        return $rows
-            ->groupBy('business_id')
-            ->map(function (Collection $group): array {
-                return $group
-                    ->unique('courier_id')
-                    ->map(fn (BusinessShiftAttendance $row) => $this->courierPayload(
-                        $row->courier,
-                        $row->shift,
-                    ))
-                    ->filter()
-                    ->sortBy('name')
-                    ->values()
-                    ->all();
-            })
-            ->all();
-    }
-
-    /**
-     * Bugünkü vardiya kadrolarına atanmış kuryeler (başlamış / başlamamış fark etmeksizin).
-     *
-     * @param  Collection<int, BusinessShift>  $todayShifts
-     * @return array<int, array<int, array{id: int, name: string, phone: string, shift_name: string|null, shift_time: string|null}>>
-     */
-    private function assignedCouriersByBusiness(Collection $todayShifts, Carbon $day): array
-    {
-        $byBusiness = [];
-
-        foreach ($todayShifts as $shift) {
-            $businessId = (int) $shift->business_id;
-            $shiftStart = ShiftAttendanceRules::shiftStartAt($shift, $day);
-
-            foreach ($shift->rosterCouriers as $courier) {
-                $payload = $this->courierPayload($courier, $shift);
-                if ($payload === null) {
-                    continue;
-                }
-
-                $payload['shift_start_ts'] = $shiftStart->timestamp;
-                $existing = $byBusiness[$businessId][$courier->id] ?? null;
-
-                // Aynı kurye birden fazla vardiyadaysa en erken olanı tut.
-                if ($existing === null || $payload['shift_start_ts'] < ($existing['shift_start_ts'] ?? PHP_INT_MAX)) {
-                    $byBusiness[$businessId][$courier->id] = $payload;
-                }
-            }
-        }
-
-        return collect($byBusiness)
-            ->map(function (array $people): array {
-                return collect($people)
-                    ->map(function (array $person): array {
-                        unset($person['shift_start_ts']);
-
-                        return $person;
-                    })
-                    ->sortBy('name')
-                    ->values()
-                    ->all();
-            })
-            ->all();
-    }
-
-    /**
-     * @return array{id: int, name: string, phone: string, shift_name: string|null, shift_time: string|null}|null
-     */
-    private function courierPayload(?Courier $courier, ?BusinessShift $shift): ?array
-    {
-        if ($courier === null) {
-            return null;
-        }
+        $shiftHasStarted = ! $isFuture && $now->gte($shiftStart);
+        $operationalShortage = $shiftHasStarted
+            ? max(0, $required - $started)
+            : $missingAssignments;
 
         return [
-            'id' => $courier->id,
-            'name' => $courier->full_name,
-            'phone' => $courier->phone ?: '—',
-            'shift_name' => $shift?->name,
-            'shift_time' => $this->formatShiftTime($shift),
+            'id' => $shift->id,
+            'name' => $shift->name ?: 'Vardiya',
+            'time' => $this->formatShiftTime($shift),
+            'required' => $required,
+            'assigned' => $assigned,
+            'started' => $started,
+            'missing_assignments' => $missingAssignments,
+            'assigned_not_started' => $notStartedCount,
+            'late_count' => $lateCount,
+            'operational_shortage' => $operationalShortage,
+            'has_started' => $shiftHasStarted,
+            'summary_label' => $this->shiftSummaryLabel(
+                $required,
+                $assigned,
+                $started,
+                $missingAssignments,
+                $notStartedCount,
+                $operationalShortage,
+                $shiftHasStarted,
+            ),
+            'couriers' => $couriers,
         ];
+    }
+
+    private function courierLiveStatus(
+        ?BusinessShiftAttendance $attendance,
+        Carbon $shiftStart,
+        Carbon $now,
+        bool $isFuture,
+    ): string {
+        if ($attendance?->status === 'in_progress') {
+            if ($attendance->started_at !== null && $attendance->started_at->gt($shiftStart)) {
+                return 'late';
+            }
+
+            return 'active';
+        }
+
+        if ($attendance?->status === 'completed') {
+            if ($attendance->started_at !== null && $attendance->started_at->gt($shiftStart)) {
+                return 'late';
+            }
+
+            return 'completed';
+        }
+
+        if ($isFuture || $now->lt($shiftStart)) {
+            if (! $isFuture && $now->gte($shiftStart->copy()->subHour())) {
+                return 'starting_soon';
+            }
+
+            return 'upcoming';
+        }
+
+        return 'not_started';
+    }
+
+    private function courierStatusLabel(string $status, ?int $lateMinutes): string
+    {
+        return match ($status) {
+            'active' => 'Aktif',
+            'late' => $lateMinutes !== null ? 'Geç · '.$lateMinutes.' dk' : 'Geç',
+            'completed' => 'Tamamladı',
+            'starting_soon' => '1 saat kaldı',
+            'upcoming' => 'Bekliyor',
+            'not_started' => 'Girmedi',
+            default => $status,
+        };
+    }
+
+    private function shiftSummaryLabel(
+        int $required,
+        int $assigned,
+        int $started,
+        int $missingAssignments,
+        int $assignedNotStarted,
+        int $operationalShortage,
+        bool $shiftHasStarted,
+    ): string {
+        if (! $shiftHasStarted) {
+            if ($missingAssignments > 0) {
+                return sprintf('%d/%d atandı · %d kişi eksik', $assigned, $required, $missingAssignments);
+            }
+
+            return sprintf('%d/%d atandı', $assigned, $required);
+        }
+
+        $parts = [sprintf('%d/%d geldi', $started, $required)];
+
+        if ($operationalShortage > 0) {
+            $parts[] = sprintf('%d eksik', $operationalShortage);
+        }
+
+        if ($assignedNotStarted > 0) {
+            $parts[] = sprintf('%d katılmadı', $assignedNotStarted);
+        }
+
+        return implode(' · ', $parts);
     }
 
     private function formatShiftTime(?BusinessShift $shift): ?string

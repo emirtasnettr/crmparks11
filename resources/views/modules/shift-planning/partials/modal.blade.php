@@ -40,6 +40,9 @@
             </div>
             <p class="text-xs text-gray-500 dark:text-slate-400">Varsayılan aralık 1 aydır; istediğiniz tarih aralığını seçebilirsiniz.</p>
             <x-ui.input name="required_headcount" type="number" label="Kişi Sayısı *" x-model="shiftForm.required_headcount" min="1" max="100" required />
+            <p class="text-xs text-gray-500 dark:text-slate-400">
+                Bu vardiyada kaç kişinin çalışması gerektiğini belirtir. Atanan kurye sayısı bundan azsa eksik kadro oluşur; atanıp başlamayanlar da operasyon eksiğine eklenir.
+            </p>
             <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">Not</label>
                 <textarea name="notes" rows="2" x-model="shiftForm.notes" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-white"></textarea>

@@ -27,6 +27,7 @@ class ShiftPlanningPresenter
             ->all();
 
         $assigned = count($couriers);
+        $missingAssignments = max(0, $required - $assigned);
 
         return [
             'id' => $shift->id,
@@ -45,8 +46,11 @@ class ShiftPlanningPresenter
                 : "{$start} – {$end}",
             'required_headcount' => $required,
             'assigned_count' => $assigned,
-            'is_understaffed' => $assigned < $required,
-            'staffing_label' => "{$assigned} / {$required} kişi",
+            'missing_assignments' => $missingAssignments,
+            'is_understaffed' => $missingAssignments > 0,
+            'staffing_label' => $missingAssignments > 0
+                ? "{$assigned}/{$required} atandı · {$missingAssignments} eksik"
+                : "{$assigned}/{$required} kişi",
             'notes' => $shift->notes,
             'is_active' => (bool) $shift->is_active,
             'status_label' => $shift->is_active ? 'Aktif' : 'Pasif',

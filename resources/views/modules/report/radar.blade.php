@@ -1,25 +1,24 @@
 @extends('layouts.app')
 
-@section('title', 'Radar')
-
+@section('title', 'Canlı Operasyon')
 
 @section('content')
 <div
-    x-data="radarPage(@js($rows))"
-    @keydown.escape.window="closePeopleModal()"
+    x-data="radarPage()"
+    @keydown.escape.window="expandedId = null"
 >
     <div class="mb-6">
-        <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Radar</h1>
+        <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Canlı Operasyon</h1>
         <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">
-            İşletme ihtiyacı, vardiyadaki ve atanan kuryeler · {{ $workDateFormatted }}
+            Bugünkü vardiyalar · gerekli / atanan / eksik kadro · {{ $workDateFormatted }}
         </p>
     </div>
 
     <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <x-ui.finance-stat-card title="İşletme" :value="number_format($summary['businesses'])" icon="building" accent="primary" />
-        <x-ui.finance-stat-card title="Planlanmış Kurye" :value="number_format($summary['planned'])" icon="courier" accent="blue" />
-        <x-ui.finance-stat-card title="Vardiyada Kurye" :value="number_format($summary['active'])" icon="clock" accent="success" />
-        <x-ui.finance-stat-card title="Atanan Kurye" :value="number_format($summary['roster'])" icon="report" accent="violet" />
+        <x-ui.finance-stat-card title="Vardiya" :value="number_format($summary['shifts'])" icon="calendar" accent="blue" />
+        <x-ui.finance-stat-card title="Gerekli Kişi" :value="number_format($summary['required'])" icon="courier" accent="violet" />
+        <x-ui.finance-stat-card title="Atanan Kurye" :value="number_format($summary['assigned'])" icon="report" accent="success" />
         <x-ui.finance-stat-card title="Eksik Kurye" :value="number_format($summary['missing'])" icon="courier" accent="danger" />
     </div>
 
@@ -29,14 +28,14 @@
                 <thead>
                     <tr class="border-b border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-800/50">
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 sm:px-6">İşletme Adı</th>
-                        <th class="px-4 py-3 text-right font-medium text-gray-500 dark:text-slate-400">Planlanmış Kurye</th>
-                        <th class="px-4 py-3 text-right font-medium text-gray-500 dark:text-slate-400">Vardiyada Kurye</th>
-                        <th class="px-4 py-3 text-right font-medium text-gray-500 dark:text-slate-400">Atanan Kurye</th>
-                        <th class="px-4 py-3 text-right font-medium text-gray-500 dark:text-slate-400 sm:px-6">Eksik Kurye</th>
+                        <th class="px-4 py-3 text-right font-medium text-gray-500 dark:text-slate-400">Vardiya</th>
+                        <th class="px-4 py-3 text-right font-medium text-gray-500 dark:text-slate-400">Gerekli</th>
+                        <th class="px-4 py-3 text-right font-medium text-gray-500 dark:text-slate-400">Atanan</th>
+                        <th class="px-4 py-3 text-right font-medium text-gray-500 dark:text-slate-400 sm:px-6">Eksik</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-slate-700">
-                    @forelse ($rows as $index => $row)
+                    @forelse ($rows as $row)
                         <tr
                             class="transition-colors"
                             :class="expandedId === {{ $row['business_id'] }} ? 'bg-slate-50/80 dark:bg-slate-800/40' : 'hover:bg-gray-50 dark:hover:bg-slate-800/50'"
@@ -48,7 +47,7 @@
                                         class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 transition hover:border-primary-300 hover:text-primary-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:border-primary-500 dark:hover:text-primary-400"
                                         @click="toggleExpand({{ $row['business_id'] }})"
                                         :aria-expanded="expandedId === {{ $row['business_id'] }}"
-                                        :title="expandedId === {{ $row['business_id'] }} ? 'Kapat' : 'Vardiyaları aç'"
+                                        :title="expandedId === {{ $row['business_id'] }} ? 'Kapat' : 'Bugünkü vardiyaları aç'"
                                     >
                                         <svg
                                             class="h-3.5 w-3.5 transition-transform duration-200"
@@ -71,40 +70,20 @@
                                 </div>
                             </td>
                             <td class="px-4 py-3 text-right tabular-nums text-gray-900 dark:text-white">
-                                {{ number_format($row['planned_courier_count']) }}
+                                {{ number_format($row['shift_count']) }}
                             </td>
-                            <td class="px-4 py-3 text-right tabular-nums">
-                                @if ($row['active_on_shift_count'] > 0)
-                                    <button
-                                        type="button"
-                                        class="font-medium text-primary-600 hover:underline dark:text-primary-400"
-                                        @click.stop="openPeopleModal({{ $index }}, 'active')"
-                                    >
-                                        {{ number_format($row['active_on_shift_count']) }}
-                                    </button>
-                                @else
-                                    <span class="text-gray-900 dark:text-white">0</span>
-                                @endif
+                            <td class="px-4 py-3 text-right tabular-nums text-gray-900 dark:text-white">
+                                {{ number_format($row['required_count']) }}
                             </td>
-                            <td class="px-4 py-3 text-right tabular-nums">
-                                @if ($row['roster_planned_count'] > 0)
-                                    <button
-                                        type="button"
-                                        class="font-medium text-primary-600 hover:underline dark:text-primary-400"
-                                        @click.stop="openPeopleModal({{ $index }}, 'roster')"
-                                    >
-                                        {{ number_format($row['roster_planned_count']) }}
-                                    </button>
-                                @else
-                                    <span class="text-gray-900 dark:text-white">0</span>
-                                @endif
+                            <td class="px-4 py-3 text-right tabular-nums text-gray-900 dark:text-white">
+                                {{ number_format($row['assigned_count']) }}
                             </td>
                             <td @class([
                                 'px-4 py-3 text-right tabular-nums font-medium sm:px-6',
-                                'text-red-600 dark:text-red-400' => $row['missing_courier_count'] > 0,
-                                'text-gray-900 dark:text-white' => $row['missing_courier_count'] <= 0,
+                                'text-red-600 dark:text-red-400' => $row['missing_count'] > 0,
+                                'text-gray-900 dark:text-white' => $row['missing_count'] <= 0,
                             ])>
-                                {{ number_format($row['missing_courier_count']) }}
+                                {{ number_format($row['missing_count']) }}
                             </td>
                         </tr>
                         <tr x-show="expandedId === {{ $row['business_id'] }}" x-cloak>
@@ -117,7 +96,7 @@
                                     <div class="py-4">
                                         <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
                                             <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                                                7 günlük vardiya planı
+                                                Bugünkü vardiyalar · anlık durum
                                             </p>
                                             <a
                                                 href="{{ $row['business_url'] }}"
@@ -127,72 +106,63 @@
                                             </a>
                                         </div>
 
-                                        @if (($row['week_schedule'] ?? []) === [])
+                                        @if (($row['today_shifts'] ?? []) === [])
                                             <p class="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-400">
-                                                Önümüzdeki 7 günde tanımlı vardiya yok.
+                                                Bugün için tanımlı vardiya yok.
                                             </p>
                                         @else
-                                            <div class="grid grid-cols-4 gap-3">
-                                                @foreach ($row['week_schedule'] as $day)
-                                                    <div @class([
-                                                        'flex h-full flex-col overflow-hidden rounded-xl border bg-white dark:bg-slate-800/70',
-                                                        'border-primary-200 dark:border-primary-500/30' => $day['is_today'],
-                                                        'border-slate-200 dark:border-slate-700' => ! $day['is_today'],
-                                                    ])>
-                                                        <div @class([
-                                                            'flex items-center justify-between gap-2 border-b px-3 py-2',
-                                                            'border-primary-100 bg-primary-50/70 dark:border-primary-500/20 dark:bg-primary-500/10' => $day['is_today'],
-                                                            'border-slate-100 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-800' => ! $day['is_today'],
-                                                        ])>
+                                            <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                                                @foreach ($row['today_shifts'] as $shift)
+                                                    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800/70">
+                                                        <div class="flex items-start justify-between gap-2 border-b border-slate-100 px-3 py-2.5 dark:border-slate-700">
                                                             <div class="min-w-0">
-                                                                <p class="truncate text-sm font-semibold text-slate-900 dark:text-white">
-                                                                    {{ $day['label'] }}
-                                                                </p>
-                                                                @if ($day['is_today'])
-                                                                    <span class="mt-0.5 inline-flex rounded-full bg-primary-600 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
-                                                                        Bugün
-                                                                    </span>
+                                                                <p class="truncate font-semibold text-slate-900 dark:text-white">{{ $shift['name'] }}</p>
+                                                                @if ($shift['time'])
+                                                                    <p class="text-[11px] tabular-nums text-slate-500 dark:text-slate-400">{{ $shift['time'] }}</p>
                                                                 @endif
                                                             </div>
-                                                            <span class="shrink-0 text-[11px] tabular-nums text-slate-500 dark:text-slate-400">
-                                                                {{ $day['shift_count'] }} vardiya
-                                                            </span>
+                                                            <p @class([
+                                                                'shrink-0 text-right text-[11px] font-medium',
+                                                                'text-rose-700 dark:text-rose-400' => ($shift['operational_shortage'] ?? 0) > 0,
+                                                                'text-emerald-700 dark:text-emerald-400' => ($shift['operational_shortage'] ?? 0) === 0,
+                                                            ])>
+                                                                {{ $shift['summary_label'] }}
+                                                            </p>
                                                         </div>
 
-                                                        <div class="flex-1 divide-y divide-slate-100 dark:divide-slate-700/80">
-                                                            @foreach ($day['shifts'] as $shift)
-                                                                <div class="px-3 py-2.5">
-                                                                    <div class="mb-1.5 flex flex-wrap items-baseline justify-between gap-1">
-                                                                        <div class="min-w-0">
-                                                                            <p class="truncate font-medium text-slate-900 dark:text-white">{{ $shift['name'] }}</p>
-                                                                            @if ($shift['time'])
-                                                                                <p class="text-[11px] tabular-nums text-slate-500 dark:text-slate-400">{{ $shift['time'] }}</p>
-                                                                            @endif
-                                                                        </div>
-                                                                        <span class="shrink-0 text-[11px] text-slate-500 dark:text-slate-400">
-                                                                            {{ $shift['courier_count'] }} kurye
-                                                                        </span>
+                                                        <div class="space-y-1.5 px-3 py-2.5">
+                                                            @foreach ($shift['couriers'] as $courier)
+                                                                <div class="flex items-center justify-between gap-2 rounded-md border border-slate-100 bg-slate-50 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-900/40">
+                                                                    <div class="min-w-0">
+                                                                        <p class="truncate text-xs font-medium text-slate-800 dark:text-slate-100">{{ $courier['name'] }}</p>
+                                                                        <p class="truncate text-[11px] text-slate-500 dark:text-slate-400">{{ $courier['phone'] }}</p>
                                                                     </div>
-
-                                                                    @if ($shift['couriers'] === [])
-                                                                        <p class="text-[11px] text-amber-700 dark:text-amber-400">Henüz kurye atanmamış.</p>
-                                                                    @else
-                                                                        <div class="flex flex-col gap-1">
-                                                                            @foreach ($shift['couriers'] as $courier)
-                                                                                <span
-                                                                                    class="inline-flex min-w-0 items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-700 dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-200"
-                                                                                    title="{{ $courier['phone'] }}"
-                                                                                >
-                                                                                    <span class="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[9px] font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-200">
-                                                                                        {{ mb_strtoupper(mb_substr($courier['name'], 0, 1)) }}
-                                                                                    </span>
-                                                                                    <span class="truncate">{{ $courier['name'] }}</span>
-                                                                                </span>
-                                                                            @endforeach
-                                                                        </div>
-                                                                    @endif
+                                                                    <span @class([
+                                                                        'shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold',
+                                                                        'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300' => in_array($courier['status'], ['active', 'completed'], true),
+                                                                        'bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300' => in_array($courier['status'], ['late', 'starting_soon'], true),
+                                                                        'bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300' => $courier['status'] === 'not_started',
+                                                                        'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200' => $courier['status'] === 'upcoming',
+                                                                    ])>
+                                                                        {{ $courier['status_label'] }}
+                                                                    </span>
                                                                 </div>
                                                             @endforeach
+
+                                                            @if (($shift['missing_assignments'] ?? 0) > 0)
+                                                                @for ($i = 0; $i < $shift['missing_assignments']; $i++)
+                                                                    <div class="flex items-center justify-between gap-2 rounded-md border border-dashed border-rose-200 bg-rose-50/70 px-2 py-1.5 dark:border-rose-500/30 dark:bg-rose-500/10">
+                                                                        <p class="text-xs font-medium text-rose-800 dark:text-rose-300">Eksik kadro</p>
+                                                                        <span class="shrink-0 rounded-md bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-800 dark:bg-rose-500/20 dark:text-rose-300">
+                                                                            Atanmadı
+                                                                        </span>
+                                                                    </div>
+                                                                @endfor
+                                                            @endif
+
+                                                            @if ($shift['couriers'] === [] && ($shift['missing_assignments'] ?? 0) === 0)
+                                                                <p class="text-[11px] text-slate-500 dark:text-slate-400">Kadro boş.</p>
+                                                            @endif
                                                         </div>
                                                     </div>
                                                 @endforeach
@@ -205,7 +175,7 @@
                     @empty
                         <tr>
                             <td colspan="5" class="px-4 py-10 text-center text-sm text-gray-500 dark:text-slate-400 sm:px-6">
-                                Henüz radar verisi bulunmuyor.
+                                Bugün için canlı operasyon verisi bulunmuyor.
                             </td>
                         </tr>
                     @endforelse
@@ -213,114 +183,15 @@
             </table>
         </div>
     </x-ui.card>
-
-    <div
-        x-show="peopleModalOpen"
-        x-cloak
-        class="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center"
-        role="dialog"
-        aria-modal="true"
-    >
-        <div
-            x-show="peopleModalOpen"
-            x-transition.opacity
-            @click="closePeopleModal()"
-            class="fixed inset-0 bg-gray-900/50"
-        ></div>
-
-        <div
-            x-show="peopleModalOpen"
-            x-transition
-            class="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800"
-        >
-            <div class="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4 dark:border-slate-700 dark:bg-slate-800">
-                <div>
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white" x-text="modalTitle"></h3>
-                    <p class="mt-0.5 text-sm text-gray-500 dark:text-slate-400" x-text="modalBusinessName"></p>
-                </div>
-                <button
-                    type="button"
-                    @click="closePeopleModal()"
-                    class="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-700"
-                >
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
-            </div>
-
-            <div class="px-6 py-4">
-                <template x-if="modalPeople.length === 0">
-                    <p class="py-6 text-center text-sm text-gray-500 dark:text-slate-400">
-                        Listelenecek kurye bulunamadı.
-                    </p>
-                </template>
-
-                <ul x-show="modalPeople.length > 0" class="divide-y divide-gray-100 dark:divide-slate-700">
-                    <template x-for="person in modalPeople" :key="person.id">
-                        <li class="flex items-start justify-between gap-3 py-3">
-                            <div class="min-w-0">
-                                <p class="font-medium text-gray-900 dark:text-white" x-text="person.name"></p>
-                                <p class="mt-0.5 text-sm text-gray-500 dark:text-slate-400" x-text="person.phone"></p>
-                            </div>
-                            <div class="shrink-0 text-right">
-                                <p
-                                    class="text-sm font-medium tabular-nums text-gray-900 dark:text-white"
-                                    x-text="person.shift_time || ''"
-                                    x-show="person.shift_time"
-                                ></p>
-                                <p
-                                    class="mt-0.5 text-xs text-gray-400 dark:text-slate-500"
-                                    x-text="person.shift_name || ''"
-                                    x-show="person.shift_name"
-                                ></p>
-                            </div>
-                        </li>
-                    </template>
-                </ul>
-            </div>
-
-            <div class="flex justify-end border-t border-gray-200 px-6 py-4 dark:border-slate-700">
-                <x-ui.button type="button" variant="secondary" @click="closePeopleModal()">Kapat</x-ui.button>
-            </div>
-        </div>
-    </div>
 </div>
 
 @push('scripts')
 <script>
-function radarPage(rows) {
+function radarPage() {
     return {
-        rows,
         expandedId: null,
-        peopleModalOpen: false,
-        modalTitle: '',
-        modalBusinessName: '',
-        modalPeople: [],
         toggleExpand(businessId) {
             this.expandedId = this.expandedId === businessId ? null : businessId;
-        },
-        openPeopleModal(index, type) {
-            const row = this.rows[index];
-            if (!row) return;
-
-            const titles = {
-                active: 'Vardiyada Kurye',
-                roster: 'Atanan Kurye',
-            };
-            const peopleKey = {
-                active: 'active_couriers',
-                roster: 'roster_couriers',
-            }[type];
-
-            this.modalTitle = titles[type] || 'Kuryeler';
-            this.modalBusinessName = row.business_name || '';
-            this.modalPeople = row[peopleKey] || [];
-            this.peopleModalOpen = true;
-        },
-        closePeopleModal() {
-            this.peopleModalOpen = false;
-            this.modalPeople = [];
         },
     };
 }

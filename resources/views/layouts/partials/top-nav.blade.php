@@ -29,10 +29,10 @@
             @can('report.view')
                 <a
                     href="{{ route('radar') }}"
-                    class="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 {{ request()->routeIs('radar') ? 'ring-2 ring-red-600 ring-offset-2' : '' }}"
+                    class="inline-flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 {{ request()->routeIs('radar') ? 'ring-2 ring-gray-300 ring-offset-2' : '' }}"
                 >
-                    <x-ui.icon name="signal" class="h-4 w-4 shrink-0" />
-                    Radar
+                    <span class="live-record-icon inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-red-600" aria-hidden="true"></span>
+                    Canlı Operasyon
                 </a>
             @endcan
 

@@ -45,13 +45,11 @@
     </div>
 
     {{-- İstatistik Kartları --}}
-    <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+    <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <x-ui.finance-stat-card title="Toplam Hakediş" :value="number_format($summary['count'])" icon="earning" accent="blue" />
         <x-ui.finance-stat-card title="Toplam Gelir" :value="money_excl_vat($summary['total_revenue'])" icon="chart" accent="success" />
         <x-ui.finance-stat-card title="Toplam Gider" :value="money_excl_vat($summary['total_expense'])" icon="earning" accent="danger" />
         <x-ui.finance-stat-card title="Toplam Kâr" :value="money_excl_vat($summary['total_profit'])" icon="chart" accent="violet" />
-        <x-ui.finance-stat-card title="Bekleyen Hakediş" :value="number_format($summary['pending_count'])" icon="earning" accent="warning" />
-        <x-ui.finance-stat-card title="Ödenen Hakediş" :value="number_format($summary['paid_count'])" icon="earning" accent="primary" />
     </div>
 
     {{-- Filtre --}}
