@@ -116,7 +116,7 @@ class ReportModuleTest extends TestCase
         $response->assertSee('Radar İşletme');
         $response->assertSee('Planlanmış Kurye');
         $response->assertSee('Vardiyada Kurye');
-        $response->assertSee('Yaklaşan Kurye');
+        $response->assertSee('Atanan Kurye');
         $response->assertSeeText('6');
         $response->assertSee('Aktif Kurye');
         $response->assertSee('Yaklaşan Kurye Adı');
@@ -283,6 +283,118 @@ class ReportModuleTest extends TestCase
             $row['planned_courier_count'],
             $row['active_on_shift_count'] + $row['roster_planned_count'] + $row['missing_courier_count']
         );
+    }
+
+    public function test_radar_counts_assigned_couriers_even_after_shift_start(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $business = Business::factory()->create([
+            'created_by' => $user->id,
+            'brand_name' => 'Atanan İşletme',
+            'planned_courier_count' => 1,
+        ]);
+        $courier = Courier::factory()->create([
+            'created_by' => $user->id,
+            'full_name' => 'Atanan Test Kurye',
+        ]);
+
+        $now = now()->seconds(0);
+        $shift = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'name' => 'Başlamış Vardiya',
+            'start_time' => $now->copy()->subHours(1)->format('H:i'),
+            'end_time' => $now->copy()->addHours(4)->format('H:i'),
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->toDateString(),
+            'required_headcount' => 1,
+            'days_of_week' => [(int) now()->dayOfWeek],
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        BusinessShiftCourier::query()->create([
+            'business_shift_id' => $shift->id,
+            'courier_id' => $courier->id,
+        ]);
+
+        $radar = app(\App\Modules\Report\Services\ReportService::class)->radar();
+        $row = collect($radar['rows'])->firstWhere('business_id', $business->id);
+
+        $this->assertNotNull($row);
+        $this->assertSame(1, $row['planned_courier_count']);
+        $this->assertSame(0, $row['active_on_shift_count']);
+        $this->assertSame(1, $row['roster_planned_count']);
+        $this->assertSame(0, $row['missing_courier_count']);
+        $this->assertSame('Atanan Test Kurye', $row['roster_couriers'][0]['name'] ?? null);
+        $this->assertNotEmpty($row['week_schedule'] ?? []);
+        $this->assertSame('Başlamış Vardiya', $row['week_schedule'][0]['shifts'][0]['name'] ?? null);
+        $this->assertSame('Atanan Test Kurye', $row['week_schedule'][0]['shifts'][0]['couriers'][0]['name'] ?? null);
+    }
+
+    public function test_radar_week_schedule_includes_upcoming_days(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $business = Business::factory()->create([
+            'created_by' => $user->id,
+            'brand_name' => 'Haftalık Radar',
+            'planned_courier_count' => 2,
+        ]);
+        $courier = Courier::factory()->create([
+            'created_by' => $user->id,
+            'full_name' => 'Hafta Kurye',
+        ]);
+
+        $tomorrowDow = (int) now()->addDay()->dayOfWeek;
+
+        BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'name' => 'Bugünlük',
+            'start_time' => '10:00',
+            'end_time' => '18:00',
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->addDays(14)->toDateString(),
+            'required_headcount' => 1,
+            'days_of_week' => [(int) now()->dayOfWeek],
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        $tomorrowShift = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'name' => 'Yarınlık',
+            'start_time' => '12:00',
+            'end_time' => '20:00',
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->addDays(14)->toDateString(),
+            'required_headcount' => 1,
+            'days_of_week' => [$tomorrowDow],
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        BusinessShiftCourier::query()->create([
+            'business_shift_id' => $tomorrowShift->id,
+            'courier_id' => $courier->id,
+        ]);
+
+        $radar = app(\App\Modules\Report\Services\ReportService::class)->radar();
+        $row = collect($radar['rows'])->firstWhere('business_id', $business->id);
+
+        $this->assertNotNull($row);
+        $labels = collect($row['week_schedule'])->pluck('label')->all();
+        $this->assertTrue(collect($labels)->contains(fn (string $label) => str_starts_with($label, 'Bugün')));
+        $this->assertTrue(collect($labels)->contains(fn (string $label) => str_starts_with($label, 'Yarın')));
+
+        $tomorrowDay = collect($row['week_schedule'])->first(
+            fn (array $day) => str_starts_with($day['label'], 'Yarın')
+        );
+        $this->assertNotNull($tomorrowDay);
+        $this->assertSame('Yarınlık', $tomorrowDay['shifts'][0]['name'] ?? null);
+        $this->assertSame('Hafta Kurye', $tomorrowDay['shifts'][0]['couriers'][0]['name'] ?? null);
     }
 
     public function test_radar_only_lists_businesses_with_shifts_today(): void
