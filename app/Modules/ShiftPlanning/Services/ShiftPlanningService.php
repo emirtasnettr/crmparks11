@@ -142,7 +142,7 @@ class ShiftPlanningService
                 'start_time' => $data['start_time'],
                 'end_time' => $data['end_time'],
                 'start_date' => $data['start_date'] ?? now()->toDateString(),
-                'end_date' => $data['end_date'] ?? now()->addMonth()->toDateString(),
+                'end_date' => $data['end_date'] ?? ($data['start_date'] ?? now()->toDateString()),
                 'required_headcount' => max(1, (int) ($data['required_headcount'] ?? 1)),
                 'notes' => $data['notes'] ?? null,
                 'is_active' => array_key_exists('is_active', $data)

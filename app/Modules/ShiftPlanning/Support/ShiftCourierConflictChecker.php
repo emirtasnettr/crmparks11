@@ -101,7 +101,7 @@ final class ShiftCourierConflictChecker
     {
         $probe = $this->scheduleAsShift($schedule);
         $rangeStart = $probe->start_date?->copy()->startOfDay() ?? now()->startOfDay();
-        $rangeEnd = $probe->end_date?->copy()->startOfDay() ?? $rangeStart->copy()->addMonth();
+        $rangeEnd = $probe->end_date?->copy()->startOfDay() ?? $rangeStart->copy();
 
         if ($rangeEnd->lt($rangeStart)) {
             return null;

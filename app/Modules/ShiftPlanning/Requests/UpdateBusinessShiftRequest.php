@@ -13,12 +13,23 @@ class UpdateBusinessShiftRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $startDate = $this->input('start_date');
+        $endDate = $this->input('end_date');
+
+        if (! is_string($startDate) || $startDate === '') {
+            $startDate = now()->toDateString();
+        }
+
+        if (! is_string($endDate) || $endDate === '') {
+            $endDate = $startDate;
+        }
+
         $this->merge([
             'is_active' => $this->boolean('is_active', true),
             'start_time' => $this->normalizeTime($this->input('start_time')),
             'end_time' => $this->normalizeTime($this->input('end_time')),
-            'start_date' => $this->input('start_date') ?: now()->toDateString(),
-            'end_date' => $this->input('end_date') ?: now()->addMonth()->toDateString(),
+            'start_date' => $startDate,
+            'end_date' => $endDate,
         ]);
     }
 

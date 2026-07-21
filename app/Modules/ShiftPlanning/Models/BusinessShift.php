@@ -75,13 +75,16 @@ class BusinessShift extends Model
 
     public function runsOn(CarbonInterface|string $day): bool
     {
-        $date = Carbon::parse($day)->startOfDay();
-
-        if ($this->start_date !== null && $date->lt($this->start_date->copy()->startOfDay())) {
+        // Açık uçlu planlama yok: her iki tarih de zorunlu.
+        if ($this->start_date === null || $this->end_date === null) {
             return false;
         }
 
-        if ($this->end_date !== null && $date->gt($this->end_date->copy()->startOfDay())) {
+        $date = Carbon::parse($day)->startOfDay();
+        $start = $this->start_date->copy()->startOfDay();
+        $end = $this->end_date->copy()->startOfDay();
+
+        if ($date->lt($start) || $date->gt($end)) {
             return false;
         }
 

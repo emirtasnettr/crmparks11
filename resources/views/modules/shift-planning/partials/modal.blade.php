@@ -7,7 +7,7 @@
     <div class="fixed inset-0 bg-gray-900/50" x-on:click="closeShiftModal()"></div>
     <div class="relative w-full max-w-lg rounded-xl border border-gray-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-800">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white" x-text="shiftMode === 'create' ? 'Yeni Vardiya' : 'Vardiya Düzenle'"></h3>
-        <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">Saatler her gün için sabittir.</p>
+        <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">Saatler seçilen tarih aralığındaki her gün için sabittir.</p>
 
         <form method="POST" :action="shiftFormAction()" class="mt-4 space-y-4">
             @csrf
@@ -38,7 +38,9 @@
                     <input type="date" name="end_date" x-model="shiftForm.end_date" required class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-white">
                 </div>
             </div>
-            <p class="text-xs text-gray-500 dark:text-slate-400">Varsayılan aralık 1 aydır; istediğiniz tarih aralığını seçebilirsiniz.</p>
+            <p class="text-xs text-gray-500 dark:text-slate-400">
+                Vardiya <strong>yalnızca</strong> seçtiğiniz başlangıç–bitiş tarihleri arasında planlanır; aralık dışına otomatik eklenmez.
+            </p>
             <x-ui.input name="required_headcount" type="number" label="Kişi Sayısı *" x-model="shiftForm.required_headcount" min="1" max="100" required />
             <p class="text-xs text-gray-500 dark:text-slate-400">
                 Bu vardiyada kaç kişinin çalışması gerektiğini belirtir. Atanan kurye sayısı bundan azsa eksik kadro oluşur; atanıp başlamayanlar da operasyon eksiğine eklenir.

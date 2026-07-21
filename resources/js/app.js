@@ -4540,6 +4540,16 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
                 }
             },
         );
+
+        this.$watch('shiftForm.start_date', (startDate) => {
+            if (!startDate) {
+                return;
+            }
+
+            if (!this.shiftForm.end_date || this.shiftForm.end_date < startDate) {
+                this.shiftForm.end_date = startDate;
+            }
+        });
     },
     openCreate() {
         this.shiftMode = 'create';

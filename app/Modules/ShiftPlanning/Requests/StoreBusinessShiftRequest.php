@@ -20,8 +20,9 @@ class StoreBusinessShiftRequest extends FormRequest
             $startDate = now()->toDateString();
         }
 
+        // Boş bitiş tarihi asla +1 ay yapılmaz; başlangıçla aynı gün olur.
         if (! is_string($endDate) || $endDate === '') {
-            $endDate = now()->addMonth()->toDateString();
+            $endDate = $startDate;
         }
 
         $this->merge([

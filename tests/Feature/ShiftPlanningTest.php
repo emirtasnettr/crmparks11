@@ -77,7 +77,7 @@ class ShiftPlanningTest extends TestCase
         $response->assertRedirect(route('shift-planning.index', ['business_id' => $business->id]));
         $this->assertSame(2, $shift->required_headcount);
         $this->assertSame(now()->toDateString(), $shift->start_date?->toDateString());
-        $this->assertSame(now()->addMonth()->toDateString(), $shift->end_date?->toDateString());
+        $this->assertSame(now()->toDateString(), $shift->end_date?->toDateString());
         $this->assertDatabaseHas('business_shift_couriers', [
             'business_shift_id' => $shift->id,
             'courier_id' => $courier->id,
@@ -299,6 +299,30 @@ class ShiftPlanningTest extends TestCase
         $this->assertNotNull($shift);
         $this->assertSame('2026-08-01', $shift->start_date?->toDateString());
         $this->assertSame('2026-08-15', $shift->end_date?->toDateString());
+    }
+
+    public function test_shift_runs_only_inside_selected_date_range(): void
+    {
+        $shift = new BusinessShift([
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-08-03',
+        ]);
+
+        $this->assertFalse($shift->runsOn('2026-07-31'));
+        $this->assertTrue($shift->runsOn('2026-08-01'));
+        $this->assertTrue($shift->runsOn('2026-08-02'));
+        $this->assertTrue($shift->runsOn('2026-08-03'));
+        $this->assertFalse($shift->runsOn('2026-08-04'));
+    }
+
+    public function test_shift_without_date_range_never_runs(): void
+    {
+        $shift = new BusinessShift([
+            'start_date' => null,
+            'end_date' => null,
+        ]);
+
+        $this->assertFalse($shift->runsOn('2026-08-01'));
     }
 
     public function test_week_calendar_only_lists_occurrences_inside_shift_date_range(): void

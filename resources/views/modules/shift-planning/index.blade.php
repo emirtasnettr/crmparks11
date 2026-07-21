@@ -33,7 +33,7 @@
         canUpdate: @js($canUpdate),
         canDelete: @js($canDelete),
         defaultStartDate: @js(now()->toDateString()),
-        defaultEndDate: @js(now()->addMonth()->toDateString()),
+        defaultEndDate: @js(now()->toDateString()),
         storeUrl: @js(route('shift-planning.store')),
         updateUrlTemplate: @js(url('/vardiya-planlama/__ID__')),
         assignUrlTemplate: @js(url('/vardiya-planlama/__ID__/kuryeler')),
