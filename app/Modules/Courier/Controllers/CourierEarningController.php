@@ -12,6 +12,7 @@ use App\Modules\Courier\Exports\CourierListExportSheets;
 use App\Modules\Courier\Services\CourierEarningPresenter;
 use App\Modules\Courier\Services\CourierEarningService;
 use App\Modules\Courier\Support\CourierFeatures;
+use App\Modules\Finance\Services\FinancialAdjustmentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -27,6 +28,7 @@ class CourierEarningController extends Controller
         private readonly CourierEarningService $earnings,
         private readonly CourierEarningPresenter $presenter,
         private readonly BusinessEarningImportService $importer,
+        private readonly FinancialAdjustmentService $adjustments,
     ) {}
 
     public function index(Request $request): View|RedirectResponse
@@ -147,6 +149,8 @@ class CourierEarningController extends Controller
 
         return view('modules.courier.earnings.show', [
             'earning' => $this->presenter->showRow($earning),
+            'financialAdjustments' => $this->adjustments->listForEarningLine($earning->id),
+            'canFinancialAdjust' => auth()->user()?->hasRole('super_admin') ?? false,
         ]);
     }
 

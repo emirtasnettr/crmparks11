@@ -14,6 +14,7 @@ use App\Modules\Business\Services\BusinessEarningImportService;
 use App\Modules\Business\Services\BusinessEarningPresenter;
 use App\Modules\Business\Services\BusinessEarningService;
 use App\Modules\Business\Support\BusinessFeatures;
+use App\Modules\Finance\Services\FinancialAdjustmentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -27,6 +28,7 @@ class BusinessEarningController extends Controller
         private readonly BusinessEarningService $earnings,
         private readonly BusinessEarningPresenter $presenter,
         private readonly BusinessEarningImportService $importer,
+        private readonly FinancialAdjustmentService $adjustments,
     ) {}
 
     public function index(Request $request): View|RedirectResponse
@@ -114,6 +116,8 @@ class BusinessEarningController extends Controller
             'couriers' => $this->earnings->couriers(),
             'months' => BusinessEarningFormData::months(),
             'pricingModels' => BusinessEarningFormData::pricingModels(),
+            'financialAdjustments' => $this->adjustments->listForEarningLine($earning->id),
+            'canFinancialAdjust' => auth()->user()?->hasRole('super_admin') ?? false,
         ]);
     }
 

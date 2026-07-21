@@ -17,6 +17,12 @@
     @earning-row-action.window="handleRowAction($event.detail)"
 >
 <div class="max-w-5xl">
+    @if (session('success'))
+        <div class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200">
+            {{ session('success') }}
+        </div>
+    @endif
+
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
             <div class="flex flex-wrap items-center gap-3">
@@ -26,6 +32,12 @@
             <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">{{ $earning['business_name'] }} — {{ $earning['courier_name'] }}</p>
         </div>
         <div class="flex flex-wrap gap-2">
+            @include('modules.finance.partials.financial-adjustment-modal', [
+                'canFinancialAdjust' => $canFinancialAdjust ?? false,
+                'adjustTargetId' => $earning['business_id'],
+                'adjustStoreUrl' => route('businesses.financial-adjustments.store', $earning['business_id']),
+                'earningLineId' => $earning['id'],
+            ])
             @if ($earning['can_update'])
                 <x-ui.button type="button" @click="openEdit({{ $earning['id'] }})">Düzenle</x-ui.button>
             @endif
@@ -135,6 +147,10 @@
       <p class="text-sm text-gray-700 dark:text-slate-300">{{ $earning['description'] }}</p>
     </x-ui.card>
   @endif
+
+  @include('modules.finance.partials.financial-adjustment-history', [
+      'financialAdjustments' => $financialAdjustments ?? [],
+  ])
 
   <div class="mt-6">
     <x-ui.button href="{{ route('businesses.earnings.index') }}" variant="secondary">Listeye Dön</x-ui.button>

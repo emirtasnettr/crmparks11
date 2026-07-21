@@ -4,7 +4,16 @@
 
 
 @section('content')
-<div class="max-w-5xl">
+<div
+    class="max-w-5xl"
+    x-data="{}"
+>
+    @if (session('success'))
+        <div class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200">
+            {{ session('success') }}
+        </div>
+    @endif
+
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
             <div class="flex flex-wrap items-center gap-3">
@@ -14,6 +23,12 @@
             <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">{{ $earning['courier_name'] }} — {{ $earning['business_name'] }}</p>
         </div>
         <div class="flex shrink-0 flex-wrap gap-2">
+            @include('modules.finance.partials.financial-adjustment-modal', [
+                'canFinancialAdjust' => $canFinancialAdjust ?? false,
+                'adjustTargetId' => $earning['courier_id'],
+                'adjustStoreUrl' => route('couriers.financial-adjustments.store', $earning['courier_id']),
+                'earningLineId' => $earning['id'],
+            ])
             @can('earning.update')
                 <x-ui.button href="{{ route('businesses.earnings.show', $earning['id']) }}" variant="secondary">İşletme Kaydında Düzenle</x-ui.button>
             @endcan
@@ -114,6 +129,10 @@
             <p class="text-sm text-gray-700 dark:text-slate-300">{{ $earning['description'] }}</p>
         </x-ui.card>
     @endif
+
+    @include('modules.finance.partials.financial-adjustment-history', [
+        'financialAdjustments' => $financialAdjustments ?? [],
+    ])
 
     <div class="mt-6">
         <x-ui.button href="{{ route('couriers.earnings.index') }}" variant="secondary">Listeye Dön</x-ui.button>

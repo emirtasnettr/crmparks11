@@ -31,6 +31,7 @@ use App\Modules\Finance\Controllers\FinanceExpenseController;
 use App\Modules\Finance\Controllers\FinanceCurrentAccountController;
 use App\Modules\Finance\Controllers\FinanceDashboardController;
 use App\Modules\Finance\Controllers\FinanceRevenueController;
+use App\Modules\Finance\Controllers\FinancialAdjustmentController;
 use App\Modules\FormBuilder\Controllers\FormApplicationController;
 use App\Modules\FormBuilder\Controllers\FormBuilderController;
 use App\Modules\FormBuilder\Controllers\FormSubmissionController;
@@ -167,6 +168,8 @@ Route::middleware('auth')->group(function () {
             Route::post('/hakedisler/{id}/onayla', [BusinessEarningController::class, 'approve'])->middleware('permission:earning.approve')->name('earnings.approve');
             Route::delete('/hakedisler/{id}', [BusinessEarningController::class, 'destroy'])->middleware('permission:earning.delete')->name('earnings.destroy');
             Route::get('/hakedisler/{id}', [BusinessEarningController::class, 'show'])->name('earnings.show');
+            Route::post('/{id}/finansal-duzeltme', [FinancialAdjustmentController::class, 'storeForBusiness'])
+                ->name('financial-adjustments.store');
             Route::get('/evraklar', [BusinessDocumentController::class, 'index'])->name('documents.index');
             Route::post('/evraklar', [BusinessDocumentController::class, 'store'])->middleware('permission:business.update')->name('documents.store');
             Route::get('/evraklar/{id}/indir', [BusinessDocumentController::class, 'download'])->name('documents.download');
@@ -200,6 +203,8 @@ Route::middleware('auth')->group(function () {
             ->name('earnings.import');
         Route::get('/hakedisler/{id}/pdf', [CourierEarningController::class, 'pdf'])->name('earnings.pdf');
         Route::get('/hakedisler/{id}', [CourierEarningController::class, 'show'])->name('earnings.show');
+        Route::post('/{id}/finansal-duzeltme', [FinancialAdjustmentController::class, 'storeForCourier'])
+            ->name('financial-adjustments.store');
         Route::get('/arac-bilgileri', [CourierVehicleController::class, 'index'])->name('vehicles.index');
         Route::post('/arac-bilgileri', [CourierVehicleController::class, 'store'])->middleware('permission:courier.update')->name('vehicles.store');
         Route::post('/arac-bilgileri/{id}/pasife-al', [CourierVehicleController::class, 'deactivate'])

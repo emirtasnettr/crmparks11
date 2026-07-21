@@ -231,6 +231,8 @@ class CurrentAccountService
                 'debit' => $sides['debit'] ? $amount : 0,
                 'credit' => $sides['credit'] ? $amount : 0,
                 'description' => $data['description'] ?? null,
+                'related_type' => $data['related_type'] ?? null,
+                'related_id' => isset($data['related_id']) ? (int) $data['related_id'] : null,
                 'created_by' => $user->id,
             ]);
 
