@@ -257,7 +257,7 @@ class ReportService
             'active' => 'Aktif',
             'late' => $lateMinutes !== null ? 'Geç · '.$lateMinutes.' dk' : 'Geç',
             'completed' => 'Tamamladı',
-            'starting_soon' => '1 saat kaldı',
+            'starting_soon' => 'Yaklaşan',
             'upcoming' => 'Bekliyor',
             'not_started' => 'Girmedi',
             default => $status,

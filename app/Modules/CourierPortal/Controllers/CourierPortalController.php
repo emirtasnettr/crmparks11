@@ -77,8 +77,21 @@ class CourierPortalController extends Controller
 
     public function endShift(Request $request, int $attendanceId): RedirectResponse
     {
+        $validated = $request->validate([
+            'latitude' => ['required', 'numeric', 'between:-90,90'],
+            'longitude' => ['required', 'numeric', 'between:-180,180'],
+            'accuracy' => ['nullable', 'numeric', 'min:0', 'max:5000'],
+        ], [
+            'latitude.required' => 'Vardiya sonlandırmak için konum izni gereklidir.',
+            'longitude.required' => 'Vardiya sonlandırmak için konum izni gereklidir.',
+        ]);
+
         $courier = $this->attendances->resolveCourierForUser($request->user());
-        $this->attendances->end($courier, $attendanceId);
+        $this->attendances->end($courier, $attendanceId, [
+            'latitude' => $validated['latitude'],
+            'longitude' => $validated['longitude'],
+            'accuracy' => $validated['accuracy'] ?? null,
+        ]);
 
         return redirect()
             ->route('courier-portal.dashboard')

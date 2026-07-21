@@ -111,7 +111,7 @@ class ShiftAttendanceBoardTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('super_admin');
         $business = $this->createBusiness($user);
-        $courier = $this->createCourier($user, ['full_name' => 'Yaklaşan Kurye']);
+        $courier = $this->createCourier($user, ['full_name' => 'Saati Yakın Kurye']);
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
@@ -130,13 +130,13 @@ class ShiftAttendanceBoardTest extends TestCase
         $this->actingAs($user)
             ->get(route('shift-planning.attendance'))
             ->assertOk()
-            ->assertSee('Yaklaşan Kurye')
-            ->assertSee('1 saat kaldı');
+            ->assertSee('Saati Yakın Kurye')
+            ->assertSee('Yaklaşan');
     }
 
     public function test_midday_unstarted_morning_shift_shows_not_started_not_starting_soon(): void
     {
-        // Türkiye saati öğleden sonra; UTC olsaydı sabah vardiyası yanlışlıkla "1 saat kaldı" görünürdü.
+        // Türkiye saati öğleden sonra; UTC olsaydı sabah vardiyası yanlışlıkla "Yaklaşan" görünürdü.
         Carbon::setTestNow(Carbon::parse('2026-07-17 11:40:00', 'Europe/Istanbul'));
 
         $user = User::factory()->create();
@@ -163,7 +163,7 @@ class ShiftAttendanceBoardTest extends TestCase
             ->assertOk()
             ->assertSee('Girmeyen Kurye')
             ->assertSee('Girmedi')
-            ->assertDontSee('1 saat kaldı');
+            ->assertDontSee('Yaklaşan');
     }
 
     public function test_staff_can_start_and_end_attendance_for_courier(): void

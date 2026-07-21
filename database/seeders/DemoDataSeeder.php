@@ -148,12 +148,27 @@ class DemoDataSeeder extends Seeder
         $earnings = EarningLine::query()->where('description', 'like', self::MARKER.'%')->count();
         $stock = StockProduct::query()->where('notes', self::MARKER)->count();
 
+        $liveInProgress = BusinessShiftAttendance::query()
+            ->where('notes', self::MARKER)
+            ->whereDate('work_date', now()->toDateString())
+            ->where('status', 'in_progress')
+            ->count();
+        $liveOpsShifts = BusinessShift::query()
+            ->where('notes', self::MARKER)
+            ->whereIn('name', ['Canlı Operasyon', 'Yaklaşan Operasyon', 'Eksik Kadro Operasyon'])
+            ->count();
+
         $this->command?->info(
             "Demo veri hazır: {$active} aktif / {$opening} açılış işletme, "
             ."{$courierCount} kurye, {$shifts} vardiya, {$attendances} katılım, "
-            ."{$earnings} hakediş, {$stock} stok ürünü + finans. "
-            .'Vardiyalar '.now()->format('Y-m').' ayı (1 → ay sonu); canlı pano: aktif / geç / girmedi.'
+            ."{$earnings} hakediş, {$stock} stok ürünü + finans."
         );
+        $this->command?->line(
+            'Canlı Operasyon: bugün '.now()->format('d.m.Y H:i')
+            ." · {$liveInProgress} devam eden katılım · {$liveOpsShifts} canlı/yaklaşan vardiya"
+            .' · senaryolar: aktif, geç, girmedi, yaklaşan (1 saat içinde), eksik kadro.'
+        );
+        $this->command?->comment('Kontrol: Canlı Operasyon menüsü + Vardiya Planlama.');
     }
 
     /**
@@ -621,7 +636,7 @@ class DemoDataSeeder extends Seeder
 
     /**
      * Canlı Operasyon panosu için bugüne sabit dağılım:
-     * 5 girmedi · 7 geç kaldı · 17 aktif · 7 yaklaşan
+     * girmedi · geç kaldı · aktif · yaklaşan · eksik kadro
      *
      * @param  list<Business>  $businesses
      * @param  list<array{business_id: int, courier_id: int}>  $roster
@@ -648,20 +663,52 @@ class DemoDataSeeder extends Seeder
             ->mapWithKeys(fn (array $row) => [(int) $row['courier_id'] => (int) $row['business_id']]);
 
         $courierIds = $courierBusiness->keys()->values()->all();
-        if (count($courierIds) < 36) {
+        if ($courierIds === []) {
             return;
+        }
+
+        // Hedef: 5 girmedi · 7 geç · 17 aktif · 7 yaklaşan (kurye azsa oranla küçült)
+        $targets = [
+            'not_started' => 5,
+            'late' => 7,
+            'active' => 17,
+            'soon' => 7,
+        ];
+        $needed = array_sum($targets);
+
+        if (count($courierIds) < $needed) {
+            $scale = count($courierIds) / $needed;
+            $targets = [
+                'not_started' => max(1, (int) floor($targets['not_started'] * $scale)),
+                'late' => max(1, (int) floor($targets['late'] * $scale)),
+                'active' => max(1, (int) floor($targets['active'] * $scale)),
+                'soon' => max(1, (int) floor($targets['soon'] * $scale)),
+            ];
+
+            while (array_sum($targets) > count($courierIds)) {
+                foreach (['active', 'soon', 'late', 'not_started'] as $key) {
+                    if ($targets[$key] > 1 && array_sum($targets) > count($courierIds)) {
+                        $targets[$key]--;
+                    }
+                }
+            }
         }
 
         $now = now()->seconds(0)->microseconds(0);
         $currentStart = $now->copy()->subHours(2);
         $currentEnd = $now->copy()->addHours(5);
-        $soonStart = $now->copy()->addMinutes(35);
+        // Yaklaşan = 1 saat içinde başlayacak (ReportService: shiftStart - 1h ≤ now < shiftStart)
+        $soonStart = $now->copy()->addMinutes(45);
         $soonEnd = $soonStart->copy()->addHours(6);
 
-        $notStartedIds = array_slice($courierIds, 0, 5);
-        $lateIds = array_slice($courierIds, 5, 7);
-        $activeIds = array_slice($courierIds, 12, 17);
-        $soonIds = array_slice($courierIds, 29, 7);
+        $offset = 0;
+        $notStartedIds = array_slice($courierIds, $offset, $targets['not_started']);
+        $offset += $targets['not_started'];
+        $lateIds = array_slice($courierIds, $offset, $targets['late']);
+        $offset += $targets['late'];
+        $activeIds = array_slice($courierIds, $offset, $targets['active']);
+        $offset += $targets['active'];
+        $soonIds = array_slice($courierIds, $offset, $targets['soon']);
 
         $currentRoster = [...$notStartedIds, ...$lateIds, ...$activeIds];
 
@@ -725,6 +772,7 @@ class DemoDataSeeder extends Seeder
                     BusinessShiftAttendance::query()->create([
                         'business_shift_id' => $shift->id,
                         'business_id' => $business->id,
+                        'commercial_contract_id' => $contract?->id,
                         'courier_id' => $courierId,
                         'work_date' => $today,
                         'started_at' => $currentStart->copy()->addMinutes(12 + ($index * 3)),
@@ -746,6 +794,7 @@ class DemoDataSeeder extends Seeder
                     BusinessShiftAttendance::query()->create([
                         'business_shift_id' => $shift->id,
                         'business_id' => $business->id,
+                        'commercial_contract_id' => $contract?->id,
                         'courier_id' => $courierId,
                         'work_date' => $today,
                         'started_at' => $currentStart->copy()->subMinutes(min(10, $index % 6)),
@@ -758,6 +807,8 @@ class DemoDataSeeder extends Seeder
                         'notes' => self::MARKER,
                     ]);
                 }
+
+                // notStartedIds: attendance yok → Canlı Operasyon'da "Girmedi"
             }
 
             if (! empty($rosters['soon'])) {
@@ -783,6 +834,28 @@ class DemoDataSeeder extends Seeder
                     ]);
                 }
             }
+        }
+
+        // Eksik kadro: required > assigned (boş slot, atama yok)
+        $activeBusiness = collect($businesses)->first(
+            fn (Business $business): bool => $business->status === 'active'
+        );
+
+        if ($activeBusiness !== null) {
+            BusinessShift::query()->create([
+                'business_id' => $activeBusiness->id,
+                'name' => 'Eksik Kadro Operasyon',
+                'start_time' => $currentStart->format('H:i'),
+                'end_time' => $currentEnd->format('H:i'),
+                'required_headcount' => 3,
+                'start_date' => $today,
+                'end_date' => $today,
+                'days_of_week' => [(int) now()->dayOfWeek],
+                'excluded_dates' => [],
+                'notes' => self::MARKER,
+                'is_active' => true,
+                'created_by' => $admin->id,
+            ]);
         }
     }
 

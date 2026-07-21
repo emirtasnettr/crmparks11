@@ -165,6 +165,9 @@ class ShiftAttendanceService
         $contract = $this->commercialContracts->forBusinessOnDate((int) $shift->business_id, $day);
         $pricingCode = $contract?->work_type;
         $withinStart = $actionable && ShiftAttendanceRules::isWithinCourierStartWindow($shift, $day);
+        $withinEnd = $actionable
+            && ($attendance?->isInProgress() ?? false)
+            && ShiftAttendanceRules::isCourierAllowedToEnd($shift, $day);
         $workTypes = \App\Modules\Business\Data\BusinessCommercialContractFormData::workTypes();
         $hasLocation = $shift->business?->latitude !== null && $shift->business?->longitude !== null;
 
@@ -183,8 +186,12 @@ class ShiftAttendanceService
             'attendance' => $attendance ? $this->presenter->row($attendance) : null,
             'has_location' => $hasLocation,
             'can_start' => $actionable && $attendance === null && $withinStart && $hasLocation,
-            'can_end' => $actionable && ($attendance?->isInProgress() ?? false),
+            'can_end' => $withinEnd,
+            'waiting_for_end' => $actionable
+                && ($attendance?->isInProgress() ?? false)
+                && ! ShiftAttendanceRules::isCourierAllowedToEnd($shift, $day),
             'start_window_opens_at' => ShiftAttendanceRules::earliestStartAt($shift, $day)->format('H:i'),
+            'end_available_at' => ShiftAttendanceRules::shiftEndAt($shift, $day)->format('H:i'),
             'location_blocked' => $actionable && $attendance === null && $withinStart && ! $hasLocation,
         ];
     }
@@ -354,26 +361,22 @@ class ShiftAttendanceService
         ]);
     }
 
-    public function end(Courier $courier, int $attendanceId): BusinessShiftAttendance
+    public function end(Courier $courier, int $attendanceId, array $options = []): BusinessShiftAttendance
     {
-        return $this->completeAttendance($attendanceId, $courier->id);
+        return $this->completeAttendance($attendanceId, $courier->id, $options);
     }
 
     public function endForCourier(int $attendanceId, User $staff, ?string $note = null): BusinessShiftAttendance
     {
-        $attendance = $this->completeAttendance($attendanceId, null);
-
         $staffNote = 'Personel müdahalesi: '.$staff->name.' sonlandırdı';
         if (filled($note)) {
             $staffNote .= ' — '.$note;
         }
 
-        $existingNotes = trim((string) $attendance->notes);
-        $attendance->update([
-            'notes' => $existingNotes !== '' ? $existingNotes."\n".$staffNote : $staffNote,
+        return $this->completeAttendance($attendanceId, null, [
+            'staff_assist' => true,
+            'notes_append' => $staffNote,
         ]);
-
-        return $attendance->fresh(['shift', 'business', 'courier']);
     }
 
     /**
@@ -563,7 +566,7 @@ class ShiftAttendanceService
                             ? 'Geç - '.$lateMinutes.' dk'
                             : 'Geç',
                         'active' => 'Aktif',
-                        'starting_soon' => '1 saat kaldı',
+                        'starting_soon' => 'Yaklaşan',
                         'upcoming' => 'Bekliyor',
                         'completed' => 'Geldi',
                         default => $bucket,
@@ -885,7 +888,7 @@ class ShiftAttendanceService
     }
 
     /**
-     * Vardiya bitiş + 30 dk geçmiş, hâlâ açık olanları otomatik sonlandır.
+     * Vardiya bitiş + 15 dk geçmiş, hâlâ açık olanları otomatik sonlandır.
      *
      * @return int Sonlandırılan kayıt sayısı
      */
@@ -944,7 +947,15 @@ class ShiftAttendanceService
     }
 
     /**
-     * @param  array{auto_end?: bool, ended_at?: Carbon|null, notes_append?: string|null}  $options
+     * @param  array{
+     *     auto_end?: bool,
+     *     staff_assist?: bool,
+     *     ended_at?: Carbon|null,
+     *     notes_append?: string|null,
+     *     latitude?: mixed,
+     *     longitude?: mixed,
+     *     accuracy?: mixed
+     * }  $options
      */
     private function completeAttendance(int $attendanceId, ?int $expectedCourierId, array $options = []): BusinessShiftAttendance
     {
@@ -969,13 +980,40 @@ class ShiftAttendanceService
 
             $shift = $attendance->shift;
             $workDate = $attendance->work_date ?? Carbon::today();
+            $staffAssist = (bool) ($options['staff_assist'] ?? false);
+            $autoEnd = (bool) ($options['auto_end'] ?? false);
+
+            if (! $staffAssist && ! $autoEnd) {
+                if ($shift === null) {
+                    throw ValidationException::withMessages([
+                        'attendance' => 'Bu vardiya kaydı sonlandırılamaz.',
+                    ]);
+                }
+
+                if (! ShiftAttendanceRules::isCourierAllowedToEnd($shift, $workDate)) {
+                    $endsAt = ShiftAttendanceRules::shiftEndAt($shift, $workDate)->format('d.m.Y H:i');
+
+                    throw ValidationException::withMessages([
+                        'attendance' => "Vardiya, bitiş saatinden önce sonlandırılamaz. Bitiş: {$endsAt}",
+                    ]);
+                }
+            }
+
+            $endGeo = (! $staffAssist && ! $autoEnd)
+                ? $this->captureEndLocation($options)
+                : [
+                    'latitude' => null,
+                    'longitude' => null,
+                    'accuracy_meters' => null,
+                ];
 
             $endedAt = $options['ended_at'] ?? now();
             if (! $endedAt instanceof Carbon) {
                 $endedAt = now();
             }
 
-            // Hakediş süresi: yalnızca planlanan vardiya saati (erken/geç buffer yok).
+            // Hakediş süresi: yalnızca planlanan vardiya aralığı.
+            // Erken başlama / geç bitiş (ör. 08:50–10:10) worked_minutes'a yansımaz.
             $minutes = $shift !== null
                 ? ShiftAttendanceRules::scheduledMinutes($shift, $workDate)
                 : max(1, (int) ($attendance->started_at ?? $endedAt)->diffInMinutes($endedAt, absolute: true));
@@ -1021,10 +1059,44 @@ class ShiftAttendanceService
                 'pricing_model' => $attendance->pricing_model,
                 'commercial_contract_id' => $attendance->commercial_contract_id,
                 'notes' => $notes !== '' ? $notes : null,
+                'end_latitude' => $endGeo['latitude'],
+                'end_longitude' => $endGeo['longitude'],
+                'end_accuracy_meters' => $endGeo['accuracy_meters'],
             ]);
 
             return $attendance->fresh(['shift', 'business', 'courier']);
         });
+    }
+
+    /**
+     * Sonlandırma konumu — yakınlık kuralı yok; istenen yerden sonlandırılabilir.
+     *
+     * @param  array{latitude?: mixed, longitude?: mixed, accuracy?: mixed}  $options
+     * @return array{latitude: float, longitude: float, accuracy_meters: int|null}
+     */
+    private function captureEndLocation(array $options): array
+    {
+        if (! isset($options['latitude'], $options['longitude'])) {
+            throw ValidationException::withMessages([
+                'location' => 'Vardiya sonlandırmak için konum izni gereklidir.',
+            ]);
+        }
+
+        $courierLat = (float) $options['latitude'];
+        $courierLng = (float) $options['longitude'];
+        $accuracy = isset($options['accuracy']) ? (int) round((float) $options['accuracy']) : null;
+
+        if ($courierLat < -90 || $courierLat > 90 || $courierLng < -180 || $courierLng > 180) {
+            throw ValidationException::withMessages([
+                'location' => 'Geçersiz konum bilgisi alındı. Tekrar deneyin.',
+            ]);
+        }
+
+        return [
+            'latitude' => $courierLat,
+            'longitude' => $courierLng,
+            'accuracy_meters' => $accuracy,
+        ];
     }
 
     private function assertCourierCanAttend(Courier $courier, int $shiftId, Carbon $day): BusinessShift

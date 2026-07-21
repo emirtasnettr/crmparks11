@@ -24,7 +24,8 @@ class SeedDemoDataCommand extends Command
         }
 
         $this->warn('Bu komut yalnızca geliştirme/test içindir. Canlıya asla uygulanmamalıdır.');
-        $this->line('Kapsam: işletme (aktif + açılış), kurye, acente, vardiya, stok, finans.');
+        $this->line('Kapsam: işletme, kurye, acente, vardiya, stok, finans.');
+        $this->line('Canlı senaryolar: aktif · geç · girmedi · yaklaşan (1 saat içinde) · eksik kadro.');
         $this->line('Temizlik: php artisan crmlog:clear-demo  (Süper Admin etkilenmez)');
 
         if (! $this->option('force') && ! $this->confirm('Örnek veriler yüklensin mi?', true)) {

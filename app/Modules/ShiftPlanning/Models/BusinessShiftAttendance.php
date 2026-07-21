@@ -31,6 +31,9 @@ class BusinessShiftAttendance extends Model
         'start_longitude',
         'start_accuracy_meters',
         'start_distance_meters',
+        'end_latitude',
+        'end_longitude',
+        'end_accuracy_meters',
     ];
 
     protected function casts(): array
@@ -46,6 +49,9 @@ class BusinessShiftAttendance extends Model
             'start_longitude' => 'float',
             'start_accuracy_meters' => 'integer',
             'start_distance_meters' => 'integer',
+            'end_latitude' => 'float',
+            'end_longitude' => 'float',
+            'end_accuracy_meters' => 'integer',
         ];
     }
 

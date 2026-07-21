@@ -139,15 +139,14 @@ Alpine.data('topNav', () => ({
     },
 }));
 
-Alpine.data('courierShiftStart', (actionUrl) => ({
+Alpine.data('courierShiftLocation', () => ({
     loading: false,
     error: '',
     latitude: '',
     longitude: '',
     accuracy: '',
-    actionUrl,
 
-    async start(form) {
+    async submit(form) {
         this.error = '';
         this.loading = true;
 
@@ -176,7 +175,7 @@ Alpine.data('courierShiftStart', (actionUrl) => ({
         } catch (err) {
             this.loading = false;
             if (err?.code === 1) {
-                this.error = 'Konum izni reddedildi. Vardiya başlatmak için konum izni verin.';
+                this.error = 'Konum izni reddedildi. İşlem için konum izni verin.';
             } else if (err?.code === 3) {
                 this.error = 'Konum alınamadı (zaman aşımı). Açık alanda tekrar deneyin.';
             } else {

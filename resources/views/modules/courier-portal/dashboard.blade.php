@@ -14,7 +14,7 @@
         @forelse ($today as $item)
             <div
                 class="flex flex-col gap-3 border-b border-gray-100 py-4 last:border-0 last:pb-0 first:pt-0 sm:flex-row sm:items-center sm:justify-between"
-                x-data="courierShiftStart(@js(route('courier-portal.shifts.start', $item['shift_id'])))"
+                x-data="courierShiftLocation()"
             >
                 <div class="min-w-0">
                     <p class="font-semibold text-gray-900">
@@ -43,7 +43,7 @@
 
                 <div class="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row">
                     @if ($item['can_start'])
-                        <form method="POST" action="{{ route('courier-portal.shifts.start', $item['shift_id']) }}" class="w-full sm:w-auto" @submit.prevent="start($event.target)">
+                        <form method="POST" action="{{ route('courier-portal.shifts.start', $item['shift_id']) }}" class="w-full sm:w-auto" @submit.prevent="submit($event.target)">
                             @csrf
                             <input type="hidden" name="latitude" x-model="latitude">
                             <input type="hidden" name="longitude" x-model="longitude">
@@ -58,10 +58,20 @@
                             İşletme konumu tanımlı değil
                         </span>
                     @elseif ($item['can_end'])
-                        <form method="POST" action="{{ route('courier-portal.shifts.end', $item['attendance']['id']) }}" class="w-full sm:w-auto">
+                        <form method="POST" action="{{ route('courier-portal.shifts.end', $item['attendance']['id']) }}" class="w-full sm:w-auto" @submit.prevent="submit($event.target)">
                             @csrf
-                            <x-ui.button type="submit" variant="danger" class="w-full sm:w-auto">Vardiyayı Sonlandır</x-ui.button>
+                            <input type="hidden" name="latitude" x-model="latitude">
+                            <input type="hidden" name="longitude" x-model="longitude">
+                            <input type="hidden" name="accuracy" x-model="accuracy">
+                            <x-ui.button type="submit" variant="danger" class="w-full sm:w-auto" ::disabled="loading">
+                                <span x-show="!loading">Vardiyayı Sonlandır</span>
+                                <span x-show="loading" x-cloak>Konum alınıyor...</span>
+                            </x-ui.button>
                         </form>
+                    @elseif ($item['waiting_for_end'] ?? false)
+                        <span class="inline-flex w-full items-center justify-center rounded-lg bg-amber-50 px-3 py-2.5 text-center text-sm font-medium text-amber-700 sm:w-auto">
+                            {{ $item['end_available_at'] ?? $item['end_time'] }} itibarıyla sonlandırılabilir
+                        </span>
                     @elseif ($item['attendance'] === null)
                         <span class="inline-flex w-full items-center justify-center rounded-lg bg-sky-50 px-3 py-2.5 text-center text-sm font-medium text-sky-700 sm:w-auto">
                             {{ $item['start_window_opens_at'] ?? $item['start_time'] }} itibarıyla başlatılabilir

@@ -10,14 +10,18 @@ use Carbon\CarbonInterface;
  * Vardiya katılım zaman pencereleri ve hakediş süresi kuralları.
  *
  * - Başlatma: vardiya başlangıcından en erken 15 dk önce
- * - Otomatik bitiş: vardiya bitişinden 30 dk sonra
- * - Hakediş: yalnızca planlanan vardiya süresi (erken/geç buffer dahil değil)
+ * - Sonlandırma: vardiya bitiş saatinden önce yapılamaz
+ * - Otomatik bitiş: vardiya bitişinden 15 dk sonra
+ * - Hakediş: yalnızca planlanan vardiya süresi
+ *   (erken başlama / geç bitiş buffer'ı süreye ve ücrete yansımaz)
+ *
+ * Örnek: 09:00–10:00 vardiyası → 08:50'de başlayıp 10:10'da bitsa bile 60 dk sayılır.
  */
 final class ShiftAttendanceRules
 {
     public const EARLY_START_MINUTES = 15;
 
-    public const AUTO_END_GRACE_MINUTES = 30;
+    public const AUTO_END_GRACE_MINUTES = 15;
 
     /** Kurye vardiya başlatma için işletmeye maksimum uzaklık. */
     public const START_PROXIMITY_METERS = 300;
@@ -78,6 +82,14 @@ final class ShiftAttendanceRules
 
         return $now->gte(self::earliestStartAt($shift, $workDate))
             && $now->lte(self::shiftEndAt($shift, $workDate));
+    }
+
+    /** Kurye, vardiya bitiş saatinden itibaren (dahil) sonlandırabilir. */
+    public static function isCourierAllowedToEnd(BusinessShift $shift, CarbonInterface $workDate, ?CarbonInterface $now = null): bool
+    {
+        $now ??= now();
+
+        return $now->gte(self::shiftEndAt($shift, $workDate));
     }
 
     public static function shouldAutoEnd(BusinessShift $shift, CarbonInterface $workDate, ?CarbonInterface $now = null): bool

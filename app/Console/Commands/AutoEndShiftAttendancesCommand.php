@@ -9,7 +9,7 @@ class AutoEndShiftAttendancesCommand extends Command
 {
     protected $signature = 'crmlog:shifts:auto-end';
 
-    protected $description = 'Vardiya bitişinden 30 dk sonra hâlâ açık olan katılımları otomatik sonlandırır. Hakediş yalnızca planlanan vardiya süresidir.';
+    protected $description = 'Vardiya bitişinden 15 dk sonra hâlâ açık olan katılımları otomatik sonlandırır. Hakediş yalnızca planlanan vardiya süresidir.';
 
     public function handle(ShiftAttendanceService $attendances): int
     {
