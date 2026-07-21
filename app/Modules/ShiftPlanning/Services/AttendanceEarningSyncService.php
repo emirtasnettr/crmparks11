@@ -7,6 +7,7 @@ use App\Models\EarningStatus;
 use App\Models\User;
 use App\Modules\Business\Models\Business;
 use App\Modules\Business\Models\BusinessCommercialContract;
+use App\Modules\Business\Services\BusinessCommercialContractService;
 use App\Modules\ShiftPlanning\Models\BusinessShiftAttendance;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,10 @@ use Illuminate\Support\Facades\DB;
 class AttendanceEarningSyncService
 {
     public const DESCRIPTION_PREFIX = '[vardiya-sync]';
+
+    public function __construct(
+        private readonly BusinessCommercialContractService $commercialContracts,
+    ) {}
 
     /**
      * Completed attendances with earnings → one draft/pending EarningLine per
@@ -30,6 +35,8 @@ class AttendanceEarningSyncService
         if ($statusId === null) {
             return ['created' => 0, 'updated' => 0, 'skipped' => 0];
         }
+
+        $this->backfillMissingEarningsFromContract($filters);
 
         $groups = $this->groupedAttendances($filters);
         $created = 0;
@@ -51,6 +58,55 @@ class AttendanceEarningSyncService
     }
 
     /**
+     * Kontratta saatlik / garanti ücret varsa, tutarı boş kalan tamamlanmış
+     * katılımları senkron öncesi doldurur.
+     *
+     * @param  array{courier_id?: int, business_id?: int, period_year?: int, period_month?: int}  $filters
+     */
+    private function backfillMissingEarningsFromContract(array $filters): void
+    {
+        $query = BusinessShiftAttendance::query()
+            ->where('status', 'completed')
+            ->where('worked_minutes', '>', 0)
+            ->where(function ($q): void {
+                $q->whereNull('earnings_amount')
+                    ->orWhere('earnings_amount', '<=', 0)
+                    ->orWhereNull('hourly_rate')
+                    ->orWhereNull('pricing_model');
+            });
+
+        $this->applyAttendanceFilters($query, $filters);
+
+        foreach ($query->get() as $attendance) {
+            $day = $attendance->work_date;
+            if ($day === null) {
+                continue;
+            }
+
+            $contract = $attendance->commercial_contract_id
+                ? BusinessCommercialContract::query()->find((int) $attendance->commercial_contract_id)
+                : $this->commercialContracts->forBusinessOnDate((int) $attendance->business_id, $day);
+
+            if ($contract === null) {
+                continue;
+            }
+
+            $hourlyRate = $contract->courierHourlyRateForAttendance();
+            if ($hourlyRate === null || $hourlyRate <= 0) {
+                continue;
+            }
+
+            $minutes = (int) $attendance->worked_minutes;
+            $attendance->update([
+                'commercial_contract_id' => $attendance->commercial_contract_id ?: $contract->id,
+                'pricing_model' => $attendance->pricing_model ?: $contract->work_type,
+                'hourly_rate' => $hourlyRate,
+                'earnings_amount' => round(($minutes / 60) * $hourlyRate, 2),
+            ]);
+        }
+    }
+
+    /**
      * @param  array{courier_id?: int, business_id?: int, period_year?: int, period_month?: int}  $filters
      * @return Collection<string, Collection<int, BusinessShiftAttendance>>
      */
@@ -62,18 +118,7 @@ class AttendanceEarningSyncService
             ->where('earnings_amount', '>', 0)
             ->whereNotNull('pricing_model');
 
-        if (! empty($filters['courier_id'])) {
-            $query->where('courier_id', (int) $filters['courier_id']);
-        }
-        if (! empty($filters['business_id'])) {
-            $query->where('business_id', (int) $filters['business_id']);
-        }
-        if (! empty($filters['period_year'])) {
-            $query->whereYear('work_date', (int) $filters['period_year']);
-        }
-        if (! empty($filters['period_month'])) {
-            $query->whereMonth('work_date', (int) $filters['period_month']);
-        }
+        $this->applyAttendanceFilters($query, $filters);
 
         return $query->get()->groupBy(function (BusinessShiftAttendance $attendance): string {
             $year = $attendance->work_date?->format('Y') ?? '0';
@@ -87,6 +132,26 @@ class AttendanceEarningSyncService
                 (string) $attendance->pricing_model,
             ]);
         });
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<\App\Modules\ShiftPlanning\Models\BusinessShiftAttendance>  $query
+     * @param  array{courier_id?: int, business_id?: int, period_year?: int, period_month?: int}  $filters
+     */
+    private function applyAttendanceFilters($query, array $filters): void
+    {
+        if (! empty($filters['courier_id'])) {
+            $query->where('courier_id', (int) $filters['courier_id']);
+        }
+        if (! empty($filters['business_id'])) {
+            $query->where('business_id', (int) $filters['business_id']);
+        }
+        if (! empty($filters['period_year'])) {
+            $query->whereYear('work_date', (int) $filters['period_year']);
+        }
+        if (! empty($filters['period_month'])) {
+            $query->whereMonth('work_date', (int) $filters['period_month']);
+        }
     }
 
     /**

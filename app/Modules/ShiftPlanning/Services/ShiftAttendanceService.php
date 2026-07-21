@@ -13,14 +13,17 @@ use App\Support\GeoDistance;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class ShiftAttendanceService
 {
     public function __construct(
         private readonly ShiftAttendancePresenter $presenter,
         private readonly BusinessCommercialContractService $commercialContracts,
+        private readonly AttendanceEarningSyncService $earningSync,
     ) {}
 
     public function resolveCourierForUser(User $user): Courier
@@ -523,6 +526,20 @@ class ShiftAttendanceService
                 if ($this->createRetrospectiveCompletedAttendance($shift, $courierId, $cursor->copy())) {
                     $created++;
                 }
+            }
+        }
+
+        if ($created > 0) {
+            try {
+                $this->earningSync->sync(
+                    auth()->user(),
+                    ['business_id' => (int) $shift->business_id],
+                );
+            } catch (Throwable $e) {
+                Log::warning('Retrospective attendance earning sync failed', [
+                    'business_shift_id' => $shift->id,
+                    'message' => $e->getMessage(),
+                ]);
             }
         }
 
@@ -1057,7 +1074,7 @@ class ShiftAttendanceService
      */
     private function completeAttendance(int $attendanceId, ?int $expectedCourierId, array $options = []): BusinessShiftAttendance
     {
-        return DB::transaction(function () use ($attendanceId, $expectedCourierId, $options): BusinessShiftAttendance {
+        $fresh = DB::transaction(function () use ($attendanceId, $expectedCourierId, $options): BusinessShiftAttendance {
             $attendance = BusinessShiftAttendance::query()
                 ->with(['business.activePricing.pricingModelType', 'shift'])
                 ->find($attendanceId);
@@ -1164,6 +1181,32 @@ class ShiftAttendanceService
 
             return $attendance->fresh(['shift', 'business', 'courier']);
         });
+
+        $this->syncEarningsForCompletedAttendance($fresh);
+
+        return $fresh;
+    }
+
+    private function syncEarningsForCompletedAttendance(BusinessShiftAttendance $attendance): void
+    {
+        try {
+            $workDate = $attendance->work_date ?? $attendance->ended_at ?? now();
+
+            $this->earningSync->sync(
+                auth()->user(),
+                [
+                    'business_id' => (int) $attendance->business_id,
+                    'courier_id' => (int) $attendance->courier_id,
+                    'period_year' => (int) $workDate->format('Y'),
+                    'period_month' => (int) $workDate->format('n'),
+                ],
+            );
+        } catch (Throwable $e) {
+            Log::warning('Attendance earning sync failed after completion', [
+                'attendance_id' => $attendance->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

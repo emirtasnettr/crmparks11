@@ -13,6 +13,7 @@ use App\Modules\ShiftPlanning\Models\BusinessShift;
 use App\Modules\ShiftPlanning\Models\BusinessShiftAttendance;
 use App\Modules\ShiftPlanning\Models\BusinessShiftCourier;
 use App\Modules\ShiftPlanning\Services\AttendanceEarningSyncService;
+use App\Modules\ShiftPlanning\Services\ShiftAttendanceService;
 use Carbon\Carbon;
 use Database\Seeders\CitySeeder;
 use Database\Seeders\LookupTableSeeder;
@@ -118,6 +119,158 @@ class AttendanceEarningSyncTest extends TestCase
     {
         $this->artisan('crmlog:earnings:sync-from-attendance')
             ->assertSuccessful();
+    }
+
+    public function test_completing_attendance_auto_creates_earning_line_from_contract(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('super_admin');
+        $courier = $this->createCourier($admin);
+        $business = $this->createBusiness($admin, 'Otomatik Hakediş');
+
+        BusinessCommercialContract::factory()->hourly()->create([
+            'business_id' => $business->id,
+            'start_date' => '2026-07-01',
+            'business_amount' => 150,
+            'courier_amount' => 100,
+            'net_profit' => 50,
+            'status' => 'active',
+            'created_by' => $admin->id,
+        ]);
+
+        $shift = $this->createShift($business, $courier, $admin);
+
+        BusinessShiftAttendance::query()->create([
+            'business_shift_id' => $shift->id,
+            'business_id' => $business->id,
+            'courier_id' => $courier->id,
+            'work_date' => '2026-07-17',
+            'started_at' => '2026-07-17 09:50:00',
+            'status' => 'in_progress',
+            'worked_minutes' => 0,
+            'hourly_rate' => 100,
+            'pricing_model' => 'hourly',
+        ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-07-17 16:16:00'));
+
+        $ended = app(ShiftAttendanceService::class)
+            ->autoEndOverdueAttendances();
+
+        $this->assertSame(1, $ended);
+
+        $line = EarningLine::query()
+            ->where('courier_id', $courier->id)
+            ->where('business_id', $business->id)
+            ->first();
+
+        $this->assertNotNull($line);
+        $this->assertStringStartsWith(AttendanceEarningSyncService::DESCRIPTION_PREFIX, (string) $line->description);
+        // 6h × 100 = 600
+        $this->assertEquals(600.0, (float) $line->net_courier_payment);
+        $this->assertEquals(6.0, (float) $line->worked_hours);
+    }
+
+    public function test_retrospective_materialize_auto_creates_earning_line(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-20 12:00:00'));
+
+        $admin = User::factory()->create();
+        $admin->assignRole('super_admin');
+        $this->actingAs($admin);
+
+        $courier = $this->createCourier($admin);
+        $business = $this->createBusiness($admin, 'Retrospektif Hakediş');
+
+        BusinessCommercialContract::factory()->hourly()->create([
+            'business_id' => $business->id,
+            'start_date' => '2026-07-01',
+            'business_amount' => 150,
+            'courier_amount' => 110,
+            'net_profit' => 40,
+            'status' => 'active',
+            'created_by' => $admin->id,
+        ]);
+
+        $shift = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'name' => 'Geçmiş',
+            'start_time' => '10:00',
+            'end_time' => '16:00',
+            'start_date' => '2026-07-15',
+            'end_date' => '2026-07-15',
+            'required_headcount' => 1,
+            'days_of_week' => [0, 1, 2, 3, 4, 5, 6],
+            'is_active' => true,
+            'created_by' => $admin->id,
+        ]);
+
+        BusinessShiftCourier::query()->create([
+            'business_shift_id' => $shift->id,
+            'courier_id' => $courier->id,
+        ]);
+
+        $created = app(ShiftAttendanceService::class)
+            ->materializeRetrospectiveCompletions($shift);
+
+        $this->assertSame(1, $created);
+
+        $line = EarningLine::query()
+            ->where('courier_id', $courier->id)
+            ->where('business_id', $business->id)
+            ->first();
+
+        $this->assertNotNull($line);
+        $this->assertEquals(660.0, (float) $line->net_courier_payment);
+        $this->assertEquals(6.0, (float) $line->worked_hours);
+    }
+
+    public function test_sync_backfills_earnings_from_contract_when_missing(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('super_admin');
+        $courier = $this->createCourier($admin);
+        $business = $this->createBusiness($admin, 'Backfill Marka');
+
+        $contract = BusinessCommercialContract::factory()->hourly()->create([
+            'business_id' => $business->id,
+            'start_date' => '2026-07-01',
+            'business_amount' => 250,
+            'courier_amount' => 200,
+            'net_profit' => 50,
+            'status' => 'active',
+            'created_by' => $admin->id,
+        ]);
+
+        $shift = $this->createShift($business, $courier, $admin);
+
+        BusinessShiftAttendance::query()->create([
+            'business_shift_id' => $shift->id,
+            'business_id' => $business->id,
+            'commercial_contract_id' => $contract->id,
+            'courier_id' => $courier->id,
+            'work_date' => '2026-07-10',
+            'started_at' => '2026-07-10 10:00:00',
+            'ended_at' => '2026-07-10 16:00:00',
+            'status' => 'completed',
+            'worked_minutes' => 360,
+            'hourly_rate' => null,
+            'earnings_amount' => null,
+            'pricing_model' => null,
+        ]);
+
+        $result = app(AttendanceEarningSyncService::class)->sync($admin);
+
+        $this->assertSame(1, $result['created']);
+
+        $attendance = BusinessShiftAttendance::query()->first();
+        $this->assertEquals(200.0, (float) $attendance->hourly_rate);
+        $this->assertEquals(1200.0, (float) $attendance->earnings_amount);
+        $this->assertSame('hourly', $attendance->pricing_model);
+
+        $line = EarningLine::query()->where('courier_id', $courier->id)->first();
+        $this->assertNotNull($line);
+        $this->assertEquals(1200.0, (float) $line->net_courier_payment);
     }
 
     private function createBusiness(User $user, string $brand): Business

@@ -13,3 +13,4 @@ Schedule::command('crmlog:reminders:documents')->dailyAt('08:15');
 Schedule::command('crmlog:reminders:collections')->dailyAt('09:00');
 Schedule::command('crmlog:reminders:payments')->dailyAt('09:15');
 Schedule::command('crmlog:shifts:auto-end')->everyFiveMinutes();
+Schedule::command('crmlog:earnings:sync-from-attendance')->hourly();
