@@ -62,12 +62,19 @@
                 x-model="form.phone"
                 ::class="errors.phone ? 'border-red-300 dark:border-red-500' : ''"
             />
-            <x-ui.input name="email" type="email" label="E-Posta" x-model="form.email" />
+            <x-ui.input
+                name="email"
+                type="email"
+                label="E-Posta *"
+                x-model="form.email"
+                ::class="errors.email ? 'border-red-300 dark:border-red-500' : ''"
+            />
         </div>
 
         <p x-show="errors.first_name" x-cloak class="mt-2 text-sm text-red-600 dark:text-red-400" x-text="errors.first_name"></p>
         <p x-show="errors.last_name" x-cloak class="mt-1 text-sm text-red-600 dark:text-red-400" x-text="errors.last_name"></p>
         <p x-show="errors.phone" x-cloak class="mt-1 text-sm text-red-600 dark:text-red-400" x-text="errors.phone"></p>
+        <p x-show="errors.email" x-cloak class="mt-1 text-sm text-red-600 dark:text-red-400" x-text="errors.email"></p>
     </x-ui.card>
 
     {{-- Kart 2: Kurye Bilgileri --}}

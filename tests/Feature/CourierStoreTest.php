@@ -11,6 +11,7 @@ use Database\Seeders\CitySeeder;
 use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class CourierStoreTest extends TestCase
@@ -92,8 +93,29 @@ class CourierStoreTest extends TestCase
         $this->assertSame($courier->id, $courierUser->profileable_id);
     }
 
-    public function test_courier_user_is_created_with_generated_email_when_missing(): void
+    public function test_courier_store_requires_email(): void
     {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $response = $this->actingAs($user)->post(route('couriers.store'), [
+            'first_name' => 'E-postasız',
+            'last_name' => 'Kurye',
+            'phone' => '0532 777 88 99',
+            'courier_type' => 'independent',
+            'vehicle_type' => 'motorcycle',
+            'start_date' => '2024-06-01',
+            'status' => 'active',
+        ]);
+
+        $response->assertSessionHasErrors('email');
+        $this->assertDatabaseCount('couriers', 0);
+    }
+
+    public function test_courier_user_is_created_even_when_courier_role_is_missing(): void
+    {
+        Role::query()->where('name', 'courier')->delete();
+
         $user = User::factory()->create();
         $user->assignRole('super_admin');
 
@@ -101,6 +123,7 @@ class CourierStoreTest extends TestCase
             'first_name' => 'Otomatik',
             'last_name' => 'Kurye',
             'phone' => '0532 777 88 99',
+            'email' => 'otomatik@kurye.test',
             'courier_type' => 'independent',
             'vehicle_type' => 'motorcycle',
             'start_date' => '2024-06-01',
@@ -110,7 +133,7 @@ class CourierStoreTest extends TestCase
         $courier = Courier::query()->where('full_name', 'Otomatik Kurye')->firstOrFail();
         $courierUser = User::query()->findOrFail($courier->user_id);
 
-        $this->assertStringEndsWith('@crmlog.com', $courierUser->email);
+        $this->assertSame('otomatik@kurye.test', $courierUser->email);
         $this->assertTrue($courierUser->hasRole('courier'));
     }
 
@@ -151,6 +174,7 @@ class CourierStoreTest extends TestCase
             'first_name' => 'Korunan',
             'last_name' => 'Kurye',
             'phone' => '0532 333 44 55',
+            'email' => 'korunan@kurye.test',
             'courier_type' => 'independent',
             'vehicle_type' => 'motorcycle',
             'start_date' => '2024-06-01',
@@ -209,6 +233,7 @@ class CourierStoreTest extends TestCase
             'first_name' => 'Yetkisiz',
             'last_name' => 'Sifre',
             'phone' => '0532 888 99 00',
+            'email' => 'yetkisiz@kurye.test',
             'courier_type' => 'independent',
             'vehicle_type' => 'motorcycle',
             'start_date' => '2024-06-01',

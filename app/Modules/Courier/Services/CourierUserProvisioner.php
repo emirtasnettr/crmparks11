@@ -6,6 +6,8 @@ use App\Core\Enums\Status;
 use App\Core\Enums\UserType;
 use App\Models\User;
 use App\Modules\Courier\Models\Courier;
+use InvalidArgumentException;
+use Spatie\Permission\Models\Role;
 
 class CourierUserProvisioner
 {
@@ -17,7 +19,7 @@ class CourierUserProvisioner
             $existing = User::query()->find($courier->user_id);
 
             if ($existing !== null) {
-                return $existing;
+                return $this->syncProfile($existing, $courier);
             }
         }
 
@@ -29,7 +31,7 @@ class CourierUserProvisioner
         if ($linked !== null) {
             $courier->update(['user_id' => $linked->id]);
 
-            return $linked;
+            return $this->syncProfile($linked, $courier);
         }
 
         $user = User::query()->create([
@@ -43,11 +45,16 @@ class CourierUserProvisioner
             'status' => $this->mapStatus($courier),
         ]);
 
-        $user->assignRole('courier');
+        $this->assignCourierRole($user);
 
         $courier->update(['user_id' => $user->id]);
 
         return $user;
+    }
+
+    public function syncFromCourier(Courier $courier): User
+    {
+        return $this->ensureForCourier($courier);
     }
 
     public function updatePassword(Courier $courier, string $password): User
@@ -62,20 +69,34 @@ class CourierUserProvisioner
     {
         $email = trim((string) $courier->email);
 
-        if ($email !== '' && ! User::query()->where('email', $email)->exists()) {
-            return $email;
+        if ($email === '') {
+            throw new InvalidArgumentException('Kurye e-posta adresi zorunludur.');
         }
 
-        $domain = $this->emailDomain();
-        $candidate = sprintf('kurye.%d@%s', $courier->id, $domain);
-        $suffix = 1;
+        return $email;
+    }
 
-        while (User::query()->where('email', $candidate)->exists()) {
-            $candidate = sprintf('kurye.%d.%d@%s', $courier->id, $suffix, $domain);
-            $suffix++;
+    private function syncProfile(User $user, Courier $courier): User
+    {
+        $user->update([
+            'name' => $courier->full_name,
+            'email' => $this->resolveEmail($courier),
+            'phone' => $this->resolvePhone($courier),
+            'status' => $this->mapStatus($courier),
+        ]);
+
+        $this->assignCourierRole($user);
+
+        return $user->fresh();
+    }
+
+    private function assignCourierRole(User $user): void
+    {
+        Role::findOrCreate('courier', 'web');
+
+        if (! $user->hasRole('courier')) {
+            $user->assignRole('courier');
         }
-
-        return $candidate;
     }
 
     private function resolvePhone(Courier $courier): ?string
@@ -98,11 +119,4 @@ class CourierUserProvisioner
         return $courier->status === 'active' ? Status::Active : Status::Inactive;
     }
 
-    private function emailDomain(): string
-    {
-        $companyEmail = (string) config('crmlog.company.email', 'crmlog.com');
-        $parts = explode('@', $companyEmail);
-
-        return $parts[1] ?? 'crmlog.com';
-    }
 }

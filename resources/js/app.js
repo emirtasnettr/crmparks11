@@ -1823,6 +1823,14 @@ Alpine.data('courierForm', (districtsByCity = {}, initial = {}, isEdit = false) 
             this.errors.phone = 'Telefon zorunludur.';
         }
 
+        const email = this.form.email.trim();
+
+        if (!email) {
+            this.errors.email = 'E-posta zorunludur.';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            this.errors.email = 'Geçerli bir e-posta adresi girin.';
+        }
+
         if (!this.form.courier_type) {
             this.errors.courier_type = 'Kurye tipi seçilmelidir.';
         }

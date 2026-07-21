@@ -2,6 +2,7 @@
 
 namespace App\Modules\Courier\Requests;
 
+use App\Models\User;
 use App\Modules\Courier\Data\CourierFormData;
 use App\Modules\Courier\Models\Courier;
 use Illuminate\Foundation\Http\FormRequest;
@@ -20,6 +21,7 @@ class UpdateCourierRequest extends FormRequest
     public function rules(): array
     {
         $courierId = (int) $this->route('id');
+        $courier = $courierId > 0 ? Courier::query()->find($courierId) : null;
 
         return [
             'first_name' => ['required', 'string', 'max:100'],
@@ -32,7 +34,13 @@ class UpdateCourierRequest extends FormRequest
             ],
             'birth_date' => ['nullable', 'date'],
             'phone' => ['required', 'string', 'max:50'],
-            'email' => ['nullable', 'email', 'max:255'],
+            'email' => [
+                'required',
+                'email',
+                'max:255',
+                Rule::unique(User::class, 'email')->ignore($courier?->user_id),
+                Rule::unique(Courier::class, 'email')->ignore($courierId),
+            ],
             'courier_type' => ['required', Rule::in(array_keys(CourierFormData::courierTypes()))],
             'agency_id' => ['nullable', 'string'],
             'tax_office' => ['nullable', 'string', 'max:255'],
@@ -64,6 +72,9 @@ class UpdateCourierRequest extends FormRequest
             'first_name.required' => 'Ad zorunludur.',
             'last_name.required' => 'Soyad zorunludur.',
             'phone.required' => 'Telefon zorunludur.',
+            'email.required' => 'E-posta zorunludur.',
+            'email.email' => 'Geçerli bir e-posta adresi girin.',
+            'email.unique' => 'Bu e-posta adresi zaten kullanılıyor.',
             'courier_type.required' => 'Kurye tipi seçilmelidir.',
             'vehicle_type.required' => 'Araç tipi seçilmelidir.',
             'start_date.required' => 'Başlangıç tarihi zorunludur.',

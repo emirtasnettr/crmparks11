@@ -145,7 +145,9 @@ class CourierService
                 );
             }
 
-            return $courier;
+            $this->userProvisioner->syncFromCourier($courier);
+
+            return $courier->fresh(['city', 'district', 'agency', 'vehicleType', 'user']);
         });
     }
 
