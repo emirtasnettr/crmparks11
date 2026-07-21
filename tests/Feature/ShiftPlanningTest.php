@@ -8,7 +8,9 @@ use App\Models\User;
 use App\Modules\Business\Models\Business;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\ShiftPlanning\Models\BusinessShift;
+use App\Modules\ShiftPlanning\Models\BusinessShiftAttendance;
 use App\Modules\ShiftPlanning\Models\BusinessShiftCourier;
+use Carbon\Carbon;
 use Database\Seeders\CitySeeder;
 use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
@@ -297,6 +299,116 @@ class ShiftPlanningTest extends TestCase
         $this->assertNotNull($shift);
         $this->assertSame('2026-08-01', $shift->start_date?->toDateString());
         $this->assertSame('2026-08-15', $shift->end_date?->toDateString());
+    }
+
+    public function test_week_calendar_only_lists_occurrences_inside_shift_date_range(): void
+    {
+        Carbon::setTestNow('2026-07-29 12:00:00');
+
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+
+        $this->actingAs($user)->post(route('shift-planning.store'), [
+            'business_id' => $business->id,
+            'name' => 'UniqueRangeShiftXYZ',
+            'start_time' => '09:00',
+            'end_time' => '12:00',
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-08-01',
+            'required_headcount' => 1,
+            'is_active' => '1',
+        ])->assertRedirect();
+
+        // Hafta: 27 Tem–2 Ağu. Vardiya yalnız 1 Ağu'da; sidebar + 1 gün = 2.
+        $response = $this->actingAs($user)->get(route('shift-planning.index', [
+            'business_id' => $business->id,
+            'week' => '2026-07-27',
+        ]));
+
+        $response->assertOk();
+        // Sidebar list + Alpine config + tek takvim günü (bug olsaydı 7 gün × = çok daha fazla).
+        $this->assertSame(3, substr_count($response->getContent(), 'UniqueRangeShiftXYZ'));
+
+        Carbon::setTestNow();
+    }
+
+    public function test_retrospective_shift_auto_completes_past_roster_days(): void
+    {
+        Carbon::setTestNow('2026-07-21 15:00:00');
+
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $courier = $this->createCourier($user, ['full_name' => 'Geçmiş Kurye']);
+
+        $this->actingAs($user)->post(route('shift-planning.store'), [
+            'business_id' => $business->id,
+            'name' => 'Geçmiş Sabah',
+            'start_time' => '09:00',
+            'end_time' => '17:00',
+            'start_date' => '2026-07-18',
+            'end_date' => '2026-07-20',
+            'required_headcount' => 1,
+            'courier_ids' => [$courier->id],
+            'is_active' => '1',
+        ])->assertRedirect();
+
+        $shift = BusinessShift::query()->first();
+        $this->assertNotNull($shift);
+
+        foreach (['2026-07-18', '2026-07-19', '2026-07-20'] as $date) {
+            $this->assertTrue(
+                BusinessShiftAttendance::query()
+                    ->where('business_shift_id', $shift->id)
+                    ->where('courier_id', $courier->id)
+                    ->whereDate('work_date', $date)
+                    ->where('status', 'completed')
+                    ->exists(),
+                "Expected completed attendance on {$date}",
+            );
+        }
+
+        $this->assertFalse(
+            BusinessShiftAttendance::query()
+                ->where('business_shift_id', $shift->id)
+                ->whereDate('work_date', '2026-07-21')
+                ->exists()
+        );
+
+        Carbon::setTestNow();
+    }
+
+    public function test_retrospective_shift_completes_today_only_after_shift_end(): void
+    {
+        Carbon::setTestNow('2026-07-21 18:30:00');
+
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $courier = $this->createCourier($user, ['full_name' => 'Bugün Kurye']);
+
+        $this->actingAs($user)->post(route('shift-planning.store'), [
+            'business_id' => $business->id,
+            'name' => 'Bugün Biten',
+            'start_time' => '09:00',
+            'end_time' => '17:00',
+            'start_date' => '2026-07-21',
+            'end_date' => '2026-07-21',
+            'required_headcount' => 1,
+            'courier_ids' => [$courier->id],
+            'is_active' => '1',
+        ])->assertRedirect();
+
+        $this->assertTrue(
+            BusinessShiftAttendance::query()
+                ->where('courier_id', $courier->id)
+                ->whereDate('work_date', '2026-07-21')
+                ->where('status', 'completed')
+                ->exists()
+        );
+
+        Carbon::setTestNow();
     }
 
     public function test_roster_cannot_exceed_headcount(): void

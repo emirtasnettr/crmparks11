@@ -19,6 +19,7 @@ class ShiftPlanningService
     public function __construct(
         private readonly ShiftPlanningPresenter $presenter,
         private readonly ShiftCourierConflictChecker $conflicts,
+        private readonly ShiftAttendanceService $attendances,
     ) {}
 
     /**
@@ -156,7 +157,10 @@ class ShiftPlanningService
                 $shift->rosterCouriers()->sync($courierIds);
             }
 
-            return $shift->fresh(['rosterCouriers']);
+            $shift = $shift->fresh(['rosterCouriers']);
+            $this->attendances->materializeRetrospectiveCompletions($shift);
+
+            return $shift;
         });
     }
 
@@ -196,7 +200,10 @@ class ShiftPlanningService
                 : $shift->is_active,
         ]);
 
-        return $shift->fresh(['rosterCouriers']);
+        $shift = $shift->fresh(['rosterCouriers']);
+        $this->attendances->materializeRetrospectiveCompletions($shift);
+
+        return $shift;
     }
 
     /**
@@ -222,7 +229,10 @@ class ShiftPlanningService
 
         $shift->rosterCouriers()->sync($normalized);
 
-        return $shift->fresh(['rosterCouriers']);
+        $shift = $shift->fresh(['rosterCouriers']);
+        $this->attendances->materializeRetrospectiveCompletions($shift);
+
+        return $shift;
     }
 
     public function delete(BusinessShift $shift): void

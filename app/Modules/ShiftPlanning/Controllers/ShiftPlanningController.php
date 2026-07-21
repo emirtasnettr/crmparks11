@@ -34,17 +34,21 @@ class ShiftPlanningController extends Controller
 
         $week = $this->shifts->weekMeta($request->string('week')->toString() ?: null);
 
-        $shiftRows = $business
+        $shifts = $business
             ? $this->shifts->forBusiness($business->id)
-                ->map(fn ($shift) => $this->presenter->indexRow($shift))
-                ->values()
-                ->all()
-            : [];
+            : collect();
+
+        $shiftRows = $shifts
+            ->map(fn ($shift) => $this->presenter->indexRow($shift))
+            ->values()
+            ->all();
+
+        $shiftsById = $shifts->keyBy('id');
 
         $attendanceSummaries = $business
             ? $this->attendances->weekOccurrenceSummaries(
                 $business->id,
-                collect($shiftRows)->pluck('id')->map(fn ($id) => (int) $id)->all(),
+                $shifts->pluck('id')->map(fn ($id) => (int) $id)->all(),
                 $week['week_start'],
                 $week['week_end'],
             )
@@ -56,6 +60,11 @@ class ShiftPlanningController extends Controller
 
             foreach ($shiftRows as $shiftRow) {
                 if (! ($shiftRow['is_active'] ?? false)) {
+                    continue;
+                }
+
+                $shift = $shiftsById->get($shiftRow['id']);
+                if ($shift === null || ! $shift->runsOn($day['date'])) {
                     continue;
                 }
 

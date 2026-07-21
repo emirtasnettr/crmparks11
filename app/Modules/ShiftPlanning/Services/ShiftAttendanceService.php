@@ -474,6 +474,104 @@ class ShiftAttendanceService
     }
 
     /**
+     * Geçmişe dönük (veya bitiş saati geçmiş) vardiya günleri için kadrodaki
+     * kuryelere otomatik "Geldi / tamamlandı" katılım kaydı oluşturur.
+     *
+     * @param  list<int>|null  $courierIds  null = tüm kadro
+     */
+    public function materializeRetrospectiveCompletions(BusinessShift $shift, ?array $courierIds = null): int
+    {
+        if (! $shift->is_active) {
+            return 0;
+        }
+
+        $shift->loadMissing('rosterCouriers');
+
+        $courierIds ??= $shift->rosterCouriers
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $courierIds = array_values(array_unique(array_map('intval', $courierIds)));
+
+        if ($courierIds === []) {
+            return 0;
+        }
+
+        $today = Carbon::today();
+        $from = $shift->start_date?->copy()->startOfDay() ?? $today->copy();
+        $to = $shift->end_date?->copy()->startOfDay() ?? $today->copy();
+
+        if ($from->gt($to)) {
+            return 0;
+        }
+
+        $now = now();
+        $created = 0;
+
+        for ($cursor = $from->copy(); $cursor->lte($to); $cursor->addDay()) {
+            if (! $shift->runsOn($cursor)) {
+                continue;
+            }
+
+            // Henüz bitmemiş (bugün devam eden / gelecek) günleri atla.
+            if (ShiftAttendanceRules::shiftEndAt($shift, $cursor)->gte($now)) {
+                continue;
+            }
+
+            foreach ($courierIds as $courierId) {
+                if ($this->createRetrospectiveCompletedAttendance($shift, $courierId, $cursor->copy())) {
+                    $created++;
+                }
+            }
+        }
+
+        return $created;
+    }
+
+    private function createRetrospectiveCompletedAttendance(BusinessShift $shift, int $courierId, Carbon $day): bool
+    {
+        $exists = BusinessShiftAttendance::query()
+            ->where('courier_id', $courierId)
+            ->where('business_shift_id', $shift->id)
+            ->whereDate('work_date', $day->toDateString())
+            ->whereIn('status', ['in_progress', 'completed'])
+            ->exists();
+
+        if ($exists) {
+            return false;
+        }
+
+        $startedAt = ShiftAttendanceRules::shiftStartAt($shift, $day);
+        $endedAt = ShiftAttendanceRules::shiftEndAt($shift, $day);
+        $minutes = ShiftAttendanceRules::scheduledMinutes($shift, $day);
+
+        $contract = $this->commercialContracts->forBusinessOnDate((int) $shift->business_id, $day);
+        $hourlyRate = $contract?->courierHourlyRateForAttendance();
+        $earnings = ($hourlyRate !== null && $hourlyRate > 0)
+            ? round(($minutes / 60) * $hourlyRate, 2)
+            : null;
+
+        BusinessShiftAttendance::query()->create([
+            'business_shift_id' => $shift->id,
+            'business_id' => $shift->business_id,
+            'commercial_contract_id' => $contract?->id,
+            'courier_id' => $courierId,
+            'work_date' => $day->toDateString(),
+            'started_at' => $startedAt,
+            'ended_at' => $endedAt,
+            'status' => 'completed',
+            'worked_minutes' => $minutes,
+            'hourly_rate' => $hourlyRate,
+            'earnings_amount' => $earnings,
+            'pricing_model' => $contract?->work_type,
+            'notes' => 'Retrospektif vardiya — otomatik tamamlandı',
+        ]);
+
+        return true;
+    }
+
+    /**
      * Canlı Operasyon: o gün vardiyası olan tüm kuryeler (işletme filtresi opsiyonel).
      *
      * Sıra: girmemiş → geç başlayan → aktif → 1 saat kalan → henüz saati gelmeyen → tamamlanan
