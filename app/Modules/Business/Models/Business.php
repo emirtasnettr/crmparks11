@@ -6,6 +6,7 @@ use App\Core\Traits\HasPublicId;
 use App\Core\Traits\HasUuid;
 use App\Models\City;
 use App\Models\District;
+use App\Models\Neighborhood;
 use App\Models\User;
 use App\Modules\ShiftPlanning\Models\BusinessShift;
 use App\Modules\ShiftPlanning\Models\BusinessShiftCourier;
@@ -33,7 +34,10 @@ class Business extends Model
         'website',
         'city_id',
         'district_id',
+        'neighborhood_id',
         'address',
+        'latitude',
+        'longitude',
         'status',
         'contract_end_date',
         'estimated_opening_date',
@@ -54,6 +58,8 @@ class Business extends Model
             'start_date' => 'date',
             'first_invoice_date' => 'date',
             'planned_courier_count' => 'integer',
+            'latitude' => 'float',
+            'longitude' => 'float',
         ];
     }
 
@@ -65,6 +71,11 @@ class Business extends Model
     public function district(): BelongsTo
     {
         return $this->belongsTo(District::class);
+    }
+
+    public function neighborhood(): BelongsTo
+    {
+        return $this->belongsTo(Neighborhood::class);
     }
 
     public function creator(): BelongsTo

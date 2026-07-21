@@ -40,6 +40,8 @@ class BusinessUpdateTest extends TestCase
             'earning_period' => 'weekly',
             'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 3,
+            'latitude' => 41.0082,
+            'longitude' => 28.9784,
             'status' => 'active',
         ]);
 
@@ -70,6 +72,8 @@ class BusinessUpdateTest extends TestCase
             'earning_period' => 'weekly',
             'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 5,
+            'latitude' => 41.0082,
+            'longitude' => 28.9784,
             'status' => 'active',
             'notes' => 'Güncellenmiş not',
             'logo' => $logo,
@@ -127,6 +131,8 @@ class BusinessUpdateTest extends TestCase
             'earning_period' => 'weekly',
             'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 4,
+            'latitude' => 41.0082,
+            'longitude' => 28.9784,
             'status' => 'pending',
             'estimated_opening_date' => '2026-08-15',
             'notes' => 'Açılış bekleniyor',
@@ -167,6 +173,8 @@ class BusinessUpdateTest extends TestCase
             'earning_period' => 'weekly',
             'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 4,
+            'latitude' => 41.0082,
+            'longitude' => 28.9784,
             'status' => 'active',
             'tax_number' => $business->tax_number,
         ]);
@@ -197,6 +205,8 @@ class BusinessUpdateTest extends TestCase
                 'earning_period' => 'weekly',
                 'first_invoice_date' => '2026-07-14',
                 'planned_courier_count' => 3,
+            'latitude' => 41.0082,
+            'longitude' => 28.9784,
                 'status' => 'inactive',
                 'tax_number' => $business->tax_number,
             ]);
@@ -219,6 +229,8 @@ class BusinessUpdateTest extends TestCase
             'earning_period' => 'weekly',
             'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 3,
+            'latitude' => 41.0082,
+            'longitude' => 28.9784,
             'status' => 'inactive',
             'contract_end_date' => '2026-07-01',
             'notes' => 'Sözleşme bitti',
@@ -244,6 +256,8 @@ class BusinessUpdateTest extends TestCase
             'earning_period' => 'weekly',
             'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 2,
+            'latitude' => 41.0082,
+            'longitude' => 28.9784,
             'status' => 'active',
         ]);
 

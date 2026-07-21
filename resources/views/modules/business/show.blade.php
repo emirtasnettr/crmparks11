@@ -149,6 +149,10 @@
                         <x-entity.detail-row label="Vergi No" :value="$business['tax_number']" />
                         <x-entity.detail-row label="Konum" :value="$business['location']" />
                         <x-entity.detail-row label="Adres" :value="$business['address']" />
+                        <x-entity.detail-row
+                            label="Harita Konumu"
+                            :value="!empty($business['has_location']) ? ($business['latitude'].', '.$business['longitude']) : 'Haritada işaretlenmedi'"
+                        />
                     </dl>
                 </x-ui.card>
 

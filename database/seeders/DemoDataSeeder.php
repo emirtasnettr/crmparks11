@@ -8,6 +8,7 @@ use App\Models\District;
 use App\Models\Document;
 use App\Models\EarningLine;
 use App\Models\EarningStatus;
+use App\Models\Neighborhood;
 use App\Models\User;
 use App\Modules\Agency\Models\Agency;
 use App\Modules\Agency\Models\AgencyContact;
@@ -99,6 +100,10 @@ class DemoDataSeeder extends Seeder
 
         if (! City::query()->exists()) {
             $this->call(CitySeeder::class);
+        }
+
+        if (! Neighborhood::query()->exists()) {
+            $this->call(NeighborhoodSeeder::class);
         }
 
         if (! EarningStatus::query()->exists()) {

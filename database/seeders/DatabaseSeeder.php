@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
             LookupTableSeeder::class,
             RoleAndPermissionSeeder::class,
             CitySeeder::class,
+            NeighborhoodSeeder::class,
             AdminUserSeeder::class,
         ]);
     }

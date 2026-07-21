@@ -9,6 +9,7 @@ use App\Modules\Courier\Support\CourierAvatar;
 use App\Modules\ShiftPlanning\Models\BusinessShift;
 use App\Modules\ShiftPlanning\Models\BusinessShiftAttendance;
 use App\Modules\ShiftPlanning\Support\ShiftAttendanceRules;
+use App\Support\GeoDistance;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -76,7 +77,7 @@ class ShiftAttendanceService
         }
 
         $shifts = BusinessShift::query()
-            ->with(['business.activePricing.pricingModelType'])
+            ->with(['business'])
             ->whereIn('id', $shiftIds)
             ->where('is_active', true)
             ->orderBy('start_time')
@@ -165,6 +166,7 @@ class ShiftAttendanceService
         $pricingCode = $contract?->work_type;
         $withinStart = $actionable && ShiftAttendanceRules::isWithinCourierStartWindow($shift, $day);
         $workTypes = \App\Modules\Business\Data\BusinessCommercialContractFormData::workTypes();
+        $hasLocation = $shift->business?->latitude !== null && $shift->business?->longitude !== null;
 
         return [
             'shift_id' => $shift->id,
@@ -179,9 +181,11 @@ class ShiftAttendanceService
             'pricing_model_label' => $pricingCode ? ($workTypes[$pricingCode] ?? $pricingCode) : '—',
             'hourly_rate' => $contract?->courierHourlyRateForAttendance(),
             'attendance' => $attendance ? $this->presenter->row($attendance) : null,
-            'can_start' => $actionable && $attendance === null && $withinStart,
+            'has_location' => $hasLocation,
+            'can_start' => $actionable && $attendance === null && $withinStart && $hasLocation,
             'can_end' => $actionable && ($attendance?->isInProgress() ?? false),
             'start_window_opens_at' => ShiftAttendanceRules::earliestStartAt($shift, $day)->format('H:i'),
+            'location_blocked' => $actionable && $attendance === null && $withinStart && ! $hasLocation,
         ];
     }
 
@@ -236,6 +240,8 @@ class ShiftAttendanceService
                 ]);
             }
 
+            $geo = $this->assertCourierProximity($shift, $staffAssist, $options);
+
             $contract = $this->commercialContracts->forBusinessOnDate((int) $shift->business_id, $day);
             $pricingCode = $contract?->work_type;
             $hourlyRate = $contract?->courierHourlyRateForAttendance();
@@ -257,8 +263,82 @@ class ShiftAttendanceService
                 'hourly_rate' => $hourlyRate,
                 'pricing_model' => $pricingCode,
                 'notes' => $options['notes'] ?? null,
+                'start_latitude' => $geo['latitude'],
+                'start_longitude' => $geo['longitude'],
+                'start_accuracy_meters' => $geo['accuracy_meters'],
+                'start_distance_meters' => $geo['distance_meters'],
             ]);
         });
+    }
+
+    /**
+     * @param  array{latitude?: mixed, longitude?: mixed, accuracy?: mixed}  $options
+     * @return array{latitude: float|null, longitude: float|null, accuracy_meters: int|null, distance_meters: int|null}
+     */
+    private function assertCourierProximity(BusinessShift $shift, bool $staffAssist, array $options): array
+    {
+        $empty = [
+            'latitude' => null,
+            'longitude' => null,
+            'accuracy_meters' => null,
+            'distance_meters' => null,
+        ];
+
+        if ($staffAssist) {
+            return $empty;
+        }
+
+        $shift->loadMissing('business');
+        $business = $shift->business;
+
+        if ($business === null || $business->latitude === null || $business->longitude === null) {
+            throw ValidationException::withMessages([
+                'shift' => 'Bu işletmenin konumu tanımlı değil. Vardiya başlatılamaz. Yönetimle iletişime geçin.',
+            ]);
+        }
+
+        if (! isset($options['latitude'], $options['longitude'])) {
+            throw ValidationException::withMessages([
+                'location' => 'Vardiya başlatmak için konum izni gereklidir.',
+            ]);
+        }
+
+        $courierLat = (float) $options['latitude'];
+        $courierLng = (float) $options['longitude'];
+        $accuracy = isset($options['accuracy']) ? (int) round((float) $options['accuracy']) : null;
+
+        if ($courierLat < -90 || $courierLat > 90 || $courierLng < -180 || $courierLng > 180) {
+            throw ValidationException::withMessages([
+                'location' => 'Geçersiz konum bilgisi alındı. Tekrar deneyin.',
+            ]);
+        }
+
+        if ($accuracy !== null && $accuracy > ShiftAttendanceRules::START_MAX_ACCURACY_METERS) {
+            throw ValidationException::withMessages([
+                'location' => 'Konum doğruluğu yetersiz. Açık alanda tekrar deneyin.',
+            ]);
+        }
+
+        $distance = GeoDistance::metersBetween(
+            $courierLat,
+            $courierLng,
+            (float) $business->latitude,
+            (float) $business->longitude,
+        );
+        $distanceMeters = (int) round($distance);
+
+        if ($distanceMeters > ShiftAttendanceRules::START_PROXIMITY_METERS) {
+            throw ValidationException::withMessages([
+                'location' => 'İşletmeye en az '.ShiftAttendanceRules::START_PROXIMITY_METERS.' metre yakın olmalısınız. Şu an yaklaşık '.$distanceMeters.' metre uzaktasınız.',
+            ]);
+        }
+
+        return [
+            'latitude' => $courierLat,
+            'longitude' => $courierLng,
+            'accuracy_meters' => $accuracy,
+            'distance_meters' => $distanceMeters,
+        ];
     }
 
     public function startForCourier(Courier $courier, int $shiftId, Carbon $day, User $staff, ?string $note = null): BusinessShiftAttendance

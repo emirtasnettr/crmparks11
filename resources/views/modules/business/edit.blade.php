@@ -5,7 +5,7 @@
 
 @section('content')
 <div
-    x-data="businessForm(@js($districtsByCity), @js($formValues), true, @js(\App\Modules\Business\Support\BusinessFeatures::earningsEnabled()))"
+    x-data="businessForm(@js($districtsByCity), @js($formValues), true, @js(\App\Modules\Business\Support\BusinessFeatures::earningsEnabled()), @js(route('businesses.geocode', absolute: false)), @js(route('businesses.neighborhoods', absolute: false)))"
     class="max-w-5xl"
 >
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

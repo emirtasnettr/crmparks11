@@ -36,7 +36,7 @@ class BusinessPresenter
    */
   public function toBaseArray(Business $business): array
   {
-    $business->loadMissing(['city', 'district', 'activeCommercialContract']);
+    $business->loadMissing(['city', 'district', 'neighborhood', 'activeCommercialContract']);
     $logo = BusinessLogo::initials($business);
     $workType = $this->workTypeCode($business);
     $unitPrices = $this->unitPrices($business);
@@ -53,7 +53,11 @@ class BusinessPresenter
       'tax_number' => $business->tax_number,
       'city' => $business->city?->name ?? '',
       'district' => $business->district?->name ?? '',
+      'neighborhood' => $business->neighborhood?->name ?? '',
       'address' => $business->address,
+      'latitude' => $business->latitude !== null ? (float) $business->latitude : null,
+      'longitude' => $business->longitude !== null ? (float) $business->longitude : null,
+      'has_location' => $business->latitude !== null && $business->longitude !== null,
       'status' => $business->status,
       'contract_end_date' => $business->contract_end_date?->toDateString(),
       'estimated_opening_date' => $business->estimated_opening_date?->toDateString(),
@@ -117,7 +121,11 @@ class BusinessPresenter
       'brand_name' => $base['brand_name'],
       'display_name' => $base['display_name'] ?? $base['brand_name'] ?? $base['company_name'],
       'phone' => $base['phone'],
-      'location' => trim($base['city'].' / '.$base['district'], ' /'),
+      'location' => trim(implode(' / ', array_filter([
+        $base['city'],
+        $base['district'],
+        $base['neighborhood'],
+      ])), ' /'),
       'work_type' => $base['work_type'],
       'work_type_label' => $base['work_type']
         ? ($workTypes[$base['work_type']] ?? $base['work_type'])
@@ -157,6 +165,9 @@ class BusinessPresenter
       'tax_office' => $base['tax_office'],
       'tax_number' => $base['tax_number'],
       'address' => $base['address'],
+      'latitude' => $base['latitude'],
+      'longitude' => $base['longitude'],
+      'has_location' => $base['has_location'],
       'customer_price' => $workType
         ? $this->formatStoredPrice((float) $base['customer_unit'], $workType)
         : '—',
@@ -234,7 +245,10 @@ class BusinessPresenter
       'tax_number' => $base['tax_number'],
       'city' => $base['city'],
       'district' => $base['district'],
+      'neighborhood' => $base['neighborhood'],
       'address' => $base['address'],
+      'latitude' => $base['latitude'] !== null ? (string) $base['latitude'] : '',
+      'longitude' => $base['longitude'] !== null ? (string) $base['longitude'] : '',
       'earning_period' => $base['earning_period'] ?? 'weekly',
       'first_invoice_date' => ! empty($base['first_invoice_date'])
         ? $base['first_invoice_date']

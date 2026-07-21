@@ -13,6 +13,7 @@
         try { localStorage.removeItem('theme'); } catch (e) {}
     </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @stack('styles')
 </head>
 <body
     class="min-h-screen bg-gray-50"

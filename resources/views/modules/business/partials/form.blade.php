@@ -90,6 +90,7 @@
                 <select
                     id="district"
                     x-model="form.district"
+                    @change="onDistrictChange"
                     :disabled="!form.city"
                     class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:disabled:bg-slate-700/50"
                 >
@@ -100,8 +101,72 @@
                 </select>
             </div>
 
+            <div class="space-y-1.5">
+                <label for="neighborhood" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Mahalle</label>
+                <input type="hidden" name="neighborhood" :value="form.neighborhood">
+                <select
+                    id="neighborhood"
+                    x-model="form.neighborhood"
+                    @change="pinManuallyAdjusted = false; scheduleAddressGeocode()"
+                    :disabled="!form.district || loadingNeighborhoods"
+                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:disabled:bg-slate-700/50"
+                >
+                    <option
+                        value=""
+                        x-text="loadingNeighborhoods ? 'Mahalleler yükleniyor...' : (form.district ? 'Mahalle seçin' : 'Önce ilçe seçin')"
+                    ></option>
+                    <template x-for="neighborhood in neighborhoods" :key="neighborhood">
+                        <option :value="neighborhood" x-text="neighborhood" :selected="form.neighborhood === neighborhood"></option>
+                    </template>
+                </select>
+            </div>
+
             <div class="md:col-span-2">
-                <x-ui.textarea name="address" label="Açık Adres" rows="3" x-model="form.address" />
+                <x-ui.textarea
+                    name="address"
+                    label="Açık Adres"
+                    rows="2"
+                    placeholder="Cadde / sokak, bina no, daire vb."
+                    x-model="form.address"
+                />
+            </div>
+
+            <div class="md:col-span-2 space-y-2">
+                <label class="block text-sm font-medium text-gray-700">Konum (Harita) *</label>
+                <p class="text-xs text-gray-500">
+                    İl / ilçe / mahalle seçildiğinde konum otomatik işaretlenir. Pin sürüklenerek veya haritaya tıklanarak düzeltilebilir.
+                </p>
+                <div class="flex flex-wrap items-center gap-2">
+                    <button
+                        type="button"
+                        class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                        @click="geocodeAddress(true)"
+                        :disabled="geocoding"
+                    >
+                        <span x-show="!geocoding">Adresi haritada bul</span>
+                        <span x-show="geocoding" x-cloak>Aranıyor...</span>
+                    </button>
+                    <p
+                        class="text-xs"
+                        :class="geocodeMessage.includes('işaretlendi') ? 'text-emerald-600' : 'text-amber-700'"
+                        x-show="geocodeMessage"
+                        x-text="geocodeMessage"
+                    ></p>
+                    <p class="text-[11px] text-gray-400" x-show="geocodeLabel" x-text="geocodeLabel"></p>
+                </div>
+                <input type="hidden" name="latitude" x-model="form.latitude">
+                <input type="hidden" name="longitude" x-model="form.longitude">
+                <div
+                    id="business-location-map"
+                    x-ref="businessMap"
+                    class="relative z-0 h-72 min-h-[18rem] w-full overflow-hidden rounded-lg border border-gray-300 bg-slate-100"
+                ></div>
+                <p class="text-xs text-gray-500" x-show="form.latitude && form.longitude">
+                    Seçilen konum:
+                    <span class="font-medium tabular-nums" x-text="Number(form.latitude).toFixed(6)"></span>,
+                    <span class="font-medium tabular-nums" x-text="Number(form.longitude).toFixed(6)"></span>
+                </p>
+                <p x-show="errors.latitude || errors.longitude" x-cloak class="text-sm text-red-600" x-text="errors.latitude || errors.longitude"></p>
             </div>
         </div>
     </x-ui.card>

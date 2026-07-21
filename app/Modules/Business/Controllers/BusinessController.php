@@ -4,6 +4,9 @@ namespace App\Modules\Business\Controllers;
 
 use App\Core\Http\Concerns\DownloadsListExport;
 use App\Http\Controllers\Controller;
+use App\Models\City;
+use App\Models\District;
+use App\Models\Neighborhood;
 use App\Modules\Business\Data\BusinessCommercialContractFormData;
 use App\Modules\Business\Data\BusinessContactFormData;
 use App\Modules\Business\Data\BusinessContractFormData;
@@ -13,9 +16,11 @@ use App\Modules\Business\Data\BusinessOverviewStats;
 use App\Modules\Business\Exports\BusinessListExportSheets;
 use App\Modules\Business\Requests\StoreBusinessRequest;
 use App\Modules\Business\Requests\UpdateBusinessRequest;
+use App\Modules\Business\Services\BusinessGeocodeService;
 use App\Modules\Business\Services\BusinessPresenter;
 use App\Modules\Business\Services\BusinessService;
 use App\Support\RequestFilter;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -28,6 +33,7 @@ class BusinessController extends Controller
   public function __construct(
     private readonly BusinessService $businesses,
     private readonly BusinessPresenter $presenter,
+    private readonly BusinessGeocodeService $geocoder,
   ) {}
 
   public function index(Request $request): View
@@ -175,6 +181,72 @@ class BusinessController extends Controller
       'earningPeriods' => BusinessFormData::earningPeriods(),
       'statuses' => BusinessFormData::statuses(),
     ]);
+  }
+
+  public function geocode(Request $request): JsonResponse
+  {
+    abort_unless(
+      $request->user()?->can('business.create') || $request->user()?->can('business.update'),
+      403
+    );
+
+    $data = $request->validate([
+      'city' => ['nullable', 'string', 'max:100'],
+      'district' => ['nullable', 'string', 'max:100'],
+      'neighborhood' => ['nullable', 'string', 'max:150'],
+      'address' => ['nullable', 'string', 'max:1000'],
+    ]);
+
+    $result = $this->geocoder->locate(
+      (string) ($data['city'] ?? ''),
+      (string) ($data['district'] ?? ''),
+      (string) ($data['neighborhood'] ?? ''),
+      (string) ($data['address'] ?? ''),
+    );
+
+    if ($result === null) {
+      return response()->json([
+        'message' => 'Adres haritada bulunamadı. Pin’i elle sürükleyebilirsiniz.',
+      ], 422);
+    }
+
+    return response()->json($result);
+  }
+
+  public function neighborhoods(Request $request): JsonResponse
+  {
+    abort_unless(
+      $request->user()?->can('business.create') || $request->user()?->can('business.update') || $request->user()?->can('business.view'),
+      403
+    );
+
+    $data = $request->validate([
+      'city' => ['required', 'string', 'max:100'],
+      'district' => ['required', 'string', 'max:100'],
+    ]);
+
+    $city = City::query()->where('name', $data['city'])->first();
+    if ($city === null) {
+      return response()->json(['neighborhoods' => []]);
+    }
+
+    $district = District::query()
+      ->where('city_id', $city->id)
+      ->where('name', $data['district'])
+      ->first();
+
+    if ($district === null) {
+      return response()->json(['neighborhoods' => []]);
+    }
+
+    $neighborhoods = Neighborhood::query()
+      ->where('district_id', $district->id)
+      ->orderBy('name')
+      ->pluck('name')
+      ->values()
+      ->all();
+
+    return response()->json(['neighborhoods' => $neighborhoods]);
   }
 
   public function update(UpdateBusinessRequest $request, int $id): RedirectResponse

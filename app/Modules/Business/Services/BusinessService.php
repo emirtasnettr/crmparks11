@@ -4,6 +4,7 @@ namespace App\Modules\Business\Services;
 
 use App\Models\City;
 use App\Models\District;
+use App\Models\Neighborhood;
 use App\Models\User;
 use App\Modules\Business\Models\Business;
 use App\Modules\Finance\Services\CurrentAccountService;
@@ -27,7 +28,7 @@ class BusinessService
   public function filter(array $filters): Collection
   {
     return $this->baseQuery($filters)
-      ->with(['city', 'district', 'activeCommercialContract'])
+      ->with(['city', 'district', 'neighborhood', 'activeCommercialContract'])
       ->orderByDesc('id')
       ->get();
   }
@@ -35,7 +36,7 @@ class BusinessService
   public function find(int $id): ?Business
   {
     return Business::query()
-      ->with(['city', 'district', 'activeCommercialContract'])
+      ->with(['city', 'district', 'neighborhood', 'activeCommercialContract'])
       ->find($id);
   }
 
@@ -68,7 +69,7 @@ class BusinessService
       $this->syncLogo($business, $data['logo'] ?? null);
       $this->currentAccounts->ensureForEntity($business);
 
-      return $business->fresh(['city', 'district', 'activeCommercialContract']);
+      return $business->fresh(['city', 'district', 'neighborhood', 'activeCommercialContract']);
     });
   }
 
@@ -84,7 +85,7 @@ class BusinessService
 
       $this->syncLogo($business, $data['logo'] ?? null, replace: isset($data['logo']));
 
-      return $business->fresh(['city', 'district', 'activeCommercialContract']);
+      return $business->fresh(['city', 'district', 'neighborhood', 'activeCommercialContract']);
     });
   }
 
@@ -101,7 +102,7 @@ class BusinessService
 
     $business->update($payload);
 
-    return $business->fresh(['city', 'district', 'activeCommercialContract']);
+    return $business->fresh(['city', 'district', 'neighborhood', 'activeCommercialContract']);
   }
 
   public function destroy(Business $business): void
@@ -177,6 +178,26 @@ class BusinessService
       ->value('id');
   }
 
+  private function resolveNeighborhoodId(?string $cityName, ?string $districtName, ?string $neighborhoodName): ?int
+  {
+    $neighborhoodName = trim((string) $neighborhoodName);
+
+    if ($neighborhoodName === '') {
+      return null;
+    }
+
+    $districtId = $this->resolveDistrictId($cityName, $districtName);
+
+    if ($districtId === null) {
+      return null;
+    }
+
+    return Neighborhood::query()
+      ->where('district_id', $districtId)
+      ->where('name', $neighborhoodName)
+      ->value('id');
+  }
+
   private function syncLogo(Business $business, mixed $logo, bool $replace = true): void
   {
     if (! $replace || $logo === null) {
@@ -215,7 +236,14 @@ class BusinessService
       'email' => $data['email'] ?? null,
       'city_id' => $this->resolveCityId($data['city'] ?? null),
       'district_id' => $this->resolveDistrictId($data['city'] ?? null, $data['district'] ?? null),
+      'neighborhood_id' => $this->resolveNeighborhoodId(
+        $data['city'] ?? null,
+        $data['district'] ?? null,
+        $data['neighborhood'] ?? null,
+      ),
       'address' => $data['address'] ?? null,
+      'latitude' => isset($data['latitude']) && $data['latitude'] !== '' ? (float) $data['latitude'] : null,
+      'longitude' => isset($data['longitude']) && $data['longitude'] !== '' ? (float) $data['longitude'] : null,
       'status' => $data['status'],
       'notes' => $data['notes'] ?? null,
     ];

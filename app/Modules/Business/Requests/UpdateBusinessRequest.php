@@ -33,7 +33,10 @@ class UpdateBusinessRequest extends FormRequest
             ],
             'city' => ['nullable', 'string', 'max:100'],
             'district' => ['nullable', 'string', 'max:100'],
+            'neighborhood' => ['nullable', 'string', 'max:150'],
             'address' => ['nullable', 'string', 'max:1000'],
+            'latitude' => ['required', 'numeric', 'between:-90,90'],
+            'longitude' => ['required', 'numeric', 'between:-180,180'],
             'earning_period' => BusinessFeatures::earningsEnabled()
                 ? ['required', Rule::in(array_keys(BusinessFormData::earningPeriods()))]
                 : ['nullable', Rule::in(array_keys(BusinessFormData::earningPeriods()))],
@@ -78,6 +81,8 @@ class UpdateBusinessRequest extends FormRequest
             'planned_courier_count.required' => 'Planlanan kurye sayısı zorunludur.',
             'planned_courier_count.integer' => 'Planlanan kurye sayısı sayı olmalıdır.',
             'planned_courier_count.min' => 'Planlanan kurye sayısı en az 1 olmalıdır.',
+            'latitude.required' => 'İşletme konumu haritada işaretlenmelidir.',
+            'longitude.required' => 'İşletme konumu haritada işaretlenmelidir.',
             'contract_end_date.required' => 'Pasif durum için sözleşme bitiş tarihi zorunludur.',
             'estimated_opening_date.required' => 'Tahmini açılış tarihi zorunludur.',
             'start_date.required' => 'Açılış aşaması için başlangıç tarihi zorunludur.',

@@ -35,6 +35,8 @@ class BusinessStoreTest extends TestCase
             'earning_period' => 'weekly',
             'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 4,
+            'latitude' => 41.0082,
+            'longitude' => 28.9784,
             'status' => 'active',
         ]);
 
@@ -61,6 +63,8 @@ class BusinessStoreTest extends TestCase
             'earning_period' => 'weekly',
             'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 6,
+            'latitude' => 41.0082,
+            'longitude' => 28.9784,
             'status' => 'active',
             'notes' => 'Canlı kayıt testi',
         ]);
@@ -101,6 +105,8 @@ class BusinessStoreTest extends TestCase
             'earning_period' => 'weekly',
             'first_invoice_date' => '2026-07-14',
             'planned_courier_count' => 3,
+            'latitude' => 41.0082,
+            'longitude' => 28.9784,
             'status' => 'active',
         ]);
 
@@ -139,6 +145,8 @@ class BusinessStoreTest extends TestCase
             'phone' => '0212 111 22 33',
             'earning_period' => 'monthly',
             'planned_courier_count' => 3,
+            'latitude' => 41.0082,
+            'longitude' => 28.9784,
             'status' => 'active',
         ]);
 
@@ -162,6 +170,8 @@ class BusinessStoreTest extends TestCase
             'earning_period' => 'weekly',
             'first_invoice_date' => '2026-08-01',
             'planned_courier_count' => 3,
+            'latitude' => 41.0082,
+            'longitude' => 28.9784,
             'status' => 'active',
         ];
 
@@ -198,6 +208,8 @@ class BusinessStoreTest extends TestCase
             'earning_period' => 'weekly',
             'first_invoice_date' => '2026-08-01',
             'planned_courier_count' => 3,
+            'latitude' => 41.0082,
+            'longitude' => 28.9784,
             'status' => 'active',
         ])->assertRedirect();
 
@@ -223,6 +235,8 @@ class BusinessStoreTest extends TestCase
             'earning_period' => 'weekly',
             'first_invoice_date' => '2026-08-01',
             'planned_courier_count' => 2,
+            'latitude' => 41.0082,
+            'longitude' => 28.9784,
             'status' => 'active',
         ])->assertRedirect();
 

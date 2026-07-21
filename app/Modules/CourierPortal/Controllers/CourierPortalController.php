@@ -54,8 +54,21 @@ class CourierPortalController extends Controller
 
     public function startShift(Request $request, int $shiftId): RedirectResponse
     {
+        $validated = $request->validate([
+            'latitude' => ['required', 'numeric', 'between:-90,90'],
+            'longitude' => ['required', 'numeric', 'between:-180,180'],
+            'accuracy' => ['nullable', 'numeric', 'min:0', 'max:5000'],
+        ], [
+            'latitude.required' => 'Vardiya başlatmak için konum izni gereklidir.',
+            'longitude.required' => 'Vardiya başlatmak için konum izni gereklidir.',
+        ]);
+
         $courier = $this->attendances->resolveCourierForUser($request->user());
-        $this->attendances->start($courier, $shiftId);
+        $this->attendances->start($courier, $shiftId, options: [
+            'latitude' => $validated['latitude'],
+            'longitude' => $validated['longitude'],
+            'accuracy' => $validated['accuracy'] ?? null,
+        ]);
 
         return redirect()
             ->route('courier-portal.dashboard')

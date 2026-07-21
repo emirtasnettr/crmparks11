@@ -56,6 +56,7 @@ class CourierPortalShiftAttendanceTest extends TestCase
             'created_by' => $admin->id,
             'status' => 'active',
         ]);
+        BusinessCommercialContract::query()->where('business_id', $business->id)->delete();
 
         BusinessCommercialContract::factory()->hourly()->create([
             'business_id' => $business->id,
@@ -84,7 +85,11 @@ class CourierPortalShiftAttendanceTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->post(route('courier-portal.shifts.start', $shift->id))
+            ->post(route('courier-portal.shifts.start', $shift->id), [
+                'latitude' => 41.0082,
+                'longitude' => 28.9784,
+                'accuracy' => 20,
+            ])
             ->assertRedirect(route('courier-portal.dashboard'));
 
         $attendance = BusinessShiftAttendance::query()->first();
@@ -92,6 +97,8 @@ class CourierPortalShiftAttendanceTest extends TestCase
         $this->assertSame('in_progress', $attendance->status);
         $this->assertSame('hourly', $attendance->pricing_model);
         $this->assertEquals(150.0, (float) $attendance->hourly_rate);
+        $this->assertNotNull($attendance->start_distance_meters);
+        $this->assertLessThanOrEqual(300, (int) $attendance->start_distance_meters);
 
         Carbon::setTestNow(Carbon::parse('2026-07-17 18:00:00'));
 
@@ -133,7 +140,11 @@ class CourierPortalShiftAttendanceTest extends TestCase
 
         $this->actingAs($user)
             ->from(route('courier-portal.dashboard'))
-            ->post(route('courier-portal.shifts.start', $shift->id))
+            ->post(route('courier-portal.shifts.start', $shift->id), [
+                'latitude' => 41.0082,
+                'longitude' => 28.9784,
+                'accuracy' => 20,
+            ])
             ->assertRedirect(route('courier-portal.dashboard'))
             ->assertSessionHasErrors('shift');
 
@@ -233,7 +244,11 @@ class CourierPortalShiftAttendanceTest extends TestCase
 
         $this->actingAs($user)
             ->from(route('courier-portal.dashboard'))
-            ->post(route('courier-portal.shifts.start', $shift->id))
+            ->post(route('courier-portal.shifts.start', $shift->id), [
+                'latitude' => 41.0082,
+                'longitude' => 28.9784,
+                'accuracy' => 20,
+            ])
             ->assertRedirect(route('courier-portal.dashboard'))
             ->assertSessionHasErrors('shift');
 
@@ -330,5 +345,85 @@ class CourierPortalShiftAttendanceTest extends TestCase
             ->assertOk()
             ->assertSee('Gelecek Vardiyalar', false)
             ->assertSee('Akşam', false);
+    }
+
+    public function test_courier_cannot_start_shift_when_too_far_from_business(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('super_admin');
+        $courier = Courier::factory()->create(['created_by' => $admin->id, 'status' => 'active']);
+        $user = app(CourierUserProvisioner::class)->ensureForCourier($courier);
+        $business = Business::factory()->create([
+            'created_by' => $admin->id,
+            'status' => 'active',
+            'latitude' => 41.0082,
+            'longitude' => 28.9784,
+        ]);
+
+        $shift = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'name' => 'Akşam',
+            'start_time' => '16:00',
+            'end_time' => '23:00',
+            'required_headcount' => 1,
+            'is_active' => true,
+            'created_by' => $admin->id,
+        ]);
+        BusinessShiftCourier::query()->create([
+            'business_shift_id' => $shift->id,
+            'courier_id' => $courier->id,
+        ]);
+
+        $this->actingAs($user)
+            ->from(route('courier-portal.dashboard'))
+            ->post(route('courier-portal.shifts.start', $shift->id), [
+                'latitude' => 41.0172,
+                'longitude' => 28.9784,
+                'accuracy' => 15,
+            ])
+            ->assertRedirect(route('courier-portal.dashboard'))
+            ->assertSessionHasErrors('location');
+
+        $this->assertDatabaseCount('business_shift_attendances', 0);
+    }
+
+    public function test_courier_cannot_start_shift_when_business_location_missing(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('super_admin');
+        $courier = Courier::factory()->create(['created_by' => $admin->id, 'status' => 'active']);
+        $user = app(CourierUserProvisioner::class)->ensureForCourier($courier);
+        $business = Business::factory()->create([
+            'created_by' => $admin->id,
+            'status' => 'active',
+            'latitude' => null,
+            'longitude' => null,
+        ]);
+
+        $shift = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'name' => 'Akşam',
+            'start_time' => '16:00',
+            'end_time' => '23:00',
+            'required_headcount' => 1,
+            'is_active' => true,
+            'created_by' => $admin->id,
+        ]);
+        BusinessShiftCourier::query()->create([
+            'business_shift_id' => $shift->id,
+            'courier_id' => $courier->id,
+        ]);
+
+        $this->actingAs($user)
+            ->from(route('courier-portal.dashboard'))
+            ->post(route('courier-portal.shifts.start', $shift->id), [
+                'latitude' => 41.0082,
+                'longitude' => 28.9784,
+                'accuracy' => 15,
+            ])
+            ->assertRedirect(route('courier-portal.dashboard'))
+            ->assertSessionHasErrors('shift');
+
+        $this->assertDatabaseCount('business_shift_attendances', 0);
     }
 }

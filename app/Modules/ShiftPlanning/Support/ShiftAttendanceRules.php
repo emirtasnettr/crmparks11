@@ -19,6 +19,12 @@ final class ShiftAttendanceRules
 
     public const AUTO_END_GRACE_MINUTES = 30;
 
+    /** Kurye vardiya başlatma için işletmeye maksimum uzaklık. */
+    public const START_PROXIMITY_METERS = 300;
+
+    /** GPS doğruluğu bu değeri aşarsa başlatma reddedilir. */
+    public const START_MAX_ACCURACY_METERS = 150;
+
     public static function shiftStartAt(BusinessShift $shift, CarbonInterface $workDate): Carbon
     {
         return Carbon::parse($workDate->toDateString().' '.substr((string) $shift->start_time, 0, 8));

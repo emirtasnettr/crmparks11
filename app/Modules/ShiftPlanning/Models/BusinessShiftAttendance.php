@@ -27,6 +27,10 @@ class BusinessShiftAttendance extends Model
         'earnings_amount',
         'pricing_model',
         'notes',
+        'start_latitude',
+        'start_longitude',
+        'start_accuracy_meters',
+        'start_distance_meters',
     ];
 
     protected function casts(): array
@@ -38,6 +42,10 @@ class BusinessShiftAttendance extends Model
             'worked_minutes' => 'integer',
             'hourly_rate' => 'decimal:2',
             'earnings_amount' => 'decimal:2',
+            'start_latitude' => 'float',
+            'start_longitude' => 'float',
+            'start_accuracy_meters' => 'integer',
+            'start_distance_meters' => 'integer',
         ];
     }
 

@@ -3,11 +3,25 @@ import Alpine from 'alpinejs';
 import collapse from '@alpinejs/collapse';
 import ApexCharts from 'apexcharts';
 import Quill from 'quill';
+import L from 'leaflet';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import 'quill/dist/quill.snow.css';
+import 'leaflet/dist/leaflet.css';
 
 Alpine.plugin(collapse);
 
 window.Alpine = Alpine;
+window.L = L;
+
+// Vite paketlemesinde Leaflet varsayılan ikon yollarını düzelt.
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl: markerIcon2x,
+    iconUrl: markerIcon,
+    shadowUrl: markerShadow,
+});
 
 const lockedPresetId = (preset, key) => (preset?.[key] ? String(preset[key]) : '');
 
@@ -79,6 +93,53 @@ Alpine.data('topNav', () => ({
         window.setTimeout(() => {
             this.toast = null;
         }, 3500);
+    },
+}));
+
+Alpine.data('courierShiftStart', (actionUrl) => ({
+    loading: false,
+    error: '',
+    latitude: '',
+    longitude: '',
+    accuracy: '',
+    actionUrl,
+
+    async start(form) {
+        this.error = '';
+        this.loading = true;
+
+        if (! navigator.geolocation) {
+            this.loading = false;
+            this.error = 'Bu cihazda konum alınamıyor.';
+            return;
+        }
+
+        try {
+            const position = await new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject, {
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                    maximumAge: 0,
+                });
+            });
+
+            this.latitude = String(position.coords.latitude);
+            this.longitude = String(position.coords.longitude);
+            this.accuracy = position.coords.accuracy != null
+                ? String(Math.round(position.coords.accuracy))
+                : '';
+
+            this.$nextTick(() => form.submit());
+        } catch (err) {
+            this.loading = false;
+            if (err?.code === 1) {
+                this.error = 'Konum izni reddedildi. Vardiya başlatmak için konum izni verin.';
+            } else if (err?.code === 3) {
+                this.error = 'Konum alınamadı (zaman aşımı). Açık alanda tekrar deneyin.';
+            } else {
+                this.error = 'Konum alınamadı. Tekrar deneyin.';
+            }
+        }
     },
 }));
 
@@ -271,15 +332,24 @@ Alpine.data('courierListPage', (recordsMap = {}) => ({
     },
 }));
 
-Alpine.data('businessForm', (districtsByCity = {}, initial = {}, isEdit = false, earningsEnabled = true) => ({
+Alpine.data('businessForm', (districtsByCity = {}, initial = {}, isEdit = false, earningsEnabled = true, geocodeUrl = '', neighborhoodsUrl = '') => ({
     districtsByCity,
     districts: [],
+    neighborhoods: [],
+    loadingNeighborhoods: false,
     errors: {},
     submitted: false,
     submitting: false,
     validated: false,
     isEdit,
     earningsEnabled,
+    geocodeUrl,
+    neighborhoodsUrl,
+    geocoding: false,
+    geocodeMessage: '',
+    geocodeLabel: '',
+    pinManuallyAdjusted: false,
+    geocodeTimer: null,
     form: {
         company_name: '',
         brand_name: '',
@@ -290,7 +360,10 @@ Alpine.data('businessForm', (districtsByCity = {}, initial = {}, isEdit = false,
         tax_number: '',
         city: '',
         district: '',
+        neighborhood: '',
         address: '',
+        latitude: '',
+        longitude: '',
         earning_period: '',
         first_invoice_date: '',
         planned_courier_count: '',
@@ -301,8 +374,25 @@ Alpine.data('businessForm', (districtsByCity = {}, initial = {}, isEdit = false,
         notes: '',
         ...initial,
     },
+    map: null,
+    mapMarker: null,
 
     init() {
+        if (this.form.latitude === null || this.form.latitude === undefined) {
+            this.form.latitude = '';
+        }
+        if (this.form.longitude === null || this.form.longitude === undefined) {
+            this.form.longitude = '';
+        }
+        if (this.form.neighborhood === null || this.form.neighborhood === undefined) {
+            this.form.neighborhood = '';
+        }
+
+        // Düzenlemede mevcut pin varsa otomatik geocode üzerine yazmasın.
+        if (String(this.form.latitude).trim() !== '' && String(this.form.longitude).trim() !== '') {
+            this.pinManuallyAdjusted = true;
+        }
+
         if (!this.form.first_invoice_date) {
             const next = new Date();
             next.setDate(1);
@@ -316,16 +406,248 @@ Alpine.data('businessForm', (districtsByCity = {}, initial = {}, isEdit = false,
             this.districts = this.districtsByCity[this.form.city] || [];
         }
 
+        if (this.form.city && this.form.district) {
+            this.loadNeighborhoods({ preserveSelection: true });
+        }
+
         const params = new URLSearchParams(window.location.search);
         const presetStatus = params.get('status');
         if (presetStatus && ['active', 'inactive', 'pending', 'contract_stage', 'opening_stage'].includes(presetStatus)) {
             this.form.status = presetStatus;
         }
+
+        this.$nextTick(() => this.initLocationMap());
+
+        this.$watch('form.neighborhood', () => this.scheduleAddressGeocode());
+        this.$watch('form.address', () => this.scheduleAddressGeocode());
+    },
+
+    scheduleAddressGeocode() {
+        if (! this.geocodeUrl || this.pinManuallyAdjusted) {
+            return;
+        }
+
+        clearTimeout(this.geocodeTimer);
+        this.geocodeTimer = setTimeout(() => this.geocodeAddress(false), 900);
+    },
+
+    async loadNeighborhoods({ preserveSelection = false } = {}) {
+        const city = String(this.form.city || '').trim();
+        const district = String(this.form.district || '').trim();
+        const selected = preserveSelection ? String(this.form.neighborhood || '').trim() : '';
+
+        if (! preserveSelection) {
+            this.form.neighborhood = '';
+        }
+        this.neighborhoods = [];
+
+        if (! this.neighborhoodsUrl || ! city || ! district) {
+            return;
+        }
+
+        this.loadingNeighborhoods = true;
+
+        try {
+            const params = new URLSearchParams({ city, district });
+            const response = await fetch(`${this.neighborhoodsUrl}?${params.toString()}`, {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            });
+            const payload = await response.json().catch(() => ({}));
+            this.neighborhoods = Array.isArray(payload.neighborhoods) ? payload.neighborhoods : [];
+
+            if (preserveSelection && selected && this.neighborhoods.includes(selected)) {
+                this.form.neighborhood = selected;
+            } else if (! preserveSelection) {
+                this.form.neighborhood = '';
+            }
+        } catch (error) {
+            this.neighborhoods = [];
+        } finally {
+            this.loadingNeighborhoods = false;
+        }
+    },
+
+    async geocodeAddress(force = false) {
+        if (force && typeof force === 'object') {
+            force = Boolean(force.force);
+        }
+        force = Boolean(force);
+
+        if (! this.geocodeUrl) {
+            this.geocodeMessage = 'Harita arama adresi tanımlı değil. Sayfayı yenileyip tekrar deneyin.';
+            return;
+        }
+
+        if (! force && this.pinManuallyAdjusted) {
+            return;
+        }
+
+        const city = String(this.form.city || '').trim();
+        const district = String(this.form.district || '').trim();
+        const neighborhood = String(this.form.neighborhood || '').trim();
+        const address = String(this.form.address || '').trim();
+
+        if (! city) {
+            this.geocodeMessage = 'Önce il seçin.';
+            return;
+        }
+
+        if (! district && ! neighborhood && ! address) {
+            this.geocodeMessage = 'İlçe / mahalle seçin veya açık adres girin.';
+            return;
+        }
+
+        if (force) {
+            this.pinManuallyAdjusted = false;
+        }
+
+        this.geocoding = true;
+        this.geocodeMessage = 'Adres aranıyor...';
+        this.geocodeLabel = '';
+
+        try {
+            const token = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+            const response = await fetch(this.geocodeUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': token,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ city, district, neighborhood, address }),
+            });
+
+            const payload = await response.json().catch(() => ({}));
+
+            if (! response.ok) {
+                const detail = payload.message
+                    || (response.status === 419
+                        ? 'Oturum süresi doldu. Sayfayı yenileyip tekrar deneyin.'
+                        : response.status === 403
+                            ? 'Bu işlem için yetkiniz yok.'
+                            : `Adres haritada bulunamadı (${response.status}).`);
+                this.geocodeMessage = detail;
+                return;
+            }
+
+            const lat = Number(payload.latitude);
+            const lng = Number(payload.longitude);
+            if (Number.isNaN(lat) || Number.isNaN(lng)) {
+                this.geocodeMessage = 'Adres haritada bulunamadı.';
+                return;
+            }
+
+            this.setMapPoint(lat, lng, { fromGeocode: true });
+            this.geocodeMessage = 'Adres haritada işaretlendi. İsterseniz pini sürükleyerek düzeltebilirsiniz.';
+            this.geocodeLabel = payload.label ? String(payload.label) : '';
+        } catch (error) {
+            this.geocodeMessage = 'Adres aranamadı. Bağlantınızı kontrol edip tekrar deneyin.';
+        } finally {
+            this.geocoding = false;
+        }
+    },
+
+    setMapPoint(nextLat, nextLng, { fromGeocode = false, fromUser = false } = {}) {
+        this.form.latitude = String(Number(nextLat).toFixed(7));
+        this.form.longitude = String(Number(nextLng).toFixed(7));
+
+        if (fromUser) {
+            this.pinManuallyAdjusted = true;
+        }
+
+        const leaflet = window.L;
+        if (! leaflet || ! this.map) {
+            return;
+        }
+
+        if (this.mapMarker) {
+            this.mapMarker.setLatLng([nextLat, nextLng]);
+        } else {
+            this.mapMarker = leaflet.marker([nextLat, nextLng], { draggable: true }).addTo(this.map);
+            this.mapMarker.on('dragend', () => {
+                const pos = this.mapMarker.getLatLng();
+                this.setMapPoint(pos.lat, pos.lng, { fromUser: true });
+            });
+        }
+
+        if (fromGeocode) {
+            this.map.setView([nextLat, nextLng], 16);
+        }
+    },
+
+    initLocationMap(attempt = 0) {
+        const el = this.$refs.businessMap || document.getElementById('business-location-map');
+        if (! el) {
+            if (attempt < 40) {
+                setTimeout(() => this.initLocationMap(attempt + 1), 50);
+            }
+            return;
+        }
+
+        if (this.map || el.dataset.mapReady === '1') {
+            return;
+        }
+
+        const leaflet = window.L;
+        if (! leaflet) {
+            if (attempt < 40) {
+                setTimeout(() => this.initLocationMap(attempt + 1), 50);
+            }
+            return;
+        }
+
+        const latValue = this.form.latitude;
+        const lngValue = this.form.longitude;
+        const hasPoint = latValue !== null && latValue !== undefined && String(latValue).trim() !== ''
+            && lngValue !== null && lngValue !== undefined && String(lngValue).trim() !== ''
+            && ! Number.isNaN(Number(latValue))
+            && ! Number.isNaN(Number(lngValue));
+        const lat = hasPoint ? Number(latValue) : 41.0082;
+        const lng = hasPoint ? Number(lngValue) : 28.9784;
+
+        this.map = leaflet.map(el, { scrollWheelZoom: true }).setView([lat, lng], hasPoint ? 16 : 11);
+        leaflet.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap',
+        }).addTo(this.map);
+
+        if (hasPoint) {
+            this.setMapPoint(lat, lng);
+        }
+
+        this.map.on('click', (event) => {
+            this.setMapPoint(event.latlng.lat, event.latlng.lng, { fromUser: true });
+        });
+
+        el.dataset.mapReady = '1';
+        setTimeout(() => this.map?.invalidateSize(), 100);
+        setTimeout(() => this.map?.invalidateSize(), 400);
+
+        if (! hasPoint) {
+            this.scheduleAddressGeocode();
+        }
     },
 
     onCityChange() {
         this.form.district = '';
+        this.form.neighborhood = '';
+        this.neighborhoods = [];
         this.districts = this.districtsByCity[this.form.city] || [];
+        this.pinManuallyAdjusted = false;
+        this.scheduleAddressGeocode();
+    },
+
+    onDistrictChange() {
+        this.form.neighborhood = '';
+        this.pinManuallyAdjusted = false;
+        this.loadNeighborhoods();
+        this.scheduleAddressGeocode();
     },
 
     validate() {
@@ -366,6 +688,10 @@ Alpine.data('businessForm', (districtsByCity = {}, initial = {}, isEdit = false,
 
         if (this.form.status === 'opening_stage' && !this.form.start_date) {
             this.errors.start_date = 'Açılış aşaması için başlangıç tarihi zorunludur.';
+        }
+
+        if (!this.form.latitude || !this.form.longitude) {
+            this.errors.latitude = 'İşletme konumu haritada işaretlenmelidir.';
         }
 
         return Object.keys(this.errors).length === 0;
