@@ -104,6 +104,10 @@ class BusinessCommercialContractService
                 && filled($data['guaranteed_hourly_package_fee'] ?? null)
                 ? round((float) $data['guaranteed_hourly_package_fee'], 2)
                 : null;
+            $guaranteedPackages = $workType === BusinessCommercialContract::WORK_PER_PACKAGE
+                && filled($data['guaranteed_package_count'] ?? null)
+                ? (int) $data['guaranteed_package_count']
+                : null;
 
             return BusinessCommercialContract::query()->create([
                 'business_id' => $businessId,
@@ -114,6 +118,7 @@ class BusinessCommercialContractService
                 'courier_amount' => $courierAmount,
                 'net_profit' => round($businessAmount - $courierAmount, 2),
                 'guaranteed_hourly_package_fee' => $guaranteeFee,
+                'guaranteed_package_count' => $guaranteedPackages,
                 'payment_period' => (string) $data['payment_period'],
                 'status' => BusinessCommercialContract::STATUS_ACTIVE,
                 'supersedes_id' => $supersedesId,
@@ -155,6 +160,10 @@ class BusinessCommercialContractService
             && filled($data['guaranteed_hourly_package_fee'] ?? null)
             ? round((float) $data['guaranteed_hourly_package_fee'], 2)
             : null;
+        $guaranteedPackages = $workType === BusinessCommercialContract::WORK_PER_PACKAGE
+            && filled($data['guaranteed_package_count'] ?? null)
+            ? (int) $data['guaranteed_package_count']
+            : null;
 
         $contract->update([
             'start_date' => $startDate->toDateString(),
@@ -164,6 +173,7 @@ class BusinessCommercialContractService
             'courier_amount' => $courierAmount,
             'net_profit' => round($businessAmount - $courierAmount, 2),
             'guaranteed_hourly_package_fee' => $guaranteeFee,
+            'guaranteed_package_count' => $guaranteedPackages,
             'payment_period' => (string) $data['payment_period'],
             'notes' => $data['notes'] ?? null,
         ]);

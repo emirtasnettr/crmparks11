@@ -23,6 +23,7 @@ class ShiftAttendanceController extends Controller
 
         return view('modules.shift-planning.attendance-board', [
             'board' => $board,
+            'canManage' => $request->user()?->can('shift_planning.update') ?? false,
         ]);
     }
 
@@ -54,6 +55,34 @@ class ShiftAttendanceController extends Controller
             ->with('success', 'Vardiya personel tarafından başlatıldı.');
     }
 
+    public function markAttended(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()?->can('shift_planning.update'), 403);
+
+        $data = $request->validate([
+            'business_id' => ['required', 'integer', 'exists:businesses,id'],
+            'shift_id' => ['required', 'integer', 'exists:business_shifts,id'],
+            'courier_id' => ['required', 'integer', 'exists:couriers,id'],
+            'work_date' => ['required', 'date'],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $courier = Courier::query()->findOrFail((int) $data['courier_id']);
+        $day = Carbon::parse($data['work_date'])->startOfDay();
+
+        $this->attendances->markAttendedForCourier(
+            $courier,
+            (int) $data['shift_id'],
+            $day,
+            $request->user(),
+            $data['notes'] ?? null,
+        );
+
+        return redirect()
+            ->route('shift-planning.attendance')
+            ->with('success', 'Kurye geldi olarak işaretlendi.');
+    }
+
     public function end(Request $request): RedirectResponse
     {
         abort_unless($request->user()?->can('shift_planning.update'), 403);
@@ -63,6 +92,7 @@ class ShiftAttendanceController extends Controller
             'attendance_id' => ['required', 'integer', 'exists:business_shift_attendances,id'],
             'work_date' => ['required', 'date'],
             'notes' => ['nullable', 'string', 'max:500'],
+            'package_count' => ['nullable', 'integer', 'min:0', 'max:100000'],
         ]);
 
         $attendance = BusinessShiftAttendance::query()->findOrFail((int) $data['attendance_id']);
@@ -72,6 +102,7 @@ class ShiftAttendanceController extends Controller
             (int) $data['attendance_id'],
             $request->user(),
             $data['notes'] ?? null,
+            array_key_exists('package_count', $data) ? (int) $data['package_count'] : null,
         );
 
         return redirect()

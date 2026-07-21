@@ -98,6 +98,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/rapor', [ShiftAttendanceReportController::class, 'index'])->name('report');
         Route::get('/rapor/export', [ShiftAttendanceReportController::class, 'export'])->name('report.export');
         Route::post('/katilim/baslat', [ShiftAttendanceController::class, 'start'])->middleware('permission:shift_planning.update')->name('attendance.start');
+        Route::post('/katilim/geldi', [ShiftAttendanceController::class, 'markAttended'])->middleware('permission:shift_planning.update')->name('attendance.mark-attended');
         Route::post('/katilim/bitir', [ShiftAttendanceController::class, 'end'])->middleware('permission:shift_planning.update')->name('attendance.end');
         Route::post('/', [ShiftPlanningController::class, 'store'])->middleware('permission:shift_planning.create')->name('store');
         Route::put('/{id}', [ShiftPlanningController::class, 'update'])->middleware('permission:shift_planning.update')->name('update');

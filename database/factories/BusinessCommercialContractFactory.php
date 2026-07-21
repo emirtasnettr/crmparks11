@@ -27,6 +27,7 @@ class BusinessCommercialContractFactory extends Factory
             'courier_amount' => $courierAmount,
             'net_profit' => round($businessAmount - $courierAmount, 2),
             'guaranteed_hourly_package_fee' => null,
+            'guaranteed_package_count' => null,
             'payment_period' => BusinessCommercialContract::PERIOD_MONTHLY,
             'status' => BusinessCommercialContract::STATUS_ACTIVE,
             'supersedes_id' => null,
@@ -39,6 +40,7 @@ class BusinessCommercialContractFactory extends Factory
     {
         return $this->state(fn () => [
             'work_type' => BusinessCommercialContract::WORK_PER_PACKAGE,
+            'guaranteed_package_count' => 50,
         ]);
     }
 

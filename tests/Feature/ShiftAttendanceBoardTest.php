@@ -52,6 +52,8 @@ class ShiftAttendanceBoardTest extends TestCase
             'name' => 'Öğle',
             'start_time' => '10:00',
             'end_time' => '16:00',
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-07-31',
             'required_headcount' => 1,
             'is_active' => true,
             'created_by' => $user->id,
@@ -85,6 +87,8 @@ class ShiftAttendanceBoardTest extends TestCase
             'name' => 'Akşam',
             'start_time' => '18:00',
             'end_time' => '23:00',
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-07-31',
             'required_headcount' => 1,
             'is_active' => true,
             'created_by' => $user->id,
@@ -118,6 +122,8 @@ class ShiftAttendanceBoardTest extends TestCase
             'name' => 'Akşam',
             'start_time' => '18:00',
             'end_time' => '23:00',
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-07-31',
             'required_headcount' => 1,
             'is_active' => true,
             'created_by' => $user->id,
@@ -149,6 +155,8 @@ class ShiftAttendanceBoardTest extends TestCase
             'name' => 'Sabah',
             'start_time' => '09:00',
             'end_time' => '17:00',
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-07-31',
             'required_headcount' => 1,
             'is_active' => true,
             'created_by' => $user->id,
@@ -180,6 +188,8 @@ class ShiftAttendanceBoardTest extends TestCase
             'name' => 'Akşam',
             'start_time' => '16:00',
             'end_time' => '23:00',
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-07-31',
             'required_headcount' => 1,
             'is_active' => true,
             'created_by' => $user->id,
@@ -219,6 +229,52 @@ class ShiftAttendanceBoardTest extends TestCase
         $this->assertSame(420, (int) $attendance->worked_minutes);
     }
 
+    public function test_staff_can_mark_missing_courier_as_attended_after_shift_end(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-17 23:30:00'));
+
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $courier = $this->createCourier($user, ['full_name' => 'Gelmedi Kurye']);
+
+        $shift = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'name' => 'Akşam',
+            'start_time' => '16:00',
+            'end_time' => '23:00',
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-07-31',
+            'required_headcount' => 1,
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+        BusinessShiftCourier::query()->create([
+            'business_shift_id' => $shift->id,
+            'courier_id' => $courier->id,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('shift-planning.attendance'))
+            ->assertOk()
+            ->assertSee('Geldi işaretle');
+
+        $this->actingAs($user)
+            ->post(route('shift-planning.attendance.mark-attended'), [
+                'business_id' => $business->id,
+                'shift_id' => $shift->id,
+                'courier_id' => $courier->id,
+                'work_date' => now()->toDateString(),
+            ])
+            ->assertRedirect(route('shift-planning.attendance'));
+
+        $attendance = BusinessShiftAttendance::query()->first();
+        $this->assertNotNull($attendance);
+        $this->assertSame('completed', $attendance->status);
+        $this->assertSame(420, (int) $attendance->worked_minutes);
+        $this->assertStringContainsString('geldi olarak işaretledi', (string) $attendance->notes);
+    }
+
     public function test_weekly_calendar_includes_attendance_summary_label(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-07-17 12:00:00'));
@@ -233,6 +289,8 @@ class ShiftAttendanceBoardTest extends TestCase
             'name' => 'Öğle',
             'start_time' => '10:00',
             'end_time' => '16:00',
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-07-31',
             'required_headcount' => 1,
             'is_active' => true,
             'created_by' => $user->id,
@@ -313,6 +371,8 @@ class ShiftAttendanceBoardTest extends TestCase
             'name' => 'Öğle',
             'start_time' => '10:00',
             'end_time' => '16:00',
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-07-31',
             'required_headcount' => 1,
             'is_active' => true,
             'created_by' => $user->id,

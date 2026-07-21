@@ -1112,6 +1112,7 @@ Alpine.data('commercialContractPage', (preset = {}) => {
         business_amount: '',
         courier_amount: '',
         guaranteed_hourly_package_fee: '',
+        guaranteed_package_count: '',
         payment_period: 'monthly',
         notes: '',
     });
@@ -1153,6 +1154,7 @@ Alpine.data('commercialContractPage', (preset = {}) => {
                 business_amount: row.business_amount ?? '',
                 courier_amount: row.courier_amount ?? '',
                 guaranteed_hourly_package_fee: row.guaranteed_hourly_package_fee ?? '',
+                guaranteed_package_count: row.guaranteed_package_count ?? '',
                 payment_period: row.payment_period ?? 'monthly',
                 notes: row.notes ?? '',
             };

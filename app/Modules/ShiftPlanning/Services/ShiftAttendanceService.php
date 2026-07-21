@@ -364,22 +364,100 @@ class ShiftAttendanceService
         ]);
     }
 
+    /**
+     * Personel: girmeyen kuryeyi planlanan süreyle tamamlanmış (Geldi) olarak işaretler.
+     */
+    public function markAttendedForCourier(Courier $courier, int $shiftId, Carbon $day, User $staff, ?string $note = null): BusinessShiftAttendance
+    {
+        if (ShiftAttendanceRules::isFutureDay($day)) {
+            throw ValidationException::withMessages([
+                'shift' => 'Gelecek gün vardiyası geldi olarak işaretlenemez.',
+            ]);
+        }
+
+        $shift = $this->assertCourierCanAttend($courier, $shiftId, $day);
+
+        $exists = BusinessShiftAttendance::query()
+            ->where('courier_id', $courier->id)
+            ->where('business_shift_id', $shift->id)
+            ->whereDate('work_date', $day->toDateString())
+            ->whereIn('status', ['in_progress', 'completed'])
+            ->exists();
+
+        if ($exists) {
+            throw ValidationException::withMessages([
+                'shift' => 'Bu vardiya için seçilen günde zaten kayıt var.',
+            ]);
+        }
+
+        $staffNote = 'Personel müdahalesi: '.$staff->name.' geldi olarak işaretledi';
+        if (filled($note)) {
+            $staffNote .= ' — '.$note;
+        }
+
+        $created = $this->createRetrospectiveCompletedAttendance(
+            $shift,
+            (int) $courier->id,
+            $day->copy(),
+            $staffNote,
+        );
+
+        if (! $created) {
+            throw ValidationException::withMessages([
+                'shift' => 'Bu vardiya için seçilen günde zaten kayıt var.',
+            ]);
+        }
+
+        $attendance = BusinessShiftAttendance::query()
+            ->where('courier_id', $courier->id)
+            ->where('business_shift_id', $shift->id)
+            ->whereDate('work_date', $day->toDateString())
+            ->where('status', 'completed')
+            ->latest('id')
+            ->firstOrFail();
+
+        try {
+            $this->earningSync->sync(
+                $staff,
+                [
+                    'business_id' => (int) $shift->business_id,
+                    'courier_id' => (int) $courier->id,
+                    'period_year' => (int) $day->format('Y'),
+                    'period_month' => (int) $day->format('n'),
+                ],
+            );
+        } catch (Throwable $e) {
+            Log::warning('Staff mark-attended earning sync failed', [
+                'attendance_id' => $attendance->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
+
+        return $attendance->fresh(['shift', 'business', 'courier']);
+    }
+
     public function end(Courier $courier, int $attendanceId, array $options = []): BusinessShiftAttendance
     {
         return $this->completeAttendance($attendanceId, $courier->id, $options);
     }
 
-    public function endForCourier(int $attendanceId, User $staff, ?string $note = null): BusinessShiftAttendance
+    public function endForCourier(int $attendanceId, User $staff, ?string $note = null, ?int $packageCount = null): BusinessShiftAttendance
     {
         $staffNote = 'Personel müdahalesi: '.$staff->name.' sonlandırdı';
         if (filled($note)) {
             $staffNote .= ' — '.$note;
         }
 
-        return $this->completeAttendance($attendanceId, null, [
+        $options = [
             'staff_assist' => true,
             'notes_append' => $staffNote,
-        ]);
+        ];
+
+        if ($packageCount !== null) {
+            $options['package_count'] = $packageCount;
+        }
+
+        return $this->completeAttendance($attendanceId, null, $options);
     }
 
     /**
@@ -546,7 +624,12 @@ class ShiftAttendanceService
         return $created;
     }
 
-    private function createRetrospectiveCompletedAttendance(BusinessShift $shift, int $courierId, Carbon $day): bool
+    private function createRetrospectiveCompletedAttendance(
+        BusinessShift $shift,
+        int $courierId,
+        Carbon $day,
+        ?string $notes = null,
+    ): bool
     {
         $exists = BusinessShiftAttendance::query()
             ->where('courier_id', $courierId)
@@ -564,10 +647,24 @@ class ShiftAttendanceService
         $minutes = ShiftAttendanceRules::scheduledMinutes($shift, $day);
 
         $contract = $this->commercialContracts->forBusinessOnDate((int) $shift->business_id, $day);
+        $pricingModel = $contract?->work_type;
+        $packageCount = null;
         $hourlyRate = $contract?->courierHourlyRateForAttendance();
-        $earnings = ($hourlyRate !== null && $hourlyRate > 0)
-            ? round(($minutes / 60) * $hourlyRate, 2)
-            : null;
+        $earnings = null;
+
+        if ($pricingModel === 'per_package') {
+            $packageCount = $contract?->guaranteed_package_count !== null
+                ? (int) $contract->guaranteed_package_count
+                : null;
+            $unit = $contract !== null ? (float) $contract->courier_amount : 0.0;
+            if ($packageCount !== null && $packageCount > 0 && $unit > 0) {
+                $earnings = round($packageCount * $unit, 2);
+            } elseif ($hourlyRate !== null && $hourlyRate > 0) {
+                $earnings = round(($minutes / 60) * $hourlyRate, 2);
+            }
+        } elseif ($hourlyRate !== null && $hourlyRate > 0) {
+            $earnings = round(($minutes / 60) * $hourlyRate, 2);
+        }
 
         BusinessShiftAttendance::query()->create([
             'business_shift_id' => $shift->id,
@@ -579,10 +676,11 @@ class ShiftAttendanceService
             'ended_at' => $endedAt,
             'status' => 'completed',
             'worked_minutes' => $minutes,
+            'package_count' => $packageCount,
             'hourly_rate' => $hourlyRate,
             'earnings_amount' => $earnings,
-            'pricing_model' => $contract?->work_type,
-            'notes' => 'Retrospektif vardiya — otomatik tamamlandı',
+            'pricing_model' => $pricingModel,
+            'notes' => $notes ?: 'Retrospektif vardiya — otomatik tamamlandı',
         ]);
 
         return true;
@@ -654,6 +752,8 @@ class ShiftAttendanceService
                 $districtName = $business?->district?->name;
                 $location = collect([$cityName, $districtName])->filter()->implode(' / ');
                 $businessName = $business?->displayName() ?? '—';
+                $shiftEnd = ShiftAttendanceRules::shiftEndAt($shift, $day);
+                $missing = $attendance === null && ! $isFuture;
 
                 $buckets[$bucket][] = [
                     'courier_id' => $courier->id,
@@ -688,7 +788,8 @@ class ShiftAttendanceService
                     },
                     'late_minutes' => $lateMinutes,
                     'attendance' => $attendance ? $this->presenter->row($attendance) : null,
-                    'can_start' => $attendance === null && ! $isFuture,
+                    'can_start' => $missing && $now->lt($shiftEnd),
+                    'can_mark_attended' => $missing && $now->gte($shiftEnd),
                     'can_end' => $attendance?->isInProgress() ?? false,
                 ];
             }
@@ -816,8 +917,9 @@ class ShiftAttendanceService
                     && ! $isFuture
                     && ShiftAttendanceRules::isWithinCourierStartWindow($shift, $day);
 
-                // Personel, bugün/geçmişte pencere dışında da başlatabilir.
-                $staffCanStart = $attendance === null && ! $isFuture;
+                // Personel, bugün/geçmişte pencere dışında da başlatabilir / geldi işaretleyebilir.
+                $missing = $attendance === null && ! $isFuture;
+                $shiftEnded = now()->gte(ShiftAttendanceRules::shiftEndAt($shift, $day));
 
                 $couriers[] = [
                     'courier_id' => $courierRow['id'],
@@ -825,7 +927,8 @@ class ShiftAttendanceService
                     'status' => $status,
                     'status_label' => ShiftAttendanceRules::statusLabel($status),
                     'attendance' => $attendance ? $this->presenter->row($attendance) : null,
-                    'can_start' => $staffCanStart,
+                    'can_start' => $missing && ! $shiftEnded,
+                    'can_mark_attended' => $missing && $shiftEnded,
                     'courier_can_start' => $canStart,
                     'can_end' => $attendance?->isInProgress() ?? false,
                 ];
@@ -1067,6 +1170,7 @@ class ShiftAttendanceService
      *     staff_assist?: bool,
      *     ended_at?: Carbon|null,
      *     notes_append?: string|null,
+     *     package_count?: mixed,
      *     latitude?: mixed,
      *     longitude?: mixed,
      *     accuracy?: mixed
@@ -1128,35 +1232,44 @@ class ShiftAttendanceService
             }
 
             // Hakediş süresi: yalnızca planlanan vardiya aralığı.
-            // Erken başlama / geç bitiş (ör. 08:50–10:10) worked_minutes'a yansımaz.
             $minutes = $shift !== null
                 ? ShiftAttendanceRules::scheduledMinutes($shift, $workDate)
                 : max(1, (int) ($attendance->started_at ?? $endedAt)->diffInMinutes($endedAt, absolute: true));
 
+            $contract = $attendance->commercial_contract_id
+                ? $this->commercialContracts->find((int) $attendance->commercial_contract_id)
+                : $this->commercialContracts->forBusinessOnDate(
+                    (int) $attendance->business_id,
+                    $workDate,
+                );
+
+            if ($attendance->pricing_model === null && $contract !== null) {
+                $attendance->pricing_model = $contract->work_type;
+            }
+            if ($attendance->commercial_contract_id === null && $contract !== null) {
+                $attendance->commercial_contract_id = $contract->id;
+            }
+
+            $pricingModel = $attendance->pricing_model ?: $contract?->work_type;
+            $packageCount = $this->resolvePackageCountOnComplete(
+                $options,
+                $pricingModel,
+                $contract,
+                $autoEnd,
+                $staffAssist,
+            );
+
             $hourlyRate = $attendance->hourly_rate !== null
                 ? (float) $attendance->hourly_rate
-                : null;
+                : $contract?->courierHourlyRateForAttendance();
 
-            if ($hourlyRate === null) {
-                $contract = $attendance->commercial_contract_id
-                    ? $this->commercialContracts->find((int) $attendance->commercial_contract_id)
-                    : $this->commercialContracts->forBusinessOnDate(
-                        (int) $attendance->business_id,
-                        $workDate,
-                    );
-                $hourlyRate = $contract?->courierHourlyRateForAttendance();
-                if ($attendance->pricing_model === null && $contract !== null) {
-                    $attendance->pricing_model = $contract->work_type;
-                }
-                if ($attendance->commercial_contract_id === null && $contract !== null) {
-                    $attendance->commercial_contract_id = $contract->id;
-                }
-            }
-
-            $earnings = null;
-            if ($hourlyRate !== null && $hourlyRate > 0) {
-                $earnings = round(($minutes / 60) * $hourlyRate, 2);
-            }
+            $earnings = $this->resolveEarningsOnComplete(
+                $pricingModel,
+                $packageCount,
+                $minutes,
+                $hourlyRate,
+                $contract,
+            );
 
             $notes = trim((string) $attendance->notes);
             if (filled($options['notes_append'] ?? null)) {
@@ -1169,9 +1282,10 @@ class ShiftAttendanceService
                 'ended_at' => $endedAt,
                 'status' => 'completed',
                 'worked_minutes' => $minutes,
+                'package_count' => $packageCount,
                 'hourly_rate' => $hourlyRate,
                 'earnings_amount' => $earnings,
-                'pricing_model' => $attendance->pricing_model,
+                'pricing_model' => $pricingModel,
                 'commercial_contract_id' => $attendance->commercial_contract_id,
                 'notes' => $notes !== '' ? $notes : null,
                 'end_latitude' => $endGeo['latitude'],
@@ -1185,6 +1299,84 @@ class ShiftAttendanceService
         $this->syncEarningsForCompletedAttendance($fresh);
 
         return $fresh;
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     */
+    private function resolvePackageCountOnComplete(
+        array $options,
+        ?string $pricingModel,
+        mixed $contract,
+        bool $autoEnd,
+        bool $staffAssist,
+    ): ?int {
+        $provided = array_key_exists('package_count', $options)
+            && $options['package_count'] !== null
+            && $options['package_count'] !== '';
+
+        if ($provided) {
+            $count = (int) $options['package_count'];
+            if ($count < 0) {
+                throw ValidationException::withMessages([
+                    'package_count' => 'Paket sayısı negatif olamaz.',
+                ]);
+            }
+
+            if ($pricingModel === 'per_package' && $count < 1 && ! $autoEnd) {
+                throw ValidationException::withMessages([
+                    'package_count' => 'Paket başı vardiyada paket sayısı zorunludur.',
+                ]);
+            }
+
+            return $count;
+        }
+
+        if ($pricingModel === 'per_package') {
+            if ($autoEnd || $staffAssist) {
+                $guaranteed = $contract?->guaranteed_package_count;
+
+                if ($guaranteed !== null && (int) $guaranteed > 0) {
+                    return (int) $guaranteed;
+                }
+
+                return null;
+            }
+
+            throw ValidationException::withMessages([
+                'package_count' => 'Paket başı vardiyada paket sayısı zorunludur.',
+            ]);
+        }
+
+        return null;
+    }
+
+    private function resolveEarningsOnComplete(
+        ?string $pricingModel,
+        ?int $packageCount,
+        int $minutes,
+        ?float $hourlyRate,
+        mixed $contract,
+    ): ?float {
+        if ($pricingModel === 'per_package') {
+            $unit = $contract !== null ? (float) $contract->courier_amount : 0.0;
+            if ($packageCount !== null && $packageCount > 0 && $unit > 0) {
+                return round($packageCount * $unit, 2);
+            }
+
+            // Garanti paket yoksa saatlik garanti ücretine düş.
+            if ($hourlyRate !== null && $hourlyRate > 0) {
+                return round(($minutes / 60) * $hourlyRate, 2);
+            }
+
+            return null;
+        }
+
+        if ($hourlyRate !== null && $hourlyRate > 0) {
+            return round(($minutes / 60) * $hourlyRate, 2);
+        }
+
+        return null;
     }
 
     private function syncEarningsForCompletedAttendance(BusinessShiftAttendance $attendance): void

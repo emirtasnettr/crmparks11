@@ -29,6 +29,12 @@ class UpdateBusinessCommercialContractRequest extends FormRequest
             || $this->input('guaranteed_hourly_package_fee') === null) {
             $this->merge(['guaranteed_hourly_package_fee' => null]);
         }
+
+        if ($this->input('work_type') !== BusinessCommercialContract::WORK_PER_PACKAGE
+            || $this->input('guaranteed_package_count') === ''
+            || $this->input('guaranteed_package_count') === null) {
+            $this->merge(['guaranteed_package_count' => null]);
+        }
     }
 
     /**
@@ -44,6 +50,13 @@ class UpdateBusinessCommercialContractRequest extends FormRequest
             'courier_amount' => ['required', 'numeric', 'min:0'],
             'net_profit' => ['nullable', 'numeric'],
             'guaranteed_hourly_package_fee' => ['nullable', 'numeric', 'min:0'],
+            'guaranteed_package_count' => [
+                Rule::requiredIf(fn () => $this->input('work_type') === BusinessCommercialContract::WORK_PER_PACKAGE),
+                'nullable',
+                'integer',
+                'min:1',
+                'max:100000',
+            ],
             'payment_period' => ['required', Rule::in(['weekly', 'biweekly', 'monthly'])],
             'notes' => ['nullable', 'string', 'max:2000'],
         ];
@@ -59,6 +72,7 @@ class UpdateBusinessCommercialContractRequest extends FormRequest
             'work_type.required' => 'Çalışma şekli seçilmelidir.',
             'business_amount.required' => 'İşletmeden alınan tutar zorunludur.',
             'courier_amount.required' => 'Kuryeye verilen tutar zorunludur.',
+            'guaranteed_package_count.required' => 'Paket başı çalışmada garanti paket sayısı zorunludur.',
             'payment_period.required' => 'Ödeme periyodu seçilmelidir.',
         ];
     }

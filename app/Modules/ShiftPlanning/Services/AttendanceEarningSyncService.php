@@ -260,17 +260,20 @@ class AttendanceEarningSyncService
             ];
         }
 
-        // per_package (+ guarantee fee on attendance)
+        // per_package
         $courierUnit = round((float) ($contract?->courier_amount ?? 0), 2);
         $revenueUnit = round((float) ($contract?->business_amount ?? 0), 2);
-        $avgRate = round((float) ($rows->avg('hourly_rate') ?: 0), 2);
+        $packageCount = (int) $rows->sum(fn (BusinessShiftAttendance $row) => (int) ($row->package_count ?? 0));
 
-        $packagesPerHour = ($courierUnit > 0 && $avgRate > 0)
-            ? round($avgRate / $courierUnit, 4)
-            : 0.0;
-        $packageCount = $packagesPerHour > 0
-            ? (int) max(1, (int) round($workedHours * $packagesPerHour))
-            : ($courierUnit > 0 ? (int) max(1, (int) round($courierTotal / $courierUnit)) : 0);
+        if ($packageCount <= 0) {
+            $avgRate = round((float) ($rows->avg('hourly_rate') ?: 0), 2);
+            $packagesPerHour = ($courierUnit > 0 && $avgRate > 0)
+                ? round($avgRate / $courierUnit, 4)
+                : 0.0;
+            $packageCount = $packagesPerHour > 0
+                ? (int) max(1, (int) round($workedHours * $packagesPerHour))
+                : ($courierUnit > 0 ? (int) max(1, (int) round($courierTotal / $courierUnit)) : 0);
+        }
 
         $revenueTotal = round($packageCount * $revenueUnit, 2);
 

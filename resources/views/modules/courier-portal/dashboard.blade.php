@@ -58,11 +58,30 @@
                             İşletme konumu tanımlı değil
                         </span>
                     @elseif ($item['can_end'])
-                        <form method="POST" action="{{ route('courier-portal.shifts.end', $item['attendance']['id']) }}" class="w-full sm:w-auto" @submit.prevent="submit($event.target)">
+                        <form method="POST" action="{{ route('courier-portal.shifts.end', $item['attendance']['id']) }}" class="w-full space-y-2 sm:w-auto" @submit.prevent="submit($event.target)">
                             @csrf
                             <input type="hidden" name="latitude" x-model="latitude">
                             <input type="hidden" name="longitude" x-model="longitude">
                             <input type="hidden" name="accuracy" x-model="accuracy">
+                            <div>
+                                <label class="mb-1 block text-xs font-medium text-gray-600">
+                                    Paket sayısı
+                                    @if (($item['pricing_model'] ?? null) === 'per_package')
+                                        <span class="text-red-600">*</span>
+                                    @else
+                                        <span class="font-normal text-gray-400">(opsiyonel)</span>
+                                    @endif
+                                </label>
+                                <input
+                                    type="number"
+                                    name="package_count"
+                                    min="{{ ($item['pricing_model'] ?? null) === 'per_package' ? 1 : 0 }}"
+                                    step="1"
+                                    @if (($item['pricing_model'] ?? null) === 'per_package') required @endif
+                                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+                                    placeholder="0"
+                                >
+                            </div>
                             <x-ui.button type="submit" variant="danger" class="w-full sm:w-auto" ::disabled="loading">
                                 <span x-show="!loading">Vardiyayı Sonlandır</span>
                                 <span x-show="loading" x-cloak>Konum alınıyor...</span>

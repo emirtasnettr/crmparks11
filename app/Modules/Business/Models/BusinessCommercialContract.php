@@ -39,6 +39,7 @@ class BusinessCommercialContract extends Model
         'courier_amount',
         'net_profit',
         'guaranteed_hourly_package_fee',
+        'guaranteed_package_count',
         'payment_period',
         'status',
         'supersedes_id',
@@ -55,6 +56,7 @@ class BusinessCommercialContract extends Model
             'courier_amount' => 'decimal:2',
             'net_profit' => 'decimal:2',
             'guaranteed_hourly_package_fee' => 'decimal:2',
+            'guaranteed_package_count' => 'integer',
         ];
     }
 

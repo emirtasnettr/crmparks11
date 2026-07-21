@@ -74,6 +74,8 @@ class CourierPortalShiftAttendanceTest extends TestCase
             'name' => 'Akşam',
             'start_time' => '16:00',
             'end_time' => '23:00',
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-07-31',
             'required_headcount' => 1,
             'is_active' => true,
             'created_by' => $admin->id,
@@ -146,6 +148,8 @@ class CourierPortalShiftAttendanceTest extends TestCase
             'name' => 'Sabah',
             'start_time' => '09:00',
             'end_time' => '10:00',
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-07-31',
             'required_headcount' => 1,
             'is_active' => true,
             'created_by' => $admin->id,
@@ -199,6 +203,8 @@ class CourierPortalShiftAttendanceTest extends TestCase
             'name' => 'Akşam',
             'start_time' => '16:00',
             'end_time' => '23:00',
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-07-31',
             'required_headcount' => 1,
             'is_active' => true,
             'created_by' => $admin->id,
@@ -249,6 +255,8 @@ class CourierPortalShiftAttendanceTest extends TestCase
             'name' => 'Akşam',
             'start_time' => '16:00',
             'end_time' => '23:00',
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-07-31',
             'required_headcount' => 1,
             'is_active' => true,
             'created_by' => $admin->id,
@@ -293,6 +301,8 @@ class CourierPortalShiftAttendanceTest extends TestCase
             'name' => 'Öğle',
             'start_time' => '10:00',
             'end_time' => '16:00',
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-07-31',
             'required_headcount' => 1,
             'is_active' => true,
             'created_by' => $admin->id,
@@ -325,6 +335,140 @@ class CourierPortalShiftAttendanceTest extends TestCase
         $this->assertNull($attendance->end_latitude);
     }
 
+    public function test_per_package_shift_requires_package_count_on_courier_end(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-17 16:00:00'));
+
+        $admin = User::factory()->create();
+        $admin->assignRole('super_admin');
+        $courier = Courier::factory()->create(['created_by' => $admin->id, 'status' => 'active']);
+        $user = app(CourierUserProvisioner::class)->ensureForCourier($courier);
+        $business = Business::factory()->create([
+            'created_by' => $admin->id,
+            'status' => 'active',
+            'latitude' => 41.0082,
+            'longitude' => 28.9784,
+        ]);
+
+        BusinessCommercialContract::query()->where('business_id', $business->id)->delete();
+        BusinessCommercialContract::factory()->perPackage()->create([
+            'business_id' => $business->id,
+            'start_date' => '2026-07-01',
+            'business_amount' => 40,
+            'courier_amount' => 30,
+            'net_profit' => 10,
+            'guaranteed_package_count' => 50,
+            'status' => 'active',
+            'created_by' => $admin->id,
+        ]);
+
+        $shift = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'name' => 'Paket',
+            'start_time' => '10:00',
+            'end_time' => '16:00',
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-07-31',
+            'required_headcount' => 1,
+            'is_active' => true,
+            'created_by' => $admin->id,
+        ]);
+        BusinessShiftCourier::query()->create([
+            'business_shift_id' => $shift->id,
+            'courier_id' => $courier->id,
+        ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-07-17 10:05:00'));
+        $this->actingAs($user)
+            ->post(route('courier-portal.shifts.start', $shift->id), [
+                'latitude' => 41.0082,
+                'longitude' => 28.9784,
+                'accuracy' => 20,
+            ])
+            ->assertRedirect();
+
+        $attendance = BusinessShiftAttendance::query()->firstOrFail();
+
+        Carbon::setTestNow(Carbon::parse('2026-07-17 16:00:00'));
+        $this->actingAs($user)
+            ->from(route('courier-portal.dashboard'))
+            ->post(route('courier-portal.shifts.end', $attendance->id), [
+                'latitude' => 41.0082,
+                'longitude' => 28.9784,
+                'accuracy' => 20,
+            ])
+            ->assertRedirect(route('courier-portal.dashboard'))
+            ->assertSessionHasErrors('package_count');
+
+        $this->actingAs($user)
+            ->post(route('courier-portal.shifts.end', $attendance->id), [
+                'latitude' => 41.0082,
+                'longitude' => 28.9784,
+                'accuracy' => 20,
+                'package_count' => 42,
+            ])
+            ->assertRedirect(route('courier-portal.dashboard'));
+
+        $attendance->refresh();
+        $this->assertSame('completed', $attendance->status);
+        $this->assertSame(42, (int) $attendance->package_count);
+        $this->assertEquals(1260.0, (float) $attendance->earnings_amount); // 42 * 30
+    }
+
+    public function test_auto_end_applies_guaranteed_package_count_for_per_package(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('super_admin');
+        $courier = Courier::factory()->create(['created_by' => $admin->id, 'status' => 'active']);
+        $business = Business::factory()->create(['created_by' => $admin->id, 'status' => 'active']);
+
+        $contract = BusinessCommercialContract::factory()->perPackage()->create([
+            'business_id' => $business->id,
+            'start_date' => '2026-07-01',
+            'business_amount' => 40,
+            'courier_amount' => 25,
+            'net_profit' => 15,
+            'guaranteed_package_count' => 48,
+            'guaranteed_hourly_package_fee' => 100,
+            'status' => 'active',
+            'created_by' => $admin->id,
+        ]);
+
+        $shift = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'name' => 'Öğle',
+            'start_time' => '10:00',
+            'end_time' => '16:00',
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-07-31',
+            'required_headcount' => 1,
+            'is_active' => true,
+            'created_by' => $admin->id,
+        ]);
+
+        $attendance = BusinessShiftAttendance::query()->create([
+            'business_shift_id' => $shift->id,
+            'business_id' => $business->id,
+            'commercial_contract_id' => $contract->id,
+            'courier_id' => $courier->id,
+            'work_date' => '2026-07-17',
+            'started_at' => '2026-07-17 09:50:00',
+            'status' => 'in_progress',
+            'worked_minutes' => 0,
+            'pricing_model' => 'per_package',
+        ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-07-17 16:16:00'));
+
+        $ended = app(ShiftAttendanceService::class)->autoEndOverdueAttendances();
+        $this->assertSame(1, $ended);
+
+        $attendance->refresh();
+        $this->assertSame('completed', $attendance->status);
+        $this->assertSame(48, (int) $attendance->package_count);
+        $this->assertEquals(1200.0, (float) $attendance->earnings_amount); // 48 * 25
+    }
+
     public function test_courier_cannot_start_unassigned_shift(): void
     {
         $admin = User::factory()->create();
@@ -351,6 +495,8 @@ class CourierPortalShiftAttendanceTest extends TestCase
             'name' => 'Öğle',
             'start_time' => '12:00',
             'end_time' => '16:00',
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-07-31',
             'required_headcount' => 1,
             'is_active' => true,
             'created_by' => $admin->id,
@@ -486,6 +632,8 @@ class CourierPortalShiftAttendanceTest extends TestCase
             'name' => 'Akşam',
             'start_time' => '16:00',
             'end_time' => '23:00',
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-07-31',
             'required_headcount' => 1,
             'is_active' => true,
             'created_by' => $admin->id,
@@ -526,6 +674,8 @@ class CourierPortalShiftAttendanceTest extends TestCase
             'name' => 'Akşam',
             'start_time' => '16:00',
             'end_time' => '23:00',
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-07-31',
             'required_headcount' => 1,
             'is_active' => true,
             'created_by' => $admin->id,

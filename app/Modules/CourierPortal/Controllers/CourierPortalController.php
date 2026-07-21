@@ -81,9 +81,12 @@ class CourierPortalController extends Controller
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
             'accuracy' => ['nullable', 'numeric', 'min:0', 'max:5000'],
+            'package_count' => ['nullable', 'integer', 'min:0', 'max:100000'],
         ], [
             'latitude.required' => 'Vardiya sonlandırmak için konum izni gereklidir.',
             'longitude.required' => 'Vardiya sonlandırmak için konum izni gereklidir.',
+            'package_count.integer' => 'Paket sayısı tam sayı olmalıdır.',
+            'package_count.min' => 'Paket sayısı negatif olamaz.',
         ]);
 
         $courier = $this->attendances->resolveCourierForUser($request->user());
@@ -91,6 +94,9 @@ class CourierPortalController extends Controller
             'latitude' => $validated['latitude'],
             'longitude' => $validated['longitude'],
             'accuracy' => $validated['accuracy'] ?? null,
+            'package_count' => array_key_exists('package_count', $validated)
+                ? $validated['package_count']
+                : null,
         ]);
 
         return redirect()

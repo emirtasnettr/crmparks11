@@ -48,6 +48,10 @@
             </div>
             @if (($contract['work_type'] ?? '') === 'per_package')
                 <div>
+                    <dt class="text-xs font-medium text-gray-500">Garanti Paket Sayısı</dt>
+                    <dd class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ $contract['guaranteed_package_count'] ?? '—' }}</dd>
+                </div>
+                <div>
                     <dt class="text-xs font-medium text-gray-500">Saatlik Garanti Paket Ücreti</dt>
                     <dd class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ $contract['guaranteed_hourly_package_fee_formatted'] }}</dd>
                 </div>

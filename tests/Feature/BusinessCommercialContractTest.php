@@ -60,6 +60,7 @@ class BusinessCommercialContractTest extends TestCase
             'courier_amount' => 35,
             'payment_period' => 'weekly',
             'guaranteed_hourly_package_fee' => 80,
+            'guaranteed_package_count' => 40,
         ])->assertRedirect();
 
         $first->refresh();
@@ -77,6 +78,7 @@ class BusinessCommercialContractTest extends TestCase
         $this->assertSame('per_package', $second->work_type);
         $this->assertSame($first->id, $second->supersedes_id);
         $this->assertEquals(80.0, (float) $second->guaranteed_hourly_package_fee);
+        $this->assertSame(40, (int) $second->guaranteed_package_count);
     }
 
     public function test_super_admin_can_update_active_contract_amounts(): void
@@ -181,6 +183,7 @@ class BusinessCommercialContractTest extends TestCase
             'courier_amount' => 34,
             'payment_period' => 'weekly',
             'guaranteed_hourly_package_fee' => 90,
+            'guaranteed_package_count' => 55,
         ])->assertRedirect();
 
         $perPackage = BusinessCommercialContract::query()
@@ -191,6 +194,7 @@ class BusinessCommercialContractTest extends TestCase
         $this->assertNotNull($perPackage);
         $this->assertSame('per_package', $perPackage->work_type);
         $this->assertEquals(90.0, (float) $perPackage->guaranteed_hourly_package_fee);
+        $this->assertSame(55, (int) $perPackage->guaranteed_package_count);
     }
 
     public function test_attendance_earnings_follow_contract_active_on_work_date(): void
@@ -219,6 +223,7 @@ class BusinessCommercialContractTest extends TestCase
             'courier_amount' => 28,
             'net_profit' => 12,
             'guaranteed_hourly_package_fee' => 90,
+            'guaranteed_package_count' => 40,
             'status' => 'active',
             'created_by' => $user->id,
         ]);
@@ -245,22 +250,30 @@ class BusinessCommercialContractTest extends TestCase
         Carbon::setTestNow(Carbon::parse('2026-07-10 09:05:00'));
         $july10 = $service->start($courier, $shift->id, Carbon::parse('2026-07-10'), [
             'started_at' => Carbon::parse('2026-07-10 09:00:00'),
+            'staff_assist' => true,
         ]);
-        $july10 = $service->end($courier, $july10->id);
+        $july10 = $service->end($courier, $july10->id, [
+            'staff_assist' => true,
+        ]);
 
         $this->assertSame('hourly', $july10->pricing_model);
         $this->assertEquals(60.0, (float) $july10->hourly_rate);
         $this->assertEquals(240.0, (float) $july10->earnings_amount); // 4h * 60
 
-        Carbon::setTestNow(Carbon::parse('2026-07-20 09:05:00'));
+        Carbon::setTestNow(Carbon::parse('2026-07-20 13:05:00'));
         $july20 = $service->start($courier, $shift->id, Carbon::parse('2026-07-20'), [
             'started_at' => Carbon::parse('2026-07-20 09:00:00'),
+            'staff_assist' => true,
         ]);
-        $july20 = $service->end($courier, $july20->id);
+        $july20 = $service->end($courier, $july20->id, [
+            'package_count' => 12,
+            'latitude' => 41.0082,
+            'longitude' => 28.9784,
+        ]);
 
         $this->assertSame('per_package', $july20->pricing_model);
-        $this->assertEquals(90.0, (float) $july20->hourly_rate);
-        $this->assertEquals(360.0, (float) $july20->earnings_amount); // 4h * 90 guarantee
+        $this->assertSame(12, (int) $july20->package_count);
+        $this->assertEquals(336.0, (float) $july20->earnings_amount); // 12 * 28
 
         // Eski kaydın tutarı yeni kontrattan etkilenmez.
         $july10->refresh();
