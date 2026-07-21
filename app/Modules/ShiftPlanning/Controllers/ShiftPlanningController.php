@@ -86,19 +86,13 @@ class ShiftPlanningController extends Controller
             ? $this->shifts->availableCouriers($business->id)
             : [];
 
-        $activeCourierCount = $business
-            ? $this->shifts->activeRosterCourierCount($business->id)
-            : 0;
-
         return view('modules.shift-planning.index', [
             'businesses' => $this->shifts->businesses(),
             'selectedBusinessId' => $business?->id,
-            'selectedBusinessName' => $business?->displayName(),
             'shifts' => $shiftRows,
             'week' => $week,
             'calendarDays' => $calendarDays,
             'availableCouriers' => $availableCouriers,
-            'activeCourierCount' => $activeCourierCount,
             'canCreate' => $request->user()?->can('shift_planning.create') ?? false,
             'canUpdate' => $request->user()?->can('shift_planning.update') ?? false,
             'canDelete' => $request->user()?->can('shift_planning.delete') ?? false,

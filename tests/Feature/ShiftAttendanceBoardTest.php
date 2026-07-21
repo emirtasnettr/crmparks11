@@ -267,6 +267,8 @@ class ShiftAttendanceBoardTest extends TestCase
             'name' => 'Akşam',
             'start_time' => '10:00',
             'end_time' => '16:00',
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->toDateString(),
             'required_headcount' => 3,
             'is_active' => true,
             'created_by' => $user->id,
@@ -296,7 +298,6 @@ class ShiftAttendanceBoardTest extends TestCase
                 'week' => now()->toDateString(),
             ]))
             ->assertOk()
-            ->assertSee('2/3 atandı · 1 eksik')
             ->assertSee('1/3 geldi · 2 eksik · 1 katılmadı');
     }
 

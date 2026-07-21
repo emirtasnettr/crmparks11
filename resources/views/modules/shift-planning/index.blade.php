@@ -45,7 +45,7 @@
         <div>
             <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Vardiya Planlama</h1>
             <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">
-                İşletmenin sabit vardiyalarını ve kadrosunu tanımlayın.
+                İşletme vardiyalarını haftalık görünümden yönetin.
             </p>
         </div>
 
@@ -85,68 +85,7 @@
             </div>
         </x-ui.card>
     @else
-        <div class="mt-6 mb-2 flex items-end justify-between gap-3">
-            <div>
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Vardiya Şablonları</h2>
-                <p class="text-sm text-gray-500 dark:text-slate-400">
-                    {{ $selectedBusinessName }} · {{ count($shifts) }} vardiya · {{ $activeCourierCount }} kadrodaki kurye
-                </p>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            @forelse ($shifts as $shift)
-                <x-ui.card :padding="false">
-                    <div class="border-b border-gray-200 px-4 py-4 dark:border-slate-700 sm:px-6">
-                        <div class="flex items-start justify-between gap-3">
-                            <div>
-                                <p class="text-base font-semibold text-gray-900 dark:text-white">{{ $shift['name'] }}</p>
-                                <p class="mt-0.5 text-sm text-gray-500 dark:text-slate-400">{{ $shift['time_range'] }}</p>
-                            </div>
-                            <span @class([
-                                'inline-flex rounded-md px-2 py-0.5 text-xs font-medium',
-                                'bg-emerald-50 text-emerald-700' => $shift['is_active'] && ! $shift['is_understaffed'],
-                                'bg-amber-50 text-amber-700' => $shift['is_active'] && $shift['is_understaffed'],
-                                'bg-gray-100 text-gray-600' => ! $shift['is_active'],
-                            ])>
-                                {{ $shift['staffing_label'] }}
-                            </span>
-                        </div>
-                    </div>
-                    <div class="space-y-3 px-4 py-4 sm:px-6">
-                        @if (count($shift['couriers']))
-                            <div class="flex flex-wrap gap-2">
-                                @foreach ($shift['couriers'] as $courier)
-                                    <span class="inline-flex rounded-md bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 dark:bg-slate-700 dark:text-slate-200">
-                                        {{ $courier['name'] }}
-                                    </span>
-                                @endforeach
-                            </div>
-                        @else
-                            <p class="text-sm text-gray-500 dark:text-slate-400">Henüz kadro atanmadı.</p>
-                        @endif
-
-                        <div class="flex flex-wrap gap-2 pt-1">
-                            @if ($canUpdate)
-                                <x-ui.button type="button" size="sm" variant="secondary" x-on:click="openAssign({{ $shift['id'] }})">Kadro</x-ui.button>
-                                <x-ui.button type="button" size="sm" variant="secondary" x-on:click="openEdit({{ $shift['id'] }})">Düzenle</x-ui.button>
-                            @endif
-                            @if ($canDelete)
-                                <x-ui.button type="button" size="sm" variant="danger" x-on:click="openDeleteConfirm({{ $shift['id'] }})">Sil</x-ui.button>
-                            @endif
-                        </div>
-                    </div>
-                </x-ui.card>
-            @empty
-                <x-ui.card class="lg:col-span-2">
-                    <p class="py-8 text-center text-sm text-gray-500 dark:text-slate-400">
-                        Bu işletme için henüz vardiya tanımlanmamış. Sabit saatli vardiya ekleyerek başlayın.
-                    </p>
-                </x-ui.card>
-            @endforelse
-        </div>
-
-        <div class="mt-8">
+        <div class="mt-6">
             <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Haftalık Görünüm</h2>
@@ -160,7 +99,14 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
+            @if (count($shifts) === 0)
+                <x-ui.card>
+                    <p class="py-8 text-center text-sm text-gray-500 dark:text-slate-400">
+                        Bu işletme için henüz vardiya tanımlanmamış. Yeni vardiya ekleyerek başlayın.
+                    </p>
+                </x-ui.card>
+            @else
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
                     @foreach ($calendarDays as $day)
                         <div @class([
                             'rounded-xl border p-3',
@@ -198,6 +144,17 @@
                                         @if ($occurrence['working_couriers'] === [])
                                             <p class="mt-0.5 opacity-70">Kadro boş</p>
                                         @endif
+                                        @if ($canUpdate || $canDelete)
+                                            <div class="mt-1.5 flex flex-wrap gap-1">
+                                                @if ($canUpdate)
+                                                    <button type="button" class="rounded px-1.5 py-0.5 font-medium underline-offset-2 hover:underline" x-on:click="openAssign({{ $occurrence['id'] }})">Kadro</button>
+                                                    <button type="button" class="rounded px-1.5 py-0.5 font-medium underline-offset-2 hover:underline" x-on:click="openEdit({{ $occurrence['id'] }})">Düzenle</button>
+                                                @endif
+                                                @if ($canDelete)
+                                                    <button type="button" class="rounded px-1.5 py-0.5 font-medium text-rose-700 underline-offset-2 hover:underline" x-on:click="openDeleteConfirm({{ $occurrence['id'] }})">Sil</button>
+                                                @endif
+                                            </div>
+                                        @endif
                                     </div>
                                 @empty
                                     <p class="text-xs text-gray-400">Vardiya yok</p>
@@ -206,6 +163,7 @@
                         </div>
                     @endforeach
                 </div>
+            @endif
         </div>
     @endif
 

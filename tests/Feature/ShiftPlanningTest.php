@@ -351,8 +351,8 @@ class ShiftPlanningTest extends TestCase
         ]));
 
         $response->assertOk();
-        // Sidebar list + Alpine config + tek takvim günü (bug olsaydı 7 gün × = çok daha fazla).
-        $this->assertSame(3, substr_count($response->getContent(), 'UniqueRangeShiftXYZ'));
+        // Alpine config + tek takvim günü (bug olsaydı 7 gün × = çok daha fazla).
+        $this->assertSame(2, substr_count($response->getContent(), 'UniqueRangeShiftXYZ'));
 
         Carbon::setTestNow();
     }

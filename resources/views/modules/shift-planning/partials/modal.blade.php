@@ -149,7 +149,7 @@
     <div class="fixed inset-0 bg-gray-900/50" x-on:click="closeDeleteModal()"></div>
     <div class="relative w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-800">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Vardiyayı Sil</h3>
-        <p class="mt-2 text-sm text-gray-500 dark:text-slate-400">Bu vardiya şablonu ve kadrosu silinecek.</p>
+        <p class="mt-2 text-sm text-gray-500 dark:text-slate-400">Bu vardiya ve kadrosu silinecek.</p>
         <form method="POST" :action="destroyFormAction()" class="mt-4 flex justify-end gap-2">
             @csrf
             @method('DELETE')
