@@ -1183,7 +1183,9 @@ class ShiftAttendanceService
                 $missingAssignments = max(0, $required - $assigned);
                 $inProgress = 0;
                 $completed = 0;
+                $shiftStart = ShiftAttendanceRules::shiftStartAt($shift, $cursor);
                 $shiftEnded = now()->gte(ShiftAttendanceRules::shiftEndAt($shift, $cursor));
+                $shiftHasStarted = ! $isFuture && now()->gte($shiftStart);
                 $courierRows = [];
 
                 foreach ($workingCouriers as $courierRow) {
@@ -1203,7 +1205,7 @@ class ShiftAttendanceService
                         'status' => $attendance?->status,
                         'pricing_model' => $attendance?->pricing_model,
                         'started_at' => $attendance?->started_at?->format('Y-m-d\TH:i'),
-                        'shift_start_at' => ShiftAttendanceRules::shiftStartAt($shift, $cursor)->format('Y-m-d\TH:i'),
+                        'shift_start_at' => $shiftStart->format('Y-m-d\TH:i'),
                         'shift_end_at' => ShiftAttendanceRules::shiftEndAt($shift, $cursor)->format('Y-m-d\TH:i'),
                         'can_start' => $missing && ! $shiftEnded,
                         'can_mark_attended' => $missing && $shiftEnded,
@@ -1212,11 +1214,11 @@ class ShiftAttendanceService
                 }
 
                 $started = $inProgress + $completed;
-                $assignedNotStarted = $isFuture ? 0 : max(0, $assigned - $started);
-                $operationalShortage = $isFuture
-                    ? $missingAssignments
-                    : max(0, $required - $started);
-                $planned = $isFuture ? max(0, $assigned - $started) : 0;
+                $assignedNotStarted = $shiftHasStarted ? max(0, $assigned - $started) : 0;
+                $operationalShortage = $shiftHasStarted
+                    ? max(0, $required - $started)
+                    : $missingAssignments;
+                $planned = $shiftHasStarted ? 0 : max(0, $assigned - $started);
 
                 $summaries[$shift->id.'|'.$date] = [
                     'required' => $required,
@@ -1230,6 +1232,7 @@ class ShiftAttendanceService
                     'missing' => $operationalShortage,
                     'planned' => $planned,
                     'is_future' => $isFuture,
+                    'has_started' => $shiftHasStarted,
                     'couriers' => $courierRows,
                     'label' => $this->occurrenceSummaryLabel(
                         $required,
@@ -1238,7 +1241,7 @@ class ShiftAttendanceService
                         $missingAssignments,
                         $assignedNotStarted,
                         $operationalShortage,
-                        $isFuture,
+                        $shiftHasStarted,
                     ),
                 ];
             }
@@ -1256,9 +1259,9 @@ class ShiftAttendanceService
         int $missingAssignments,
         int $assignedNotStarted,
         int $operationalShortage,
-        bool $isFuture,
+        bool $shiftHasStarted,
     ): string {
-        if ($isFuture) {
+        if (! $shiftHasStarted) {
             if ($missingAssignments > 0) {
                 return sprintf('%d/%d atandı · %d kişi eksik', $assigned, $required, $missingAssignments);
             }

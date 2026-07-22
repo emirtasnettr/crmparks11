@@ -127,10 +127,10 @@
                                         @if (! empty($occurrence['attendance']))
                                             <p @class([
                                                 'mt-1 font-medium',
-                                                'text-sky-800' => ! empty($occurrence['attendance']['is_future']) && ($occurrence['attendance']['missing_assignments'] ?? 0) === 0,
-                                                'text-amber-800' => ! empty($occurrence['attendance']['is_future']) && ($occurrence['attendance']['missing_assignments'] ?? 0) > 0,
-                                                'text-rose-800' => empty($occurrence['attendance']['is_future']) && ($occurrence['attendance']['missing'] ?? 0) > 0,
-                                                'text-emerald-800' => empty($occurrence['attendance']['is_future']) && ($occurrence['attendance']['missing'] ?? 0) === 0,
+                                                'text-sky-800' => empty($occurrence['attendance']['has_started']) && ($occurrence['attendance']['missing_assignments'] ?? 0) === 0,
+                                                'text-amber-800' => empty($occurrence['attendance']['has_started']) && ($occurrence['attendance']['missing_assignments'] ?? 0) > 0,
+                                                'text-rose-800' => ! empty($occurrence['attendance']['has_started']) && ($occurrence['attendance']['missing'] ?? 0) > 0,
+                                                'text-emerald-800' => ! empty($occurrence['attendance']['has_started']) && ($occurrence['attendance']['missing'] ?? 0) === 0,
                                             ])>
                                                 {{ $occurrence['attendance']['label'] }}
                                             </p>

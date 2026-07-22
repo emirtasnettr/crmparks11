@@ -392,6 +392,41 @@ class ShiftAttendanceBoardTest extends TestCase
             ->assertSee('Canlı Operasyon');
     }
 
+    public function test_weekly_calendar_shows_assignment_label_before_shift_starts(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-17 09:00:00'));
+
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $courier = $this->createCourier($user);
+
+        $shift = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'start_time' => '12:00',
+            'end_time' => '18:00',
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->toDateString(),
+            'required_headcount' => 1,
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+        BusinessShiftCourier::query()->create([
+            'business_shift_id' => $shift->id,
+            'courier_id' => $courier->id,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('shift-planning.index', [
+                'business_id' => $business->id,
+                'week' => now()->toDateString(),
+            ]))
+            ->assertOk()
+            ->assertSee('1/1 atandı')
+            ->assertDontSee('katılmadı')
+            ->assertDontSee('0/1 geldi');
+    }
+
     public function test_weekly_calendar_counts_unfilled_slots_and_no_shows_against_required_headcount(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-07-17 12:00:00'));
