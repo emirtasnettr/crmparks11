@@ -34,7 +34,7 @@ class ShiftAttendancePresenter
                 default => $attendance->status,
             },
             'worked_minutes' => (int) ($attendance->worked_minutes ?? 0),
-            'package_count' => $attendance->package_count !== null ? (int) $attendance->package_count : null,
+            'package_count' => $attendance->package_count !== null ? (float) $attendance->package_count : null,
             'worked_hours' => $attendance->workedHours(),
             'worked_duration_label' => $this->durationLabel($attendance->worked_minutes),
             'hourly_rate' => $attendance->hourly_rate !== null ? (float) $attendance->hourly_rate : null,

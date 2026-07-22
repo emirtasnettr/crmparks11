@@ -84,9 +84,9 @@ $presetBusinessLabel = $presetBusinessLabel ?? null;
             </div>
 
             <div x-show="commercialForm.work_type === 'per_package'" x-cloak>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">Garanti Paket Sayısı</label>
-                <input type="number" step="1" min="1" name="guaranteed_package_count" x-model="commercialForm.guaranteed_package_count" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-white">
-                <p class="mt-1 text-xs text-gray-500">Opsiyonel. Kurye sonlandırmadan vardiya otomatik biterse bu paket sayısı uygulanır.</p>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">Saatlik Garanti Paket Sayısı</label>
+                <input type="number" step="0.01" min="0.01" name="guaranteed_package_count" x-model="commercialForm.guaranteed_package_count" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-white">
+                <p class="mt-1 text-xs text-gray-500">Opsiyonel. Saat başına garanti paket; hakediş en az (saat × bu değer) paket üzerinden hesaplanır.</p>
             </div>
 
             <div>

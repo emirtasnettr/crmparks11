@@ -52,6 +52,7 @@ class EarningLine extends Model
     {
         return [
             'worked_hours' => 'decimal:2',
+            'package_count' => 'decimal:2',
             'work_date' => 'date',
             'first_approved_at' => 'datetime',
             'approved_at' => 'datetime',

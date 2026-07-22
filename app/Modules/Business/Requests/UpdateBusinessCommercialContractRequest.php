@@ -47,7 +47,7 @@ class UpdateBusinessCommercialContractRequest extends FormRequest
             'courier_amount' => ['required', 'numeric', 'min:0'],
             'net_profit' => ['nullable', 'numeric'],
             'guaranteed_hourly_package_fee' => ['nullable', 'numeric', 'min:0'],
-            'guaranteed_package_count' => ['nullable', 'integer', 'min:1', 'max:100000'],
+            'guaranteed_package_count' => ['nullable', 'numeric', 'min:0.01', 'max:100000'],
             'payment_period' => ['required', Rule::in(['weekly', 'biweekly', 'monthly'])],
             'notes' => ['nullable', 'string', 'max:2000'],
         ];

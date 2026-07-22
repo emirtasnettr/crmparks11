@@ -56,7 +56,7 @@ class BusinessCommercialContract extends Model
             'courier_amount' => 'decimal:2',
             'net_profit' => 'decimal:2',
             'guaranteed_hourly_package_fee' => 'decimal:2',
-            'guaranteed_package_count' => 'integer',
+            'guaranteed_package_count' => 'decimal:2',
         ];
     }
 
@@ -103,6 +103,45 @@ class BusinessCommercialContract extends Model
         }
 
         return true;
+    }
+
+    /**
+     * Saatlik garanti paket × çalışılan saat.
+     */
+    public function guaranteedPackagesForMinutes(int $minutes): ?float
+    {
+        if (! $this->isPerPackage()) {
+            return null;
+        }
+
+        $perHour = $this->guaranteed_package_count !== null
+            ? (float) $this->guaranteed_package_count
+            : 0.0;
+
+        if ($perHour <= 0) {
+            return null;
+        }
+
+        return round($perHour * (max(0, $minutes) / 60), 2);
+    }
+
+    /**
+     * Girilen paket ile saatlik garanti tabanı arasından hakediş paket sayısı.
+     */
+    public function billablePackageCount(int $minutes, ?float $enteredPackages = null): ?float
+    {
+        $floor = $this->guaranteedPackagesForMinutes($minutes);
+        $entered = $enteredPackages !== null ? max(0.0, $enteredPackages) : null;
+
+        if ($floor !== null && $entered !== null) {
+            return max($entered, $floor);
+        }
+
+        if ($floor !== null) {
+            return $floor;
+        }
+
+        return $entered;
     }
 
     /**

@@ -170,7 +170,7 @@
                             @endif
                             <x-entity.detail-row label="Ödeme Periyodu" :value="$activeContract['payment_period_label']" />
                             @if (($activeContract['work_type'] ?? '') === 'per_package' && ($activeContract['guaranteed_package_count'] ?? null) !== null)
-                                <x-entity.detail-row label="Garanti Paket Sayısı" :value="$activeContract['guaranteed_package_count']" />
+                                <x-entity.detail-row label="Saatlik Garanti Paket Sayısı" :value="$activeContract['guaranteed_package_count']" />
                             @endif
                             <x-entity.detail-row label="Başlangıç" :value="$activeContract['start_date_formatted']" />
                         </dl>

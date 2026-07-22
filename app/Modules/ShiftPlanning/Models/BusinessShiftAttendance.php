@@ -47,7 +47,7 @@ class BusinessShiftAttendance extends Model
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
             'worked_minutes' => 'integer',
-            'package_count' => 'integer',
+            'package_count' => 'decimal:2',
             'hourly_rate' => 'decimal:2',
             'earnings_amount' => 'decimal:2',
             'start_latitude' => 'float',

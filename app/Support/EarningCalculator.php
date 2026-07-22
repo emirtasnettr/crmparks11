@@ -8,7 +8,7 @@ final class EarningCalculator
      * @param  array<string, mixed>  $data
      * @return array{
      *     earning_type: string,
-     *     package_count: int,
+     *     package_count: float|int,
      *     worked_hours: float,
      *     revenue_unit_price: float,
      *     revenue_total: float,
@@ -31,7 +31,7 @@ final class EarningCalculator
         $workedHours = round((float) ($data['worked_hours'] ?? $data['hours'] ?? 0), 2);
 
         if ($pricingModel === 'per_package') {
-            $packageCount = (int) ($data['package_count'] ?? 0);
+            $packageCount = (float) ($data['package_count'] ?? 0);
             $revenueUnit = (float) ($data['revenue_unit_price'] ?? 0);
             $courierUnit = (float) ($data['courier_unit_price'] ?? $data['unit_price'] ?? 0);
             $revenueTotal = round($packageCount * $revenueUnit, 2);

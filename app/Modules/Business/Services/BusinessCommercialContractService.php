@@ -102,7 +102,7 @@ class BusinessCommercialContractService
             $workType = (string) $data['work_type'];
             $guaranteedPackages = $workType === BusinessCommercialContract::WORK_PER_PACKAGE
                 && filled($data['guaranteed_package_count'] ?? null)
-                ? (int) $data['guaranteed_package_count']
+                ? round((float) $data['guaranteed_package_count'], 2)
                 : null;
 
             return BusinessCommercialContract::query()->create([
@@ -154,7 +154,7 @@ class BusinessCommercialContractService
         $workType = (string) $data['work_type'];
         $guaranteedPackages = $workType === BusinessCommercialContract::WORK_PER_PACKAGE
             && filled($data['guaranteed_package_count'] ?? null)
-            ? (int) $data['guaranteed_package_count']
+            ? round((float) $data['guaranteed_package_count'], 2)
             : null;
 
         $contract->update([

@@ -78,7 +78,7 @@ class BusinessCommercialContractTest extends TestCase
         $this->assertSame('per_package', $second->work_type);
         $this->assertSame($first->id, $second->supersedes_id);
         $this->assertNull($second->guaranteed_hourly_package_fee);
-        $this->assertSame(40, (int) $second->guaranteed_package_count);
+        $this->assertEquals(40.0, (float) $second->guaranteed_package_count);
     }
 
     public function test_super_admin_can_update_active_contract_amounts(): void
@@ -194,7 +194,7 @@ class BusinessCommercialContractTest extends TestCase
         $this->assertNotNull($perPackage);
         $this->assertSame('per_package', $perPackage->work_type);
         $this->assertNull($perPackage->guaranteed_hourly_package_fee);
-        $this->assertSame(55, (int) $perPackage->guaranteed_package_count);
+        $this->assertEquals(55.0, (float) $perPackage->guaranteed_package_count);
         $this->assertNull($perPackage->courierHourlyRateForAttendance());
 
         $this->actingAs($user)->post(route('businesses.commercial-contracts.store'), [
@@ -242,8 +242,7 @@ class BusinessCommercialContractTest extends TestCase
             'business_amount' => 40,
             'courier_amount' => 28,
             'net_profit' => 12,
-            'guaranteed_hourly_package_fee' => 90,
-            'guaranteed_package_count' => 40,
+            'guaranteed_package_count' => 2,
             'status' => 'active',
             'created_by' => $user->id,
         ]);
@@ -295,7 +294,8 @@ class BusinessCommercialContractTest extends TestCase
         ]);
 
         $this->assertSame('per_package', $july20->pricing_model);
-        $this->assertSame(12, (int) $july20->package_count);
+        // 4 saat × 2 garanti = 8; girilen 12 → max = 12
+        $this->assertEquals(12.0, (float) $july20->package_count);
         $this->assertEquals(336.0, (float) $july20->earnings_amount); // 12 * 28
 
         // Eski kaydın tutarı yeni kontrattan etkilenmez.

@@ -263,7 +263,7 @@ class AttendanceEarningSyncService
         // per_package
         $courierUnit = round((float) ($contract?->courier_amount ?? 0), 2);
         $revenueUnit = round((float) ($contract?->business_amount ?? 0), 2);
-        $packageCount = (int) $rows->sum(fn (BusinessShiftAttendance $row) => (int) ($row->package_count ?? 0));
+        $packageCount = (float) $rows->sum(fn (BusinessShiftAttendance $row) => (float) ($row->package_count ?? 0));
 
         if ($packageCount <= 0) {
             $avgRate = round((float) ($rows->avg('hourly_rate') ?: 0), 2);
@@ -271,8 +271,8 @@ class AttendanceEarningSyncService
                 ? round($avgRate / $courierUnit, 4)
                 : 0.0;
             $packageCount = $packagesPerHour > 0
-                ? (int) max(1, (int) round($workedHours * $packagesPerHour))
-                : ($courierUnit > 0 ? (int) max(1, (int) round($courierTotal / $courierUnit)) : 0);
+                ? round(max(0.01, $workedHours * $packagesPerHour), 2)
+                : ($courierUnit > 0 ? round(max(0.01, $courierTotal / $courierUnit), 2) : 0);
         }
 
         $revenueTotal = round($packageCount * $revenueUnit, 2);

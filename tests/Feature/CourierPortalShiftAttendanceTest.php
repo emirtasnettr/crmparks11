@@ -359,7 +359,8 @@ class CourierPortalShiftAttendanceTest extends TestCase
             'business_amount' => 40,
             'courier_amount' => 30,
             'net_profit' => 10,
-            'guaranteed_package_count' => 50,
+            // Garanti yok: yalnızca girilen paket sayılır.
+            'guaranteed_package_count' => null,
             'status' => 'active',
             'created_by' => $admin->id,
         ]);
@@ -413,8 +414,132 @@ class CourierPortalShiftAttendanceTest extends TestCase
 
         $attendance->refresh();
         $this->assertSame('completed', $attendance->status);
-        $this->assertSame(42, (int) $attendance->package_count);
+        $this->assertEquals(42.0, (float) $attendance->package_count);
         $this->assertEquals(1260.0, (float) $attendance->earnings_amount); // 42 * 30
+    }
+
+    public function test_guaranteed_hourly_packages_floor_courier_entered_count(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-17 09:00:00'));
+
+        $admin = User::factory()->create();
+        $admin->assignRole('super_admin');
+        $courier = Courier::factory()->create(['created_by' => $admin->id, 'status' => 'active']);
+        $user = app(CourierUserProvisioner::class)->ensureForCourier($courier);
+        $business = Business::factory()->create([
+            'created_by' => $admin->id,
+            'status' => 'active',
+            'latitude' => 41.0082,
+            'longitude' => 28.9784,
+        ]);
+
+        BusinessCommercialContract::query()->where('business_id', $business->id)->delete();
+        BusinessCommercialContract::factory()->perPackage()->create([
+            'business_id' => $business->id,
+            'start_date' => '2026-07-01',
+            'business_amount' => 250,
+            'courier_amount' => 200,
+            'net_profit' => 50,
+            'guaranteed_package_count' => 2.5,
+            'status' => 'active',
+            'created_by' => $admin->id,
+        ]);
+
+        $shift = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'name' => 'Garanti',
+            'start_time' => '08:00',
+            'end_time' => '18:00',
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-07-31',
+            'required_headcount' => 1,
+            'is_active' => true,
+            'created_by' => $admin->id,
+        ]);
+        BusinessShiftCourier::query()->create([
+            'business_shift_id' => $shift->id,
+            'courier_id' => $courier->id,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('courier-portal.shifts.start', $shift->id), [
+                'latitude' => 41.0082,
+                'longitude' => 28.9784,
+                'accuracy' => 20,
+            ])
+            ->assertRedirect();
+
+        $attendance = BusinessShiftAttendance::query()->firstOrFail();
+        $attendance->update(['started_at' => Carbon::parse('2026-07-17 08:00:00')]);
+
+        Carbon::setTestNow(Carbon::parse('2026-07-17 18:00:00'));
+        $this->actingAs($user)
+            ->post(route('courier-portal.shifts.end', $attendance->id), [
+                'latitude' => 41.0082,
+                'longitude' => 28.9784,
+                'accuracy' => 20,
+                'package_count' => 3,
+            ])
+            ->assertRedirect();
+
+        $attendance->refresh();
+        // 10 saat × 2.5 = 25 paket (girilen 3'ün üstünde)
+        $this->assertEquals(25.0, (float) $attendance->package_count);
+        $this->assertEquals(5000.0, (float) $attendance->earnings_amount); // 25 * 200
+    }
+
+    public function test_guaranteed_hourly_packages_apply_for_partial_shift_hours(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-17 14:00:00'));
+
+        $admin = User::factory()->create();
+        $admin->assignRole('super_admin');
+        $courier = Courier::factory()->create(['created_by' => $admin->id, 'status' => 'active']);
+        $business = Business::factory()->create(['created_by' => $admin->id, 'status' => 'active']);
+
+        BusinessCommercialContract::query()->where('business_id', $business->id)->delete();
+        BusinessCommercialContract::factory()->perPackage()->create([
+            'business_id' => $business->id,
+            'start_date' => '2026-07-01',
+            'business_amount' => 250,
+            'courier_amount' => 200,
+            'net_profit' => 50,
+            'guaranteed_package_count' => 3,
+            'status' => 'active',
+            'created_by' => $admin->id,
+        ]);
+
+        $shift = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'name' => 'Kısa',
+            'start_time' => '09:00',
+            'end_time' => '18:00',
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-07-31',
+            'required_headcount' => 1,
+            'is_active' => true,
+            'created_by' => $admin->id,
+        ]);
+        BusinessShiftCourier::query()->create([
+            'business_shift_id' => $shift->id,
+            'courier_id' => $courier->id,
+        ]);
+
+        $attendance = app(ShiftAttendanceService::class)->start($courier, $shift->id, Carbon::parse('2026-07-17'), [
+            'staff_assist' => true,
+            'started_at' => Carbon::parse('2026-07-17 09:00:00'),
+        ]);
+
+        $ended = app(ShiftAttendanceService::class)->endForCourier($attendance->id, $admin, [
+            'ended_at' => Carbon::parse('2026-07-17 14:00:00'),
+            'end_reason' => 'other',
+            'package_count' => 5,
+        ]);
+
+        $row = $ended['ended'];
+        // 5 saat × 3 = 15 paket (girilen 5'in üstünde)
+        $this->assertEquals(15.0, (float) $row->package_count);
+        $this->assertEquals(3000.0, (float) $row->earnings_amount); // 15 * 200
     }
 
     public function test_auto_end_applies_guaranteed_package_count_for_per_package(): void
@@ -430,8 +555,8 @@ class CourierPortalShiftAttendanceTest extends TestCase
             'business_amount' => 40,
             'courier_amount' => 25,
             'net_profit' => 15,
-            'guaranteed_package_count' => 48,
-            'guaranteed_hourly_package_fee' => 100,
+            // Saatlik garanti: 8 paket/saat × 6 saat = 48 paket
+            'guaranteed_package_count' => 8,
             'status' => 'active',
             'created_by' => $admin->id,
         ]);
@@ -467,7 +592,7 @@ class CourierPortalShiftAttendanceTest extends TestCase
 
         $attendance->refresh();
         $this->assertSame('completed', $attendance->status);
-        $this->assertSame(48, (int) $attendance->package_count);
+        $this->assertEquals(48.0, (float) $attendance->package_count);
         $this->assertEquals(1200.0, (float) $attendance->earnings_amount); // 48 * 25
     }
 

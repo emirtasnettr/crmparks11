@@ -809,14 +809,10 @@ class ShiftAttendanceService
         $earnings = null;
 
         if ($pricingModel === 'per_package') {
-            $packageCount = $contract?->guaranteed_package_count !== null
-                ? (int) $contract->guaranteed_package_count
-                : null;
+            $packageCount = $contract?->guaranteedPackagesForMinutes($minutes);
             $unit = $contract !== null ? (float) $contract->courier_amount : 0.0;
             if ($packageCount !== null && $packageCount > 0 && $unit > 0) {
                 $earnings = round($packageCount * $unit, 2);
-            } elseif ($hourlyRate !== null && $hourlyRate > 0) {
-                $earnings = round(($minutes / 60) * $hourlyRate, 2);
             }
         } elseif ($hourlyRate !== null && $hourlyRate > 0) {
             $earnings = round(($minutes / 60) * $hourlyRate, 2);
@@ -1449,6 +1445,7 @@ class ShiftAttendanceService
                 $autoEnd,
                 $staffAssist,
                 $isEarlyEnd,
+                $minutes,
             );
 
             $hourlyRate = $attendance->hourly_rate !== null
@@ -1504,57 +1501,64 @@ class ShiftAttendanceService
         bool $autoEnd,
         bool $staffAssist,
         bool $isEarlyEnd = false,
-    ): ?int {
+        int $minutes = 0,
+    ): ?float {
+        if ($pricingModel !== 'per_package') {
+            return null;
+        }
+
         $provided = array_key_exists('package_count', $options)
             && $options['package_count'] !== null
             && $options['package_count'] !== '';
 
+        $entered = null;
         if ($provided) {
-            $count = (int) $options['package_count'];
-            if ($count < 0) {
+            $entered = (float) $options['package_count'];
+            if ($entered < 0) {
                 throw ValidationException::withMessages([
                     'package_count' => 'Paket sayısı negatif olamaz.',
                 ]);
             }
-
-            if ($pricingModel === 'per_package' && $count < 1 && ! $autoEnd) {
-                throw ValidationException::withMessages([
-                    'package_count' => 'Paket başı vardiyada paket sayısı zorunludur.',
-                ]);
-            }
-
-            return $count;
         }
 
-        if ($pricingModel === 'per_package') {
-            // Erken bitişte garanti paket uygulanmaz; fiili paket girilmeli.
-            if ($isEarlyEnd && $staffAssist) {
-                throw ValidationException::withMessages([
-                    'package_count' => 'Erken bitişte paket sayısı zorunludur.',
-                ]);
-            }
+        $guaranteeFloor = $contract instanceof \App\Modules\Business\Models\BusinessCommercialContract
+            ? $contract->guaranteedPackagesForMinutes($minutes)
+            : null;
 
-            if ($autoEnd || $staffAssist) {
-                $guaranteed = $contract?->guaranteed_package_count;
-
-                if ($guaranteed !== null && (int) $guaranteed > 0) {
-                    return (int) $guaranteed;
-                }
-
-                return null;
-            }
-
+        // Kurye kendi bitirişinde fiili paket girmek zorunda (garanti olsa bile).
+        if (! $provided && ! $autoEnd && ! $staffAssist) {
             throw ValidationException::withMessages([
                 'package_count' => 'Paket başı vardiyada paket sayısı zorunludur.',
             ]);
         }
 
-        return null;
+        // Personel erken bitiş: garanti yoksa fiili paket zorunlu.
+        if (! $provided && $isEarlyEnd && $staffAssist && $guaranteeFloor === null) {
+            throw ValidationException::withMessages([
+                'package_count' => 'Erken bitişte paket sayısı zorunludur.',
+            ]);
+        }
+
+        if ($provided && $entered < 1 && ! $autoEnd && $guaranteeFloor === null) {
+            throw ValidationException::withMessages([
+                'package_count' => 'Paket başı vardiyada paket sayısı zorunludur.',
+            ]);
+        }
+
+        $billable = $contract instanceof \App\Modules\Business\Models\BusinessCommercialContract
+            ? $contract->billablePackageCount($minutes, $entered)
+            : $entered;
+
+        if ($billable !== null && $billable > 0) {
+            return round($billable, 2);
+        }
+
+        return $entered !== null ? round($entered, 2) : null;
     }
 
     private function resolveEarningsOnComplete(
         ?string $pricingModel,
-        ?int $packageCount,
+        ?float $packageCount,
         int $minutes,
         ?float $hourlyRate,
         mixed $contract,
@@ -1563,11 +1567,6 @@ class ShiftAttendanceService
             $unit = $contract !== null ? (float) $contract->courier_amount : 0.0;
             if ($packageCount !== null && $packageCount > 0 && $unit > 0) {
                 return round($packageCount * $unit, 2);
-            }
-
-            // Paket sayısı yoksa saatlik ücrete düşülemez (garanti ücret kaldırıldı).
-            if ($hourlyRate !== null && $hourlyRate > 0) {
-                return round(($minutes / 60) * $hourlyRate, 2);
             }
 
             return null;

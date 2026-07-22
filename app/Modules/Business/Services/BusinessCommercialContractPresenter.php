@@ -40,7 +40,7 @@ class BusinessCommercialContractPresenter
                 ? MoneyCalculator::formatVatAmount((float) $contract->guaranteed_hourly_package_fee)
                 : '—',
             'guaranteed_package_count' => $contract->guaranteed_package_count !== null
-                ? (int) $contract->guaranteed_package_count
+                ? (float) $contract->guaranteed_package_count
                 : null,
             'payment_period' => $contract->payment_period,
             'payment_period_label' => $periods[$contract->payment_period] ?? $contract->payment_period,
