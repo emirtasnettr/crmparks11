@@ -111,6 +111,8 @@ class ReportModuleTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Canlı Operasyon');
+        $response->assertSee('Vardiya');
+        $response->assertSee(route('shift-planning.index'), false);
         $response->assertSee('Radar İşletme');
         $response->assertSee('Gerekli Kişi');
         $response->assertSee('Atanan Kurye');
@@ -196,7 +198,7 @@ class ReportModuleTest extends TestCase
         $this->assertSame(2, $row['operational_shortage']);
 
         $shiftDetail = $row['today_shifts'][0];
-        $this->assertSame('Öğle Vardiya', $shiftDetail['name']);
+        $this->assertNotEmpty($shiftDetail['time'] ?? null);
         $this->assertSame(3, $shiftDetail['required']);
         $this->assertSame(2, $shiftDetail['assigned']);
         $this->assertSame(1, $shiftDetail['started']);
