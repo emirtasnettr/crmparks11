@@ -77,7 +77,7 @@ class BusinessCommercialContractTest extends TestCase
         $this->assertNotNull($second);
         $this->assertSame('per_package', $second->work_type);
         $this->assertSame($first->id, $second->supersedes_id);
-        $this->assertEquals(80.0, (float) $second->guaranteed_hourly_package_fee);
+        $this->assertNull($second->guaranteed_hourly_package_fee);
         $this->assertSame(40, (int) $second->guaranteed_package_count);
     }
 
@@ -147,7 +147,7 @@ class BusinessCommercialContractTest extends TestCase
         $this->assertEquals(100.0, (float) $contract->business_amount);
     }
 
-    public function test_guarantee_fee_only_applies_to_per_package_contracts(): void
+    public function test_per_package_accepts_optional_guaranteed_package_count_without_fee(): void
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
@@ -193,8 +193,28 @@ class BusinessCommercialContractTest extends TestCase
 
         $this->assertNotNull($perPackage);
         $this->assertSame('per_package', $perPackage->work_type);
-        $this->assertEquals(90.0, (float) $perPackage->guaranteed_hourly_package_fee);
+        $this->assertNull($perPackage->guaranteed_hourly_package_fee);
         $this->assertSame(55, (int) $perPackage->guaranteed_package_count);
+        $this->assertNull($perPackage->courierHourlyRateForAttendance());
+
+        $this->actingAs($user)->post(route('businesses.commercial-contracts.store'), [
+            'business_id' => $business->id,
+            'start_date' => '2026-09-01',
+            'end_date' => null,
+            'work_type' => 'per_package',
+            'business_amount' => 50,
+            'courier_amount' => 35,
+            'payment_period' => 'weekly',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $withoutGuarantee = BusinessCommercialContract::query()
+            ->where('business_id', $business->id)
+            ->where('status', 'active')
+            ->first();
+
+        $this->assertNotNull($withoutGuarantee);
+        $this->assertNull($withoutGuarantee->guaranteed_package_count);
+        $this->assertNull($withoutGuarantee->guaranteed_hourly_package_fee);
     }
 
     public function test_attendance_earnings_follow_contract_active_on_work_date(): void
@@ -254,6 +274,7 @@ class BusinessCommercialContractTest extends TestCase
         ]);
         $july10 = $service->end($courier, $july10->id, [
             'staff_assist' => true,
+            'ended_at' => Carbon::parse('2026-07-10 13:00:00'),
         ]);
 
         $this->assertSame('hourly', $july10->pricing_model);
@@ -267,6 +288,8 @@ class BusinessCommercialContractTest extends TestCase
         ]);
         $july20 = $service->end($courier, $july20->id, [
             'package_count' => 12,
+            'staff_assist' => true,
+            'ended_at' => Carbon::parse('2026-07-20 13:00:00'),
             'latitude' => 41.0082,
             'longitude' => 28.9784,
         ]);

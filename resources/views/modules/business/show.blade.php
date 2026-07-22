@@ -169,8 +169,8 @@
                                 <x-entity.detail-row label="Net Kazanç" :value="$activeContract['net_profit_formatted']" />
                             @endif
                             <x-entity.detail-row label="Ödeme Periyodu" :value="$activeContract['payment_period_label']" />
-                            @if (($activeContract['work_type'] ?? '') === 'per_package' && ($activeContract['guaranteed_hourly_package_fee'] ?? null) !== null)
-                                <x-entity.detail-row label="Saatlik Garanti Paket Ücreti" :value="$activeContract['guaranteed_hourly_package_fee_formatted']" />
+                            @if (($activeContract['work_type'] ?? '') === 'per_package' && ($activeContract['guaranteed_package_count'] ?? null) !== null)
+                                <x-entity.detail-row label="Garanti Paket Sayısı" :value="$activeContract['guaranteed_package_count']" />
                             @endif
                             <x-entity.detail-row label="Başlangıç" :value="$activeContract['start_date_formatted']" />
                         </dl>

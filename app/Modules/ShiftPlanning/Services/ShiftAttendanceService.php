@@ -1565,7 +1565,7 @@ class ShiftAttendanceService
                 return round($packageCount * $unit, 2);
             }
 
-            // Garanti paket yoksa saatlik garanti ücretine düş.
+            // Paket sayısı yoksa saatlik ücrete düşülemez (garanti ücret kaldırıldı).
             if ($hourlyRate !== null && $hourlyRate > 0) {
                 return round(($minutes / 60) * $hourlyRate, 2);
             }

@@ -24,11 +24,8 @@ class StoreBusinessCommercialContractRequest extends FormRequest
             ]);
         }
 
-        if ($this->input('work_type') !== BusinessCommercialContract::WORK_PER_PACKAGE
-            || $this->input('guaranteed_hourly_package_fee') === ''
-            || $this->input('guaranteed_hourly_package_fee') === null) {
-            $this->merge(['guaranteed_hourly_package_fee' => null]);
-        }
+        // Paket başı modelinde garanti paket ücreti kullanılmaz.
+        $this->merge(['guaranteed_hourly_package_fee' => null]);
 
         if ($this->input('work_type') !== BusinessCommercialContract::WORK_PER_PACKAGE
             || $this->input('guaranteed_package_count') === ''
@@ -51,13 +48,7 @@ class StoreBusinessCommercialContractRequest extends FormRequest
             'courier_amount' => ['required', 'numeric', 'min:0'],
             'net_profit' => ['nullable', 'numeric'],
             'guaranteed_hourly_package_fee' => ['nullable', 'numeric', 'min:0'],
-            'guaranteed_package_count' => [
-                Rule::requiredIf(fn () => $this->input('work_type') === BusinessCommercialContract::WORK_PER_PACKAGE),
-                'nullable',
-                'integer',
-                'min:1',
-                'max:100000',
-            ],
+            'guaranteed_package_count' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'payment_period' => ['required', Rule::in(['weekly', 'biweekly', 'monthly'])],
             'notes' => ['nullable', 'string', 'max:2000'],
         ];
@@ -74,7 +65,6 @@ class StoreBusinessCommercialContractRequest extends FormRequest
             'work_type.required' => 'Çalışma şekli seçilmelidir.',
             'business_amount.required' => 'İşletmeden alınan tutar zorunludur.',
             'courier_amount.required' => 'Kuryeye verilen tutar zorunludur.',
-            'guaranteed_package_count.required' => 'Paket başı çalışmada garanti paket sayısı zorunludur.',
             'payment_period.required' => 'Ödeme periyodu seçilmelidir.',
         ];
     }

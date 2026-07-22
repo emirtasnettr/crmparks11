@@ -100,10 +100,6 @@ class BusinessCommercialContractService
             $businessAmount = round((float) $data['business_amount'], 2);
             $courierAmount = round((float) $data['courier_amount'], 2);
             $workType = (string) $data['work_type'];
-            $guaranteeFee = $workType === BusinessCommercialContract::WORK_PER_PACKAGE
-                && filled($data['guaranteed_hourly_package_fee'] ?? null)
-                ? round((float) $data['guaranteed_hourly_package_fee'], 2)
-                : null;
             $guaranteedPackages = $workType === BusinessCommercialContract::WORK_PER_PACKAGE
                 && filled($data['guaranteed_package_count'] ?? null)
                 ? (int) $data['guaranteed_package_count']
@@ -117,7 +113,7 @@ class BusinessCommercialContractService
                 'business_amount' => $businessAmount,
                 'courier_amount' => $courierAmount,
                 'net_profit' => round($businessAmount - $courierAmount, 2),
-                'guaranteed_hourly_package_fee' => $guaranteeFee,
+                'guaranteed_hourly_package_fee' => null,
                 'guaranteed_package_count' => $guaranteedPackages,
                 'payment_period' => (string) $data['payment_period'],
                 'status' => BusinessCommercialContract::STATUS_ACTIVE,
@@ -156,10 +152,6 @@ class BusinessCommercialContractService
         $businessAmount = round((float) $data['business_amount'], 2);
         $courierAmount = round((float) $data['courier_amount'], 2);
         $workType = (string) $data['work_type'];
-        $guaranteeFee = $workType === BusinessCommercialContract::WORK_PER_PACKAGE
-            && filled($data['guaranteed_hourly_package_fee'] ?? null)
-            ? round((float) $data['guaranteed_hourly_package_fee'], 2)
-            : null;
         $guaranteedPackages = $workType === BusinessCommercialContract::WORK_PER_PACKAGE
             && filled($data['guaranteed_package_count'] ?? null)
             ? (int) $data['guaranteed_package_count']
@@ -172,7 +164,7 @@ class BusinessCommercialContractService
             'business_amount' => $businessAmount,
             'courier_amount' => $courierAmount,
             'net_profit' => round($businessAmount - $courierAmount, 2),
-            'guaranteed_hourly_package_fee' => $guaranteeFee,
+            'guaranteed_hourly_package_fee' => null,
             'guaranteed_package_count' => $guaranteedPackages,
             'payment_period' => (string) $data['payment_period'],
             'notes' => $data['notes'] ?? null,

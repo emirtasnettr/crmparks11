@@ -108,17 +108,12 @@ class BusinessCommercialContract extends Model
     /**
      * Vardiya hakedişi için kullanılacak saatlik kurye ücreti (KDV hariç).
      * Saatlik: courier_amount
-     * Paket başı + garanti: guaranteed_hourly_package_fee
-     * Paket başı (garanti yok): null (paket adedi gerekir)
+     * Paket başı: null (paket adedi gerekir)
      */
     public function courierHourlyRateForAttendance(): ?float
     {
         if ($this->isHourly()) {
             return round((float) $this->courier_amount, 2);
-        }
-
-        if ($this->guaranteed_hourly_package_fee !== null && (float) $this->guaranteed_hourly_package_fee > 0) {
-            return round((float) $this->guaranteed_hourly_package_fee, 2);
         }
 
         return null;
