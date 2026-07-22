@@ -110,15 +110,6 @@ class SidebarMenu
                         ],
                     ],
                     [
-                        'label' => 'Canlı Operasyon',
-                        'route' => 'shift-planning.attendance',
-                        'active' => [
-                            'shift-planning.attendance',
-                            'shift-planning.attendance.start',
-                            'shift-planning.attendance.end',
-                        ],
-                    ],
-                    [
                         'label' => 'Vardiya Raporu',
                         'route' => 'shift-planning.report',
                         'active' => [

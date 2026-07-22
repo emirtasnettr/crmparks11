@@ -40,38 +40,14 @@ class ShiftAttendanceBoardTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_attendance_board_shows_expected_and_missing_couriers(): void
+    public function test_attendance_board_redirects_to_radar(): void
     {
-        Carbon::setTestNow(Carbon::parse('2026-07-17 12:00:00'));
-
         $user = User::factory()->create();
         $user->assignRole('super_admin');
-        $business = $this->createBusiness($user);
-        $courier = $this->createCourier($user, ['full_name' => 'Beklenen Kurye']);
-
-        $shift = BusinessShift::query()->create([
-            'business_id' => $business->id,
-            'start_time' => '10:00',
-            'end_time' => '16:00',
-            'start_date' => '2026-07-01',
-            'end_date' => '2026-07-31',
-            'required_headcount' => 1,
-            'is_active' => true,
-            'created_by' => $user->id,
-        ]);
-        BusinessShiftCourier::query()->create([
-            'business_shift_id' => $shift->id,
-            'courier_id' => $courier->id,
-        ]);
 
         $this->actingAs($user)
             ->get(route('shift-planning.attendance'))
-            ->assertOk()
-            ->assertSee('Beklenen Kurye')
-            ->assertSee('Girmedi')
-            ->assertSee('Canlı Operasyon')
-            ->assertDontSee('Vardiyasına girmemiş')
-            ->assertDontSee('Tüm işletmeler');
+            ->assertRedirect(route('radar'));
     }
 
     public function test_upcoming_shift_today_shows_waiting_not_missing(): void
@@ -98,14 +74,13 @@ class ShiftAttendanceBoardTest extends TestCase
             'courier_id' => $courier->id,
         ]);
 
-        $response = $this->actingAs($user)
-            ->get(route('shift-planning.attendance'));
+        $card = collect(app(\App\Modules\ShiftPlanning\Services\ShiftAttendanceService::class)
+            ->liveOperations(Carbon::today())['cards'])
+            ->firstWhere('courier_name', 'Akşam Kurye');
 
-        $response->assertOk()
-            ->assertSee('Akşam Kurye')
-            ->assertSee('Bekliyor')
-            ->assertDontSee('Vardiyasına girmemiş')
-            ->assertDontSee('Geç başlayanlar');
+        $this->assertNotNull($card);
+        $this->assertSame('upcoming', $card['bucket']);
+        $this->assertSame('Bekliyor', $card['bucket_label']);
     }
 
     public function test_shift_within_one_hour_shows_starting_soon_label(): void
@@ -132,11 +107,13 @@ class ShiftAttendanceBoardTest extends TestCase
             'courier_id' => $courier->id,
         ]);
 
-        $this->actingAs($user)
-            ->get(route('shift-planning.attendance'))
-            ->assertOk()
-            ->assertSee('Saati Yakın Kurye')
-            ->assertSee('Yaklaşan');
+        $card = collect(app(\App\Modules\ShiftPlanning\Services\ShiftAttendanceService::class)
+            ->liveOperations(Carbon::today())['cards'])
+            ->firstWhere('courier_name', 'Saati Yakın Kurye');
+
+        $this->assertNotNull($card);
+        $this->assertSame('starting_soon', $card['bucket']);
+        $this->assertSame('Yaklaşan', $card['bucket_label']);
     }
 
     public function test_midday_unstarted_morning_shift_shows_not_started_not_starting_soon(): void
@@ -164,12 +141,13 @@ class ShiftAttendanceBoardTest extends TestCase
             'courier_id' => $courier->id,
         ]);
 
-        $this->actingAs($user)
-            ->get(route('shift-planning.attendance'))
-            ->assertOk()
-            ->assertSee('Girmeyen Kurye')
-            ->assertSee('Girmedi')
-            ->assertDontSee('Yaklaşan');
+        $card = collect(app(\App\Modules\ShiftPlanning\Services\ShiftAttendanceService::class)
+            ->liveOperations(Carbon::today())['cards'])
+            ->firstWhere('courier_name', 'Girmeyen Kurye');
+
+        $this->assertNotNull($card);
+        $this->assertSame('not_started', $card['bucket']);
+        $this->assertSame('Girmedi', $card['bucket_label']);
     }
 
     public function test_staff_can_start_and_end_attendance_for_courier(): void
@@ -205,7 +183,7 @@ class ShiftAttendanceBoardTest extends TestCase
                 'courier_id' => $courier->id,
                 'work_date' => $date,
             ])
-            ->assertRedirect(route('shift-planning.attendance'));
+            ->assertRedirect(route('shift-planning.index'));
 
         $attendance = BusinessShiftAttendance::query()->first();
         $this->assertNotNull($attendance);
@@ -221,7 +199,7 @@ class ShiftAttendanceBoardTest extends TestCase
                 'work_date' => $date,
                 'ended_at' => '2026-07-17 23:00:00',
             ])
-            ->assertRedirect(route('shift-planning.attendance'));
+            ->assertRedirect(route('shift-planning.index'));
 
         $attendance->refresh();
         $this->assertSame('completed', $attendance->status);
@@ -278,7 +256,7 @@ class ShiftAttendanceBoardTest extends TestCase
         $attendance->update(['started_at' => Carbon::parse('2026-07-17 09:00:00')]);
 
         $this->actingAs($user)
-            ->from(route('shift-planning.attendance'))
+            ->from(route('shift-planning.index', ['business_id' => $business->id]))
             ->post(route('shift-planning.attendance.end'), [
                 'business_id' => $business->id,
                 'attendance_id' => $attendance->id,
@@ -286,8 +264,9 @@ class ShiftAttendanceBoardTest extends TestCase
                 'ended_at' => '2026-07-17 10:00:00',
                 'end_reason' => 'accident',
                 'replacement_courier_id' => $mehmet->id,
+                'return_to' => 'planning',
             ])
-            ->assertRedirect(route('shift-planning.attendance'))
+            ->assertRedirect(route('shift-planning.index', ['business_id' => $business->id]))
             ->assertSessionHasNoErrors();
 
         $attendance->refresh();
@@ -338,18 +317,13 @@ class ShiftAttendanceBoardTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get(route('shift-planning.attendance'))
-            ->assertOk()
-            ->assertSee('Geldi');
-
-        $this->actingAs($user)
             ->post(route('shift-planning.attendance.mark-attended'), [
                 'business_id' => $business->id,
                 'shift_id' => $shift->id,
                 'courier_id' => $courier->id,
                 'work_date' => now()->toDateString(),
             ])
-            ->assertRedirect(route('shift-planning.attendance'));
+            ->assertRedirect(route('shift-planning.index'));
 
         $attendance = BusinessShiftAttendance::query()->first();
         $this->assertNotNull($attendance);
@@ -388,8 +362,7 @@ class ShiftAttendanceBoardTest extends TestCase
                 'week' => now()->toDateString(),
             ]))
             ->assertOk()
-            ->assertSee('katılmadı')
-            ->assertSee('Canlı Operasyon');
+            ->assertSee('katılmadı');
     }
 
     public function test_weekly_calendar_shows_assignment_label_before_shift_starts(): void

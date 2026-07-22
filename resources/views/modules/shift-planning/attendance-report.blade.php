@@ -17,9 +17,6 @@
                 'to' => $dateTo,
                 'status' => $selectedStatuses ?: null,
             ]))" />
-            <a href="{{ route('shift-planning.attendance') }}">
-                <x-ui.button type="button" variant="secondary">Canlı Operasyon</x-ui.button>
-            </a>
         </div>
     </div>
 

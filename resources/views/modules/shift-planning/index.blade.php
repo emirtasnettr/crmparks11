@@ -50,11 +50,6 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
-            @if ($selectedBusinessId)
-                <a href="{{ route('shift-planning.attendance') }}">
-                    <x-ui.button type="button" variant="secondary">Canlı Operasyon</x-ui.button>
-                </a>
-            @endif
             <template x-if="canCreate && selectedBusinessId">
                 <x-ui.button type="button" x-on:click="openCreate()">
                     Yeni Vardiya
@@ -95,7 +90,6 @@
                     <a href="{{ route('shift-planning.index', ['business_id' => $selectedBusinessId, 'week' => $week['prev_week']]) }}" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-slate-600">← Önceki</a>
                     <span class="min-w-[10rem] text-center text-sm font-semibold text-gray-900 dark:text-white">{{ $week['label'] }}</span>
                     <a href="{{ route('shift-planning.index', ['business_id' => $selectedBusinessId, 'week' => $week['next_week']]) }}" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-slate-600">Sonraki →</a>
-                    <a href="{{ route('shift-planning.attendance') }}" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-primary-700 dark:border-slate-600 dark:text-primary-300">Canlı Operasyon</a>
                 </div>
             </div>
 
@@ -113,12 +107,9 @@
                             'border-primary-300 bg-primary-50/40' => $day['is_today'],
                             'border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-800' => ! $day['is_today'],
                         ])>
-                            <div class="flex items-start justify-between gap-2">
-                                <div>
-                                    <p class="text-xs font-medium text-gray-500 dark:text-slate-400">{{ $day['label_short'] }}</p>
-                                    <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $day['day_number'] }} {{ $day['month_short'] }}</p>
-                                </div>
-                                <a href="{{ route('shift-planning.attendance') }}" class="text-[11px] font-medium text-primary-600 hover:underline">Takip</a>
+                            <div>
+                                <p class="text-xs font-medium text-gray-500 dark:text-slate-400">{{ $day['label_short'] }}</p>
+                                <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $day['day_number'] }} {{ $day['month_short'] }}</p>
                             </div>
                             <div class="mt-2 space-y-2">
                                 @forelse ($day['shifts'] as $occurrence)

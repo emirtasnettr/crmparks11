@@ -6,31 +6,21 @@ use App\Http\Controllers\Controller;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\ShiftPlanning\Models\BusinessShiftAttendance;
 use App\Modules\ShiftPlanning\Services\ShiftAttendanceService;
-use App\Modules\ShiftPlanning\Services\ShiftPlanningService;
 use App\Modules\ShiftPlanning\Support\ShiftAttendanceRules;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
 
 class ShiftAttendanceController extends Controller
 {
     public function __construct(
         private readonly ShiftAttendanceService $attendances,
-        private readonly ShiftPlanningService $shifts,
     ) {}
 
-    public function board(Request $request): View
+    public function board(): RedirectResponse
     {
-        $board = $this->attendances->liveOperations(Carbon::today());
-
-        return view('modules.shift-planning.attendance-board', [
-            'board' => $board,
-            'canManage' => $request->user()?->can('shift_planning.update') ?? false,
-            'availableCouriers' => $this->shifts->availableCouriers(),
-            'endReasons' => ShiftAttendanceRules::endReasonLabels(),
-        ]);
+        return redirect()->route('radar');
     }
 
     public function start(Request $request): RedirectResponse
@@ -124,7 +114,7 @@ class ShiftAttendanceController extends Controller
 
     private function redirectAfterStaffAction(Request $request, string $message): RedirectResponse
     {
-        $fallback = route('shift-planning.attendance');
+        $fallback = route('shift-planning.index');
         $businessId = $request->integer('business_id') ?: null;
         $week = $request->string('week')->toString() ?: null;
 
