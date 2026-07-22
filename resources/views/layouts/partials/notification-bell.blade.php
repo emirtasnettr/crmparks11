@@ -35,12 +35,19 @@
         <div class="max-h-96 overflow-y-auto">
             @forelse ($preview['items'] as $item)
                 <a
-                    href="{{ $item['action_url'] ?? route('notifications.index') }}"
-                    class="block border-b border-gray-100 px-4 py-3 transition-colors hover:bg-gray-50 dark:border-slate-700 dark:hover:bg-slate-700/50"
+                    href="{{ $item['action_url'] ?? route('notifications.open', $item['id']) }}"
+                    class="block border-b border-gray-100 px-4 py-3 transition-colors hover:bg-gray-50 dark:border-slate-700 dark:hover:bg-slate-700/50 {{ empty($item['is_read']) ? 'bg-primary-50/40 dark:bg-primary-900/10' : '' }}"
                 >
-                    <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $item['title'] }}</p>
-                    <p class="mt-1 line-clamp-2 text-xs text-gray-600 dark:text-slate-300">{{ $item['message'] }}</p>
-                    <p class="mt-1 text-[11px] text-gray-500 dark:text-slate-400">{{ $item['created_at_formatted'] }}</p>
+                    <div class="flex items-start gap-2">
+                        @if (empty($item['is_read']))
+                            <span class="mt-1.5 inline-flex h-2 w-2 shrink-0 rounded-full bg-primary-500"></span>
+                        @endif
+                        <div class="min-w-0 flex-1">
+                            <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $item['title'] }}</p>
+                            <p class="mt-1 line-clamp-2 text-xs text-gray-600 dark:text-slate-300">{{ $item['message'] }}</p>
+                            <p class="mt-1 text-[11px] text-gray-500 dark:text-slate-400">{{ $item['created_at_formatted'] }}</p>
+                        </div>
+                    </div>
                 </a>
             @empty
                 <div class="px-4 py-8 text-center text-sm text-gray-500 dark:text-slate-400">

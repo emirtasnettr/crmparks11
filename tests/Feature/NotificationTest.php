@@ -162,4 +162,32 @@ class NotificationTest extends TestCase
 
         $this->assertNotNull($notification->fresh()->read_at);
     }
+
+    public function test_notifications_index_links_each_item_through_open_route(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('general_manager');
+
+        $user->notify(new SystemNotification(
+            type: 'system',
+            title: 'Liste Tik Bildirim',
+            message: 'Tiklaninca okunmali',
+        ));
+
+        $notification = $user->unreadNotifications()->firstOrFail();
+        $openUrl = route('notifications.open', $notification->id, absolute: false);
+
+        $this->actingAs($user)
+            ->get(route('notifications.index'))
+            ->assertOk()
+            ->assertSee('Liste Tik Bildirim', false)
+            ->assertSee('href="'.$openUrl.'"', false);
+
+        $this->actingAs($user)
+            ->get(route('notifications.open', $notification->id))
+            ->assertRedirect();
+
+        $this->assertNotNull($notification->fresh()->read_at);
+        $this->assertSame(0, $user->fresh()->unreadNotifications()->count());
+    }
 }

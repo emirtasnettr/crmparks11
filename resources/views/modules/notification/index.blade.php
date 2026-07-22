@@ -60,7 +60,10 @@
         <div class="divide-y divide-gray-200 dark:divide-slate-700">
             @forelse ($notifications as $notification)
                 <div class="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between sm:px-6 {{ $notification['is_read'] ? '' : 'bg-primary-50/40 dark:bg-primary-900/10' }}">
-                    <div class="min-w-0 flex-1">
+                    <a
+                        href="{{ $notification['action_url'] }}"
+                        class="min-w-0 flex-1 rounded-lg outline-none transition-colors hover:bg-gray-50/80 focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:bg-slate-800/60"
+                    >
                         <div class="flex flex-wrap items-center gap-2">
                             @if (! $notification['is_read'])
                                 <span class="inline-flex h-2 w-2 rounded-full bg-primary-500"></span>
@@ -72,13 +75,9 @@
                         <p class="mt-2 text-xs text-gray-500 dark:text-slate-400">
                             {{ $notification['module_label'] }} · {{ $notification['created_at_formatted'] }}
                         </p>
-                    </div>
+                    </a>
 
                     <div class="flex shrink-0 flex-wrap gap-2">
-                        @if ($notification['action_url'])
-                            <x-ui.button href="{{ $notification['action_url'] }}" variant="secondary" size="sm">Görüntüle</x-ui.button>
-                        @endif
-
                         @can('notification.update')
                             @if (! $notification['is_read'])
                                 <form method="POST" action="{{ route('notifications.mark-read', $notification['id']) }}">
