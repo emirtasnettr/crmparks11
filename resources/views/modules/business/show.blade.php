@@ -61,6 +61,9 @@
             @if ($canViewRestrictedTabs)
                 <x-entity.tab-trigger name="contacts" label="Yetkililer" />
                 <x-entity.tab-trigger name="commercial-contracts" label="Kontrat" />
+                @if (\App\Modules\Business\Support\BusinessFeatures::earningsEnabled())
+                    <x-entity.tab-trigger name="earnings" label="Hakediş" />
+                @endif
                 <x-entity.tab-trigger name="contracts" label="Sözleşmeler" />
                 <x-entity.tab-trigger name="documents" label="Evraklar" />
                 <x-entity.tab-trigger name="activities" label="Hareket Geçmişi" />
@@ -329,6 +332,119 @@
                 ])
             </div>
         </x-entity.tab-panel>
+
+        @if (\App\Modules\Business\Support\BusinessFeatures::earningsEnabled())
+        <x-entity.tab-panel name="earnings">
+            @php
+                $earningsSummary = $business['earnings_summary'] ?? [
+                    'count' => 0,
+                    'draft_count' => 0,
+                    'pending_count' => 0,
+                    'approved_count' => 0,
+                    'paid_count' => 0,
+                    'cancelled_count' => 0,
+                    'total_revenue_formatted' => '0,00 ₺',
+                    'total_courier_payment_formatted' => '0,00 ₺',
+                    'total_profit_formatted' => '0,00 ₺',
+                ];
+                $earnings = $business['earnings'] ?? [];
+            @endphp
+
+            <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Hakediş Durumu</h2>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">
+                        Bu işletmeye ait hakediş kayıtları ve onay durumları.
+                    </p>
+                </div>
+                @if (! empty($business['earnings_url']))
+                    <x-ui.button href="{{ $business['earnings_url'] }}" variant="secondary">
+                        Tüm hakedişler
+                    </x-ui.button>
+                @endif
+            </div>
+
+            <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <x-ui.finance-stat-card title="İşletme Geliri" :value="$earningsSummary['total_revenue_formatted']" icon="earning" accent="success" />
+                <x-ui.finance-stat-card title="Kurye Ödemesi" :value="$earningsSummary['total_courier_payment_formatted']" icon="courier" accent="warning" />
+                <x-ui.finance-stat-card title="Kâr" :value="$earningsSummary['total_profit_formatted']" icon="chart" accent="primary" />
+            </div>
+
+            <div class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
+                <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
+                    <p class="text-xs font-medium text-gray-500 dark:text-slate-400">Taslak</p>
+                    <p class="mt-1 text-lg font-semibold tabular-nums text-gray-900 dark:text-white">{{ number_format($earningsSummary['draft_count']) }}</p>
+                </div>
+                <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
+                    <p class="text-xs font-medium text-gray-500 dark:text-slate-400">Bekliyor</p>
+                    <p class="mt-1 text-lg font-semibold tabular-nums text-amber-700 dark:text-amber-400">{{ number_format($earningsSummary['pending_count']) }}</p>
+                </div>
+                <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
+                    <p class="text-xs font-medium text-gray-500 dark:text-slate-400">Onaylandı</p>
+                    <p class="mt-1 text-lg font-semibold tabular-nums text-blue-700 dark:text-blue-400">{{ number_format($earningsSummary['approved_count']) }}</p>
+                </div>
+                <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
+                    <p class="text-xs font-medium text-gray-500 dark:text-slate-400">Ödendi</p>
+                    <p class="mt-1 text-lg font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">{{ number_format($earningsSummary['paid_count']) }}</p>
+                </div>
+                <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
+                    <p class="text-xs font-medium text-gray-500 dark:text-slate-400">İptal</p>
+                    <p class="mt-1 text-lg font-semibold tabular-nums text-red-700 dark:text-red-400">{{ number_format($earningsSummary['cancelled_count']) }}</p>
+                </div>
+            </div>
+
+            <x-ui.card title="Hakediş Kayıtları">
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[720px] text-left text-sm">
+                        <thead>
+                            <tr class="border-b border-gray-200 dark:border-slate-700">
+                                <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Dönem</th>
+                                <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Kurye</th>
+                                <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Model</th>
+                                <th class="pb-2 font-medium text-gray-500 dark:text-slate-400 text-right">İşletme Geliri</th>
+                                <th class="pb-2 font-medium text-gray-500 dark:text-slate-400 text-right">Kurye Ödemesi</th>
+                                <th class="pb-2 font-medium text-gray-500 dark:text-slate-400 text-right">Kâr</th>
+                                <th class="pb-2 font-medium text-gray-500 dark:text-slate-400">Durum</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
+                            @forelse ($earnings as $earning)
+                                <tr>
+                                    <td class="py-2.5 text-gray-900 dark:text-white">
+                                        <a href="{{ route('businesses.earnings.show', $earning['id']) }}" class="font-medium text-primary-600 hover:underline dark:text-primary-400">
+                                            {{ $earning['period_label'] }}
+                                        </a>
+                                    </td>
+                                    <td class="py-2.5 text-gray-700 dark:text-slate-300">{{ $earning['courier_name'] }}</td>
+                                    <td class="py-2.5">
+                                        <x-business.pricing-badge :model="$earning['pricing_model']" />
+                                    </td>
+                                    <td class="py-2.5 text-right font-medium tabular-nums text-emerald-600 dark:text-emerald-400">
+                                        {{ money_excl_vat($earning['revenue']) }}
+                                    </td>
+                                    <td class="py-2.5 text-right tabular-nums text-red-600 dark:text-red-400">
+                                        {{ money_excl_vat($earning['courier_payment']) }}
+                                    </td>
+                                    <td class="py-2.5 text-right">
+                                        <x-business.profit-display :amount="$earning['profit']" />
+                                    </td>
+                                    <td class="py-2.5">
+                                        <x-business.earning-status-badge :status="$earning['status']" />
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="py-8 text-center text-sm text-gray-500 dark:text-slate-400">
+                                        Bu işletme için henüz hakediş kaydı yok.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </x-ui.card>
+        </x-entity.tab-panel>
+        @endif
 
         <x-entity.tab-panel name="contracts" alpine-page="contractPage" :alpine-config="['businessId' => $business['id']]">
             <x-ui.card title="Sözleşmeler">

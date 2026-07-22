@@ -157,7 +157,7 @@ class BusinessPresenter
     $earningPeriods = BusinessFormData::earningPeriods();
     $activeContract = $this->commercialContracts->activeForBusiness($business->id);
 
-    return array_merge($this->detailPayload($business), [
+    $payload = array_merge($this->detailPayload($business), [
       'uuid' => $business->uuid,
       'public_id' => $business->public_id,
       'email' => $base['email'],
@@ -214,18 +214,44 @@ class BusinessPresenter
         ->map(fn ($log) => $this->activityPresenter->indexRow($log))
         ->values()
         ->all(),
-    ], BusinessFeatures::earningsEnabled() ? [
+    ]);
+
+    if (! BusinessFeatures::earningsEnabled()) {
+      return $payload;
+    }
+
+    $earnings = $this->earnings
+      ->forBusiness($business->id)
+      ->map(fn (EarningLine $line) => $this->earningPresenter->showRow($line))
+      ->values();
+
+    $totalRevenue = round((float) $earnings->sum('revenue'), 2);
+    $totalCourierPayment = round((float) $earnings->sum('courier_payment'), 2);
+    $totalProfit = round((float) $earnings->sum('profit'), 2);
+
+    return array_merge($payload, [
       'earning_period_label' => $earningPeriods[$base['earning_period'] ?? ''] ?? '—',
       'first_invoice_date' => $base['first_invoice_date'] ?? null,
       'first_invoice_date_formatted' => ! empty($base['first_invoice_date'])
         ? \Carbon\Carbon::parse($base['first_invoice_date'])->format('d.m.Y')
         : '—',
-      'earnings' => $this->earnings
-        ->forBusiness($business->id)
-        ->map(fn (EarningLine $line) => $this->earningPresenter->showRow($line))
-        ->values()
-        ->all(),
-    ] : []);
+      'earnings' => $earnings->all(),
+      'earnings_url' => route('businesses.earnings.index', ['business_id' => $business->id]),
+      'earnings_summary' => [
+        'count' => $earnings->count(),
+        'draft_count' => $earnings->where('status', 'draft')->count(),
+        'pending_count' => $earnings->where('status', 'pending')->count(),
+        'approved_count' => $earnings->where('status', 'approved')->count(),
+        'paid_count' => $earnings->where('status', 'paid')->count(),
+        'cancelled_count' => $earnings->where('status', 'cancelled')->count(),
+        'total_revenue' => $totalRevenue,
+        'total_courier_payment' => $totalCourierPayment,
+        'total_profit' => $totalProfit,
+        'total_revenue_formatted' => MoneyCalculator::format($totalRevenue),
+        'total_courier_payment_formatted' => MoneyCalculator::format($totalCourierPayment),
+        'total_profit_formatted' => MoneyCalculator::format($totalProfit),
+      ],
+    ]);
   }
 
   /**

@@ -127,6 +127,40 @@ class BusinessEarningTest extends TestCase
         $response->assertSee($courier->full_name);
     }
 
+    public function test_business_show_surfaces_earnings_status_tab(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $courier = $this->createCourier($user, ['full_name' => 'Hakediş Tab Kurye']);
+
+        EarningLine::factory()->create([
+            'business_id' => $business->id,
+            'courier_id' => $courier->id,
+            'created_by' => $user->id,
+            'period_month' => 7,
+            'period_year' => 2026,
+            'work_date' => '2026-07-15',
+            'revenue_total' => 1000,
+            'courier_total' => 900,
+            'profit' => 100,
+            'status_id' => \App\Models\EarningStatus::query()->where('code', 'pending_review')->value('id'),
+        ]);
+
+        $response = $this->actingAs($user)->get(route('businesses.show', [
+            'id' => $business->id,
+            'tab' => 'earnings',
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('Hakediş', false);
+        $response->assertSee('Hakediş Durumu', false);
+        $response->assertSee('Hakediş Tab Kurye', false);
+        $response->assertSee('Bekliyor', false);
+        $response->assertSee('Taslak', false);
+        $response->assertSee('Tüm hakedişler', false);
+    }
+
     /**
      * @param  array<string, mixed>  $overrides
      */
