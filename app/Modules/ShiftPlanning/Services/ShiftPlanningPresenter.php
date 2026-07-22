@@ -14,7 +14,6 @@ class ShiftPlanningPresenter
     {
         $start = $this->formatTime($shift->start_time);
         $end = $this->formatTime($shift->end_time);
-        $overnight = $this->isOvernight($shift->start_time, $shift->end_time);
         $required = max(1, (int) $shift->required_headcount);
 
         $couriers = $shift->rosterCouriers
