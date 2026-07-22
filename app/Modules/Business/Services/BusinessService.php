@@ -91,6 +91,7 @@ class BusinessService
 
   public function deactivate(Business $business, array $data = []): Business
   {
+    // Pasife alma yalnızca işletme durumunu günceller; mevcut hakediş satırlarına dokunulmaz.
     $payload = [
       'status' => 'inactive',
       'contract_end_date' => $data['contract_end_date'] ?? now()->toDateString(),

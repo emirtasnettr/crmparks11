@@ -83,6 +83,10 @@ class AttendanceEarningSyncService
                 continue;
             }
 
+            if ($this->isBusinessOrCourierInactive((int) $attendance->business_id, (int) $attendance->courier_id)) {
+                continue;
+            }
+
             $contract = $attendance->commercial_contract_id
                 ? BusinessCommercialContract::query()->find((int) $attendance->commercial_contract_id)
                 : $this->commercialContracts->forBusinessOnDate((int) $attendance->business_id, $day);
@@ -167,6 +171,11 @@ class AttendanceEarningSyncService
         $courierId = (int) $sample->courier_id;
         $businessId = (int) $sample->business_id;
 
+        // Pasif işletme / kurye: mevcut hakedişlere dokunma, yeni satır oluşturma.
+        if ($this->isBusinessOrCourierInactive($businessId, $courierId)) {
+            return 'skipped';
+        }
+
         $existing = EarningLine::query()
             ->with('status')
             ->where('courier_id', $courierId)
@@ -225,6 +234,23 @@ class AttendanceEarningSyncService
 
             return 'created';
         });
+    }
+
+    private function isBusinessOrCourierInactive(int $businessId, int $courierId): bool
+    {
+        $businessInactive = Business::query()
+            ->whereKey($businessId)
+            ->where('status', 'inactive')
+            ->exists();
+
+        if ($businessInactive) {
+            return true;
+        }
+
+        return \App\Modules\Courier\Models\Courier::query()
+            ->whereKey($courierId)
+            ->where('status', 'inactive')
+            ->exists();
     }
 
     /**

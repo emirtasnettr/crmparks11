@@ -153,6 +153,7 @@ class CourierService
 
     public function deactivate(Courier $courier): Courier
     {
+        // Pasife alma yalnızca kurye durumunu günceller; mevcut hakediş satırlarına dokunulmaz.
         $previousStatus = $courier->status;
         $courier->update(['status' => 'inactive']);
         $courier = $courier->fresh(['city', 'district', 'agency', 'vehicleType']);
