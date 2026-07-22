@@ -26,15 +26,6 @@
         </button>
 
         <div class="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
-            @can('shift_planning.view')
-                <a
-                    href="{{ route('shift-planning.index') }}"
-                    class="inline-flex items-center rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 {{ request()->routeIs('shift-planning.index', 'shift-planning.store', 'shift-planning.update', 'shift-planning.assign-couriers', 'shift-planning.destroy') ? 'ring-2 ring-gray-300 ring-offset-2' : '' }}"
-                >
-                    Vardiya
-                </a>
-            @endcan
-
             @can('report.view')
                 <a
                     href="{{ route('radar') }}"

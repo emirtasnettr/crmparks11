@@ -111,8 +111,6 @@ class ReportModuleTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Canlı Operasyon');
-        $response->assertSee('Vardiya');
-        $response->assertSee(route('shift-planning.index'), false);
         $response->assertSee('Radar İşletme');
         $response->assertSee('Gerekli Kişi');
         $response->assertSee('Atanan Kurye');
