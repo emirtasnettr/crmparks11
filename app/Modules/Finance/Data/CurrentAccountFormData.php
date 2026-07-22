@@ -55,6 +55,30 @@ class CurrentAccountFormData
     /**
      * @return array<string, string>
      */
+    public static function businessTransactionTypes(): array
+    {
+        return [
+            'collection' => 'Ödeme Alındı',
+            'debit_note' => 'Borç Dekontu',
+            'credit_note' => 'Alacak Dekontu',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function courierTransactionTypes(): array
+    {
+        return [
+            'payment' => 'Ödeme Yapıldı',
+            'debit_note' => 'Borç Dekontu',
+            'credit_note' => 'Alacak Dekontu',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
     public static function movementTypeLabels(): array
     {
         return array_merge(self::transactionTypes(), [

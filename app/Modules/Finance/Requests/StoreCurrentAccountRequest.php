@@ -10,7 +10,11 @@ class StoreCurrentAccountRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('dashboard.financial') ?? false;
+        $user = $this->user();
+
+        return $user !== null
+            && $user->can('dashboard.financial')
+            && $user->hasAnyRole(['super_admin', 'general_manager']);
     }
 
     /**
@@ -19,7 +23,7 @@ class StoreCurrentAccountRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'type' => ['required', Rule::in(array_keys(CurrentAccountFormData::accountTypes()))],
+            'type' => ['required', Rule::in(['business', 'courier'])],
             'title' => ['required', 'string', 'max:255'],
             'phone' => ['required', 'string', 'max:30'],
             'email' => ['nullable', 'email', 'max:255'],

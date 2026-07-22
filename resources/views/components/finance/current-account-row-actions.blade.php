@@ -1,4 +1,8 @@
-@props(['account'])
+@props([
+    'account',
+    'primaryMovementType' => 'collection',
+    'primaryMovementLabel' => 'Ödeme Alındı',
+])
 
 @php
     use App\Core\Actions\RowActions;
@@ -8,9 +12,11 @@
     $items = [
         RowActions::dispatch('Cari Kartı', 'current-account-card', $id),
         RowActions::dispatch('Ekstre', 'current-account-statement', $id),
-        RowActions::dispatch('Yeni Hareket', 'current-account-movement', ['id' => $id, 'preset' => null]),
-        RowActions::dispatch('Tahsilat Gir', 'current-account-movement', ['id' => $id, 'preset' => 'collection']),
-        RowActions::dispatch('Ödeme Gir', 'current-account-movement', ['id' => $id, 'preset' => 'payment']),
+        RowActions::dispatch(
+            $primaryMovementLabel,
+            'current-account-movement',
+            ['id' => $id, 'preset' => $primaryMovementType]
+        ),
     ];
 
     if ($account['can_update'] ?? false) {

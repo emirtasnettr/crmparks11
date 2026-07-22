@@ -223,7 +223,18 @@ class SidebarMenu
                 'active' => ['finance.*'],
                 'children' => [
                     ['label' => 'Dashboard', 'route' => 'finance.dashboard.index', 'active' => ['finance.dashboard.*']],
-                    ['label' => 'Cari Hesaplar', 'route' => 'finance.current-accounts.index', 'active' => ['finance.current-accounts.*']],
+                    [
+                        'label' => 'İşletme Cari',
+                        'route' => 'finance.current-accounts.business',
+                        'active' => ['finance.current-accounts.business', 'finance.current-accounts.index'],
+                        'roles' => ['super_admin', 'general_manager'],
+                    ],
+                    [
+                        'label' => 'Kurye Cari',
+                        'route' => 'finance.current-accounts.courier',
+                        'active' => ['finance.current-accounts.courier'],
+                        'roles' => ['super_admin', 'general_manager'],
+                    ],
                     ['label' => 'Gelirler', 'route' => 'finance.revenues.index', 'active' => ['finance.revenues.*']],
                     ['label' => 'Giderler', 'route' => 'finance.expenses.index', 'active' => ['finance.expenses.*']],
                     ['label' => 'Tahsilatlar', 'route' => 'finance.collections.index', 'active' => ['finance.collections.*']],

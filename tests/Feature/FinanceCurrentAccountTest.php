@@ -2,13 +2,17 @@
 
 namespace Tests\Feature;
 
+use App\Models\EarningLine;
+use App\Models\EarningStatus;
 use App\Models\User;
 use App\Modules\Agency\Models\Agency;
 use App\Modules\Business\Models\Business;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\Finance\Models\CurrentAccount;
 use App\Modules\Finance\Models\CurrentAccountMovement;
+use App\Modules\Finance\Models\FinancePayment;
 use App\Modules\Finance\Services\CurrentAccountService;
+use App\Modules\Finance\Services\PaymentService;
 use Database\Seeders\LookupTableSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -28,14 +32,17 @@ class FinanceCurrentAccountTest extends TestCase
         ]);
     }
 
-    public function test_current_accounts_index_requires_authentication(): void
+    public function test_current_accounts_index_redirects_to_business_cari(): void
     {
-        $response = $this->get(route('finance.current-accounts.index'));
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
 
-        $response->assertRedirect(route('login'));
+        $this->actingAs($user)
+            ->get(route('finance.current-accounts.index'))
+            ->assertRedirect(route('finance.current-accounts.business'));
     }
 
-    public function test_authenticated_user_can_view_current_accounts_index(): void
+    public function test_business_cari_lists_only_business_accounts(): void
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
@@ -48,35 +55,53 @@ class FinanceCurrentAccountTest extends TestCase
         app(CurrentAccountService::class)->ensureForEntity($courier);
         app(CurrentAccountService::class)->ensureForEntity($agency);
 
-        $response = $this->actingAs($user)->get(route('finance.current-accounts.index'));
+        $response = $this->actingAs($user)->get(route('finance.current-accounts.business'));
 
         $response->assertOk();
-        $response->assertSee('Cari Hesaplar');
-        $response->assertSee('Sistemdeki tüm cari hesapları yönetin.');
-        $response->assertSee('Yeni Cari Hesap');
-        $response->assertSee('Yeni Hareket');
-        $response->assertSee('Toplam Cari');
+        $response->assertSee('İşletme Cari');
+        $response->assertSee('Ödeme Alındı');
         $response->assertSee('Toplam Alacak');
-        $response->assertSee('Toplam Borç');
-        $response->assertSee('Net Bakiye');
-        $response->assertSee('Vadesi Geçen Alacak');
-        $response->assertSee('Vadesi Geçen Borç');
         $response->assertSee('Burger House Gıda Ltd. Şti.');
-        $response->assertSee('Ahmet Yıldız');
-        $response->assertSee('Hızlı Kurye Acentesi Ltd. Şti.');
+        $response->assertDontSee('Ahmet Yıldız');
+        $response->assertDontSee('Hızlı Kurye Acentesi Ltd. Şti.');
     }
 
-    public function test_user_without_financial_permission_cannot_view_current_accounts(): void
+    public function test_courier_cari_lists_only_courier_accounts(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('general_manager');
+
+        $business = Business::factory()->create(['company_name' => 'Sadece İşletme Ltd.']);
+        $courier = Courier::factory()->create(['full_name' => 'Kurye Cari Test']);
+
+        app(CurrentAccountService::class)->ensureForEntity($business);
+        app(CurrentAccountService::class)->ensureForEntity($courier);
+
+        $response = $this->actingAs($user)->get(route('finance.current-accounts.courier'));
+
+        $response->assertOk();
+        $response->assertSee('Kurye Cari');
+        $response->assertSee('Ödeme Yapıldı');
+        $response->assertSee('Toplam Borç');
+        $response->assertSee('Kurye Cari Test');
+        $response->assertDontSee('Sadece İşletme Ltd.');
+    }
+
+    public function test_operations_specialist_cannot_view_cari_pages(): void
     {
         $user = User::factory()->create();
         $user->assignRole('operations_specialist');
 
-        $response = $this->actingAs($user)->get(route('finance.current-accounts.index'));
+        $this->actingAs($user)
+            ->get(route('finance.current-accounts.business'))
+            ->assertForbidden();
 
-        $response->assertForbidden();
+        $this->actingAs($user)
+            ->get(route('finance.current-accounts.courier'))
+            ->assertForbidden();
     }
 
-    public function test_entity_accounts_are_synced_on_index(): void
+    public function test_entity_accounts_are_synced_on_business_index(): void
     {
         Business::factory()->count(2)->create();
         Courier::factory()->count(2)->create();
@@ -85,92 +110,12 @@ class FinanceCurrentAccountTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('super_admin');
 
-        $this->actingAs($user)->get(route('finance.current-accounts.index'));
+        $this->actingAs($user)->get(route('finance.current-accounts.business'));
 
         $this->assertDatabaseCount('current_accounts', 5);
     }
 
-    public function test_current_accounts_can_be_filtered_by_type(): void
-    {
-        $user = User::factory()->create();
-        $user->assignRole('super_admin');
-
-        $courier = Courier::factory()->create(['full_name' => 'Ahmet Yıldız']);
-        $account = app(CurrentAccountService::class)->ensureForEntity($courier);
-
-        $response = $this->actingAs($user)->get(route('finance.current-accounts.index', [
-            'type' => 'courier',
-        ]));
-
-        $response->assertOk();
-        $response->assertSee('Ahmet Yıldız');
-        $response->assertSee($account->code);
-        $response->assertSee('cari hesap listeleniyor');
-    }
-
-    public function test_current_accounts_can_be_filtered_by_balance_status(): void
-    {
-        $user = User::factory()->create();
-        $user->assignRole('super_admin');
-
-        $business = Business::factory()->create();
-        $account = app(CurrentAccountService::class)->ensureForEntity($business);
-
-        CurrentAccountMovement::factory()->for($account)->create([
-            'type' => 'invoice',
-            'debit' => 10000,
-            'credit' => 0,
-        ]);
-
-        $response = $this->actingAs($user)->get(route('finance.current-accounts.index', [
-            'balance_status' => 'receivable',
-        ]));
-
-        $response->assertOk();
-        $response->assertSee('cari hesap listeleniyor');
-        $response->assertSee($account->code);
-    }
-
-    public function test_current_accounts_can_be_searched_by_code(): void
-    {
-        $user = User::factory()->create();
-        $user->assignRole('super_admin');
-
-        $courier = Courier::factory()->create(['full_name' => 'Test Kurye']);
-        $account = app(CurrentAccountService::class)->ensureForEntity($courier);
-
-        $response = $this->actingAs($user)->get(route('finance.current-accounts.index', [
-            'search' => $account->code,
-        ]));
-
-        $response->assertOk();
-        $response->assertSee($account->code);
-        $response->assertSee('cari hesap listeleniyor');
-    }
-
-    public function test_user_can_create_manual_current_account(): void
-    {
-        $user = User::factory()->create();
-        $user->assignRole('super_admin');
-
-        $response = $this->actingAs($user)->post(route('finance.current-accounts.store'), [
-            'type' => 'business',
-            'title' => 'Manuel Cari Ltd. Şti.',
-            'phone' => '0212 111 22 33',
-            'email' => 'muhasebe@manuel.test',
-            'tax_number' => '1234567890',
-        ]);
-
-        $response->assertRedirect(route('finance.current-accounts.index'));
-        $response->assertSessionHas('success');
-
-        $this->assertDatabaseHas('current_accounts', [
-            'title' => 'Manuel Cari Ltd. Şti.',
-            'account_type' => 'business',
-        ]);
-    }
-
-    public function test_user_can_create_current_account_movement(): void
+    public function test_user_can_create_collection_movement_on_business_cari(): void
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
@@ -188,7 +133,7 @@ class FinanceCurrentAccountTest extends TestCase
             'description' => 'Test tahsilat',
         ]);
 
-        $response->assertRedirect(route('finance.current-accounts.index'));
+        $response->assertRedirect(route('finance.current-accounts.business'));
         $response->assertSessionHas('success');
 
         $this->assertDatabaseHas('current_account_movements', [
@@ -197,5 +142,84 @@ class FinanceCurrentAccountTest extends TestCase
             'credit' => 5000,
             'debit' => 0,
         ]);
+    }
+
+    public function test_earning_payment_posts_courier_liability_and_payment_reduces_it(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $courier = Courier::factory()->create();
+        $account = app(CurrentAccountService::class)->ensureForEntity($courier);
+
+        $line = EarningLine::factory()->create([
+            'courier_id' => $courier->id,
+            'created_by' => $user->id,
+            'status_id' => EarningStatus::query()->where('code', 'approved')->value('id'),
+            'net_courier_payment' => 900,
+        ]);
+
+        $payment = app(PaymentService::class)->create([
+            'recipient_type' => 'courier',
+            'recipient_id' => $courier->id,
+            'earning_line_id' => $line->id,
+            'payment_date' => now()->toDateString(),
+            'total_amount' => 900,
+            'paid_amount' => 0,
+            'description' => 'Test kurye hakediş borcu',
+        ], $user);
+
+        $this->assertDatabaseHas('current_account_movements', [
+            'current_account_id' => $account->id,
+            'type' => 'earning',
+            'credit' => 900,
+            'related_type' => FinancePayment::class,
+            'related_id' => $payment->id,
+        ]);
+
+        $balanceAfterLiability = round(
+            (float) $account->movements()->sum('debit') - (float) $account->movements()->sum('credit'),
+            2
+        );
+        $this->assertSame(-900.0, $balanceAfterLiability);
+
+        $this->actingAs($user)->post(route('finance.payments.bulk'), [
+            'ids' => [$payment->id],
+            'payment_date' => now()->toDateString(),
+            'payment_method' => 'bank_transfer',
+        ])->assertRedirect();
+
+        $balance = round(
+            (float) $account->movements()->sum('debit') - (float) $account->movements()->sum('credit'),
+            2
+        );
+        $this->assertSame(0.0, $balance);
+    }
+
+    public function test_backfill_earning_liabilities_is_idempotent(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $courier = Courier::factory()->create();
+        $account = app(CurrentAccountService::class)->ensureForEntity($courier);
+
+        $payment = FinancePayment::factory()->forCourier($courier)->create([
+            'current_account_id' => $account->id,
+            'source' => 'earning',
+            'total_amount' => 500,
+            'paid_amount' => 0,
+            'status' => 'pending',
+            'created_by' => $user->id,
+        ]);
+
+        $service = app(PaymentService::class);
+        $this->assertSame(1, $service->backfillEarningLiabilities($user));
+        $this->assertSame(0, $service->backfillEarningLiabilities($user));
+
+        $this->assertSame(1, CurrentAccountMovement::query()
+            ->where('related_type', FinancePayment::class)
+            ->where('related_id', $payment->id)
+            ->where('type', 'earning')
+            ->count());
     }
 }

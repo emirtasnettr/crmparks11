@@ -90,11 +90,11 @@ class FinanceRowActionsTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('super_admin');
 
-        $account = CurrentAccount::factory()->create(['status' => 'active']);
+        $account = CurrentAccount::factory()->business()->create(['status' => 'active']);
 
         $this->actingAs($user)
             ->post(route('finance.current-accounts.deactivate', $account->id))
-            ->assertRedirect(route('finance.current-accounts.index'));
+            ->assertRedirect(route('finance.current-accounts.business'));
 
         $this->assertSame('passive', $account->fresh()->status);
     }

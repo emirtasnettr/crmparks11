@@ -67,9 +67,13 @@ class CurrentAccountService
     /**
      * @return array<int, array{id: int, code: string, title: string, type: string}>
      */
-    public function options(): array
+    public function options(?string $accountType = null): array
     {
         return CurrentAccount::query()
+            ->when(
+                $accountType !== null && $accountType !== 'all',
+                fn (Builder $query) => $query->where('account_type', $accountType)
+            )
             ->orderBy('code')
             ->get(['id', 'code', 'title', 'account_type'])
             ->map(fn (CurrentAccount $account) => [

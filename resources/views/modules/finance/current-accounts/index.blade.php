@@ -1,12 +1,21 @@
 @extends('layouts.app')
 
-@section('title', 'Cari Hesaplar')
+@section('title', $pageTitle)
 
 
 @section('content')
+@php
+    $accountScope = $accountScope ?? 'business';
+    $isCourier = $accountScope === 'courier';
+    $indexRoute = $indexRoute ?? ($isCourier ? 'finance.current-accounts.courier' : 'finance.current-accounts.business');
+    $primaryMovementType = $primaryMovementType ?? ($isCourier ? 'payment' : 'collection');
+    $primaryMovementLabel = $primaryMovementLabel ?? ($isCourier ? 'Ödeme Yapıldı' : 'Ödeme Alındı');
+@endphp
 <div
     x-data="financeCurrentAccountPage(@js([
         'accountDetails' => $accountDetails,
+        'accountScope' => $accountScope,
+        'primaryMovementType' => $primaryMovementType,
         'routes' => ['update' => url('/finans/cari-hesaplar')],
     ]))"
     @current-account-card.window="openCard($event.detail)"
@@ -16,45 +25,40 @@
 >
     <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-            <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Cari Hesaplar</h1>
+            <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{{ $pageTitle }}</h1>
             <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">
-                Sistemdeki tüm cari hesapları yönetin.
+                {{ $pageSubtitle }}
             </p>
         </div>
 
         <div class="flex flex-wrap gap-2">
-            <x-ui.button type="button" @click="openNewAccount()">
+            <x-ui.button type="button" @click="openMovement({ id: null, preset: @js($primaryMovementType) })">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                 </svg>
-                Yeni Cari Hesap
+                {{ $primaryMovementLabel }}
             </x-ui.button>
-            <x-ui.button type="button" variant="secondary" @click="openMovement({ id: null, preset: null })">
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
-                Yeni Hareket
-            </x-ui.button>
-            <x-ui.export-button :href="route('finance.current-accounts.export', request()->query())" />
+            <x-ui.export-button :href="route('finance.current-accounts.export', array_merge(request()->query(), ['type' => $accountScope]))" />
         </div>
     </div>
 
-    <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+    <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <x-ui.finance-stat-card title="Toplam Cari" :value="number_format($summary['count'])" icon="building" accent="primary" />
-        <x-ui.finance-stat-card title="Toplam Alacak" :value="money_excl_vat($summary['total_receivable'])" icon="earning" accent="success" />
-        <x-ui.finance-stat-card title="Toplam Borç" :value="money_excl_vat($summary['total_payable'])" icon="chart" accent="danger" />
-        <x-ui.finance-stat-card title="Net Bakiye" :value="money_excl_vat($summary['net_balance'])" icon="earning" accent="violet" />
-        <x-ui.finance-stat-card title="Vadesi Geçen Alacak" :value="money_excl_vat($summary['overdue_receivable'])" icon="earning" accent="warning" />
-        <x-ui.finance-stat-card title="Vadesi Geçen Borç" :value="money_excl_vat($summary['overdue_payable'])" icon="chart" accent="warning" />
+        @if ($isCourier)
+            <x-ui.finance-stat-card title="Toplam Borç" :value="money_excl_vat($summary['total_payable'])" icon="chart" accent="danger" />
+            <x-ui.finance-stat-card title="Kalan Borç" :value="money_excl_vat($summary['total_payable'])" icon="earning" accent="warning" />
+            <x-ui.finance-stat-card title="Net Bakiye" :value="money_excl_vat($summary['net_balance'])" icon="earning" accent="violet" />
+        @else
+            <x-ui.finance-stat-card title="Toplam Alacak" :value="money_excl_vat($summary['total_receivable'])" icon="earning" accent="success" />
+            <x-ui.finance-stat-card title="Kalan Alacak" :value="money_excl_vat($summary['total_receivable'])" icon="earning" accent="warning" />
+            <x-ui.finance-stat-card title="Net Bakiye" :value="money_excl_vat($summary['net_balance'])" icon="chart" accent="violet" />
+        @endif
     </div>
 
     <x-ui.card :padding="false">
-        <form method="GET" action="{{ route('finance.current-accounts.index') }}" class="p-4 sm:p-6">
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <form method="GET" action="{{ route($indexRoute) }}" class="p-4 sm:p-6">
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <x-ui.input name="search" label="Cari Ara" :value="$filters['search']" placeholder="Kod, ünvan veya telefon" />
-
-                <x-ui.select name="type" label="Cari Tipi" :selected="$filters['type']"
-                    :options="filter_select_options($accountTypes)" />
 
                 <x-ui.select name="status" label="Durum" :selected="$filters['status']"
                     :options="filter_select_options($statuses)" />
@@ -65,7 +69,7 @@
 
             <div class="mt-4 flex flex-wrap gap-2">
                 <x-ui.button type="submit">Filtrele</x-ui.button>
-                <x-ui.button href="{{ route('finance.current-accounts.index') }}" variant="secondary">Temizle</x-ui.button>
+                <x-ui.button href="{{ route($indexRoute) }}" variant="secondary">Temizle</x-ui.button>
             </div>
         </form>
     </x-ui.card>
@@ -78,16 +82,17 @@
         </div>
 
         <div class="overflow-x-auto">
-            <table class="w-full min-w-[1200px] text-left text-sm">
+            <table class="w-full min-w-[1100px] text-left text-sm">
                 <thead>
                     <tr class="border-b border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-800/50">
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 sm:px-6">Cari Kodu</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Cari Ünvanı</th>
-                        <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Cari Tipi</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Telefon</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 text-right">Borç</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 text-right">Alacak</th>
-                        <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 text-right">Bakiye</th>
+                        <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 text-right">
+                            {{ $isCourier ? 'Kalan Borç' : 'Kalan Alacak' }}
+                        </th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Son Hareket</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Durum</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400 sm:px-6">İşlemler</th>
@@ -95,15 +100,18 @@
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-slate-700">
                     @forelse ($accounts as $account)
+                        @php
+                            $remaining = $isCourier
+                                ? abs(min(0, (float) $account['balance']))
+                                : max(0, (float) $account['balance']);
+                            $remainingFormatted = money_excl_vat($remaining);
+                        @endphp
                         <tr class="transition-colors hover:bg-gray-50 dark:hover:bg-slate-800/50">
                             <td class="whitespace-nowrap px-4 py-3 font-mono text-xs text-gray-600 dark:text-slate-300 sm:px-6">
                                 {{ $account['code'] }}
                             </td>
                             <td class="max-w-[220px] px-4 py-3">
                                 <p class="line-clamp-2 font-medium text-gray-900 dark:text-white">{{ $account['title'] }}</p>
-                            </td>
-                            <td class="px-4 py-3">
-                                <x-finance.account-type-badge :type="$account['type']" />
                             </td>
                             <td class="whitespace-nowrap px-4 py-3 text-gray-600 dark:text-slate-300">
                                 {{ $account['phone'] }}
@@ -116,11 +124,11 @@
                             </td>
                             <td class="whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums">
                                 <span @class([
-                                    'text-emerald-600 dark:text-emerald-400' => $account['balance_tone'] === 'positive',
-                                    'text-red-600 dark:text-red-400' => $account['balance_tone'] === 'negative',
-                                    'text-gray-500 dark:text-slate-400' => $account['balance_tone'] === 'zero',
+                                    'text-emerald-600 dark:text-emerald-400' => ! $isCourier && $remaining > 0,
+                                    'text-red-600 dark:text-red-400' => $isCourier && $remaining > 0,
+                                    'text-gray-500 dark:text-slate-400' => $remaining <= 0,
                                 ])>
-                                    {{ $account['balance_formatted'] }}
+                                    {{ $remainingFormatted }}
                                 </span>
                             </td>
                             <td class="whitespace-nowrap px-4 py-3 text-gray-600 dark:text-slate-300">
@@ -131,13 +139,17 @@
                                 <x-finance.account-status-badge :status="$account['status']" />
                             </td>
                             <td class="px-4 py-3 sm:px-6">
-                                <x-finance.current-account-row-actions :account="$account" />
+                                <x-finance.current-account-row-actions
+                                    :account="$account"
+                                    :primary-movement-type="$primaryMovementType"
+                                    :primary-movement-label="$primaryMovementLabel"
+                                />
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="px-6 py-12 text-center text-sm text-gray-500 dark:text-slate-400">
-                                Filtrelere uygun cari hesap bulunamadı.
+                            <td colspan="9" class="px-6 py-12 text-center text-sm text-gray-500 dark:text-slate-400">
+                                Bu kapsamda cari hesap bulunamadı.
                             </td>
                         </tr>
                     @endforelse
@@ -151,7 +163,6 @@
     @include('modules.finance.current-accounts.partials.card-modal')
     @include('modules.finance.current-accounts.partials.statement-modal')
     @include('modules.finance.current-accounts.partials.movement-modal')
-    @include('modules.finance.current-accounts.partials.new-account-modal')
     @include('modules.finance.current-accounts.partials.edit-account-modal')
 </div>
 @endsection

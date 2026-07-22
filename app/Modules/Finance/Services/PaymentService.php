@@ -10,6 +10,7 @@ use App\Modules\Courier\Models\Courier;
 use App\Modules\Finance\Data\PaymentFormData;
 use App\Modules\Finance\Models\FinancePayment;
 use App\Modules\Finance\Models\FinancePaymentLine;
+use App\Modules\Finance\Models\CurrentAccountMovement;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -181,6 +182,9 @@ class PaymentService
                 'reference' => sprintf('ODM-%d-%06d', $paymentDate->year, $payment->id),
             ]);
 
+            $payment = $payment->fresh(['courier', 'agency', 'earningLine', 'currentAccount', 'lines']);
+            $this->ensureEarningLiability($payment, $user);
+
             if ($paidAmount > 0) {
                 $this->addLine($payment->fresh(), [
                     'amount' => $paidAmount,
@@ -201,6 +205,76 @@ class PaymentService
 
             return $payment->fresh(['courier', 'agency', 'earningLine', 'currentAccount', 'lines']);
         });
+    }
+
+    /**
+     * Hakediş kaynaklı ödemeler için cariye borç (credit) yükümlülüğü yazar.
+     * Aynı payment için tekrar çağrılırsa yeni hareket oluşturmaz.
+     */
+    public function ensureEarningLiability(FinancePayment $payment, User $user): void
+    {
+        if ($payment->source !== 'earning' || $payment->current_account_id === null) {
+            return;
+        }
+
+        $amount = round((float) $payment->total_amount, 2);
+        if ($amount <= 0) {
+            return;
+        }
+
+        $exists = CurrentAccountMovement::query()
+            ->where('current_account_id', $payment->current_account_id)
+            ->where('type', 'earning')
+            ->where('related_type', FinancePayment::class)
+            ->where('related_id', $payment->id)
+            ->exists();
+
+        if ($exists) {
+            return;
+        }
+
+        $this->currentAccounts->createMovement([
+            'current_account_id' => (int) $payment->current_account_id,
+            'transaction_date' => $payment->scheduled_date?->toDateString() ?? now()->toDateString(),
+            'type' => 'earning',
+            'document_no' => $payment->reference,
+            'amount' => $amount,
+            'description' => $payment->description ?: ('Hakediş borcu: '.$payment->reference),
+            'related_type' => FinancePayment::class,
+            'related_id' => $payment->id,
+        ], $user);
+    }
+
+    /**
+     * Eksik hakediş yükümlülük hareketlerini tamamlar.
+     */
+    public function backfillEarningLiabilities(User $user): int
+    {
+        $created = 0;
+
+        FinancePayment::query()
+            ->where('source', 'earning')
+            ->where('is_active', true)
+            ->whereNotNull('current_account_id')
+            ->where('total_amount', '>', 0)
+            ->orderBy('id')
+            ->each(function (FinancePayment $payment) use ($user, &$created): void {
+                $exists = CurrentAccountMovement::query()
+                    ->where('current_account_id', $payment->current_account_id)
+                    ->where('type', 'earning')
+                    ->where('related_type', FinancePayment::class)
+                    ->where('related_id', $payment->id)
+                    ->exists();
+
+                if ($exists) {
+                    return;
+                }
+
+                $this->ensureEarningLiability($payment, $user);
+                $created++;
+            });
+
+        return $created;
     }
 
     /**

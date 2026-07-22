@@ -10,7 +10,11 @@ class StoreCurrentAccountMovementRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('dashboard.financial') ?? false;
+        $user = $this->user();
+
+        return $user !== null
+            && $user->can('dashboard.financial')
+            && $user->hasAnyRole(['super_admin', 'general_manager']);
     }
 
     /**

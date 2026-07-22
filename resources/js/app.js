@@ -2518,6 +2518,8 @@ Alpine.data('financeDashboardPage', () => ({
 
 Alpine.data('financeCurrentAccountPage', (preset = {}) => ({
     accountDetails: preset.accountDetails ?? preset,
+    accountScope: preset.accountScope ?? 'business',
+    primaryMovementType: preset.primaryMovementType ?? 'collection',
     routes: preset.routes ?? {},
     activeModal: null,
     selected: null,
@@ -2571,9 +2573,7 @@ Alpine.data('financeCurrentAccountPage', (preset = {}) => ({
             this.movement.account_id = String(payload.id);
         }
 
-        if (payload?.preset) {
-            this.movement.type = payload.preset;
-        }
+        this.movement.type = payload?.preset || this.primaryMovementType || '';
 
         this.activeModal = 'movement';
     },

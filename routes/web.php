@@ -233,13 +233,17 @@ Route::middleware('auth')->group(function () {
     Route::prefix('finans')->name('finance.')->middleware('permission:dashboard.financial')->group(function () {
         Route::redirect('/', '/finans/dashboard');
         Route::get('/dashboard', [FinanceDashboardController::class, 'index'])->name('dashboard.index');
-        Route::get('/cari-hesaplar', [FinanceCurrentAccountController::class, 'index'])->name('current-accounts.index');
-        Route::post('/cari-hesaplar', [FinanceCurrentAccountController::class, 'store'])->name('current-accounts.store');
-        Route::put('/cari-hesaplar/{id}', [FinanceCurrentAccountController::class, 'update'])->name('current-accounts.update');
-        Route::post('/cari-hesaplar/{id}/pasife-al', [FinanceCurrentAccountController::class, 'deactivate'])->name('current-accounts.deactivate');
-        Route::post('/cari-hesaplar/hareketler', [FinanceCurrentAccountController::class, 'storeMovement'])->name('current-accounts.movements.store');
-        Route::get('/cari-hesaplar/export', [FinanceCurrentAccountController::class, 'export'])->name('current-accounts.export');
-        Route::get('/cari-hesaplar/{id}/pdf', [FinanceCurrentAccountController::class, 'statementPdf'])->name('current-accounts.pdf');
+        Route::middleware('role:super_admin|general_manager')->group(function () {
+            Route::get('/cari-hesaplar', [FinanceCurrentAccountController::class, 'index'])->name('current-accounts.index');
+            Route::get('/cari/isletme', [FinanceCurrentAccountController::class, 'business'])->name('current-accounts.business');
+            Route::get('/cari/kurye', [FinanceCurrentAccountController::class, 'courier'])->name('current-accounts.courier');
+            Route::post('/cari-hesaplar', [FinanceCurrentAccountController::class, 'store'])->name('current-accounts.store');
+            Route::put('/cari-hesaplar/{id}', [FinanceCurrentAccountController::class, 'update'])->name('current-accounts.update');
+            Route::post('/cari-hesaplar/{id}/pasife-al', [FinanceCurrentAccountController::class, 'deactivate'])->name('current-accounts.deactivate');
+            Route::post('/cari-hesaplar/hareketler', [FinanceCurrentAccountController::class, 'storeMovement'])->name('current-accounts.movements.store');
+            Route::get('/cari-hesaplar/export', [FinanceCurrentAccountController::class, 'export'])->name('current-accounts.export');
+            Route::get('/cari-hesaplar/{id}/pdf', [FinanceCurrentAccountController::class, 'statementPdf'])->name('current-accounts.pdf');
+        });
         Route::get('/gelirler', [FinanceRevenueController::class, 'index'])->name('revenues.index');
         Route::post('/gelirler', [FinanceRevenueController::class, 'store'])->name('revenues.store');
         Route::put('/gelirler/{id}', [FinanceRevenueController::class, 'update'])->name('revenues.update');

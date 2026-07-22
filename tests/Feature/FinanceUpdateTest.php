@@ -227,7 +227,7 @@ class FinanceUpdateTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('super_admin');
-        $account = CurrentAccount::factory()->create([
+        $account = CurrentAccount::factory()->business()->create([
             'title' => 'Eski Ünvan',
             'phone' => '5551112233',
         ]);
@@ -240,7 +240,7 @@ class FinanceUpdateTest extends TestCase
             'status' => 'active',
         ]);
 
-        $response->assertRedirect(route('finance.current-accounts.index'));
+        $response->assertRedirect(route('finance.current-accounts.business'));
         $response->assertSessionHas('success');
 
         $this->assertDatabaseHas('current_accounts', [

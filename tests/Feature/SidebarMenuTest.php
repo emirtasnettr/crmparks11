@@ -31,7 +31,8 @@ class SidebarMenuTest extends TestCase
         $response->assertSee(route('agencies.index'), false);
         $response->assertSee('Finans');
         $response->assertSee(route('finance.dashboard.index'), false);
-        $response->assertSee(route('finance.current-accounts.index'), false);
+        $response->assertSee(route('finance.current-accounts.business'), false);
+        $response->assertSee(route('finance.current-accounts.courier'), false);
         $response->assertSee(route('finance.revenues.index'), false);
         $response->assertDontSee('Bu modül şimdilik pasif', false);
         $response->assertSee(route('users.index'), false);
@@ -63,6 +64,8 @@ class SidebarMenuTest extends TestCase
         $response->assertOk();
         $response->assertSee(route('finance.dashboard.index'), false);
         $response->assertSee(route('finance.collections.index'), false);
+        $response->assertSee(route('finance.current-accounts.business'), false);
+        $response->assertSee(route('finance.current-accounts.courier'), false);
         $response->assertDontSee('Bu modül şimdilik pasif', false);
         $response->assertDontSee(route('settings.index'), false);
     }
