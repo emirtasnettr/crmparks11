@@ -29,7 +29,10 @@ class BusinessService
   {
     return $this->baseQuery($filters)
       ->with(['city', 'district', 'neighborhood', 'activeCommercialContract'])
-      ->orderByDesc('id')
+      ->orderByRaw("CASE WHEN status = ? THEN 0 ELSE 1 END", ['active'])
+      ->orderBy('brand_name')
+      ->orderBy('company_name')
+      ->orderBy('id')
       ->get();
   }
 

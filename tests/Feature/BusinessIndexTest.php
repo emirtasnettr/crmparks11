@@ -164,6 +164,50 @@ class BusinessIndexTest extends TestCase
         $response->assertSee(route('businesses.store'), false);
     }
 
+    public function test_business_index_lists_active_businesses_first_then_alphabetically(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $this->createBusiness($user, [
+            'brand_name' => 'Zebra Pasif',
+            'company_name' => 'Zebra Pasif Ltd.',
+            'status' => 'inactive',
+        ]);
+        $this->createBusiness($user, [
+            'brand_name' => 'Beta Aktif',
+            'company_name' => 'Beta Aktif Ltd.',
+            'status' => 'active',
+        ]);
+        $this->createBusiness($user, [
+            'brand_name' => 'Alpha Aktif',
+            'company_name' => 'Alpha Aktif Ltd.',
+            'status' => 'active',
+        ]);
+        $this->createBusiness($user, [
+            'brand_name' => 'Ada Pasif',
+            'company_name' => 'Ada Pasif Ltd.',
+            'status' => 'inactive',
+        ]);
+
+        $response = $this->actingAs($user)->get(route('businesses.index'));
+        $response->assertOk();
+
+        $content = $response->getContent();
+        $alpha = strpos($content, 'Alpha Aktif');
+        $beta = strpos($content, 'Beta Aktif');
+        $ada = strpos($content, 'Ada Pasif');
+        $zebra = strpos($content, 'Zebra Pasif');
+
+        $this->assertNotFalse($alpha);
+        $this->assertNotFalse($beta);
+        $this->assertNotFalse($ada);
+        $this->assertNotFalse($zebra);
+        $this->assertTrue($alpha < $beta, 'Active businesses should be alphabetical');
+        $this->assertTrue($beta < $ada, 'Active businesses should appear before inactive');
+        $this->assertTrue($ada < $zebra, 'Inactive businesses should be alphabetical');
+    }
+
     /**
      * @param  array<string, mixed>  $overrides
      */
