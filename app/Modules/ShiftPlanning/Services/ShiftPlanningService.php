@@ -52,7 +52,7 @@ class ShiftPlanningService
             ->where('business_id', $businessId)
             ->with(['rosterCouriers'])
             ->orderBy('start_time')
-            ->orderBy('name')
+            ->orderBy('id')
             ->get();
     }
 
