@@ -167,29 +167,6 @@
                                                                     </span>
                                                                 </div>
 
-                                                                <div class="grid grid-cols-2 gap-px border-b border-slate-100 bg-slate-100 sm:grid-cols-4 dark:border-slate-700/80 dark:bg-slate-700/60">
-                                                                    <div class="bg-white px-4 py-2.5 dark:bg-slate-800/80">
-                                                                        <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Gerekli</p>
-                                                                        <p class="mt-0.5 text-lg font-semibold tabular-nums text-slate-900 dark:text-white">{{ $shift['required'] }}</p>
-                                                                    </div>
-                                                                    <div class="bg-white px-4 py-2.5 dark:bg-slate-800/80">
-                                                                        <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Atanan</p>
-                                                                        <p class="mt-0.5 text-lg font-semibold tabular-nums text-slate-900 dark:text-white">{{ $shift['assigned'] }}</p>
-                                                                    </div>
-                                                                    <div class="bg-white px-4 py-2.5 dark:bg-slate-800/80">
-                                                                        <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Geldi</p>
-                                                                        <p class="mt-0.5 text-lg font-semibold tabular-nums text-slate-900 dark:text-white">{{ $shift['started'] }}</p>
-                                                                    </div>
-                                                                    <div class="bg-white px-4 py-2.5 dark:bg-slate-800/80">
-                                                                        <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Eksik</p>
-                                                                        <p @class([
-                                                                            'mt-0.5 text-lg font-semibold tabular-nums',
-                                                                            'text-rose-600 dark:text-rose-400' => $shortage > 0,
-                                                                            'text-slate-900 dark:text-white' => $shortage <= 0,
-                                                                        ])>{{ $shortage }}</p>
-                                                                    </div>
-                                                                </div>
-
                                                                 <div class="px-2 py-2 sm:px-3">
                                                                     @forelse ($shift['couriers'] as $courier)
                                                                         @php
