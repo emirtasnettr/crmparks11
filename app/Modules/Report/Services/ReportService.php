@@ -195,7 +195,6 @@ class ReportService
 
         return [
             'id' => $shift->id,
-            'name' => $shift->name ?: 'Vardiya',
             'time' => $this->formatShiftTime($shift),
             'required' => $required,
             'assigned' => $assigned,

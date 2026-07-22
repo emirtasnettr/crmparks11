@@ -56,7 +56,6 @@ class StoreBusinessShiftRequest extends FormRequest
 
         return [
             'business_id' => ['required', 'integer', 'exists:businesses,id'],
-            'name' => ['required', 'string', 'max:120'],
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['required', 'date_format:H:i'],
             'start_date' => ['required', 'date'],
@@ -76,7 +75,6 @@ class StoreBusinessShiftRequest extends FormRequest
     {
         return [
             'business_id.required' => 'İşletme seçilmelidir.',
-            'name.required' => 'Vardiya adı zorunludur.',
             'start_time.required' => 'Başlangıç saati zorunludur.',
             'end_time.required' => 'Bitiş saati zorunludur.',
             'start_date.required' => 'Başlangıç tarihi zorunludur.',

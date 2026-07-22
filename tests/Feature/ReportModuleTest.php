@@ -65,7 +65,6 @@ class ReportModuleTest extends TestCase
         $now = now()->seconds(0);
         $currentShift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Gündüz',
             'start_time' => $now->copy()->subHours(2)->format('H:i'),
             'end_time' => $now->copy()->addHours(3)->format('H:i'),
             'start_date' => now()->toDateString(),
@@ -77,7 +76,6 @@ class ReportModuleTest extends TestCase
         ]);
         $soonShift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Akşam',
             'start_time' => $now->copy()->addHours(2)->format('H:i'),
             'end_time' => $now->copy()->addHours(6)->format('H:i'),
             'start_date' => now()->toDateString(),
@@ -154,7 +152,6 @@ class ReportModuleTest extends TestCase
         $now = now()->seconds(0);
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Öğle Vardiya',
             'start_time' => $now->copy()->subHours(2)->format('H:i'),
             'end_time' => $now->copy()->addHours(3)->format('H:i'),
             'start_date' => now()->toDateString(),
@@ -229,7 +226,6 @@ class ReportModuleTest extends TestCase
         $now = now()->seconds(0);
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Başlamış Vardiya',
             'start_time' => $now->copy()->subHours(1)->format('H:i'),
             'end_time' => $now->copy()->addHours(4)->format('H:i'),
             'start_date' => now()->toDateString(),
@@ -256,7 +252,7 @@ class ReportModuleTest extends TestCase
         $this->assertSame(1, $row['operational_shortage']);
         $this->assertSame('Atanan Test Kurye', $row['today_shifts'][0]['couriers'][0]['name'] ?? null);
         $this->assertSame('not_started', $row['today_shifts'][0]['couriers'][0]['status'] ?? null);
-        $this->assertSame('Başlamış Vardiya', $row['today_shifts'][0]['name'] ?? null);
+        $this->assertNotEmpty($row['today_shifts'][0]['time'] ?? null);
     }
 
     public function test_radar_expand_shows_only_today_shifts_not_week_plan(): void
@@ -277,7 +273,6 @@ class ReportModuleTest extends TestCase
 
         $todayShift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Bugünlük',
             'start_time' => '10:00',
             'end_time' => '18:00',
             'start_date' => now()->toDateString(),
@@ -290,7 +285,6 @@ class ReportModuleTest extends TestCase
 
         BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Yarınlık',
             'start_time' => '12:00',
             'end_time' => '20:00',
             'start_date' => now()->toDateString(),
@@ -311,10 +305,12 @@ class ReportModuleTest extends TestCase
 
         $this->assertNotNull($row);
         $this->assertCount(1, $row['today_shifts']);
-        $this->assertSame('Bugünlük', $row['today_shifts'][0]['name']);
+        $this->assertStringContainsString('10:00', (string) ($row['today_shifts'][0]['time'] ?? ''));
         $this->assertSame('Bugün Kurye', $row['today_shifts'][0]['couriers'][0]['name'] ?? null);
         $this->assertFalse(
-            collect($row['today_shifts'])->contains(fn (array $shift) => $shift['name'] === 'Yarınlık')
+            collect($row['today_shifts'])->contains(
+                fn (array $shift) => str_contains((string) ($shift['time'] ?? ''), '12:00')
+            )
         );
     }
 
@@ -336,7 +332,6 @@ class ReportModuleTest extends TestCase
 
         BusinessShift::query()->create([
             'business_id' => $withShift->id,
-            'name' => 'Bugünkü',
             'start_time' => '10:00',
             'end_time' => '18:00',
             'start_date' => now()->toDateString(),
@@ -349,7 +344,6 @@ class ReportModuleTest extends TestCase
 
         BusinessShift::query()->create([
             'business_id' => $withoutShift->id,
-            'name' => 'Başka Gün',
             'start_time' => '10:00',
             'end_time' => '18:00',
             'start_date' => now()->toDateString(),

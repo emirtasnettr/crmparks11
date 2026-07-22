@@ -249,7 +249,6 @@ class BusinessCommercialContractTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Sabah',
             'start_time' => '09:00',
             'end_time' => '13:00',
             'start_date' => '2026-07-01',

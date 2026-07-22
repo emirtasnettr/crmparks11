@@ -73,7 +73,6 @@ class CourierPortalShiftAttendanceTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Akşam',
             'start_time' => '16:00',
             'end_time' => '23:00',
             'start_date' => '2026-07-01',
@@ -147,7 +146,6 @@ class CourierPortalShiftAttendanceTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Sabah',
             'start_time' => '09:00',
             'end_time' => '10:00',
             'start_date' => '2026-07-01',
@@ -202,7 +200,6 @@ class CourierPortalShiftAttendanceTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Akşam',
             'start_time' => '16:00',
             'end_time' => '23:00',
             'start_date' => '2026-07-01',
@@ -254,7 +251,6 @@ class CourierPortalShiftAttendanceTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Akşam',
             'start_time' => '16:00',
             'end_time' => '23:00',
             'start_date' => '2026-07-01',
@@ -300,7 +296,6 @@ class CourierPortalShiftAttendanceTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Öğle',
             'start_time' => '10:00',
             'end_time' => '16:00',
             'start_date' => '2026-07-01',
@@ -367,7 +362,6 @@ class CourierPortalShiftAttendanceTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Paket',
             'start_time' => '10:00',
             'end_time' => '16:00',
             'start_date' => '2026-07-01',
@@ -447,7 +441,6 @@ class CourierPortalShiftAttendanceTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Garanti',
             'start_time' => '08:00',
             'end_time' => '18:00',
             'start_date' => '2026-07-01',
@@ -511,7 +504,6 @@ class CourierPortalShiftAttendanceTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Kısa',
             'start_time' => '09:00',
             'end_time' => '18:00',
             'start_date' => '2026-07-01',
@@ -563,7 +555,6 @@ class CourierPortalShiftAttendanceTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Öğle',
             'start_time' => '10:00',
             'end_time' => '16:00',
             'start_date' => '2026-07-01',
@@ -619,7 +610,6 @@ class CourierPortalShiftAttendanceTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Öğle',
             'start_time' => '12:00',
             'end_time' => '16:00',
             'start_date' => '2026-07-01',
@@ -713,7 +703,6 @@ class CourierPortalShiftAttendanceTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Akşam',
             'start_time' => '16:00',
             'end_time' => '23:00',
             'start_date' => '2026-07-01',
@@ -756,7 +745,6 @@ class CourierPortalShiftAttendanceTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Akşam',
             'start_time' => '16:00',
             'end_time' => '23:00',
             'start_date' => '2026-07-01',
@@ -798,7 +786,6 @@ class CourierPortalShiftAttendanceTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Akşam',
             'start_time' => '16:00',
             'end_time' => '23:00',
             'start_date' => '2026-07-01',

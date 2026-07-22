@@ -7,7 +7,6 @@
     $shiftsForJs = collect($shifts)->map(fn ($shift) => [
         'id' => $shift['id'],
         'business_id' => $shift['business_id'] ?? $selectedBusinessId,
-        'name' => $shift['name'],
         'start_time' => $shift['start_time_raw'],
         'end_time' => $shift['end_time_raw'],
         'start_date' => $shift['start_date'],
@@ -124,8 +123,7 @@
                             <div class="mt-2 space-y-2">
                                 @forelse ($day['shifts'] as $occurrence)
                                     <div class="rounded-lg border px-2 py-1.5 text-xs {{ $occurrence['color'] }}">
-                                        <p class="font-semibold">{{ $occurrence['name'] }}</p>
-                                        <p class="opacity-80">{{ $occurrence['time_range'] }}</p>
+                                        <p class="font-semibold">{{ $occurrence['time_range'] }}</p>
                                         @if (! empty($occurrence['attendance']))
                                             <p @class([
                                                 'mt-1 font-medium',
@@ -176,7 +174,6 @@
                                                                     work_date: @js($occurrence['work_date'] ?? $day['date']),
                                                                     courier_id: {{ (int) $courier['id'] }},
                                                                     courier_name: @js($courier['name']),
-                                                                    shift_name: @js($occurrence['name'] ?? ''),
                                                                     started_at: @js($courier['started_at'] ?? $courier['shift_start_at'] ?? ''),
                                                                     shift_start_at: @js($courier['shift_start_at'] ?? ''),
                                                                     shift_end_at: @js($courier['shift_end_at'] ?? ''),

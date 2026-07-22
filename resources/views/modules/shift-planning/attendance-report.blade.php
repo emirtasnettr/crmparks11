@@ -82,7 +82,6 @@
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Telefon</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">İşletme</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">İl / İlçe</th>
-                        <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Vardiya</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Saat</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Giriş</th>
                         <th class="px-4 py-3 font-medium text-gray-500 dark:text-slate-400">Çıkış</th>
@@ -101,7 +100,6 @@
                             <td class="px-4 py-3 text-gray-700 dark:text-slate-300">{{ $row['phone'] }}</td>
                             <td class="px-4 py-3 text-gray-700 dark:text-slate-300">{{ $row['business_name'] }}</td>
                             <td class="px-4 py-3 text-gray-700 dark:text-slate-300">{{ $row['business_location'] }}</td>
-                            <td class="px-4 py-3 text-gray-700 dark:text-slate-300">{{ $row['shift_name'] }}</td>
                             <td class="px-4 py-3 text-gray-700 dark:text-slate-300">{{ $row['time_range'] }}</td>
                             <td class="px-4 py-3 text-gray-700 dark:text-slate-300">{{ $row['started_at_formatted'] }}</td>
                             <td class="px-4 py-3 text-gray-700 dark:text-slate-300">{{ $row['ended_at_formatted'] }}</td>
@@ -122,7 +120,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="12" class="px-6 py-10 text-center text-sm text-gray-500 dark:text-slate-400">
+                            <td colspan="11" class="px-6 py-10 text-center text-sm text-gray-500 dark:text-slate-400">
                                 Seçilen tarih aralığında vardiya kaydı bulunamadı.
                             </td>
                         </tr>

@@ -128,7 +128,6 @@ class EntityDeactivateTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Test',
             'start_time' => '09:00',
             'end_time' => '17:00',
             'start_date' => now()->toDateString(),

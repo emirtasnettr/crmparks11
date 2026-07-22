@@ -116,9 +116,10 @@
                                                     <div class="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800/70">
                                                         <div class="flex items-start justify-between gap-2 border-b border-slate-100 px-3 py-2.5 dark:border-slate-700">
                                                             <div class="min-w-0">
-                                                                <p class="truncate font-semibold text-slate-900 dark:text-white">{{ $shift['name'] }}</p>
                                                                 @if ($shift['time'])
-                                                                    <p class="text-[11px] tabular-nums text-slate-500 dark:text-slate-400">{{ $shift['time'] }}</p>
+                                                                    <p class="truncate font-semibold tabular-nums text-slate-900 dark:text-white">{{ $shift['time'] }}</p>
+                                                                @else
+                                                                    <p class="truncate font-semibold text-slate-900 dark:text-white">Vardiya</p>
                                                                 @endif
                                                             </div>
                                                             <p @class([

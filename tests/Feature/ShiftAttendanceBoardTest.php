@@ -51,7 +51,6 @@ class ShiftAttendanceBoardTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Öğle',
             'start_time' => '10:00',
             'end_time' => '16:00',
             'start_date' => '2026-07-01',
@@ -86,7 +85,6 @@ class ShiftAttendanceBoardTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Akşam',
             'start_time' => '18:00',
             'end_time' => '23:00',
             'start_date' => '2026-07-01',
@@ -121,7 +119,6 @@ class ShiftAttendanceBoardTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Akşam',
             'start_time' => '18:00',
             'end_time' => '23:00',
             'start_date' => '2026-07-01',
@@ -154,7 +151,6 @@ class ShiftAttendanceBoardTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Sabah',
             'start_time' => '09:00',
             'end_time' => '17:00',
             'start_date' => '2026-07-01',
@@ -187,7 +183,6 @@ class ShiftAttendanceBoardTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Akşam',
             'start_time' => '16:00',
             'end_time' => '23:00',
             'start_date' => '2026-07-01',
@@ -257,7 +252,6 @@ class ShiftAttendanceBoardTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Sabah',
             'start_time' => '09:00',
             'end_time' => '12:00',
             'start_date' => '2026-07-01',
@@ -330,7 +324,6 @@ class ShiftAttendanceBoardTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Akşam',
             'start_time' => '16:00',
             'end_time' => '23:00',
             'start_date' => '2026-07-01',
@@ -376,7 +369,6 @@ class ShiftAttendanceBoardTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Öğle',
             'start_time' => '10:00',
             'end_time' => '16:00',
             'start_date' => '2026-07-01',
@@ -412,7 +404,6 @@ class ShiftAttendanceBoardTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Akşam',
             'start_time' => '10:00',
             'end_time' => '16:00',
             'start_date' => now()->toDateString(),
@@ -458,7 +449,6 @@ class ShiftAttendanceBoardTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Öğle',
             'start_time' => '10:00',
             'end_time' => '16:00',
             'start_date' => '2026-07-01',

@@ -49,7 +49,6 @@ class ShiftAttendanceReportTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Öğle',
             'start_time' => '10:00',
             'end_time' => '16:00',
             'required_headcount' => 1,
@@ -109,7 +108,6 @@ class ShiftAttendanceReportTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Öğle',
             'start_time' => '10:00',
             'end_time' => '16:00',
             'required_headcount' => 2,
@@ -159,7 +157,6 @@ class ShiftAttendanceReportTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Öğle',
             'start_time' => '10:00',
             'end_time' => '16:00',
             'required_headcount' => 1,

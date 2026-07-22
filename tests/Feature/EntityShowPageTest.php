@@ -74,7 +74,6 @@ class EntityShowPageTest extends TestCase
 
     $shift = BusinessShift::query()->create([
       'business_id' => $business->id,
-      'name' => 'Aktif',
       'start_time' => '09:00',
       'end_time' => '17:00',
       'required_headcount' => 1,

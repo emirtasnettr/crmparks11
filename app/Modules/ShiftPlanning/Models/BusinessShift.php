@@ -20,7 +20,6 @@ class BusinessShift extends Model
 
     protected $fillable = [
         'business_id',
-        'name',
         'start_time',
         'end_time',
         'required_headcount',
@@ -71,6 +70,14 @@ class BusinessShift extends Model
     public function dayCouriers(): HasMany
     {
         return $this->hasMany(BusinessShiftDayCourier::class);
+    }
+
+    public function timeRangeLabel(): string
+    {
+        $start = substr((string) $this->start_time, 0, 5) ?: '—';
+        $end = substr((string) $this->end_time, 0, 5) ?: '—';
+
+        return "{$start}–{$end}";
     }
 
     public function runsOn(CarbonInterface|string $day): bool

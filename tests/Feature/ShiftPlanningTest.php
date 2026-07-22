@@ -64,7 +64,6 @@ class ShiftPlanningTest extends TestCase
 
         $response = $this->actingAs($user)->post(route('shift-planning.store'), [
             'business_id' => $business->id,
-            'name' => 'Sabah',
             'start_time' => '09:00',
             'end_time' => '17:00',
             'required_headcount' => 2,
@@ -93,7 +92,6 @@ class ShiftPlanningTest extends TestCase
 
         $this->actingAs($user)->post(route('shift-planning.store'), [
             'business_id' => $business->id,
-            'name' => 'Sabah',
             'start_time' => '09:00',
             'end_time' => '12:00',
             'start_date' => '2026-08-01',
@@ -118,7 +116,6 @@ class ShiftPlanningTest extends TestCase
 
         $this->actingAs($user)->post(route('shift-planning.store'), [
             'business_id' => $businessA->id,
-            'name' => 'Sabah A',
             'start_time' => '09:00',
             'end_time' => '12:00',
             'start_date' => '2026-08-01',
@@ -130,7 +127,6 @@ class ShiftPlanningTest extends TestCase
 
         $this->actingAs($user)->post(route('shift-planning.store'), [
             'business_id' => $businessB->id,
-            'name' => 'Öğleden Sonra B',
             'start_time' => '13:00',
             'end_time' => '17:00',
             'start_date' => '2026-08-01',
@@ -153,7 +149,6 @@ class ShiftPlanningTest extends TestCase
 
         $this->actingAs($user)->post(route('shift-planning.store'), [
             'business_id' => $businessA->id,
-            'name' => 'Sabah A',
             'start_time' => '09:00',
             'end_time' => '12:00',
             'start_date' => '2026-08-01',
@@ -167,7 +162,6 @@ class ShiftPlanningTest extends TestCase
             ->from(route('shift-planning.index', ['business_id' => $businessB->id]))
             ->post(route('shift-planning.store'), [
                 'business_id' => $businessB->id,
-                'name' => 'Sabah B',
                 'start_time' => '09:00',
                 'end_time' => '12:00',
                 'start_date' => '2026-08-01',
@@ -192,7 +186,6 @@ class ShiftPlanningTest extends TestCase
 
         $this->actingAs($user)->post(route('shift-planning.store'), [
             'business_id' => $businessA->id,
-            'name' => 'Sabah',
             'start_time' => '09:00',
             'end_time' => '12:00',
             'start_date' => '2026-08-01',
@@ -204,7 +197,6 @@ class ShiftPlanningTest extends TestCase
 
         $this->actingAs($user)->post(route('shift-planning.store'), [
             'business_id' => $businessB->id,
-            'name' => 'Öğle',
             'start_time' => '12:00',
             'end_time' => '17:00',
             'start_date' => '2026-08-01',
@@ -227,7 +219,6 @@ class ShiftPlanningTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $businessA->id,
-            'name' => 'Sabah A',
             'start_time' => '09:00',
             'end_time' => '12:00',
             'start_date' => '2026-08-01',
@@ -286,7 +277,6 @@ class ShiftPlanningTest extends TestCase
 
         $this->actingAs($user)->post(route('shift-planning.store'), [
             'business_id' => $business->id,
-            'name' => 'Haftalık',
             'start_time' => '10:00',
             'end_time' => '18:00',
             'start_date' => '2026-08-01',
@@ -335,7 +325,6 @@ class ShiftPlanningTest extends TestCase
 
         $this->actingAs($user)->post(route('shift-planning.store'), [
             'business_id' => $business->id,
-            'name' => 'UniqueRangeShiftXYZ',
             'start_time' => '09:00',
             'end_time' => '12:00',
             'start_date' => '2026-08-01',
@@ -352,7 +341,7 @@ class ShiftPlanningTest extends TestCase
 
         $response->assertOk();
         // Alpine config + tek takvim günü (bug olsaydı 7 gün × = çok daha fazla).
-        $this->assertSame(2, substr_count($response->getContent(), 'UniqueRangeShiftXYZ'));
+        $this->assertSame(2, substr_count($response->getContent(), '09:00 – 12:00'));
 
         Carbon::setTestNow();
     }
@@ -368,7 +357,6 @@ class ShiftPlanningTest extends TestCase
 
         $this->actingAs($user)->post(route('shift-planning.store'), [
             'business_id' => $business->id,
-            'name' => 'Geçmiş Sabah',
             'start_time' => '09:00',
             'end_time' => '17:00',
             'start_date' => '2026-07-18',
@@ -414,7 +402,6 @@ class ShiftPlanningTest extends TestCase
 
         $this->actingAs($user)->post(route('shift-planning.store'), [
             'business_id' => $business->id,
-            'name' => 'Bugün Biten',
             'start_time' => '09:00',
             'end_time' => '17:00',
             'start_date' => '2026-07-21',
@@ -445,7 +432,6 @@ class ShiftPlanningTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Akşam',
             'start_time' => '17:00',
             'end_time' => '01:00',
             'required_headcount' => 1,
@@ -472,7 +458,6 @@ class ShiftPlanningTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Gece',
             'start_time' => '22:00',
             'end_time' => '06:00',
             'required_headcount' => 1,

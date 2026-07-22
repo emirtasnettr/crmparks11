@@ -226,7 +226,7 @@
                                     <td class="py-2.5 text-gray-900 dark:text-white">{{ $row['work_date_formatted'] }}</td>
                                     <td class="py-2.5">
                                         <p class="font-medium text-gray-900 dark:text-white">{{ $row['business_name'] }}</p>
-                                        <p class="text-xs text-gray-500 dark:text-slate-400">{{ $row['shift_name'] }}</p>
+                                        <p class="text-xs text-gray-500 dark:text-slate-400">{{ $row['time_range'] }}</p>
                                     </td>
                                     <td class="py-2.5">
                                         @if (! empty($row['pricing_model']))

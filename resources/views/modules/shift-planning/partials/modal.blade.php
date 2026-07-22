@@ -17,7 +17,6 @@
             <input type="hidden" name="business_id" :value="selectedBusinessId">
             <input type="hidden" name="week" value="{{ $week['week_start'] }}">
 
-            <x-ui.input name="name" label="Vardiya Adı *" x-model="shiftForm.name" required />
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">Başlangıç *</label>

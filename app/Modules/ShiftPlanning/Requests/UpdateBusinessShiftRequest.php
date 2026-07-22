@@ -57,7 +57,6 @@ class UpdateBusinessShiftRequest extends FormRequest
         $headcount = max(1, (int) $this->input('required_headcount', 1));
 
         return [
-            'name' => ['required', 'string', 'max:120'],
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['required', 'date_format:H:i'],
             'start_date' => ['required', 'date'],
@@ -76,7 +75,6 @@ class UpdateBusinessShiftRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'name.required' => 'Vardiya adı zorunludur.',
             'start_time.required' => 'Başlangıç saati zorunludur.',
             'end_time.required' => 'Bitiş saati zorunludur.',
             'start_date.required' => 'Başlangıç tarihi zorunludur.',

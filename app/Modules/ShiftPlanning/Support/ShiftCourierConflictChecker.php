@@ -43,10 +43,9 @@ final class ShiftCourierConflictChecker
 
             throw ValidationException::withMessages([
                 $errorKey => sprintf(
-                    '%s bu saatlerde başka bir vardiyada (%s · %s %s–%s). Aynı anda farklı yerde vardiya tanımlanamaz.',
+                    '%s bu saatlerde başka bir vardiyada (%s · %s–%s). Aynı anda farklı yerde vardiya tanımlanamaz.',
                     $courierName,
                     $conflict['business'],
-                    $conflict['shift'],
                     $conflict['start_time'],
                     $conflict['end_time'],
                 ),
@@ -242,13 +241,12 @@ final class ShiftCourierConflictChecker
     }
 
     /**
-     * @return array{business: string, shift: string, start_time: string, end_time: string}
+     * @return array{business: string, start_time: string, end_time: string}
      */
     private function conflictPayload(BusinessShift $shift): array
     {
         return [
             'business' => $shift->business?->displayName() ?? ('İşletme #'.$shift->business_id),
-            'shift' => (string) $shift->name,
             'start_time' => substr((string) $shift->start_time, 0, 5),
             'end_time' => substr((string) $shift->end_time, 0, 5),
         ];

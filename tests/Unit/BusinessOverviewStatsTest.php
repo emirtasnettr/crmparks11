@@ -96,7 +96,6 @@ class BusinessOverviewStatsTest extends TestCase
 
         $endedShift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Eski',
             'start_time' => '09:00',
             'end_time' => '17:00',
             'required_headcount' => 1,
@@ -132,7 +131,6 @@ class BusinessOverviewStatsTest extends TestCase
 
         $inactiveShift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Pasif',
             'start_time' => '09:00',
             'end_time' => '17:00',
             'required_headcount' => 1,
@@ -199,7 +197,6 @@ class BusinessOverviewStatsTest extends TestCase
     {
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Aktif',
             'start_time' => '09:00',
             'end_time' => '17:00',
             'required_headcount' => 1,

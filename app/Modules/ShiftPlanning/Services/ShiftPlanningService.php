@@ -138,7 +138,6 @@ class ShiftPlanningService
         return DB::transaction(function () use ($data, $user): BusinessShift {
             $shift = BusinessShift::query()->create([
                 'business_id' => $data['business_id'],
-                'name' => $data['name'],
                 'start_time' => $data['start_time'],
                 'end_time' => $data['end_time'],
                 'start_date' => $data['start_date'] ?? now()->toDateString(),
@@ -191,7 +190,6 @@ class ShiftPlanningService
             }
 
             $shift->update([
-                'name' => $data['name'],
                 'start_time' => $data['start_time'],
                 'end_time' => $data['end_time'],
                 'start_date' => $data['start_date'] ?? $shift->start_date,

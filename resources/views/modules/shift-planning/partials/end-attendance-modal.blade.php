@@ -9,7 +9,6 @@
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Vardiyayı Bitir</h3>
         <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">
             <span x-text="endForm.courier_name"></span>
-            <span x-show="endForm.shift_name"> · <span x-text="endForm.shift_name"></span></span>
         </p>
 
         <form method="POST" action="{{ route('shift-planning.attendance.end') }}" class="mt-4 space-y-4">

@@ -18,10 +18,10 @@
             >
                 <div class="min-w-0">
                     <p class="font-semibold text-gray-900">
-                        {{ $item['shift_name'] }}
+                        {{ $item['business_name'] }}
                     </p>
                     <p class="mt-0.5 text-sm text-gray-500">
-                        {{ $item['business_name'] }} · {{ $item['start_time'] }}–{{ $item['end_time'] }}
+                        {{ $item['start_time'] }}–{{ $item['end_time'] }}
                     </p>
                     <p class="mt-1 text-xs text-gray-500">
                         {{ $item['pricing_model_label'] }}
@@ -114,10 +114,10 @@
                     {{ $item['work_date_formatted'] }}
                 </p>
                 <p class="font-semibold text-gray-900">
-                    {{ $item['shift_name'] }}
+                    {{ $item['business_name'] }}
                 </p>
                 <p class="text-sm text-gray-500">
-                    {{ $item['business_name'] }} · {{ $item['start_time'] }}–{{ $item['end_time'] }}
+                    {{ $item['start_time'] }}–{{ $item['end_time'] }}
                 </p>
                 <p class="text-xs text-gray-500">
                     {{ $item['pricing_model_label'] }}

@@ -24,7 +24,7 @@
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">
                             <p class="font-medium text-gray-900">{{ $row['business_name'] }}</p>
-                            <p class="text-xs text-gray-500">{{ $row['shift_name'] }}</p>
+                            <p class="text-xs text-gray-500">{{ $row['time_range'] }}</p>
                         </div>
                         <p class="shrink-0 text-sm font-medium tabular-nums text-gray-900">{{ $row['earnings_formatted'] }}</p>
                     </div>
@@ -44,7 +44,7 @@
                 <thead>
                     <tr class="border-b border-gray-200">
                         <th class="pb-2 font-medium text-gray-500">Tarih</th>
-                        <th class="pb-2 font-medium text-gray-500">İşletme / Vardiya</th>
+                        <th class="pb-2 font-medium text-gray-500">İşletme</th>
                         <th class="pb-2 font-medium text-gray-500">Süre</th>
                         <th class="pb-2 text-right font-medium text-gray-500">Kazanç</th>
                         <th class="pb-2 font-medium text-gray-500">Durum</th>
@@ -56,7 +56,7 @@
                             <td class="py-2.5 text-gray-900">{{ $row['work_date_formatted'] }}</td>
                             <td class="py-2.5">
                                 <p class="font-medium text-gray-900">{{ $row['business_name'] }}</p>
-                                <p class="text-xs text-gray-500">{{ $row['shift_name'] }}</p>
+                                <p class="text-xs text-gray-500">{{ $row['time_range'] }}</p>
                             </td>
                             <td class="py-2.5 text-gray-700">{{ $row['worked_duration_label'] }}</td>
                             <td class="py-2.5 text-right font-medium tabular-nums text-gray-900">{{ $row['earnings_formatted'] }}</td>

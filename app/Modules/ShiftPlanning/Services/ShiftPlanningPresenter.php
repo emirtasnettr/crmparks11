@@ -32,7 +32,6 @@ class ShiftPlanningPresenter
         return [
             'id' => $shift->id,
             'business_id' => (int) $shift->business_id,
-            'name' => $shift->name,
             'start_time' => $start,
             'end_time' => $end,
             'start_time_raw' => substr((string) $shift->start_time, 0, 5),

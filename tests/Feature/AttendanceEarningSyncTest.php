@@ -194,7 +194,6 @@ class AttendanceEarningSyncTest extends TestCase
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Geçmiş',
             'start_time' => '10:00',
             'end_time' => '16:00',
             'start_date' => '2026-07-15',
@@ -307,7 +306,6 @@ class AttendanceEarningSyncTest extends TestCase
     {
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
-            'name' => 'Test',
             'start_time' => '10:00',
             'end_time' => '16:00',
             'start_date' => '2026-07-01',

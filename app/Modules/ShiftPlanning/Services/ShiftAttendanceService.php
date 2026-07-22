@@ -176,11 +176,11 @@ class ShiftAttendanceService
 
         return [
             'shift_id' => $shift->id,
-            'shift_name' => $shift->name,
             'business_id' => $shift->business_id,
             'business_name' => $shift->business?->displayName() ?? '—',
             'start_time' => substr((string) $shift->start_time, 0, 5),
             'end_time' => substr((string) $shift->end_time, 0, 5),
+            'time_range' => $shift->timeRangeLabel(),
             'work_date' => $day->toDateString(),
             'work_date_formatted' => $day->copy()->locale('tr')->translatedFormat('d M Y, l'),
             'pricing_model' => $pricingCode,
@@ -921,10 +921,9 @@ class ShiftAttendanceService
                         ? $businessName.' · '.$location
                         : $businessName,
                     'shift_id' => $shift->id,
-                    'shift_name' => $shift->name,
                     'start_time' => substr((string) $shift->start_time, 0, 5),
                     'end_time' => substr((string) $shift->end_time, 0, 5),
-                    'time_range' => substr((string) $shift->start_time, 0, 5).'–'.substr((string) $shift->end_time, 0, 5),
+                    'time_range' => $shift->timeRangeLabel(),
                     'shift_start_sort' => $shiftStart->timestamp,
                     'bucket' => $bucket,
                     'bucket_label' => match ($bucket) {
@@ -1097,10 +1096,9 @@ class ShiftAttendanceService
 
             $shiftRows[] = [
                 'shift_id' => $shift->id,
-                'shift_name' => $shift->name,
                 'start_time' => substr((string) $shift->start_time, 0, 5),
                 'end_time' => substr((string) $shift->end_time, 0, 5),
-                'time_range' => substr((string) $shift->start_time, 0, 5).'–'.substr((string) $shift->end_time, 0, 5),
+                'time_range' => $shift->timeRangeLabel(),
                 'expected' => $expected,
                 'completed' => $completed,
                 'in_progress' => $inProgress,

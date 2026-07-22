@@ -4486,7 +4486,6 @@ Alpine.data('staffAttendanceEnd', (config = {}) => ({
         work_date: '',
         courier_id: '',
         courier_name: '',
-        shift_name: '',
         ended_at: '',
         min_ended_at: '',
         shift_end_at: '',
@@ -4516,7 +4515,6 @@ Alpine.data('staffAttendanceEnd', (config = {}) => ({
             work_date: payload.work_date || '',
             courier_id: String(payload.courier_id || ''),
             courier_name: payload.courier_name || '',
-            shift_name: payload.shift_name || '',
             ended_at: endedAt,
             min_ended_at: minEnded,
             shift_end_at: payload.shift_end_at || '',
@@ -4594,7 +4592,6 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
         work_date: '',
         courier_id: '',
         courier_name: '',
-        shift_name: '',
         ended_at: '',
         min_ended_at: '',
         shift_end_at: '',
@@ -4608,7 +4605,6 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
     },
     shiftForm: {
         id: null,
-        name: '',
         start_time: '09:00',
         end_time: '17:00',
         start_date: config.defaultStartDate || '',
@@ -4659,7 +4655,6 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
         this.courierSearch = '';
         this.shiftForm = {
             id: null,
-            name: '',
             start_time: '09:00',
             end_time: '17:00',
             start_date: this.defaultStartDate,
@@ -4684,7 +4679,6 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
         this.courierSearch = '';
         this.shiftForm = {
             id: shift.id,
-            name: shift.name,
             start_time: shift.start_time,
             end_time: shift.end_time,
             start_date: shift.start_date || this.defaultStartDate,
@@ -4732,7 +4726,6 @@ Alpine.data('shiftPlanningPage', (config = {}) => ({
             work_date: payload.work_date || '',
             courier_id: String(payload.courier_id || ''),
             courier_name: payload.courier_name || '',
-            shift_name: payload.shift_name || '',
             ended_at: endedAt,
             min_ended_at: minEnded,
             shift_end_at: payload.shift_end_at || '',

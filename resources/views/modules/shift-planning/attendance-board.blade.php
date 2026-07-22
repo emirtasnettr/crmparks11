@@ -107,7 +107,6 @@
                                         work_date: @js($board['work_date']),
                                         courier_id: {{ (int) $card['courier_id'] }},
                                         courier_name: @js($card['courier_name']),
-                                        shift_name: @js($card['shift_name'] ?? ''),
                                         started_at: @js($card['attendance']['started_at'] ? \Carbon\Carbon::parse($card['attendance']['started_at'])->format('Y-m-d\TH:i') : ($card['shift_start_at'] ?? '')),
                                         shift_start_at: @js($card['shift_start_at'] ?? ''),
                                         shift_end_at: @js($card['shift_end_at'] ?? ''),

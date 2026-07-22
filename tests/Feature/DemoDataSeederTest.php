@@ -203,14 +203,15 @@ class DemoDataSeederTest extends TestCase
         );
 
         $this->assertDatabaseHas('business_shifts', [
-            'name' => 'Eksik Kadro Operasyon',
             'notes' => DemoDataSeeder::MARKER,
+            'required_headcount' => 3,
         ]);
         $this->assertGreaterThan(
             0,
             \App\Modules\ShiftPlanning\Models\BusinessShift::query()
                 ->where('notes', DemoDataSeeder::MARKER)
-                ->where('name', 'Yaklaşan Operasyon')
+                ->whereDate('start_date', now()->toDateString())
+                ->whereDate('end_date', now()->toDateString())
                 ->count()
         );
     }

@@ -17,7 +17,7 @@ class ShiftAttendancePresenter
         return [
             'id' => $attendance->id,
             'shift_id' => $attendance->business_shift_id,
-            'shift_name' => $attendance->shift?->name ?? '—',
+            'time_range' => $attendance->shift?->timeRangeLabel() ?? '—',
             'business_id' => $attendance->business_id,
             'business_name' => $attendance->business?->displayName() ?? '—',
             'work_date' => $attendance->work_date?->toDateString(),

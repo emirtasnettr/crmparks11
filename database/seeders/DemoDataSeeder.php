@@ -155,7 +155,8 @@ class DemoDataSeeder extends Seeder
             ->count();
         $liveOpsShifts = BusinessShift::query()
             ->where('notes', self::MARKER)
-            ->whereIn('name', ['Canlı Operasyon', 'Yaklaşan Operasyon', 'Eksik Kadro Operasyon'])
+            ->whereDate('start_date', '<=', now()->toDateString())
+            ->whereDate('end_date', '>=', now()->toDateString())
             ->count();
 
         $this->command?->info(
@@ -562,14 +563,12 @@ class DemoDataSeeder extends Seeder
 
         $shiftDefs = [
             [
-                'name' => 'Öğle Vardiyası',
                 'start_time' => '10:00',
                 'end_time' => '16:00',
                 'required_headcount' => 3,
                 'days_of_week' => [1, 2, 3, 4, 5, 6],
             ],
             [
-                'name' => 'Akşam Vardiyası',
                 'start_time' => '16:00',
                 'end_time' => '23:00',
                 'required_headcount' => 4,
@@ -598,7 +597,6 @@ class DemoDataSeeder extends Seeder
 
                 $shift = BusinessShift::query()->create([
                     'business_id' => $business->id,
-                    'name' => $def['name'],
                     'start_time' => $def['start_time'],
                     'end_time' => $def['end_time'],
                     'required_headcount' => max(1, $required),
@@ -744,7 +742,6 @@ class DemoDataSeeder extends Seeder
             if (! empty($rosters['current'])) {
                 $shift = BusinessShift::query()->create([
                     'business_id' => $business->id,
-                    'name' => 'Canlı Operasyon',
                     'start_time' => $currentStart->format('H:i'),
                     'end_time' => $currentEnd->format('H:i'),
                     'required_headcount' => count($rosters['current']),
@@ -814,7 +811,6 @@ class DemoDataSeeder extends Seeder
             if (! empty($rosters['soon'])) {
                 $shift = BusinessShift::query()->create([
                     'business_id' => $business->id,
-                    'name' => 'Yaklaşan Operasyon',
                     'start_time' => $soonStart->format('H:i'),
                     'end_time' => $soonEnd->format('H:i'),
                     'required_headcount' => count($rosters['soon']),
@@ -844,7 +840,6 @@ class DemoDataSeeder extends Seeder
         if ($activeBusiness !== null) {
             BusinessShift::query()->create([
                 'business_id' => $activeBusiness->id,
-                'name' => 'Eksik Kadro Operasyon',
                 'start_time' => $currentStart->format('H:i'),
                 'end_time' => $currentEnd->format('H:i'),
                 'required_headcount' => 3,
