@@ -168,9 +168,10 @@ class ShiftAttendanceService
         $contract = $this->commercialContracts->forBusinessOnDate((int) $shift->business_id, $day);
         $pricingCode = $contract?->work_type;
         $withinStart = $actionable && ShiftAttendanceRules::isWithinCourierStartWindow($shift, $day);
-        $withinEnd = $actionable
-            && ($attendance?->isInProgress() ?? false)
-            && ShiftAttendanceRules::isCourierAllowedToEnd($shift, $day);
+        $inProgress = $attendance?->isInProgress() ?? false;
+        $canEnd = $actionable && $inProgress && ShiftAttendanceRules::isCourierAllowedToEnd($shift, $day);
+        $shiftEnd = ShiftAttendanceRules::shiftEndAt($shift, $day);
+        $requiresEndReason = $canEnd && now()->lt($shiftEnd);
         $workTypes = \App\Modules\Business\Data\BusinessCommercialContractFormData::workTypes();
         $hasLocation = $shift->business?->latitude !== null && $shift->business?->longitude !== null;
 
@@ -189,12 +190,12 @@ class ShiftAttendanceService
             'attendance' => $attendance ? $this->presenter->row($attendance) : null,
             'has_location' => $hasLocation,
             'can_start' => $actionable && $attendance === null && $withinStart && $hasLocation,
-            'can_end' => $withinEnd,
-            'waiting_for_end' => $actionable
-                && ($attendance?->isInProgress() ?? false)
-                && ! ShiftAttendanceRules::isCourierAllowedToEnd($shift, $day),
+            'can_end' => $canEnd,
+            'requires_end_reason' => $requiresEndReason,
+            'end_reasons' => ShiftAttendanceRules::endReasonLabels(),
+            'waiting_for_end' => false,
             'start_window_opens_at' => ShiftAttendanceRules::earliestStartAt($shift, $day)->format('H:i'),
-            'end_available_at' => ShiftAttendanceRules::shiftEndAt($shift, $day)->format('H:i'),
+            'end_available_at' => $shiftEnd->format('H:i'),
             'location_blocked' => $actionable && $attendance === null && $withinStart && ! $hasLocation,
         ];
     }
@@ -1390,10 +1391,8 @@ class ShiftAttendanceService
                 }
 
                 if (! ShiftAttendanceRules::isCourierAllowedToEnd($shift, $workDate)) {
-                    $endsAt = ShiftAttendanceRules::shiftEndAt($shift, $workDate)->format('d.m.Y H:i');
-
                     throw ValidationException::withMessages([
-                        'attendance' => "Vardiya, bitiş saatinden önce sonlandırılamaz. Bitiş: {$endsAt}",
+                        'attendance' => 'Bu vardiya henüz sonlandırılamaz.',
                     ]);
                 }
             }
@@ -1438,7 +1437,23 @@ class ShiftAttendanceService
 
             $pricingModel = $attendance->pricing_model ?: $contract?->work_type;
             $isEarlyEnd = $shift !== null
-                && $endedAt->lt(ShiftAttendanceRules::shiftEndAt($shift, $workDate));
+                && ShiftAttendanceRules::isEarlyEnd($shift, $workDate, $endedAt);
+
+            $endReason = array_key_exists('end_reason', $options)
+                ? (filled($options['end_reason'] ?? null) ? (string) $options['end_reason'] : null)
+                : $attendance->end_reason;
+
+            if ($endReason !== null && ! in_array($endReason, ShiftAttendanceRules::endReasonCodes(), true)) {
+                throw ValidationException::withMessages([
+                    'end_reason' => 'Geçersiz bitiş sebebi.',
+                ]);
+            }
+
+            if (! $staffAssist && ! $autoEnd && $isEarlyEnd && $endReason === null) {
+                throw ValidationException::withMessages([
+                    'end_reason' => 'Erken bitişte sebep seçilmelidir.',
+                ]);
+            }
 
             $packageCount = $this->resolvePackageCountOnComplete(
                 $options,
@@ -1479,7 +1494,7 @@ class ShiftAttendanceService
                 'pricing_model' => $pricingModel,
                 'commercial_contract_id' => $attendance->commercial_contract_id,
                 'notes' => $notes !== '' ? $notes : null,
-                'end_reason' => $options['end_reason'] ?? $attendance->end_reason,
+                'end_reason' => $endReason,
                 'end_latitude' => $endGeo['latitude'],
                 'end_longitude' => $endGeo['longitude'],
                 'end_accuracy_meters' => $endGeo['accuracy_meters'],

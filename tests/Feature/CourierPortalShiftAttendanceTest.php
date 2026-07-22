@@ -190,13 +190,24 @@ class CourierPortalShiftAttendanceTest extends TestCase
         $this->assertEquals(120.0, (float) $attendance->earnings_amount);
     }
 
-    public function test_courier_cannot_end_before_shift_end_time(): void
+    public function test_courier_can_end_early_with_reason_and_prorated_earnings(): void
     {
         $admin = User::factory()->create();
         $admin->assignRole('super_admin');
         $courier = Courier::factory()->create(['created_by' => $admin->id, 'status' => 'active']);
         $user = app(CourierUserProvisioner::class)->ensureForCourier($courier);
         $business = Business::factory()->create(['created_by' => $admin->id, 'status' => 'active']);
+        BusinessCommercialContract::query()->where('business_id', $business->id)->delete();
+        BusinessCommercialContract::factory()->hourly()->create([
+            'business_id' => $business->id,
+            'start_date' => '2026-07-01',
+            'end_date' => null,
+            'business_amount' => 200,
+            'courier_amount' => 150,
+            'net_profit' => 50,
+            'status' => 'active',
+            'created_by' => $admin->id,
+        ]);
 
         $shift = BusinessShift::query()->create([
             'business_id' => $business->id,
@@ -218,9 +229,11 @@ class CourierPortalShiftAttendanceTest extends TestCase
             'business_id' => $business->id,
             'courier_id' => $courier->id,
             'work_date' => '2026-07-17',
-            'started_at' => '2026-07-17 16:05:00',
+            'started_at' => '2026-07-17 16:00:00',
             'status' => 'in_progress',
             'worked_minutes' => 0,
+            'hourly_rate' => 150,
+            'pricing_model' => 'hourly',
         ]);
 
         Carbon::setTestNow(Carbon::parse('2026-07-17 18:00:00'));
@@ -233,10 +246,26 @@ class CourierPortalShiftAttendanceTest extends TestCase
                 'accuracy' => 20,
             ])
             ->assertRedirect(route('courier-portal.dashboard'))
-            ->assertSessionHasErrors('attendance');
+            ->assertSessionHasErrors('end_reason');
 
         $attendance->refresh();
         $this->assertSame('in_progress', $attendance->status);
+
+        $this->actingAs($user)
+            ->post(route('courier-portal.shifts.end', $attendance->id), [
+                'latitude' => 41.0082,
+                'longitude' => 28.9784,
+                'accuracy' => 20,
+                'end_reason' => 'accident',
+            ])
+            ->assertRedirect(route('courier-portal.dashboard'))
+            ->assertSessionHasNoErrors();
+
+        $attendance->refresh();
+        $this->assertSame('completed', $attendance->status);
+        $this->assertSame('accident', $attendance->end_reason);
+        $this->assertSame(120, (int) $attendance->worked_minutes);
+        $this->assertEquals(300.0, (float) $attendance->earnings_amount);
     }
 
     public function test_courier_cannot_start_more_than_15_minutes_early(): void
@@ -727,7 +756,7 @@ class CourierPortalShiftAttendanceTest extends TestCase
             ->get(route('courier-portal.dashboard'))
             ->assertOk()
             ->assertSee('Gelecek Vardiyalar', false)
-            ->assertSee('Akşam', false);
+            ->assertSee('16:00–23:00', false);
     }
 
     public function test_courier_cannot_start_shift_when_too_far_from_business(): void

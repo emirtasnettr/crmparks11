@@ -63,6 +63,24 @@
                             <input type="hidden" name="latitude" x-model="latitude">
                             <input type="hidden" name="longitude" x-model="longitude">
                             <input type="hidden" name="accuracy" x-model="accuracy">
+                            @if (! empty($item['requires_end_reason']))
+                                <div>
+                                    <label class="mb-1 block text-xs font-medium text-gray-600">
+                                        Erken bitiş sebebi <span class="text-red-600">*</span>
+                                    </label>
+                                    <select
+                                        name="end_reason"
+                                        required
+                                        class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+                                    >
+                                        <option value="">Seçin</option>
+                                        @foreach (($item['end_reasons'] ?? []) as $code => $label)
+                                            <option value="{{ $code }}">{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                    <p class="mt-1 text-[11px] text-gray-500">Hakediş yalnızca çalıştığınız süreye yazılır.</p>
+                                </div>
+                            @endif
                             <div>
                                 <label class="mb-1 block text-xs font-medium text-gray-600">
                                     Paket sayısı
@@ -87,10 +105,6 @@
                                 <span x-show="loading" x-cloak>Konum alınıyor...</span>
                             </x-ui.button>
                         </form>
-                    @elseif ($item['waiting_for_end'] ?? false)
-                        <span class="inline-flex w-full items-center justify-center rounded-lg bg-amber-50 px-3 py-2.5 text-center text-sm font-medium text-amber-700 sm:w-auto">
-                            {{ $item['end_available_at'] ?? $item['end_time'] }} itibarıyla sonlandırılabilir
-                        </span>
                     @elseif ($item['attendance'] === null)
                         <span class="inline-flex w-full items-center justify-center rounded-lg bg-sky-50 px-3 py-2.5 text-center text-sm font-medium text-sky-700 sm:w-auto">
                             {{ $item['start_window_opens_at'] ?? $item['start_time'] }} itibarıyla başlatılabilir

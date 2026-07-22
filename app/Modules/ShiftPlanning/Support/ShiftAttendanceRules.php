@@ -10,7 +10,7 @@ use Carbon\CarbonInterface;
  * Vardiya katılım zaman pencereleri ve hakediş süresi kuralları.
  *
  * - Başlatma: vardiya başlangıcından en erken 15 dk önce
- * - Sonlandırma (kurye): vardiya bitiş saatinden önce yapılamaz
+ * - Sonlandırma (kurye): vardiya devam ederken her an; erken bitişte sebep zorunlu
  * - Otomatik bitiş: vardiya bitişinden 15 dk sonra
  * - Hakediş: planlanan vardiya penceresi içinde fiilen çalışılan süre
  *   (erken başlama / geç bitiş buffer'ı süreye ve ücrete yansımaz)
@@ -36,6 +36,8 @@ final class ShiftAttendanceRules
 
     public const END_REASON_VEHICLE_BREAKDOWN = 'vehicle_breakdown';
 
+    public const END_REASON_FAMILY = 'family';
+
     public const END_REASON_OTHER = 'other';
 
     /**
@@ -47,6 +49,7 @@ final class ShiftAttendanceRules
             self::END_REASON_ACCIDENT => 'Kaza',
             self::END_REASON_ILLNESS => 'Rahatsızlık',
             self::END_REASON_VEHICLE_BREAKDOWN => 'Motosiklet arızası',
+            self::END_REASON_FAMILY => 'Ailevi durum',
             self::END_REASON_OTHER => 'Diğer',
         ];
     }
@@ -145,12 +148,21 @@ final class ShiftAttendanceRules
             && $now->lte(self::shiftEndAt($shift, $workDate));
     }
 
-    /** Kurye, vardiya bitiş saatinden itibaren (dahil) sonlandırabilir. */
+    /** Kurye, aynı gün içinde devam eden vardiyasını her an sonlandırabilir. */
     public static function isCourierAllowedToEnd(BusinessShift $shift, CarbonInterface $workDate, ?CarbonInterface $now = null): bool
     {
         $now ??= now();
 
-        return $now->gte(self::shiftEndAt($shift, $workDate));
+        return ! self::isFutureDay($workDate, $now);
+    }
+
+    /** Kurye / personel bitişi, planlanan vardiya bitişinden önce mi? */
+    public static function isEarlyEnd(
+        BusinessShift $shift,
+        CarbonInterface $workDate,
+        CarbonInterface $endedAt,
+    ): bool {
+        return Carbon::parse($endedAt)->lt(self::shiftEndAt($shift, $workDate));
     }
 
     public static function shouldAutoEnd(BusinessShift $shift, CarbonInterface $workDate, ?CarbonInterface $now = null): bool

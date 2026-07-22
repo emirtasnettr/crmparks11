@@ -4,8 +4,10 @@ namespace App\Modules\CourierPortal\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\ShiftPlanning\Services\ShiftAttendanceService;
+use App\Modules\ShiftPlanning\Support\ShiftAttendanceRules;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class CourierPortalController extends Controller
@@ -82,11 +84,13 @@ class CourierPortalController extends Controller
             'longitude' => ['required', 'numeric', 'between:-180,180'],
             'accuracy' => ['nullable', 'numeric', 'min:0', 'max:5000'],
             'package_count' => ['nullable', 'integer', 'min:0', 'max:100000'],
+            'end_reason' => ['nullable', 'string', Rule::in(ShiftAttendanceRules::endReasonCodes())],
         ], [
             'latitude.required' => 'Vardiya sonlandırmak için konum izni gereklidir.',
             'longitude.required' => 'Vardiya sonlandırmak için konum izni gereklidir.',
             'package_count.integer' => 'Paket sayısı tam sayı olmalıdır.',
             'package_count.min' => 'Paket sayısı negatif olamaz.',
+            'end_reason.in' => 'Geçersiz bitiş sebebi.',
         ]);
 
         $courier = $this->attendances->resolveCourierForUser($request->user());
@@ -97,6 +101,8 @@ class CourierPortalController extends Controller
             'package_count' => array_key_exists('package_count', $validated)
                 ? $validated['package_count']
                 : null,
+            'end_reason' => $validated['end_reason'] ?? null,
+            'use_billable_minutes' => true,
         ]);
 
         return redirect()
