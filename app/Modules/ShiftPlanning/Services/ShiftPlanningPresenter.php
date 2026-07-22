@@ -40,9 +40,7 @@ class ShiftPlanningPresenter
             'date_range_label' => ($shift->start_date && $shift->end_date)
                 ? $shift->start_date->format('d.m.Y').' – '.$shift->end_date->format('d.m.Y')
                 : null,
-            'time_range' => $overnight
-                ? "{$start} – {$end} (ertesi gün)"
-                : "{$start} – {$end}",
+            'time_range' => "{$start} – {$end}",
             'required_headcount' => $required,
             'assigned_count' => $assigned,
             'missing_assignments' => $missingAssignments,
@@ -97,15 +95,5 @@ class ShiftPlanningPresenter
         }
 
         return Carbon::parse((string) $time)->format('H:i');
-    }
-
-    private function isOvernight(mixed $start, mixed $end): bool
-    {
-        if ($start === null || $end === null) {
-            return false;
-        }
-
-        return Carbon::parse((string) $end)->format('H:i:s')
-            < Carbon::parse((string) $start)->format('H:i:s');
     }
 }

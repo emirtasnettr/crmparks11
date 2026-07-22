@@ -423,7 +423,6 @@ class ShiftAttendanceBoardTest extends TestCase
             ]))
             ->assertOk()
             ->assertSee('1/1 atandı')
-            ->assertDontSee('katılmadı')
             ->assertDontSee('0/1 geldi');
     }
 

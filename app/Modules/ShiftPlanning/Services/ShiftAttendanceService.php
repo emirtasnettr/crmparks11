@@ -1133,7 +1133,8 @@ class ShiftAttendanceService
      *     missing: int,
      *     planned: int,
      *     label: string,
-     *     is_future: bool
+     *     is_future: bool,
+     *     has_started: bool
      * }>
      */
     public function weekOccurrenceSummaries(int $businessId, array $shiftIds, string $from, string $to): array
