@@ -36,7 +36,7 @@ return new class extends Migration
             $table->decimal('debit', 14, 2)->default(0);
             $table->decimal('credit', 14, 2)->default(0);
             $table->text('description')->nullable();
-            $table->string('related_type', 30)->nullable();
+            $table->string('related_type', 255)->nullable();
             $table->unsignedBigInteger('related_id')->nullable();
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();

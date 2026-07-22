@@ -8,9 +8,10 @@ use App\Modules\ActivityLog\Services\ActivityLogService;
 use App\Modules\Agency\Models\Agency;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\Finance\Data\PaymentFormData;
+use App\Modules\Finance\Models\CurrentAccount;
+use App\Modules\Finance\Models\CurrentAccountMovement;
 use App\Modules\Finance\Models\FinancePayment;
 use App\Modules\Finance\Models\FinancePaymentLine;
-use App\Modules\Finance\Models\CurrentAccountMovement;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -211,15 +212,19 @@ class PaymentService
      * Hakediş kaynaklı ödemeler için cariye borç (credit) yükümlülüğü yazar.
      * Aynı payment için tekrar çağrılırsa yeni hareket oluşturmaz.
      */
-    public function ensureEarningLiability(FinancePayment $payment, User $user): void
+    public function ensureEarningLiability(FinancePayment $payment, User $user): bool
     {
         if ($payment->source !== 'earning' || $payment->current_account_id === null) {
-            return;
+            return false;
         }
 
         $amount = round((float) $payment->total_amount, 2);
         if ($amount <= 0) {
-            return;
+            return false;
+        }
+
+        if (! CurrentAccount::query()->whereKey($payment->current_account_id)->exists()) {
+            return false;
         }
 
         $exists = CurrentAccountMovement::query()
@@ -230,7 +235,7 @@ class PaymentService
             ->exists();
 
         if ($exists) {
-            return;
+            return false;
         }
 
         $this->currentAccounts->createMovement([
@@ -243,6 +248,8 @@ class PaymentService
             'related_type' => FinancePayment::class,
             'related_id' => $payment->id,
         ], $user);
+
+        return true;
     }
 
     /**
@@ -259,19 +266,13 @@ class PaymentService
             ->where('total_amount', '>', 0)
             ->orderBy('id')
             ->each(function (FinancePayment $payment) use ($user, &$created): void {
-                $exists = CurrentAccountMovement::query()
-                    ->where('current_account_id', $payment->current_account_id)
-                    ->where('type', 'earning')
-                    ->where('related_type', FinancePayment::class)
-                    ->where('related_id', $payment->id)
-                    ->exists();
-
-                if ($exists) {
-                    return;
+                try {
+                    if ($this->ensureEarningLiability($payment, $user)) {
+                        $created++;
+                    }
+                } catch (\Throwable $e) {
+                    report($e);
                 }
-
-                $this->ensureEarningLiability($payment, $user);
-                $created++;
             });
 
         return $created;

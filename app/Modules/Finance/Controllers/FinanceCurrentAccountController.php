@@ -31,9 +31,9 @@ class FinanceCurrentAccountController extends Controller
         private readonly PaymentService $payments,
     ) {}
 
-    public function index(): RedirectResponse
+    public function index(Request $request): RedirectResponse
     {
-        return redirect()->route('finance.current-accounts.business');
+        return redirect()->route('finance.current-accounts.business', $request->query());
     }
 
     public function business(Request $request): View

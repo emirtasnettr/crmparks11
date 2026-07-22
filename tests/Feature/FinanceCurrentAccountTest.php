@@ -222,4 +222,54 @@ class FinanceCurrentAccountTest extends TestCase
             ->where('type', 'earning')
             ->count());
     }
+
+    public function test_earning_liability_stores_full_related_type_class_name(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $courier = Courier::factory()->create();
+        $account = app(CurrentAccountService::class)->ensureForEntity($courier);
+
+        $payment = FinancePayment::factory()->forCourier($courier)->create([
+            'current_account_id' => $account->id,
+            'source' => 'earning',
+            'total_amount' => 250,
+            'paid_amount' => 0,
+            'status' => 'pending',
+            'created_by' => $user->id,
+        ]);
+
+        app(PaymentService::class)->ensureEarningLiability($payment, $user);
+
+        $relatedType = CurrentAccountMovement::query()
+            ->where('related_id', $payment->id)
+            ->where('type', 'earning')
+            ->value('related_type');
+
+        $this->assertSame(FinancePayment::class, $relatedType);
+        $this->assertGreaterThan(30, strlen((string) $relatedType));
+    }
+
+    public function test_ensure_earning_liability_skips_missing_current_account(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $courier = Courier::factory()->create();
+
+        $payment = FinancePayment::factory()->forCourier($courier)->make([
+            'current_account_id' => 999999,
+            'source' => 'earning',
+            'total_amount' => 100,
+            'paid_amount' => 0,
+            'status' => 'pending',
+            'is_active' => true,
+            'reference' => 'ODM-2026-ORPHAN',
+            'created_by' => $user->id,
+        ]);
+        $payment->id = 999999;
+
+        app(PaymentService::class)->ensureEarningLiability($payment, $user);
+
+        $this->assertDatabaseCount('current_account_movements', 0);
+    }
 }
