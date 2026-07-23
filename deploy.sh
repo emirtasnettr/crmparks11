@@ -29,6 +29,11 @@ echo "==> Migration..."
 php artisan migrate --force
 
 echo "==> Cache yenileniyor..."
+# .env yalnızca root'a açıksa config:cache şart; aksi halde www-data APP_KEY/DB göremez → 500.
+if [[ -f .env ]]; then
+  chown root:www-data .env 2>/dev/null || true
+  chmod 640 .env 2>/dev/null || true
+fi
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
