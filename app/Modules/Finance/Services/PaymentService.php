@@ -3,6 +3,7 @@
 namespace App\Modules\Finance\Services;
 
 use App\Models\EarningLine;
+use App\Models\EarningStatus;
 use App\Models\User;
 use App\Modules\ActivityLog\Services\ActivityLogService;
 use App\Modules\Agency\Models\Agency;
@@ -601,6 +602,8 @@ class PaymentService
             ], $user);
         }
 
+        $this->syncLinkedEarningPaidStatus($payment->fresh());
+
         return $line;
     }
 
@@ -613,6 +616,62 @@ class PaymentService
             'paid_amount' => $paid,
             'status' => $this->resolveStatus($total, $paid, $payment->is_active),
         ]);
+    }
+
+    /**
+     * Linked hakediş: tüm alıcı ödemeleri tamamsa "ödendi" işaretle.
+     */
+    private function syncLinkedEarningPaidStatus(FinancePayment $payment): void
+    {
+        if ($payment->earning_line_id === null) {
+            return;
+        }
+
+        $line = EarningLine::query()->with('status')->find($payment->earning_line_id);
+        if ($line === null) {
+            return;
+        }
+
+        $statusCode = (string) ($line->status?->code ?? '');
+        if (in_array($statusCode, ['cancelled', 'draft'], true)) {
+            return;
+        }
+
+        $related = FinancePayment::query()
+            ->where('earning_line_id', $line->id)
+            ->where('is_active', true)
+            ->get(['id', 'status', 'total_amount']);
+
+        if ($related->isEmpty()) {
+            return;
+        }
+
+        $allPaid = $related->every(fn (FinancePayment $row) => $row->status === 'paid');
+
+        if ($allPaid) {
+            $paidStatusId = EarningStatus::query()->where('code', 'paid')->value('id');
+            if ($paidStatusId === null) {
+                return;
+            }
+
+            $line->update([
+                'status_id' => $paidStatusId,
+                'paid_at' => $line->paid_at ?? now(),
+            ]);
+
+            return;
+        }
+
+        // Kısmi ödeme sonrası "paid" geri alınmazsa eski paid satırlar kilitli kalır.
+        if ($statusCode === 'paid') {
+            $approvedStatusId = EarningStatus::query()->where('code', 'approved')->value('id');
+            if ($approvedStatusId !== null) {
+                $line->update([
+                    'status_id' => $approvedStatusId,
+                    'paid_at' => null,
+                ]);
+            }
+        }
     }
 
     private function resolveStatus(float $total, float $paid, bool $isActive): string

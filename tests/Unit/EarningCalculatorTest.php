@@ -66,4 +66,33 @@ class EarningCalculatorTest extends TestCase
         $this->assertEquals(12000.0, $amounts['courier_total']);
         $this->assertEquals(3000.0, $amounts['profit']);
     }
+
+    public function test_agency_payment_uses_explicit_form_value(): void
+    {
+        $amounts = EarningCalculator::fromForm([
+            'pricing_model' => 'per_package',
+            'package_count' => 100,
+            'revenue_unit_price' => 50,
+            'courier_unit_price' => 40,
+            'agency_payment' => 300,
+        ], true);
+
+        $this->assertEquals(5000.0, $amounts['revenue_total']);
+        $this->assertEquals(4000.0, $amounts['courier_total']);
+        $this->assertEquals(300.0, $amounts['agency_payment']);
+        $this->assertEquals(700.0, $amounts['profit']);
+    }
+
+    public function test_agency_payment_is_zero_without_explicit_value(): void
+    {
+        $amounts = EarningCalculator::fromForm([
+            'pricing_model' => 'per_package',
+            'package_count' => 100,
+            'revenue_unit_price' => 50,
+            'courier_unit_price' => 40,
+        ], true);
+
+        $this->assertEquals(0.0, $amounts['agency_payment']);
+        $this->assertEquals(1000.0, $amounts['profit']);
+    }
 }

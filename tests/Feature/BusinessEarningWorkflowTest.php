@@ -11,6 +11,7 @@ use App\Modules\Agency\Models\Agency;
 use App\Modules\Business\Models\Business;
 use App\Modules\Business\Services\BusinessEarningService;
 use App\Modules\Courier\Models\Courier;
+use App\Modules\Finance\Models\CurrentAccount;
 use App\Modules\Finance\Models\FinanceExpense;
 use App\Modules\Finance\Models\FinancePayment;
 use App\Modules\Finance\Models\FinanceRevenue;
@@ -121,6 +122,62 @@ class BusinessEarningWorkflowTest extends TestCase
 
         $this->assertSame(1, FinanceRevenue::query()->where('earning_line_id', $line->id)->count());
         $this->assertSame(1, FinancePayment::query()->where('earning_line_id', $line->id)->count());
+    }
+
+    public function test_approve_earning_posts_business_receivable_on_cari(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $courier = $this->createCourier($user);
+        $line = $this->createEarning($business, $courier, $user, 'pending_review');
+
+        $this->actingAs($user)->post(route('businesses.earnings.approve', $line->id))
+            ->assertRedirect();
+
+        $revenue = FinanceRevenue::query()->where('earning_line_id', $line->id)->first();
+        $this->assertNotNull($revenue);
+
+        $account = CurrentAccount::query()
+            ->where('accountable_type', Business::class)
+            ->where('accountable_id', $business->id)
+            ->first();
+
+        $this->assertNotNull($account);
+        $this->assertDatabaseHas('current_account_movements', [
+            'current_account_id' => $account->id,
+            'related_type' => FinanceRevenue::class,
+            'related_id' => $revenue->id,
+            'type' => 'invoice',
+            'debit' => $revenue->amount,
+        ]);
+    }
+
+    public function test_paying_courier_finance_payment_marks_earning_paid(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $courier = $this->createCourier($user);
+        $line = $this->createEarning($business, $courier, $user, 'pending_review');
+
+        $this->actingAs($user)->post(route('businesses.earnings.approve', $line->id))->assertRedirect();
+
+        $payment = FinancePayment::query()
+            ->where('earning_line_id', $line->id)
+            ->where('recipient_type', 'courier')
+            ->first();
+        $this->assertNotNull($payment);
+
+        $this->actingAs($user)->post(route('finance.payments.bulk'), [
+            'ids' => [$payment->id],
+            'payment_date' => now()->toDateString(),
+            'payment_method' => 'bank_transfer',
+        ])->assertRedirect();
+
+        $line->refresh()->load('status');
+        $this->assertSame('paid', $line->status?->code);
+        $this->assertNotNull($line->paid_at);
     }
 
     public function test_approve_earning_with_agency_payment_creates_agency_finance_record(): void

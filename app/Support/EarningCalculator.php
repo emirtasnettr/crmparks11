@@ -68,10 +68,10 @@ final class EarningCalculator
         }
 
         $netCourierPayment = round($courierTotal + $extraPayment - $deduction, 2);
-        $profit = round($revenueTotal - $courierTotal - $extraExpense + $extraPayment - $deduction, 2);
         $agencyPayment = $courierHasAgency
-            ? round(max(0, $revenueTotal - $courierTotal - $profit), 2)
+            ? round(max(0, (float) ($data['agency_payment'] ?? 0)), 2)
             : 0.0;
+        $profit = round($revenueTotal - $courierTotal - $agencyPayment - $extraExpense + $extraPayment - $deduction, 2);
 
         return [
             'earning_type' => $earningType,

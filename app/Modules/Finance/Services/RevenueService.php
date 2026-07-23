@@ -6,6 +6,8 @@ use App\Models\User;
 use App\Modules\ActivityLog\Services\ActivityLogService;
 use App\Modules\Business\Data\BusinessEarningFormData;
 use App\Modules\Business\Models\Business;
+use App\Modules\Finance\Models\CurrentAccountMovement;
+use App\Modules\Finance\Models\FinanceInvoice;
 use App\Modules\Finance\Models\FinanceRevenue;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -205,6 +207,49 @@ class RevenueService
     }
 
     /**
+     * Hakediş gelirlerinin işletme carisine yazılmamış alacaklarını tamamlar.
+     */
+    public function backfillEarningReceivables(?User $actor = null): int
+    {
+        $user = $actor
+            ?? User::query()->role('super_admin')->orderBy('id')->first();
+
+        if ($user === null) {
+            return 0;
+        }
+
+        $created = 0;
+
+        FinanceRevenue::query()
+            ->whereNotNull('earning_line_id')
+            ->whereNotNull('current_account_id')
+            ->orderBy('id')
+            ->each(function (FinanceRevenue $revenue) use ($user, &$created): void {
+                $before = CurrentAccountMovement::query()
+                    ->where('related_type', FinanceRevenue::class)
+                    ->where('related_id', $revenue->id)
+                    ->exists();
+
+                if ($before) {
+                    return;
+                }
+
+                $this->recordCurrentAccountMovement($revenue, $user);
+
+                $after = CurrentAccountMovement::query()
+                    ->where('related_type', FinanceRevenue::class)
+                    ->where('related_id', $revenue->id)
+                    ->exists();
+
+                if ($after) {
+                    $created++;
+                }
+            });
+
+        return $created;
+    }
+
+    /**
      * @param  array<string, mixed>  $filters
      */
     private function baseQuery(array $filters): Builder
@@ -265,8 +310,25 @@ class RevenueService
             return;
         }
 
-        // Hakedişten gelen gelirler cariye fatura kesildiğinde yansır; çift borç önlenir.
+        // Hakediş geliri: fatura zaten alacak yazdıysa çift borç yazma.
         if ($revenue->earning_line_id !== null) {
+            $invoicePosted = FinanceInvoice::query()
+                ->where('earning_line_id', $revenue->earning_line_id)
+                ->where('invoice_status', 'issued')
+                ->exists();
+
+            if ($invoicePosted) {
+                return;
+            }
+        }
+
+        $alreadyPosted = CurrentAccountMovement::query()
+            ->where('current_account_id', $revenue->current_account_id)
+            ->where('related_type', FinanceRevenue::class)
+            ->where('related_id', $revenue->id)
+            ->exists();
+
+        if ($alreadyPosted) {
             return;
         }
 

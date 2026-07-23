@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\EarningLine;
+use App\Models\EarningStatus;
 use App\Models\User;
 use App\Modules\Business\Models\Business;
 use App\Modules\Finance\Services\ProfitabilityService;
@@ -84,9 +85,11 @@ class FinanceProfitabilityTest extends TestCase
             'period_year' => 2026,
             'revenue_total' => 100_000,
             'courier_total' => 60_000,
+            'net_courier_payment' => 60_000,
             'agency_payment' => 10_000,
             'extra_expense' => 5_000,
             'package_count' => 1000,
+            'status_id' => EarningStatus::query()->where('code', 'approved')->value('id'),
         ]);
 
         $analysis = app(ProfitabilityService::class)->analyze(['date_range' => 'month']);
@@ -106,9 +109,11 @@ class FinanceProfitabilityTest extends TestCase
             'period_year' => 2026,
             'revenue_total' => 100_000,
             'courier_total' => 70_000,
+            'net_courier_payment' => 70_000,
             'agency_payment' => 0,
             'extra_expense' => 0,
             'package_count' => 500,
+            'status_id' => EarningStatus::query()->where('code', 'approved')->value('id'),
         ]);
 
         $analysis = app(ProfitabilityService::class)->analyze(['date_range' => 'month']);
@@ -132,6 +137,7 @@ class FinanceProfitabilityTest extends TestCase
         EarningLine::factory()->for($business)->create([
             'period_month' => 7,
             'period_year' => 2026,
+            'status_id' => EarningStatus::query()->where('code', 'approved')->value('id'),
         ]);
 
         $response = $this->actingAs($user)->get(route('finance.profitability.index', [
@@ -149,6 +155,7 @@ class FinanceProfitabilityTest extends TestCase
         EarningLine::factory()->count(2)->create([
             'period_month' => 7,
             'period_year' => 2026,
+            'status_id' => EarningStatus::query()->where('code', 'approved')->value('id'),
         ]);
 
         $analysis = app(ProfitabilityService::class)->analyze(['date_range' => 'month']);

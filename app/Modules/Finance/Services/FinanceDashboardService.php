@@ -148,26 +148,14 @@ class FinanceDashboardService
         $yearStart = Carbon::create($year, 1, 1)->startOfDay();
         $yearEnd = Carbon::create($year, 12, 31)->endOfDay();
 
-        $courierExpense = (int) round(
-            $this->paymentExpenseInRange($yearStart, $yearEnd, 'courier')
-            + (float) FinanceExpense::query()
-                ->whereYear('expense_date', $year)
-                ->where('expense_type', 'courier_earning')
-                ->sum('amount')
-        );
-
-        $agencyExpense = (int) round(
-            $this->paymentExpenseInRange($yearStart, $yearEnd, 'agency')
-            + (float) FinanceExpense::query()
-                ->whereYear('expense_date', $year)
-                ->where('expense_type', 'agency_earning')
-                ->sum('amount')
-        );
-
         $otherExpense = (int) round((float) FinanceExpense::query()
             ->whereYear('expense_date', $year)
             ->whereNotIn('expense_type', ['courier_earning', 'agency_earning'])
             ->sum('amount'));
+
+        // Breakdown'ta kurye/acente yalnızca ödemelerden (çift sayım yok).
+        $courierExpense = (int) round($this->paymentExpenseInRange($yearStart, $yearEnd, 'courier'));
+        $agencyExpense = (int) round($this->paymentExpenseInRange($yearStart, $yearEnd, 'agency'));
 
         return [
             'months' => $monthLabels,
@@ -187,8 +175,11 @@ class FinanceDashboardService
 
     private function totalExpenseInRange(Carbon $start, Carbon $end): float
     {
+        // Kurye/acente maliyeti FinancePayment üzerinden sayılır; legacy courier_earning
+        // expense satırları çift sayımı önlemek için hariç tutulur.
         $manual = (float) FinanceExpense::query()
             ->whereBetween('expense_date', [$start->toDateString(), $end->toDateString()])
+            ->whereNotIn('expense_type', ['courier_earning', 'agency_earning'])
             ->sum('amount');
 
         $obligations = $this->paymentExpenseInRange($start, $end);
@@ -370,8 +361,12 @@ class FinanceDashboardService
 
         return match ($type) {
             'collection' => 'Tahsilat',
-            'invoice' => 'Fatura Kesimi',
-            'earning' => 'Gelir',
+            'invoice' => 'Fatura / Alacak',
+            'earning' => match ($account?->account_type) {
+                'courier', 'agency' => 'Hakediş Borcu',
+                'business' => 'Hakediş Alacağı',
+                default => 'Hakediş',
+            },
             'debit_note' => 'Gider',
             'credit_note' => 'Alacak Dekontu',
             default => CurrentAccountFormData::movementTypeLabels()[$type] ?? 'Hareket',

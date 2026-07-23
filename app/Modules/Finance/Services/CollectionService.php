@@ -7,6 +7,7 @@ use App\Modules\ActivityLog\Services\ActivityLogService;
 use App\Modules\Business\Models\Business;
 use App\Modules\Finance\Models\FinanceCollection;
 use App\Modules\Finance\Models\FinanceCollectionPayment;
+use App\Modules\Finance\Models\FinanceInvoice;
 use App\Modules\Finance\Models\FinanceRevenue;
 use App\Support\SecureUploadValidator;
 use Carbon\Carbon;
@@ -449,6 +450,7 @@ class CollectionService
         ]);
 
         $this->syncStatus($collection->fresh(['payments']));
+        $this->syncLinkedRevenueStatus($collection->fresh());
 
         if ($collection->current_account_id !== null) {
             $this->currentAccounts->createMovement([
@@ -464,6 +466,43 @@ class CollectionService
         }
 
         return $payment;
+    }
+
+    private function syncLinkedRevenueStatus(FinanceCollection $collection): void
+    {
+        $revenue = null;
+
+        if ($collection->revenue_id !== null) {
+            $revenue = FinanceRevenue::query()->find($collection->revenue_id);
+        }
+
+        if ($revenue === null && filled($collection->invoice_no)) {
+            $invoice = FinanceInvoice::query()
+                ->where('reference', $collection->invoice_no)
+                ->first();
+
+            if ($invoice?->earning_line_id) {
+                $revenue = FinanceRevenue::query()
+                    ->where('earning_line_id', $invoice->earning_line_id)
+                    ->first();
+            }
+        }
+
+        if ($revenue === null) {
+            return;
+        }
+
+        $status = $collection->status;
+        $mapped = match ($status) {
+            'collected' => 'collected',
+            'partial' => 'partial',
+            default => 'pending',
+        };
+
+        $revenue->update([
+            'collection_status' => $mapped,
+            'collection_date' => $mapped === 'collected' ? now()->toDateString() : $revenue->collection_date,
+        ]);
     }
 
     private function syncStatus(FinanceCollection $collection): void

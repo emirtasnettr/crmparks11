@@ -8,6 +8,8 @@ use App\Models\User;
 use App\Modules\ActivityLog\Services\ActivityLogService;
 use App\Modules\Business\Models\Business;
 use App\Modules\Courier\Models\Courier;
+use App\Modules\Finance\Models\FinancePayment;
+use App\Modules\Finance\Models\FinanceRevenue;
 use App\Modules\Finance\Models\FinancialAdjustment;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -141,7 +143,7 @@ class FinancialAdjustmentService
             ]);
 
             if ($earningLine !== null && $this->earningLineIsEditable($earningLine)) {
-                $this->applyToEarningLine($earningLine, $direction, $amount);
+                $this->applyToEarningLine($earningLine, $direction, $amount, $targetType);
             }
 
             $targetLabel = $targetType === 'courier' ? 'kurye' : 'işletme';
@@ -191,7 +193,7 @@ class FinancialAdjustmentService
         return ! in_array((string) $code, ['paid', 'cancelled'], true);
     }
 
-    private function applyToEarningLine(EarningLine $line, string $direction, float $amount): void
+    private function applyToEarningLine(EarningLine $line, string $direction, float $amount, string $targetType): void
     {
         $extraPayment = (float) $line->extra_payment;
         $deduction = (float) $line->deduction;
@@ -206,13 +208,61 @@ class FinancialAdjustmentService
         }
 
         $net = round($courierTotal + $extraPayment - $deduction, 2);
-        $profit = round($revenueTotal - $courierTotal - $extraExpense + $extraPayment - $deduction, 2);
+        $profit = round($revenueTotal - $courierTotal - (float) $line->agency_payment - $extraExpense + $extraPayment - $deduction, 2);
 
         $line->update([
             'extra_payment' => $extraPayment,
             'deduction' => $deduction,
             'net_courier_payment' => $net,
             'profit' => $profit,
+        ]);
+
+        $this->syncLinkedFinancePayment($line->fresh(), $targetType);
+    }
+
+    private function syncLinkedFinancePayment(EarningLine $line, string $targetType): void
+    {
+        if ($targetType !== 'courier') {
+            // İşletme tarafı: gelir tutarını ek ödeme ile hizala.
+            $revenue = FinanceRevenue::query()
+                ->where('earning_line_id', $line->id)
+                ->first();
+
+            if ($revenue !== null) {
+                $newAmount = round((float) $line->revenue_total + (float) $line->extra_payment, 2);
+                $revenue->update(['amount' => $newAmount]);
+            }
+
+            return;
+        }
+
+        $payment = FinancePayment::query()
+            ->where('earning_line_id', $line->id)
+            ->where('recipient_type', 'courier')
+            ->where('is_active', true)
+            ->first();
+
+        if ($payment === null) {
+            return;
+        }
+
+        $newTotal = round((float) $line->net_courier_payment, 2);
+        $paid = round((float) $payment->paid_amount, 2);
+
+        if ($newTotal < $paid) {
+            $newTotal = $paid;
+        }
+
+        $status = 'pending';
+        if ($paid > 0 && $paid < $newTotal) {
+            $status = 'partial';
+        } elseif ($paid >= $newTotal && $newTotal > 0) {
+            $status = 'paid';
+        }
+
+        $payment->update([
+            'total_amount' => $newTotal,
+            'status' => $status,
         ]);
     }
 

@@ -8,6 +8,7 @@ use App\Modules\ActivityLog\Services\ActivityLogService;
 use App\Modules\Business\Models\Business;
 use App\Modules\Finance\Models\FinanceCollection;
 use App\Modules\Finance\Models\FinanceInvoice;
+use App\Modules\Finance\Models\FinanceRevenue;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -149,7 +150,7 @@ class InvoiceService
                     'invoice_type' => $data['invoice_type'] ?? 'manual',
                     'invoice_date' => $invoiceDate->toDateString(),
                     'due_date' => $dueDate->toDateString(),
-                    'subtotal' => (float) $line->revenue_total,
+                    'subtotal' => round((float) $line->revenue_total + (float) $line->extra_payment, 2),
                     'vat_rate' => (int) ($data['vat_rate'] ?? 20),
                     'description' => $data['description'] ?? null,
                 ], $user);
@@ -397,9 +398,14 @@ class InvoiceService
 
     private function createCollectionForInvoice(FinanceInvoice $invoice, User $user): FinanceCollection
     {
+        $revenueId = $invoice->earning_line_id
+            ? FinanceRevenue::query()->where('earning_line_id', $invoice->earning_line_id)->value('id')
+            : null;
+
         $collection = FinanceCollection::query()->create([
             'business_id' => $invoice->business_id,
             'current_account_id' => $invoice->current_account_id,
+            'revenue_id' => $revenueId,
             'source' => $invoice->source === 'earning' ? 'revenue' : 'manual',
             'invoice_no' => $invoice->reference,
             'due_date' => $invoice->due_date->toDateString(),
@@ -421,6 +427,24 @@ class InvoiceService
     {
         if ($invoice->current_account_id === null || $invoice->invoice_status !== 'issued') {
             return;
+        }
+
+        // Hakediş geliri onayda cariye yazıldıysa faturada tekrar borç yazma.
+        if ($invoice->earning_line_id !== null) {
+            $revenuePosted = FinanceRevenue::query()
+                ->where('earning_line_id', $invoice->earning_line_id)
+                ->whereNotNull('current_account_id')
+                ->whereExists(function ($query): void {
+                    $query->selectRaw('1')
+                        ->from('current_account_movements')
+                        ->whereColumn('current_account_movements.related_id', 'finance_revenues.id')
+                        ->where('current_account_movements.related_type', FinanceRevenue::class);
+                })
+                ->exists();
+
+            if ($revenuePosted) {
+                return;
+            }
         }
 
         $this->currentAccounts->createMovement([

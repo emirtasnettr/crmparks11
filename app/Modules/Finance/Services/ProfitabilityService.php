@@ -119,7 +119,8 @@ class ProfitabilityService
     private function earningLines(array $filters): Collection
     {
         $query = EarningLine::query()
-            ->with(['business.city', 'courier.agency.city']);
+            ->with(['business.city', 'courier.agency.city'])
+            ->whereHas('status', fn (Builder $status) => $status->whereIn('code', ['approved', 'paid', 'pending_review']));
 
         $this->applyDateRange($query, $filters['date_range'] ?? 'month');
 
@@ -171,8 +172,11 @@ class ProfitabilityService
                     return null;
                 }
 
-                $revenue = round((float) $businessLines->sum('revenue_total'), 2);
-                $courierCost = round((float) $businessLines->sum('courier_total'), 2);
+                $revenue = round(
+                    (float) $businessLines->sum('revenue_total') + (float) $businessLines->sum('extra_payment'),
+                    2
+                );
+                $courierCost = round((float) $businessLines->sum('net_courier_payment'), 2);
                 $agencyCost = round((float) $businessLines->sum('agency_payment'), 2);
                 $otherExpenses = round((float) $businessLines->sum('extra_expense'), 2);
                 $packageCount = (int) $businessLines->sum('package_count');
@@ -451,11 +455,13 @@ class ProfitabilityService
                 $monthLines = EarningLine::query()
                     ->where('period_year', $cursor->year)
                     ->where('period_month', $cursor->month)
+                    ->whereHas('status', fn (Builder $status) => $status->whereIn('code', ['approved', 'paid', 'pending_review']))
                     ->when(($filters['business_id'] ?? 'all') !== 'all', fn (Builder $query) => $query->where('business_id', (int) $filters['business_id']))
                     ->get();
 
-                $monthRevenue = (float) $monthLines->sum('revenue_total');
-                $monthExpense = (float) $monthLines->sum('courier_total')
+                $monthRevenue = (float) $monthLines->sum('revenue_total')
+                    + (float) $monthLines->sum('extra_payment');
+                $monthExpense = (float) $monthLines->sum('net_courier_payment')
                     + (float) $monthLines->sum('agency_payment')
                     + (float) $monthLines->sum('extra_expense');
 

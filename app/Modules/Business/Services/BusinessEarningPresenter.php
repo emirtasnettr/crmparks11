@@ -39,10 +39,10 @@ class BusinessEarningPresenter
 
         $months = BusinessEarningFormData::months();
         $statusCode = EarningStatusMapper::toUiCode($line->status?->code ?? 'draft');
-        $courierPayment = (float) $line->courier_total;
-        $extraExpense = (float) $line->extra_expense;
-        $revenue = (float) $line->revenue_total;
-        $profit = (float) $line->profit;
+            $courierPayment = (float) $line->net_courier_payment;
+            $extraExpense = (float) $line->extra_expense;
+            $revenue = round((float) $line->revenue_total + (float) $line->extra_payment, 2);
+            $profit = (float) $line->profit;
         $pricingModel = $line->pricing_model ?: 'per_package';
 
         return [

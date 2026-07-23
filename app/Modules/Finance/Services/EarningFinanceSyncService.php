@@ -96,9 +96,21 @@ class EarningFinanceSyncService
 
     public function alreadySynced(int $earningLineId): bool
     {
-        return $this->hasRevenue($earningLineId)
-            && $this->hasPayment($earningLineId, 'courier')
-            && $this->hasExpense($earningLineId);
+        $line = EarningLine::query()->with('courier')->find($earningLineId);
+        if ($line === null) {
+            return false;
+        }
+
+        $needsCourier = round((float) $line->net_courier_payment, 2) > 0;
+        $needsAgency = round((float) $line->agency_payment, 2) > 0
+            && $line->courier?->agency_id !== null;
+        $needsExpense = round((float) $line->extra_expense, 2) > 0;
+        $needsRevenue = round((float) $line->revenue_total + (float) $line->extra_payment, 2) > 0;
+
+        return (! $needsRevenue || $this->hasRevenue($earningLineId))
+            && (! $needsCourier || $this->hasPayment($earningLineId, 'courier'))
+            && (! $needsAgency || $this->hasPayment($earningLineId, 'agency'))
+            && (! $needsExpense || $this->hasExpense($earningLineId));
     }
 
     private function hasRevenue(int $earningLineId): bool
