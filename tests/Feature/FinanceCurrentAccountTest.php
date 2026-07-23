@@ -11,6 +11,7 @@ use App\Modules\Courier\Models\Courier;
 use App\Modules\Finance\Models\CurrentAccount;
 use App\Modules\Finance\Models\CurrentAccountMovement;
 use App\Modules\Finance\Models\FinancePayment;
+use App\Modules\Finance\Services\CurrentAccountPresenter;
 use App\Modules\Finance\Services\CurrentAccountService;
 use App\Modules\Finance\Services\PaymentService;
 use Database\Seeders\LookupTableSeeder;
@@ -258,6 +259,37 @@ class FinanceCurrentAccountTest extends TestCase
             2
         );
         $this->assertSame(0.0, $balance);
+    }
+
+    public function test_courier_summary_net_balance_is_positive_debt(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $courier = Courier::factory()->create(['full_name' => 'Net Borç Test']);
+        $account = app(CurrentAccountService::class)->ensureForEntity($courier);
+
+        app(PaymentService::class)->create([
+            'recipient_type' => 'courier',
+            'recipient_id' => $courier->id,
+            'payment_date' => now()->toDateString(),
+            'total_amount' => 2_500,
+            'paid_amount' => 0,
+        ], $user);
+
+        $summary = app(CurrentAccountService::class)->summarize([
+            'type' => 'courier',
+            'status' => 'all',
+            'balance_status' => 'all',
+            'search' => '',
+        ]);
+
+        $this->assertEquals(2_500.0, $summary['total_payable']);
+        $this->assertEquals(2_500.0, $summary['net_balance']);
+
+        $row = app(CurrentAccountPresenter::class)->indexRow($account->fresh(['movements']));
+        $this->assertEquals(-2_500.0, $row['balance']);
+        $this->assertSame('2.500,00 ₺', $row['balance_formatted']);
     }
 
     public function test_backfill_earning_liabilities_is_idempotent(): void

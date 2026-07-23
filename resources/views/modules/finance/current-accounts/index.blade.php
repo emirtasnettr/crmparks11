@@ -47,11 +47,11 @@
         @if ($isCourier)
             <x-ui.finance-stat-card title="Toplam Borç" :value="money_excl_vat($summary['total_payable'])" icon="chart" accent="danger" />
             <x-ui.finance-stat-card title="Kalan Borç" :value="money_excl_vat($summary['total_payable'])" icon="earning" accent="warning" />
-            <x-ui.finance-stat-card title="Net Bakiye" :value="money_excl_vat($summary['net_balance'])" icon="earning" accent="violet" />
+            <x-ui.finance-stat-card title="Net Borç" :value="money_excl_vat($summary['net_balance'])" icon="earning" accent="violet" />
         @else
             <x-ui.finance-stat-card title="Toplam Alacak" :value="money_excl_vat($summary['total_receivable'])" icon="earning" accent="success" />
             <x-ui.finance-stat-card title="Kalan Alacak" :value="money_excl_vat($summary['total_receivable'])" icon="earning" accent="warning" />
-            <x-ui.finance-stat-card title="Net Bakiye" :value="money_excl_vat($summary['net_balance'])" icon="chart" accent="violet" />
+            <x-ui.finance-stat-card title="Net Alacak" :value="money_excl_vat($summary['net_balance'])" icon="chart" accent="violet" />
         @endif
     </div>
 

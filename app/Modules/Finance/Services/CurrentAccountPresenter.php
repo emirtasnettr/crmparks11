@@ -41,7 +41,7 @@ class CurrentAccountPresenter
     private function enrich(CurrentAccount $account, bool $includeAllMovements): array
     {
         $account->loadMissing(['movements', 'accountable']);
-        $movements = $this->enrichMovements($account->movements);
+        $movements = $this->enrichMovements($account->movements, $account->account_type);
         $totals = $this->calculateTotals($movements);
         $balance = round($totals['debit'] - $totals['credit'], 2);
         $balanceStatus = $this->resolveBalanceStatus($balance);
@@ -90,7 +90,7 @@ class CurrentAccountPresenter
             'total_debit_formatted' => money_excl_vat($totals['debit']),
             'total_credit_formatted' => money_excl_vat($totals['credit']),
             'balance' => $balance,
-            'balance_formatted' => money_excl_vat($balance),
+            'balance_formatted' => $this->formatBalanceForDisplay($account->account_type, $balance),
             'balance_status' => $balanceStatus,
             'balance_status_label' => CurrentAccountFormData::balanceStatuses()[$balanceStatus],
             'balance_tone' => match ($balanceStatus) {
@@ -129,13 +129,13 @@ class CurrentAccountPresenter
      * @param  Collection<int, CurrentAccountMovement>  $movements
      * @return array<int, array<string, mixed>>
      */
-    private function enrichMovements(Collection $movements): array
+    private function enrichMovements(Collection $movements, string $accountType = 'business'): array
     {
         $sorted = $movements->sortBy('transaction_date')->values();
         $running = 0.0;
 
         return $sorted
-            ->map(function (CurrentAccountMovement $movement) use (&$running) {
+            ->map(function (CurrentAccountMovement $movement) use (&$running, $accountType) {
                 $debit = (float) $movement->debit;
                 $credit = (float) $movement->credit;
                 $running = round($running + $debit - $credit, 2);
@@ -152,7 +152,7 @@ class CurrentAccountPresenter
                     'debit_formatted' => $debit > 0 ? money_excl_vat($debit) : '—',
                     'credit_formatted' => $credit > 0 ? money_excl_vat($credit) : '—',
                     'balance' => $running,
-                    'balance_formatted' => money_excl_vat($running),
+                    'balance_formatted' => $this->formatBalanceForDisplay($accountType, $running),
                     'description' => $movement->description,
                     'related_type' => $movement->related_type,
                     'related_id' => $movement->related_id,
@@ -161,6 +161,18 @@ class CurrentAccountPresenter
             ->sortByDesc('date')
             ->values()
             ->all();
+    }
+
+    /**
+     * Kurye/acente bakiyesi ledger'da negatiftir (borç); ekranda pozitif borç tutarı gösterilir.
+     */
+    private function formatBalanceForDisplay(string $accountType, float $balance): string
+    {
+        if (in_array($accountType, ['courier', 'agency'], true) && $balance < 0) {
+            return money_excl_vat(abs($balance));
+        }
+
+        return money_excl_vat($balance);
     }
 
     /**

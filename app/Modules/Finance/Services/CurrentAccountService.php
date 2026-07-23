@@ -53,12 +53,19 @@ class CurrentAccountService
 
         $totalReceivable = $accounts->where('balance', '>', 0)->sum('balance');
         $totalPayable = abs($accounts->where('balance', '<', 0)->sum('balance'));
+        $rawNet = round($accounts->sum('balance'), 2);
+        $accountType = (string) ($filters['type'] ?? 'all');
+
+        // Kurye/acente: ledger bakiyesi negatif (borç). Özet kartında şirketin net borcu pozitif gösterilir.
+        $netBalance = in_array($accountType, ['courier', 'agency'], true)
+            ? round(-$rawNet, 2)
+            : $rawNet;
 
         return [
             'count' => $accounts->count(),
             'total_receivable' => round($totalReceivable, 2),
             'total_payable' => round($totalPayable, 2),
-            'net_balance' => round($accounts->sum('balance'), 2),
+            'net_balance' => $netBalance,
             'overdue_receivable' => round($accounts->sum('overdue_receivable'), 2),
             'overdue_payable' => round($accounts->sum('overdue_payable'), 2),
         ];
