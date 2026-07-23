@@ -21,8 +21,8 @@ class AttendanceEarningSyncService
     ) {}
 
     /**
-     * Completed attendances with earnings → one draft/pending EarningLine per
-     * (courier, business, month, pricing_model).
+     * Completed attendances → one draft/pending EarningLine per
+     * (courier, business, work_date, pricing_model).
      *
      * @param  array{courier_id?: int, business_id?: int, period_year?: int, period_month?: int}  $filters
      * @return array{created: int, updated: int, skipped: int}
@@ -55,6 +55,58 @@ class AttendanceEarningSyncService
         }
 
         return compact('created', 'updated', 'skipped');
+    }
+
+    /**
+     * Aynı gün için oluşmuş [vardiya-sync] kopyalarını temizler (en yeni satır kalır).
+     *
+     * @return array{removed: int, groups: int}
+     */
+    public function dedupeSyncLines(): array
+    {
+        $editableStatusIds = EarningStatus::query()
+            ->whereIn('code', ['draft', 'pending_review'])
+            ->pluck('id')
+            ->all();
+
+        if ($editableStatusIds === []) {
+            return ['removed' => 0, 'groups' => 0];
+        }
+
+        $duplicateKeys = EarningLine::query()
+            ->select(['courier_id', 'business_id', 'work_date', 'pricing_model'])
+            ->where('description', 'like', self::DESCRIPTION_PREFIX.'%')
+            ->whereIn('status_id', $editableStatusIds)
+            ->whereNotNull('work_date')
+            ->groupBy('courier_id', 'business_id', 'work_date', 'pricing_model')
+            ->havingRaw('COUNT(*) > 1')
+            ->get();
+
+        $removed = 0;
+
+        foreach ($duplicateKeys as $key) {
+            $lines = EarningLine::query()
+                ->where('courier_id', $key->courier_id)
+                ->where('business_id', $key->business_id)
+                ->whereDate('work_date', $key->work_date)
+                ->where('pricing_model', $key->pricing_model)
+                ->where('description', 'like', self::DESCRIPTION_PREFIX.'%')
+                ->whereIn('status_id', $editableStatusIds)
+                ->orderByDesc('id')
+                ->get();
+
+            $keep = $lines->shift();
+            if ($keep === null) {
+                continue;
+            }
+
+            foreach ($lines as $duplicate) {
+                $duplicate->delete();
+                $removed++;
+            }
+        }
+
+        return ['removed' => $removed, 'groups' => $duplicateKeys->count()];
     }
 
     /**
@@ -120,19 +172,16 @@ class AttendanceEarningSyncService
             ->where('status', 'completed')
             ->whereNotNull('earnings_amount')
             ->where('earnings_amount', '>', 0)
-            ->whereNotNull('pricing_model');
+            ->whereNotNull('pricing_model')
+            ->whereNotNull('work_date');
 
         $this->applyAttendanceFilters($query, $filters);
 
-        return $query->get()->groupBy(function (BusinessShiftAttendance $attendance): string {
-            $year = $attendance->work_date?->format('Y') ?? '0';
-            $month = $attendance->work_date?->format('n') ?? '0';
-
+        return $query->orderBy('id')->get()->groupBy(function (BusinessShiftAttendance $attendance): string {
             return implode(':', [
                 (string) $attendance->courier_id,
                 (string) $attendance->business_id,
-                $year,
-                $month,
+                $attendance->work_date->toDateString(),
                 (string) $attendance->pricing_model,
             ]);
         });
@@ -166,33 +215,14 @@ class AttendanceEarningSyncService
         /** @var BusinessShiftAttendance $sample */
         $sample = $rows->first();
         $pricingModel = (string) $sample->pricing_model;
+        $workDate = $sample->work_date->toDateString();
         $periodMonth = (int) $sample->work_date->format('n');
         $periodYear = (int) $sample->work_date->format('Y');
         $courierId = (int) $sample->courier_id;
         $businessId = (int) $sample->business_id;
 
-        // Pasif işletme / kurye: mevcut hakedişlere dokunma, yeni satır oluşturma.
         if ($this->isBusinessOrCourierInactive($businessId, $courierId)) {
             return 'skipped';
-        }
-
-        $existing = EarningLine::query()
-            ->with('status')
-            ->where('courier_id', $courierId)
-            ->where('business_id', $businessId)
-            ->where('period_month', $periodMonth)
-            ->where('period_year', $periodYear)
-            ->where('pricing_model', $pricingModel)
-            ->where('description', 'like', self::DESCRIPTION_PREFIX.'%')
-            ->first();
-
-        if ($existing !== null) {
-            $code = $existing->status?->code
-                ?? EarningStatus::query()->whereKey($existing->status_id)->value('code');
-
-            if (! in_array($code, ['draft', 'pending_review'], true)) {
-                return 'skipped';
-            }
         }
 
         $amounts = $this->amountsFromAttendances($rows, $pricingModel, $businessId);
@@ -210,7 +240,7 @@ class AttendanceEarningSyncService
             'courier_id' => $courierId,
             'business_pricing_id' => null,
             'pricing_model' => $pricingModel,
-            'work_date' => $sample->work_date->toDateString(),
+            'work_date' => $workDate,
             'period_month' => $periodMonth,
             'period_year' => $periodYear,
             'description' => $description,
@@ -221,15 +251,44 @@ class AttendanceEarningSyncService
             'agency_payment' => 0,
         ]);
 
-        return DB::transaction(function () use ($existing, $payload, $actor): string {
+        return DB::transaction(function () use ($payload, $actor, $courierId, $businessId, $workDate, $pricingModel): string {
+            $existing = EarningLine::query()
+                ->with('status')
+                ->where('courier_id', $courierId)
+                ->where('business_id', $businessId)
+                ->whereDate('work_date', $workDate)
+                ->where('pricing_model', $pricingModel)
+                ->where('description', 'like', self::DESCRIPTION_PREFIX.'%')
+                ->lockForUpdate()
+                ->orderBy('id')
+                ->first();
+
             if ($existing !== null) {
+                $code = $existing->status?->code
+                    ?? EarningStatus::query()->whereKey($existing->status_id)->value('code');
+
+                if (! in_array($code, ['draft', 'pending_review'], true)) {
+                    return 'skipped';
+                }
+
                 $existing->update($payload);
+
+                // Aynı gün için kalan kopyaları temizle.
+                EarningLine::query()
+                    ->where('courier_id', $courierId)
+                    ->where('business_id', $businessId)
+                    ->whereDate('work_date', $workDate)
+                    ->where('pricing_model', $pricingModel)
+                    ->where('description', 'like', self::DESCRIPTION_PREFIX.'%')
+                    ->where('id', '!=', $existing->id)
+                    ->whereHas('status', fn ($q) => $q->whereIn('code', ['draft', 'pending_review']))
+                    ->get()
+                    ->each(fn (EarningLine $line) => $line->delete());
 
                 return 'updated';
             }
 
             $payload['created_by'] = $actor?->id;
-
             EarningLine::query()->create($payload);
 
             return 'created';
@@ -286,7 +345,6 @@ class AttendanceEarningSyncService
             ];
         }
 
-        // per_package
         $courierUnit = round((float) ($contract?->courier_amount ?? 0), 2);
         $revenueUnit = round((float) ($contract?->business_amount ?? 0), 2);
         $packageCount = (float) $rows->sum(fn (BusinessShiftAttendance $row) => (float) ($row->package_count ?? 0));

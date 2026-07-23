@@ -14,7 +14,7 @@ class SyncAttendanceEarningsCommand extends Command
                             {--year= : Dönem yılı}
                             {--month= : Dönem ayı (1-12)}';
 
-    protected $description = 'Tamamlanan vardiya katılımlarından işletme + çalışma modeli bazında taslak hakediş satırları üretir/günceller.';
+    protected $description = 'Tamamlanan vardiya katılımlarından gün + çalışma modeli bazında taslak hakediş satırları üretir/günceller.';
 
     public function handle(AttendanceEarningSyncService $sync): int
     {

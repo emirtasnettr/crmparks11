@@ -77,42 +77,120 @@ class AttendanceEarningSyncTest extends TestCase
 
         $result = app(AttendanceEarningSyncService::class)->sync($admin);
 
-        $this->assertSame(2, $result['created']);
+        $this->assertSame(4, $result['created']);
         $this->assertSame(0, $result['updated']);
 
         $lines = EarningLine::query()
             ->where('courier_id', $courier->id)
-            ->orderBy('pricing_model')
+            ->orderBy('work_date')
             ->get();
 
-        $this->assertCount(2, $lines);
+        $this->assertCount(4, $lines);
+        $this->assertEquals([
+            '2026-07-10',
+            '2026-07-11',
+            '2026-07-15',
+            '2026-07-16',
+        ], $lines->map(fn (EarningLine $line) => $line->work_date?->toDateString())->all());
 
-        $hourlyLine = $lines->firstWhere('pricing_model', 'hourly');
-        $packageLine = $lines->firstWhere('pricing_model', 'per_package');
+        $hourlyLines = $lines->where('pricing_model', 'hourly');
+        $packageLines = $lines->where('pricing_model', 'per_package');
 
-        $this->assertNotNull($hourlyLine);
-        $this->assertNotNull($packageLine);
-        $this->assertSame($hourlyBusiness->id, $hourlyLine->business_id);
-        $this->assertSame($packageBusiness->id, $packageLine->business_id);
-        $this->assertSame(7, $hourlyLine->period_month);
-        $this->assertSame(2026, $hourlyLine->period_year);
-        $this->assertNotNull($hourlyLine->work_date);
+        $this->assertCount(2, $hourlyLines);
+        $this->assertCount(2, $packageLines);
 
-        // 2 × 6h × 220 = 2640
-        $this->assertEquals(2640.0, (float) $hourlyLine->net_courier_payment);
-        $this->assertEquals(12.0, (float) $hourlyLine->worked_hours);
-        // 2 × 6h × 225 = 2700
-        $this->assertEquals(2700.0, (float) $packageLine->net_courier_payment);
-        $this->assertEquals(12.0, (float) $packageLine->worked_hours);
+        // Her gün 6h × unit
+        $this->assertEquals(1320.0, (float) $hourlyLines->first()->net_courier_payment);
+        $this->assertEquals(6.0, (float) $hourlyLines->first()->worked_hours);
+        $this->assertEquals(1350.0, (float) $packageLines->first()->net_courier_payment);
+        $this->assertEquals(6.0, (float) $packageLines->first()->worked_hours);
 
-        $this->assertStringStartsWith(AttendanceEarningSyncService::DESCRIPTION_PREFIX, (string) $hourlyLine->description);
-        $this->assertStringStartsWith(AttendanceEarningSyncService::DESCRIPTION_PREFIX, (string) $packageLine->description);
+        foreach ($lines as $line) {
+            $this->assertStringStartsWith(AttendanceEarningSyncService::DESCRIPTION_PREFIX, (string) $line->description);
+        }
 
         // Idempotent re-run updates drafts
         $again = app(AttendanceEarningSyncService::class)->sync($admin);
         $this->assertSame(0, $again['created']);
-        $this->assertSame(2, $again['updated']);
-        $this->assertSame(2, EarningLine::query()->where('courier_id', $courier->id)->count());
+        $this->assertSame(4, $again['updated']);
+        $this->assertSame(4, EarningLine::query()->where('courier_id', $courier->id)->count());
+    }
+
+    public function test_sync_does_not_duplicate_same_day_on_repeated_runs(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('super_admin');
+        $courier = $this->createCourier($admin);
+        $business = $this->createBusiness($admin, 'Tek Gün');
+
+        $contract = BusinessCommercialContract::factory()->hourly()->create([
+            'business_id' => $business->id,
+            'start_date' => '2026-07-01',
+            'business_amount' => 150,
+            'courier_amount' => 100,
+            'net_profit' => 50,
+            'status' => 'active',
+            'created_by' => $admin->id,
+        ]);
+
+        $shift = $this->createShift($business, $courier, $admin);
+        $this->seedAttendance($shift, $business, $contract, $courier, '2026-07-17', 'hourly', 100, 6 * 60);
+
+        $sync = app(AttendanceEarningSyncService::class);
+        $this->assertSame(1, $sync->sync($admin)['created']);
+        $this->assertSame(0, $sync->sync($admin)['created']);
+        $this->assertSame(1, $sync->sync($admin)['updated']);
+
+        $this->assertSame(1, EarningLine::query()
+            ->where('courier_id', $courier->id)
+            ->whereDate('work_date', '2026-07-17')
+            ->count());
+    }
+
+    public function test_dedupe_removes_duplicate_sync_lines_for_same_day(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('super_admin');
+        $courier = $this->createCourier($admin);
+        $business = $this->createBusiness($admin, 'Kopya Gün');
+
+        $statusId = \App\Models\EarningStatus::query()->where('code', 'pending_review')->value('id');
+
+        EarningLine::factory()->create([
+            'business_id' => $business->id,
+            'courier_id' => $courier->id,
+            'pricing_model' => 'hourly',
+            'work_date' => '2026-07-17',
+            'period_month' => 7,
+            'period_year' => 2026,
+            'description' => AttendanceEarningSyncService::DESCRIPTION_PREFIX.' Saatlik vardiya hakedişi (6 sa)',
+            'status_id' => $statusId,
+            'net_courier_payment' => 600,
+            'courier_total' => 600,
+            'created_by' => $admin->id,
+        ]);
+        EarningLine::factory()->create([
+            'business_id' => $business->id,
+            'courier_id' => $courier->id,
+            'pricing_model' => 'hourly',
+            'work_date' => '2026-07-17',
+            'period_month' => 7,
+            'period_year' => 2026,
+            'description' => AttendanceEarningSyncService::DESCRIPTION_PREFIX.' Saatlik vardiya hakedişi (6 sa)',
+            'status_id' => $statusId,
+            'net_courier_payment' => 600,
+            'courier_total' => 600,
+            'created_by' => $admin->id,
+        ]);
+
+        $result = app(AttendanceEarningSyncService::class)->dedupeSyncLines();
+
+        $this->assertSame(1, $result['groups']);
+        $this->assertSame(1, $result['removed']);
+        $this->assertSame(1, EarningLine::query()
+            ->where('courier_id', $courier->id)
+            ->whereDate('work_date', '2026-07-17')
+            ->count());
     }
 
     public function test_artisan_sync_command_runs(): void
