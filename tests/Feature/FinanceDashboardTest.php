@@ -142,6 +142,41 @@ class FinanceDashboardTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_finance_dashboard_expense_includes_courier_payment_obligations(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-15 10:00:00'));
+
+        FinanceRevenue::factory()->create([
+            'amount' => 11_000,
+            'revenue_date' => '2026-07-10',
+        ]);
+
+        FinanceExpense::factory()->create([
+            'amount' => 500,
+            'expense_date' => '2026-07-12',
+        ]);
+
+        FinancePayment::factory()->forCourier()->create([
+            'total_amount' => 9_000,
+            'paid_amount' => 0,
+            'status' => 'pending',
+            'scheduled_date' => '2026-07-14',
+            'is_active' => true,
+        ]);
+
+        $kpis = app(FinanceDashboardService::class)->dashboard('month')['kpis'];
+
+        $this->assertEquals(11_000.0, $kpis['total_revenue']);
+        $this->assertEquals(9_500.0, $kpis['total_expense']);
+        $this->assertEquals(1_500.0, $kpis['net_profit']);
+
+        $charts = app(FinanceDashboardService::class)->dashboard('month')['charts'];
+        $this->assertSame(9_000, $charts['expense_breakdown'][0]['value']); // Kurye
+        $this->assertSame(500, $charts['expense_breakdown'][2]['value']); // Diğer
+
+        Carbon::setTestNow();
+    }
+
     public function test_finans_root_redirects_to_dashboard(): void
     {
         $user = User::factory()->create();

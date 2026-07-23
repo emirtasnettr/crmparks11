@@ -52,9 +52,9 @@ class FinanceDashboardService
             ->whereBetween('revenue_date', [$start->toDateString(), $end->toDateString()])
             ->sum('amount');
 
-        $expense = (float) FinanceExpense::query()
-            ->whereBetween('expense_date', [$start->toDateString(), $end->toDateString()])
-            ->sum('amount');
+        // Gider = manuel gider kayıtları + kurye/acente hakediş ödemeleri (tahakkuk).
+        // Hakediş onayı FinancePayment üretir; FinanceExpense yalnızca ek gider için yazılır.
+        $expense = $this->totalExpenseInRange($start, $end);
 
         $profit = round($revenue - $expense, 2);
         $margin = $revenue > 0 ? round(($profit / $revenue) * 100, 1) : 0.0;
@@ -110,15 +110,15 @@ class FinanceDashboardService
         $expense = [];
 
         for ($month = 1; $month <= 12; $month++) {
+            $monthStart = Carbon::create($year, $month, 1)->startOfDay();
+            $monthEnd = $monthStart->copy()->endOfMonth();
+
             $revenue[] = (int) FinanceRevenue::query()
                 ->whereYear('revenue_date', $year)
                 ->whereMonth('revenue_date', $month)
                 ->sum('amount');
 
-            $expense[] = (int) FinanceExpense::query()
-                ->whereYear('expense_date', $year)
-                ->whereMonth('expense_date', $month)
-                ->sum('amount');
+            $expense[] = (int) round($this->totalExpenseInRange($monthStart, $monthEnd));
         }
 
         $profit = array_map(fn (int $r, int $e) => $r - $e, $revenue, $expense);
@@ -145,20 +145,29 @@ class FinanceDashboardService
             $revenueByBusiness[] = ['label' => 'Diğer', 'value' => $otherRevenue];
         }
 
-        $courierExpense = (int) FinanceExpense::query()
-            ->whereYear('expense_date', $year)
-            ->where('expense_type', 'courier_earning')
-            ->sum('amount');
+        $yearStart = Carbon::create($year, 1, 1)->startOfDay();
+        $yearEnd = Carbon::create($year, 12, 31)->endOfDay();
 
-        $agencyExpense = (int) FinanceExpense::query()
-            ->whereYear('expense_date', $year)
-            ->where('expense_type', 'agency_earning')
-            ->sum('amount');
+        $courierExpense = (int) round(
+            $this->paymentExpenseInRange($yearStart, $yearEnd, 'courier')
+            + (float) FinanceExpense::query()
+                ->whereYear('expense_date', $year)
+                ->where('expense_type', 'courier_earning')
+                ->sum('amount')
+        );
 
-        $otherExpense = (int) FinanceExpense::query()
+        $agencyExpense = (int) round(
+            $this->paymentExpenseInRange($yearStart, $yearEnd, 'agency')
+            + (float) FinanceExpense::query()
+                ->whereYear('expense_date', $year)
+                ->where('expense_type', 'agency_earning')
+                ->sum('amount')
+        );
+
+        $otherExpense = (int) round((float) FinanceExpense::query()
             ->whereYear('expense_date', $year)
             ->whereNotIn('expense_type', ['courier_earning', 'agency_earning'])
-            ->sum('amount');
+            ->sum('amount'));
 
         return [
             'months' => $monthLabels,
@@ -174,6 +183,26 @@ class FinanceDashboardService
                 ['label' => 'Diğer', 'value' => $otherExpense],
             ],
         ];
+    }
+
+    private function totalExpenseInRange(Carbon $start, Carbon $end): float
+    {
+        $manual = (float) FinanceExpense::query()
+            ->whereBetween('expense_date', [$start->toDateString(), $end->toDateString()])
+            ->sum('amount');
+
+        $obligations = $this->paymentExpenseInRange($start, $end);
+
+        return round($manual + $obligations, 2);
+    }
+
+    private function paymentExpenseInRange(Carbon $start, Carbon $end, ?string $recipientType = null): float
+    {
+        return (float) FinancePayment::query()
+            ->where('is_active', true)
+            ->whereBetween('scheduled_date', [$start->toDateString(), $end->toDateString()])
+            ->when($recipientType !== null, fn ($query) => $query->where('recipient_type', $recipientType))
+            ->sum('total_amount');
     }
 
     /**
