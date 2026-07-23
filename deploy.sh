@@ -33,6 +33,14 @@ php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 
+# Deploy root ile çalışırsa derlenen view/cache www-data tarafından yazılamaz → 500 (touch Utime).
+if id www-data >/dev/null 2>&1; then
+  echo "==> storage / bootstrap sahipliği düzeltiliyor (www-data)..."
+  chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || true
+  find storage bootstrap/cache -type d -exec chmod 775 {} + 2>/dev/null || true
+  find storage bootstrap/cache -type f -exec chmod 664 {} + 2>/dev/null || true
+fi
+
 echo "==> Queue worker yeniden başlatılıyor (varsa)..."
 php artisan queue:restart 2>/dev/null || true
 
