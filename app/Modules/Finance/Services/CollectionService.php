@@ -172,6 +172,83 @@ class CollectionService
     }
 
     /**
+     * Cari üzerinden alınan tahsilatı açık FinanceCollection kayıtlarına FIFO uygular.
+     *
+     * @param  array{payment_date: string, payment_method?: ?string, payment_reference?: ?string, document_no?: ?string}  $meta
+     * @return array{applied: float, collection_ids: list<int>}
+     */
+    public function applyAmountToAccount(int $currentAccountId, float $amount, array $meta, User $user): array
+    {
+        $amount = round($amount, 2);
+        if ($amount <= 0) {
+            throw ValidationException::withMessages([
+                'amount' => 'Tahsilat tutarı 0’dan büyük olmalıdır.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($currentAccountId, $amount, $meta, $user): array {
+            $open = FinanceCollection::query()
+                ->where('current_account_id', $currentAccountId)
+                ->whereIn('status', ['pending', 'partial', 'overdue'])
+                ->orderBy('due_date')
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            $remainingOpen = round($open->sum(
+                fn (FinanceCollection $c) => max(0, (float) $c->total_amount - (float) $c->collected_amount)
+            ), 2);
+
+            if ($remainingOpen <= 0) {
+                throw ValidationException::withMessages([
+                    'amount' => 'Bu cari için açık tahsilat kaydı yok. Önce Tahsilat/Fatura modülünden alacak oluşturun veya dekont kullanın.',
+                ]);
+            }
+
+            if ($amount - $remainingOpen > 0.009) {
+                throw ValidationException::withMessages([
+                    'amount' => sprintf(
+                        'Tutar açık alacakları aşıyor (açık: %s ₺). Fazla tahsilat için tutarı düşürün.',
+                        number_format($remainingOpen, 2, ',', '.')
+                    ),
+                ]);
+            }
+
+            $left = $amount;
+            $appliedIds = [];
+            $paymentDate = $meta['payment_date'] ?? now()->toDateString();
+
+            foreach ($open as $collection) {
+                if ($left <= 0) {
+                    break;
+                }
+
+                $due = round((float) $collection->total_amount - (float) $collection->collected_amount, 2);
+                if ($due <= 0) {
+                    continue;
+                }
+
+                $chunk = min($due, $left);
+                $this->addPayment($collection->fresh(['payments']), [
+                    'amount' => $chunk,
+                    'payment_date' => $paymentDate,
+                    'payment_method' => $meta['payment_method'] ?? 'bank_transfer',
+                    'payment_reference' => $meta['payment_reference'] ?? $meta['document_no'] ?? null,
+                    'bank' => $meta['bank'] ?? null,
+                ], $user);
+
+                $appliedIds[] = (int) $collection->id;
+                $left = round($left - $chunk, 2);
+            }
+
+            return [
+                'applied' => round($amount - $left, 2),
+                'collection_ids' => $appliedIds,
+            ];
+        });
+    }
+
+    /**
      * @param  array<string, mixed>  $data
      */
     public function update(int $id, array $data, User $user): FinanceCollection
@@ -381,6 +458,8 @@ class CollectionService
                 'document_no' => $payment->payment_reference ?? $collection->reference,
                 'amount' => (float) $payment->amount,
                 'description' => 'Tahsilat: '.$collection->reference,
+                'related_type' => FinanceCollectionPayment::class,
+                'related_id' => $payment->id,
             ], $user);
         }
 

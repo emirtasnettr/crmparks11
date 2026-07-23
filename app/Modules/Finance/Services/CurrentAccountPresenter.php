@@ -8,6 +8,8 @@ use App\Modules\Courier\Models\Courier;
 use App\Modules\Finance\Data\CurrentAccountFormData;
 use App\Modules\Finance\Models\CurrentAccount;
 use App\Modules\Finance\Models\CurrentAccountMovement;
+use App\Modules\Finance\Models\FinanceCollection;
+use App\Modules\Finance\Models\FinancePayment;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -48,13 +50,16 @@ class CurrentAccountPresenter
         $lastEarning = collect($movements)->first(fn (array $movement) => $movement['type'] === 'earning');
         $referenceDate = Carbon::today();
 
-        $overdueReceivable = $account->account_type === 'business' && $balance > 0
-            ? round(min($balance, 15000 + ($account->id % 7) * 4200), 2)
-            : 0;
+        $overdueReceivable = 0.0;
+        $overduePayable = 0.0;
 
-        $overduePayable = in_array($account->account_type, ['courier', 'agency'], true) && $balance < 0
-            ? round(min(abs($balance), 8000 + ($account->id % 5) * 3100), 2)
-            : 0;
+        if ($account->account_type === 'business' && $balance > 0) {
+            $overdueReceivable = $this->overdueReceivableForAccount($account, $balance);
+        }
+
+        if (in_array($account->account_type, ['courier', 'agency'], true) && $balance < 0) {
+            $overduePayable = $this->overduePayableForAccount($account, abs($balance));
+        }
 
         return [
             'id' => $account->id,
@@ -174,5 +179,46 @@ class CurrentAccountPresenter
         }
 
         return 'zero';
+    }
+
+    /**
+     * Vadesi geçmiş açık tahsilat bakiyesi (cari bakiyesi ile sınırlı).
+     */
+    private function overdueReceivableForAccount(CurrentAccount $account, float $balance): float
+    {
+        $today = Carbon::today()->toDateString();
+
+        $overdue = (float) FinanceCollection::query()
+            ->where('current_account_id', $account->id)
+            ->whereIn('status', ['pending', 'partial', 'overdue'])
+            ->whereDate('due_date', '<', $today)
+            ->get()
+            ->sum(fn (FinanceCollection $row) => max(
+                0,
+                round((float) $row->total_amount - (float) $row->collected_amount, 2),
+            ));
+
+        return round(min($balance, max(0, $overdue)), 2);
+    }
+
+    /**
+     * Vadesi geçmiş açık hakediş/ödeme bakiyesi (cari bakiyesi ile sınırlı).
+     */
+    private function overduePayableForAccount(CurrentAccount $account, float $absolutePayable): float
+    {
+        $today = Carbon::today()->toDateString();
+
+        $overdue = (float) FinancePayment::query()
+            ->where('current_account_id', $account->id)
+            ->where('is_active', true)
+            ->whereIn('status', ['pending', 'partial'])
+            ->whereDate('scheduled_date', '<', $today)
+            ->get()
+            ->sum(fn (FinancePayment $row) => max(
+                0,
+                round((float) $row->total_amount - (float) $row->paid_amount, 2),
+            ));
+
+        return round(min($absolutePayable, max(0, $overdue)), 2);
     }
 }

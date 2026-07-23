@@ -309,16 +309,30 @@ class ExpenseService
             return;
         }
 
-        $movementType = $expense->payment_status === 'paid' ? 'payment' : 'debit_note';
-
-        $this->currentAccounts->createMovement([
+        $base = [
             'current_account_id' => $expense->current_account_id,
             'transaction_date' => $expense->expense_date->toDateString(),
-            'type' => $movementType,
             'document_no' => $expense->document_no ?? $expense->reference,
             'amount' => (float) $expense->amount,
-            'description' => 'Gider kaydı: '.$expense->reference,
+            'related_type' => FinanceExpense::class,
+            'related_id' => $expense->id,
+        ];
+
+        // Yükümlülük (credit) — cariyi borçlu yapar.
+        $this->currentAccounts->createMovement([
+            ...$base,
+            'type' => 'credit_note',
+            'description' => 'Gider tahakkuku: '.$expense->reference,
         ], $user);
+
+        // Ödendiyse aynı tutarda payment (debit) ile kapat.
+        if ($expense->payment_status === 'paid') {
+            $this->currentAccounts->createMovement([
+                ...$base,
+                'type' => 'payment',
+                'description' => 'Gider ödemesi: '.$expense->reference,
+            ], $user);
+        }
     }
 
     private function defaultDescription(string $type): string

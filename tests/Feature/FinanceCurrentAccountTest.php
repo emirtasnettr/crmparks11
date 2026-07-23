@@ -120,9 +120,19 @@ class FinanceCurrentAccountTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('super_admin');
 
-        $account = CurrentAccount::factory()->business()->create([
-            'title' => 'Hareket Test İşletmesi',
-        ]);
+        $business = Business::factory()->create(['company_name' => 'Hareket Test İşletmesi']);
+        $account = app(CurrentAccountService::class)->ensureForEntity($business);
+
+        // Açık tahsilat kaydı (cari hareketi fatura/gelirden gelir; burada alacağı manuel invoice ile kuruyoruz)
+        app(\App\Modules\Finance\Services\InvoiceService::class)->create([
+            'business_id' => $business->id,
+            'invoice_type' => 'manual',
+            'invoice_date' => now()->toDateString(),
+            'due_date' => now()->addDays(7)->toDateString(),
+            'subtotal' => 5000,
+            'vat_rate' => 20,
+            'description' => 'Cari tahsilat testi',
+        ], $user);
 
         $response = $this->actingAs($user)->post(route('finance.current-accounts.movements.store'), [
             'current_account_id' => $account->id,
@@ -142,6 +152,56 @@ class FinanceCurrentAccountTest extends TestCase
             'credit' => 5000,
             'debit' => 0,
         ]);
+
+        $balance = round(
+            (float) $account->movements()->sum('debit') - (float) $account->movements()->sum('credit'),
+            2
+        );
+        $this->assertSame(0.0, $balance);
+    }
+
+    public function test_courier_cari_payment_applies_to_open_finance_payments(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $courier = Courier::factory()->create(['full_name' => 'Cari Ödeme Test']);
+        $account = app(CurrentAccountService::class)->ensureForEntity($courier);
+
+        $line = EarningLine::factory()->create([
+            'courier_id' => $courier->id,
+            'created_by' => $user->id,
+            'status_id' => EarningStatus::query()->where('code', 'approved')->value('id'),
+            'net_courier_payment' => 1500,
+        ]);
+
+        $payment = app(PaymentService::class)->create([
+            'recipient_type' => 'courier',
+            'recipient_id' => $courier->id,
+            'earning_line_id' => $line->id,
+            'payment_date' => now()->toDateString(),
+            'total_amount' => 1500,
+            'paid_amount' => 0,
+        ], $user);
+
+        $this->actingAs($user)->post(route('finance.current-accounts.movements.store'), [
+            'current_account_id' => $account->id,
+            'transaction_date' => now()->toDateString(),
+            'type' => 'payment',
+            'document_no' => 'CARI-PAY-1',
+            'amount' => 1500,
+            'description' => 'Cari üzerinden ödeme',
+        ])->assertRedirect(route('finance.current-accounts.courier'))
+            ->assertSessionHas('success');
+
+        $this->assertSame('paid', $payment->fresh()->status);
+        $this->assertEquals(1500.0, (float) $payment->fresh()->paid_amount);
+
+        $balance = round(
+            (float) $account->movements()->sum('debit') - (float) $account->movements()->sum('credit'),
+            2
+        );
+        $this->assertSame(0.0, $balance);
     }
 
     public function test_earning_payment_posts_courier_liability_and_payment_reduces_it(): void

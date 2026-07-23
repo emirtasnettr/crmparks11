@@ -221,6 +221,11 @@ class FinanceExpenseTest extends TestCase
             'type' => 'payment',
             'debit' => 12000,
         ]);
+
+        $this->assertDatabaseHas('current_account_movements', [
+            'type' => 'credit_note',
+            'credit' => 12000,
+        ]);
     }
 
     public function test_user_can_create_agency_expense_with_debit_note_when_pending(): void
@@ -249,8 +254,8 @@ class FinanceExpenseTest extends TestCase
         ]);
 
         $this->assertDatabaseHas('current_account_movements', [
-            'type' => 'debit_note',
-            'debit' => 9500,
+            'type' => 'credit_note',
+            'credit' => 9500,
         ]);
     }
 }

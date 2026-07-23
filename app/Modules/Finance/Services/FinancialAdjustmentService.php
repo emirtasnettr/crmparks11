@@ -132,7 +132,7 @@ class FinancialAdjustmentService
                 'type' => $direction === 'credit' ? 'credit_note' : 'debit_note',
                 'amount' => $amount,
                 'description' => $reason,
-                'related_type' => 'financial_adjustment',
+                'related_type' => FinancialAdjustment::class,
                 'related_id' => $adjustment->id,
             ], $actor);
 

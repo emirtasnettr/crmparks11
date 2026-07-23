@@ -378,6 +378,8 @@ class InvoiceService
                     'document_no' => $invoice->reference,
                     'amount' => (float) $invoice->subtotal,
                     'description' => 'Fatura iptali: '.$invoice->reference,
+                    'related_type' => FinanceInvoice::class,
+                    'related_id' => $invoice->id,
                 ], $user);
             }
 
@@ -428,6 +430,8 @@ class InvoiceService
             'document_no' => $invoice->reference,
             'amount' => (float) $invoice->subtotal,
             'description' => 'Fatura: '.$invoice->reference,
+            'related_type' => FinanceInvoice::class,
+            'related_id' => $invoice->id,
         ], $user);
     }
 

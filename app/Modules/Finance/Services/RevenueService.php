@@ -265,6 +265,11 @@ class RevenueService
             return;
         }
 
+        // Hakedişten gelen gelirler cariye fatura kesildiğinde yansır; çift borç önlenir.
+        if ($revenue->earning_line_id !== null) {
+            return;
+        }
+
         $movementType = $revenue->collection_status === 'collected' ? 'collection' : 'invoice';
 
         $this->currentAccounts->createMovement([
@@ -274,6 +279,8 @@ class RevenueService
             'document_no' => $revenue->reference,
             'amount' => (float) $revenue->amount,
             'description' => 'Gelir kaydı: '.$revenue->reference,
+            'related_type' => FinanceRevenue::class,
+            'related_id' => $revenue->id,
         ], $user);
     }
 

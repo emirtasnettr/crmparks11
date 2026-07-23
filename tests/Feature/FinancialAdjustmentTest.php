@@ -65,7 +65,7 @@ class FinancialAdjustmentTest extends TestCase
         $this->assertNotNull($movement);
         $this->assertSame('credit_note', $movement->type);
         $this->assertEquals(150.5, (float) $movement->credit);
-        $this->assertSame('financial_adjustment', $movement->related_type);
+        $this->assertSame(\App\Modules\Finance\Models\FinancialAdjustment::class, $movement->related_type);
 
         $line->refresh();
         $this->assertEquals(150.5, (float) $line->extra_payment);

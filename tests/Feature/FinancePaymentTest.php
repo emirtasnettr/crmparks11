@@ -193,6 +193,22 @@ class FinancePaymentTest extends TestCase
             'type' => 'payment',
             'debit' => 15000,
         ]);
+
+        $this->assertDatabaseHas('current_account_movements', [
+            'type' => 'earning',
+            'credit' => 15000,
+        ]);
+
+        $account = \App\Modules\Finance\Models\CurrentAccount::query()
+            ->where('accountable_type', Courier::class)
+            ->where('accountable_id', $courier->id)
+            ->firstOrFail();
+
+        $balance = round(
+            (float) $account->movements()->sum('debit') - (float) $account->movements()->sum('credit'),
+            2
+        );
+        $this->assertSame(0.0, $balance);
     }
 
     public function test_user_can_create_pending_agency_payment(): void

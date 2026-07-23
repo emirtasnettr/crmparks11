@@ -124,8 +124,16 @@ class PaymentService
      */
     public function earningOptions(): array
     {
+        $usedLineIds = FinancePayment::query()
+            ->whereNotNull('earning_line_id')
+            ->where('recipient_type', 'courier')
+            ->where('is_active', true)
+            ->pluck('earning_line_id')
+            ->all();
+
         return EarningLine::query()
             ->with('courier:id,full_name')
+            ->when($usedLineIds !== [], fn (Builder $q) => $q->whereNotIn('id', $usedLineIds))
             ->orderByDesc('id')
             ->limit(40)
             ->get(['id', 'courier_id', 'period_year'])
@@ -153,6 +161,20 @@ class PaymentService
 
             if ($paidAmount > $totalAmount) {
                 $paidAmount = $totalAmount;
+            }
+
+            if ($earningLineId !== null) {
+                $duplicate = FinancePayment::query()
+                    ->where('earning_line_id', $earningLineId)
+                    ->where('recipient_type', $recipientType)
+                    ->where('is_active', true)
+                    ->exists();
+
+                if ($duplicate) {
+                    throw ValidationException::withMessages([
+                        'earning_line_id' => 'Bu hakediş satırı için aynı alıcı tipinde aktif ödeme kaydı zaten var.',
+                    ]);
+                }
             }
 
             [$courierId, $agencyId, $recipientName, $currentAccountId] = $this->resolveRecipient(
@@ -184,7 +206,7 @@ class PaymentService
             ]);
 
             $payment = $payment->fresh(['courier', 'agency', 'earningLine', 'currentAccount', 'lines']);
-            $this->ensureEarningLiability($payment, $user);
+            $this->ensurePayableLiability($payment, $user);
 
             if ($paidAmount > 0) {
                 $this->addLine($payment->fresh(), [
@@ -209,12 +231,24 @@ class PaymentService
     }
 
     /**
-     * Hakediş kaynaklı ödemeler için cariye borç (credit) yükümlülüğü yazar.
+     * Hakediş veya kurye/acente ödemeleri için cariye borç (credit) yükümlülüğü yazar.
      * Aynı payment için tekrar çağrılırsa yeni hareket oluşturmaz.
      */
     public function ensureEarningLiability(FinancePayment $payment, User $user): bool
     {
-        if ($payment->source !== 'earning' || $payment->current_account_id === null) {
+        return $this->ensurePayableLiability($payment, $user);
+    }
+
+    /**
+     * Kurye/acente cari hesabına ödeme yükümlülüğü (credit) yazar.
+     */
+    public function ensurePayableLiability(FinancePayment $payment, User $user): bool
+    {
+        if ($payment->current_account_id === null) {
+            return false;
+        }
+
+        if (! in_array($payment->recipient_type, ['courier', 'agency'], true)) {
             return false;
         }
 
@@ -244,7 +278,7 @@ class PaymentService
             'type' => 'earning',
             'document_no' => $payment->reference,
             'amount' => $amount,
-            'description' => $payment->description ?: ('Hakediş borcu: '.$payment->reference),
+            'description' => $payment->description ?: ('Ödeme borcu: '.$payment->reference),
             'related_type' => FinancePayment::class,
             'related_id' => $payment->id,
         ], $user);
@@ -260,14 +294,14 @@ class PaymentService
         $created = 0;
 
         FinancePayment::query()
-            ->where('source', 'earning')
+            ->whereIn('recipient_type', ['courier', 'agency'])
             ->where('is_active', true)
             ->whereNotNull('current_account_id')
             ->where('total_amount', '>', 0)
             ->orderBy('id')
             ->each(function (FinancePayment $payment) use ($user, &$created): void {
                 try {
-                    if ($this->ensureEarningLiability($payment, $user)) {
+                    if ($this->ensurePayableLiability($payment, $user)) {
                         $created++;
                     }
                 } catch (\Throwable $e) {
@@ -276,6 +310,84 @@ class PaymentService
             });
 
         return $created;
+    }
+
+    /**
+     * Cari üzerinden yapılan ödemeyi açık FinancePayment kayıtlarına FIFO uygular.
+     *
+     * @param  array{payment_date: string, payment_method?: ?string, payment_reference?: ?string, document_no?: ?string, description?: ?string}  $meta
+     * @return array{applied: float, payment_ids: list<int>}
+     */
+    public function applyAmountToAccount(int $currentAccountId, float $amount, array $meta, User $user): array
+    {
+        $amount = round($amount, 2);
+        if ($amount <= 0) {
+            throw ValidationException::withMessages([
+                'amount' => 'Ödeme tutarı 0’dan büyük olmalıdır.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($currentAccountId, $amount, $meta, $user): array {
+            $open = FinancePayment::query()
+                ->where('current_account_id', $currentAccountId)
+                ->where('is_active', true)
+                ->whereIn('status', ['pending', 'partial'])
+                ->orderBy('scheduled_date')
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            $remainingOpen = round($open->sum(
+                fn (FinancePayment $p) => max(0, (float) $p->total_amount - (float) $p->paid_amount)
+            ), 2);
+
+            if ($remainingOpen <= 0) {
+                throw ValidationException::withMessages([
+                    'amount' => 'Bu cari için açık ödeme kaydı yok. Önce Ödemeler modülünden borç oluşturun veya dekont kullanın.',
+                ]);
+            }
+
+            if ($amount - $remainingOpen > 0.009) {
+                throw ValidationException::withMessages([
+                    'amount' => sprintf(
+                        'Tutar açık borçları aşıyor (açık: %s ₺). Fazla ödeme için tutarı düşürün.',
+                        number_format($remainingOpen, 2, ',', '.')
+                    ),
+                ]);
+            }
+
+            $left = $amount;
+            $appliedIds = [];
+            $paymentDate = $meta['payment_date'] ?? now()->toDateString();
+
+            foreach ($open as $payment) {
+                if ($left <= 0) {
+                    break;
+                }
+
+                $due = round((float) $payment->total_amount - (float) $payment->paid_amount, 2);
+                if ($due <= 0) {
+                    continue;
+                }
+
+                $chunk = min($due, $left);
+                $this->addLine($payment->fresh(['lines']), [
+                    'amount' => $chunk,
+                    'payment_date' => $paymentDate,
+                    'payment_method' => $meta['payment_method'] ?? 'bank_transfer',
+                    'payment_reference' => $meta['payment_reference'] ?? $meta['document_no'] ?? null,
+                    'bank_account' => $meta['bank_account'] ?? null,
+                ], $user);
+
+                $appliedIds[] = (int) $payment->id;
+                $left = round($left - $chunk, 2);
+            }
+
+            return [
+                'applied' => round($amount - $left, 2),
+                'payment_ids' => $appliedIds,
+            ];
+        });
     }
 
     /**
@@ -484,6 +596,8 @@ class PaymentService
                 'document_no' => $line->payment_reference ?? $payment->reference,
                 'amount' => (float) $line->amount,
                 'description' => 'Ödeme: '.$payment->reference,
+                'related_type' => FinancePaymentLine::class,
+                'related_id' => $line->id,
             ], $user);
         }
 

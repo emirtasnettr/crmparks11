@@ -11,6 +11,7 @@ use App\Modules\Finance\Models\CurrentAccount;
 use App\Modules\Finance\Requests\StoreCurrentAccountMovementRequest;
 use App\Modules\Finance\Requests\StoreCurrentAccountRequest;
 use App\Modules\Finance\Requests\UpdateCurrentAccountRequest;
+use App\Modules\Finance\Services\CollectionService;
 use App\Modules\Finance\Services\CurrentAccountPresenter;
 use App\Modules\Finance\Services\CurrentAccountService;
 use App\Modules\Finance\Services\PaymentService;
@@ -29,6 +30,7 @@ class FinanceCurrentAccountController extends Controller
         private readonly CurrentAccountService $service,
         private readonly CurrentAccountPresenter $presenter,
         private readonly PaymentService $payments,
+        private readonly CollectionService $collections,
     ) {}
 
     public function index(Request $request): RedirectResponse
@@ -75,11 +77,52 @@ class FinanceCurrentAccountController extends Controller
 
     public function storeMovement(StoreCurrentAccountMovementRequest $request): RedirectResponse
     {
-        $movement = $this->service->createMovement($request->validated(), $request->user());
-        $account = CurrentAccount::query()->find($movement->current_account_id);
+        $data = $request->validated();
+        $account = CurrentAccount::query()->findOrFail((int) $data['current_account_id']);
+        $user = $request->user();
+        $type = (string) $data['type'];
+
+        if ($type === 'payment') {
+            $this->payments->applyAmountToAccount(
+                (int) $account->id,
+                (float) $data['amount'],
+                [
+                    'payment_date' => $data['transaction_date'],
+                    'payment_method' => 'bank_transfer',
+                    'payment_reference' => $data['document_no'] ?? null,
+                    'document_no' => $data['document_no'] ?? null,
+                    'description' => $data['description'] ?? null,
+                ],
+                $user,
+            );
+
+            return redirect()
+                ->route($this->indexRouteName($account->account_type))
+                ->with('success', 'Ödeme, açık hakediş/ödeme kayıtlarına işlendi.');
+        }
+
+        if ($type === 'collection') {
+            $this->collections->applyAmountToAccount(
+                (int) $account->id,
+                (float) $data['amount'],
+                [
+                    'payment_date' => $data['transaction_date'],
+                    'payment_method' => 'bank_transfer',
+                    'payment_reference' => $data['document_no'] ?? null,
+                    'document_no' => $data['document_no'] ?? null,
+                ],
+                $user,
+            );
+
+            return redirect()
+                ->route($this->indexRouteName($account->account_type))
+                ->with('success', 'Tahsilat, açık tahsilat kayıtlarına işlendi.');
+        }
+
+        $this->service->createMovement($data, $user);
 
         return redirect()
-            ->route($this->indexRouteName($account?->account_type))
+            ->route($this->indexRouteName($account->account_type))
             ->with('success', 'Cari hareket başarıyla kaydedildi.');
     }
 
