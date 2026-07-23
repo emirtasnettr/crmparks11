@@ -88,6 +88,23 @@ final class ShiftAttendanceRules
         return $end;
     }
 
+    /**
+     * İki vardiya penceresinin aynı iş gününde zaman olarak çakışıp çakışmadığı.
+     * [a,b) ∩ [c,d) boş değil ↔ a < d && c < b.
+     */
+    public static function shiftsOverlapOnDate(
+        BusinessShift $a,
+        BusinessShift $b,
+        CarbonInterface $workDate,
+    ): bool {
+        $startA = self::shiftStartAt($a, $workDate);
+        $endA = self::shiftEndAt($a, $workDate);
+        $startB = self::shiftStartAt($b, $workDate);
+        $endB = self::shiftEndAt($b, $workDate);
+
+        return $startA->lt($endB) && $startB->lt($endA);
+    }
+
     public static function earliestStartAt(BusinessShift $shift, CarbonInterface $workDate): Carbon
     {
         return self::shiftStartAt($shift, $workDate)->copy()->subMinutes(self::EARLY_START_MINUTES);

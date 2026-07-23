@@ -422,6 +422,130 @@ class ShiftPlanningTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_retrospective_skips_when_overlapping_shift_already_completed(): void
+    {
+        Carbon::setTestNow('2026-07-21 22:00:00');
+
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $courier = $this->createCourier($user, ['full_name' => 'Volkan Test']);
+
+        $shiftA = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'start_time' => '11:00',
+            'end_time' => '20:00',
+            'start_date' => '2026-07-20',
+            'end_date' => '2026-07-20',
+            'required_headcount' => 1,
+            'days_of_week' => [0, 1, 2, 3, 4, 5, 6],
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        $shiftB = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'start_time' => '11:00',
+            'end_time' => '20:00',
+            'start_date' => '2026-07-20',
+            'end_date' => '2026-07-20',
+            'required_headcount' => 1,
+            'days_of_week' => [0, 1, 2, 3, 4, 5, 6],
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        BusinessShiftCourier::query()->create([
+            'business_shift_id' => $shiftA->id,
+            'courier_id' => $courier->id,
+        ]);
+        BusinessShiftCourier::query()->create([
+            'business_shift_id' => $shiftB->id,
+            'courier_id' => $courier->id,
+        ]);
+
+        $service = app(\App\Modules\ShiftPlanning\Services\ShiftAttendanceService::class);
+
+        $this->assertSame(1, $service->materializeRetrospectiveCompletions($shiftA));
+        $this->assertSame(0, $service->materializeRetrospectiveCompletions($shiftB));
+
+        $this->assertSame(
+            1,
+            BusinessShiftAttendance::query()
+                ->where('courier_id', $courier->id)
+                ->whereDate('work_date', '2026-07-20')
+                ->where('status', 'completed')
+                ->count(),
+        );
+
+        Carbon::setTestNow();
+    }
+
+    public function test_dedupe_overlapping_attendances_keeps_staff_over_retrospective(): void
+    {
+        Carbon::setTestNow('2026-07-21 22:00:00');
+
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $courier = $this->createCourier($user);
+
+        $shiftA = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'start_time' => '11:00',
+            'end_time' => '20:00',
+            'required_headcount' => 1,
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+        $shiftB = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'start_time' => '11:00',
+            'end_time' => '20:00',
+            'required_headcount' => 1,
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        $staff = BusinessShiftAttendance::query()->create([
+            'business_shift_id' => $shiftA->id,
+            'business_id' => $business->id,
+            'courier_id' => $courier->id,
+            'work_date' => '2026-07-20',
+            'started_at' => '2026-07-20 11:00:00',
+            'ended_at' => '2026-07-20 20:00:00',
+            'status' => 'completed',
+            'worked_minutes' => 540,
+            'earnings_amount' => 2250,
+            'pricing_model' => 'hourly',
+            'notes' => 'Personel müdahalesi: Admin geldi olarak işaretledi',
+        ]);
+
+        $retro = BusinessShiftAttendance::query()->create([
+            'business_shift_id' => $shiftB->id,
+            'business_id' => $business->id,
+            'courier_id' => $courier->id,
+            'work_date' => '2026-07-20',
+            'started_at' => '2026-07-20 11:00:00',
+            'ended_at' => '2026-07-20 20:00:00',
+            'status' => 'completed',
+            'worked_minutes' => 540,
+            'earnings_amount' => 2250,
+            'pricing_model' => 'hourly',
+            'notes' => 'Retrospektif vardiya — otomatik tamamlandı',
+        ]);
+
+        $result = app(\App\Modules\ShiftPlanning\Services\ShiftAttendanceService::class)
+            ->dedupeOverlappingAttendances((int) $courier->id);
+
+        $this->assertSame(1, $result['groups']);
+        $this->assertSame(1, $result['removed']);
+        $this->assertNotSoftDeleted('business_shift_attendances', ['id' => $staff->id]);
+        $this->assertSoftDeleted('business_shift_attendances', ['id' => $retro->id]);
+
+        Carbon::setTestNow();
+    }
+
     public function test_roster_cannot_exceed_headcount(): void
     {
         $user = User::factory()->create();

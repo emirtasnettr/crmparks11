@@ -799,6 +799,12 @@ class ShiftAttendanceService
             return false;
         }
 
+        // Aynı işletmede örtüşen başka vardiya için zaten katılım varsa
+        // ikinci retrospektif kayıt oluşturma (çift satır / çift hakediş).
+        if ($this->courierHasOverlappingAttendance($courierId, (int) $shift->business_id, $day, $shift)) {
+            return false;
+        }
+
         $startedAt = ShiftAttendanceRules::shiftStartAt($shift, $day);
         $endedAt = ShiftAttendanceRules::shiftEndAt($shift, $day);
         $minutes = ShiftAttendanceRules::scheduledMinutes($shift, $day);
@@ -837,6 +843,159 @@ class ShiftAttendanceService
         ]);
 
         return true;
+    }
+
+    /**
+     * Aynı kurye + işletme + günde, verilen vardiya penceresiyle örtüşen
+     * aktif (in_progress/completed) katılım var mı?
+     */
+    private function courierHasOverlappingAttendance(
+        int $courierId,
+        int $businessId,
+        Carbon $day,
+        BusinessShift $shift,
+        ?int $exceptAttendanceId = null,
+    ): bool {
+        $existing = BusinessShiftAttendance::query()
+            ->with('shift')
+            ->where('courier_id', $courierId)
+            ->where('business_id', $businessId)
+            ->whereDate('work_date', $day->toDateString())
+            ->whereIn('status', ['in_progress', 'completed'])
+            ->when($exceptAttendanceId !== null, fn ($q) => $q->where('id', '!=', $exceptAttendanceId))
+            ->get();
+
+        foreach ($existing as $attendance) {
+            if ($attendance->shift === null) {
+                continue;
+            }
+
+            if (ShiftAttendanceRules::shiftsOverlapOnDate($shift, $attendance->shift, $day)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Aynı kurye + işletme + günde örtüşen vardiya katılımlarını tekilleştirir.
+     * Tutulan kayıt: personel müdahalesi > gerçek (retrospektif olmayan) > yüksek tutar > düşük id.
+     *
+     * @return array{groups: int, removed: int, courier_ids: list<int>}
+     */
+    public function dedupeOverlappingAttendances(?int $courierId = null): array
+    {
+        $base = BusinessShiftAttendance::query()
+            ->whereIn('status', ['in_progress', 'completed'])
+            ->when($courierId !== null, fn ($q) => $q->where('courier_id', $courierId));
+
+        $keys = (clone $base)
+            ->select(['courier_id', 'business_id', 'work_date'])
+            ->groupBy('courier_id', 'business_id', 'work_date')
+            ->havingRaw('COUNT(*) > 1')
+            ->get();
+
+        $removed = 0;
+        $groups = 0;
+        $affectedCourierIds = [];
+
+        foreach ($keys as $key) {
+            $rows = BusinessShiftAttendance::query()
+                ->with('shift')
+                ->where('courier_id', $key->courier_id)
+                ->where('business_id', $key->business_id)
+                ->whereDate('work_date', $key->work_date)
+                ->whereIn('status', ['in_progress', 'completed'])
+                ->orderBy('id')
+                ->get();
+
+            if ($rows->count() < 2) {
+                continue;
+            }
+
+            $day = Carbon::parse($key->work_date)->startOfDay();
+            $toRemove = [];
+
+            for ($i = 0; $i < $rows->count(); $i++) {
+                if (isset($toRemove[$rows[$i]->id])) {
+                    continue;
+                }
+
+                for ($j = $i + 1; $j < $rows->count(); $j++) {
+                    if (isset($toRemove[$rows[$j]->id])) {
+                        continue;
+                    }
+
+                    $a = $rows[$i];
+                    $b = $rows[$j];
+
+                    if ($a->shift === null || $b->shift === null) {
+                        continue;
+                    }
+
+                    if (! ShiftAttendanceRules::shiftsOverlapOnDate($a->shift, $b->shift, $day)) {
+                        continue;
+                    }
+
+                    $keep = $this->preferAttendanceForDedupe($a, $b);
+                    $drop = $keep->id === $a->id ? $b : $a;
+                    $toRemove[$drop->id] = $drop;
+                }
+            }
+
+            if ($toRemove === []) {
+                continue;
+            }
+
+            $groups++;
+            $affectedCourierIds[(int) $key->courier_id] = true;
+
+            foreach ($toRemove as $duplicate) {
+                $duplicate->delete();
+                $removed++;
+            }
+        }
+
+        if ($removed > 0) {
+            try {
+                $this->earningSync->sync(
+                    auth()->user(),
+                    $courierId !== null ? ['courier_id' => $courierId] : [],
+                );
+            } catch (Throwable $e) {
+                Log::warning('Overlapping attendance dedupe earning sync failed', [
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return [
+            'groups' => $groups,
+            'removed' => $removed,
+            'courier_ids' => array_map('intval', array_keys($affectedCourierIds)),
+        ];
+    }
+
+    private function preferAttendanceForDedupe(
+        BusinessShiftAttendance $a,
+        BusinessShiftAttendance $b,
+    ): BusinessShiftAttendance {
+        $score = function (BusinessShiftAttendance $row): array {
+            $notes = (string) ($row->notes ?? '');
+            $isStaff = str_contains($notes, 'Personel müdahalesi');
+            $isRetrospective = str_contains($notes, 'Retrospektif');
+
+            return [
+                $isStaff ? 1 : 0,
+                $isRetrospective ? 0 : 1,
+                (float) ($row->earnings_amount ?? 0),
+                // Daha eski kayıt tercih (düşük id = yüksek skor için negatif)
+                -1 * (int) $row->id,
+            ];
+        };
+
+        return $score($a) >= $score($b) ? $a : $b;
     }
 
     /**
