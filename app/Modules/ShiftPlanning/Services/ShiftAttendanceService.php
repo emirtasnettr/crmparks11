@@ -856,8 +856,11 @@ class ShiftAttendanceService
         BusinessShift $shift,
         ?int $exceptAttendanceId = null,
     ): bool {
+        $start = ShiftAttendanceRules::shiftStartAt($shift, $day);
+        $end = ShiftAttendanceRules::shiftEndAt($shift, $day);
+
         $existing = BusinessShiftAttendance::query()
-            ->with('shift')
+            ->with(['shift' => fn ($q) => $q->withTrashed()])
             ->where('courier_id', $courierId)
             ->where('business_id', $businessId)
             ->whereDate('work_date', $day->toDateString())
@@ -866,16 +869,78 @@ class ShiftAttendanceService
             ->get();
 
         foreach ($existing as $attendance) {
-            if ($attendance->shift === null) {
-                continue;
-            }
-
-            if (ShiftAttendanceRules::shiftsOverlapOnDate($shift, $attendance->shift, $day)) {
+            if ($this->attendanceWindowOverlaps($attendance, $start, $end, $day)) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * Katılım penceresi (önce started_at/ended_at, yoksa soft-delete dahil vardiya).
+     *
+     * @return array{0: Carbon, 1: Carbon}|null
+     */
+    private function attendanceWindow(BusinessShiftAttendance $attendance, Carbon $day): ?array
+    {
+        if ($attendance->started_at !== null && $attendance->ended_at !== null) {
+            return [
+                Carbon::parse($attendance->started_at),
+                Carbon::parse($attendance->ended_at),
+            ];
+        }
+
+        $shift = $attendance->relationLoaded('shift')
+            ? $attendance->shift
+            : null;
+
+        if ($shift === null) {
+            $shift = BusinessShift::withTrashed()->find($attendance->business_shift_id);
+        }
+
+        if ($shift === null) {
+            return null;
+        }
+
+        return [
+            ShiftAttendanceRules::shiftStartAt($shift, $day),
+            ShiftAttendanceRules::shiftEndAt($shift, $day),
+        ];
+    }
+
+    private function attendanceWindowOverlaps(
+        BusinessShiftAttendance $attendance,
+        Carbon $start,
+        Carbon $end,
+        Carbon $day,
+    ): bool {
+        $window = $this->attendanceWindow($attendance, $day);
+        if ($window === null) {
+            return false;
+        }
+
+        [$otherStart, $otherEnd] = $window;
+
+        return $start->lt($otherEnd) && $otherStart->lt($end);
+    }
+
+    private function attendancesOverlapOnDay(
+        BusinessShiftAttendance $a,
+        BusinessShiftAttendance $b,
+        Carbon $day,
+    ): bool {
+        $windowA = $this->attendanceWindow($a, $day);
+        $windowB = $this->attendanceWindow($b, $day);
+
+        if ($windowA === null || $windowB === null) {
+            return false;
+        }
+
+        [$startA, $endA] = $windowA;
+        [$startB, $endB] = $windowB;
+
+        return $startA->lt($endB) && $startB->lt($endA);
     }
 
     /**
@@ -902,7 +967,7 @@ class ShiftAttendanceService
 
         foreach ($keys as $key) {
             $rows = BusinessShiftAttendance::query()
-                ->with('shift')
+                ->with(['shift' => fn ($q) => $q->withTrashed()])
                 ->where('courier_id', $key->courier_id)
                 ->where('business_id', $key->business_id)
                 ->whereDate('work_date', $key->work_date)
@@ -930,11 +995,7 @@ class ShiftAttendanceService
                     $a = $rows[$i];
                     $b = $rows[$j];
 
-                    if ($a->shift === null || $b->shift === null) {
-                        continue;
-                    }
-
-                    if (! ShiftAttendanceRules::shiftsOverlapOnDate($a->shift, $b->shift, $day)) {
+                    if (! $this->attendancesOverlapOnDay($a, $b, $day)) {
                         continue;
                     }
 

@@ -546,6 +546,72 @@ class ShiftPlanningTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_dedupe_works_when_one_shift_is_soft_deleted(): void
+    {
+        Carbon::setTestNow('2026-07-21 22:00:00');
+
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $courier = $this->createCourier($user);
+
+        $shiftA = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'start_time' => '11:00',
+            'end_time' => '20:00',
+            'required_headcount' => 1,
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+        $shiftB = BusinessShift::query()->create([
+            'business_id' => $business->id,
+            'start_time' => '11:00',
+            'end_time' => '20:00',
+            'required_headcount' => 1,
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        $keep = BusinessShiftAttendance::query()->create([
+            'business_shift_id' => $shiftA->id,
+            'business_id' => $business->id,
+            'courier_id' => $courier->id,
+            'work_date' => '2026-07-20',
+            'started_at' => '2026-07-20 11:00:00',
+            'ended_at' => '2026-07-20 20:00:00',
+            'status' => 'completed',
+            'worked_minutes' => 540,
+            'earnings_amount' => 2250,
+            'pricing_model' => 'hourly',
+            'notes' => 'Personel müdahalesi: Admin geldi olarak işaretledi',
+        ]);
+
+        $drop = BusinessShiftAttendance::query()->create([
+            'business_shift_id' => $shiftB->id,
+            'business_id' => $business->id,
+            'courier_id' => $courier->id,
+            'work_date' => '2026-07-20',
+            'started_at' => '2026-07-20 11:00:00',
+            'ended_at' => '2026-07-20 20:00:00',
+            'status' => 'completed',
+            'worked_minutes' => 540,
+            'earnings_amount' => 2250,
+            'pricing_model' => 'hourly',
+            'notes' => 'Retrospektif vardiya — otomatik tamamlandı',
+        ]);
+
+        $shiftA->delete();
+
+        $result = app(\App\Modules\ShiftPlanning\Services\ShiftAttendanceService::class)
+            ->dedupeOverlappingAttendances((int) $courier->id);
+
+        $this->assertSame(1, $result['removed']);
+        $this->assertNotSoftDeleted('business_shift_attendances', ['id' => $keep->id]);
+        $this->assertSoftDeleted('business_shift_attendances', ['id' => $drop->id]);
+
+        Carbon::setTestNow();
+    }
+
     public function test_roster_cannot_exceed_headcount(): void
     {
         $user = User::factory()->create();
