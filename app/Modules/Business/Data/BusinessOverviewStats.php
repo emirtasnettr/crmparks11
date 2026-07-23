@@ -62,12 +62,13 @@ class BusinessOverviewStats
         $totalRevenue = round((float) $lines->sum('revenue_total'), 2);
         $totalCourier = round((float) $lines->sum('courier_total'), 2);
 
-        if ($pricingModel === 'per_package' && $totalPackages > 0) {
-            $receivedPerPackage = round($totalRevenue / $totalPackages, 2);
-            $courierPerPackage = round($totalCourier / $totalPackages, 2);
-        } elseif ($unitPrices['from_profile']) {
+        // Kart etiketleri kontrat birim ücretidir; dönem hakediş ortalaması kullanıcıyı yanıltır.
+        if ($unitPrices['from_profile']) {
             $receivedPerPackage = $unitPrices['revenue_unit'];
             $courierPerPackage = $unitPrices['courier_unit'];
+        } elseif ($pricingModel === 'per_package' && $totalPackages > 0) {
+            $receivedPerPackage = round($totalRevenue / $totalPackages, 2);
+            $courierPerPackage = round($totalCourier / $totalPackages, 2);
         } elseif ($pricingModel === 'per_package') {
             $receivedPerPackage = 0.0;
             $courierPerPackage = 0.0;

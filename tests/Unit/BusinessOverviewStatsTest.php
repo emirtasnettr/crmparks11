@@ -188,9 +188,42 @@ class BusinessOverviewStatsTest extends TestCase
         );
 
         $this->assertSame(150, $stats['total_packages']);
-        $this->assertSame(50.0, $stats['received_per_package']);
-        $this->assertSame(35.0, $stats['courier_per_package']);
-        $this->assertSame(15.0, $stats['net_per_package']);
+        // Birim ücret kartları dönem ortalaması değil aktif kontrat tutarlarını gösterir.
+        $this->assertSame(45.0, $stats['received_per_package']);
+        $this->assertSame(32.0, $stats['courier_per_package']);
+        $this->assertSame(13.0, $stats['net_per_package']);
+    }
+
+    public function test_overview_unit_prices_prefer_contract_over_earning_averages(): void
+    {
+        $user = User::factory()->create();
+        $business = Business::factory()->create(['created_by' => $user->id]);
+
+        $business->activeCommercialContract?->update([
+            'business_amount' => 100.00,
+            'courier_amount' => 92.66,
+            'net_profit' => 7.34,
+        ]);
+
+        EarningLine::factory()->create([
+            'business_id' => $business->id,
+            'period_month' => 7,
+            'period_year' => 2026,
+            'package_count' => 10,
+            'revenue_total' => 1006.30,
+            'courier_total' => 922.40,
+            'created_by' => $user->id,
+        ]);
+
+        $stats = BusinessOverviewStats::forBusiness(
+            $business->id,
+            Carbon::parse('2026-07-01'),
+            Carbon::parse('2026-07-15'),
+        );
+
+        $this->assertSame(100.0, $stats['received_per_package']);
+        $this->assertSame(92.66, $stats['courier_per_package']);
+        $this->assertSame(7.34, $stats['net_per_package']);
     }
 
     private function putCourierOnActiveRoster(Business $business, Courier $courier, User $user): void

@@ -75,7 +75,7 @@
                 <div>
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Operasyon Özeti</h2>
                     <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">
-                        {{ $dateFilters['range_label'] }} dönemi için {{ $overviewStats['labels']['subtitle'] }}
+                        {{ $overviewStats['labels']['subtitle'] }}
                     </p>
                 </div>
 
