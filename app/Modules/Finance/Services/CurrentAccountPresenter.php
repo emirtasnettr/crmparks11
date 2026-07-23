@@ -40,7 +40,7 @@ class CurrentAccountPresenter
      */
     private function enrich(CurrentAccount $account, bool $includeAllMovements): array
     {
-        $account->loadMissing('movements');
+        $account->loadMissing(['movements', 'accountable']);
         $movements = $this->enrichMovements($account->movements);
         $totals = $this->calculateTotals($movements);
         $balance = round($totals['debit'] - $totals['credit'], 2);
@@ -61,12 +61,19 @@ class CurrentAccountPresenter
             $overduePayable = $this->overduePayableForAccount($account, abs($balance));
         }
 
+        $brandName = null;
+        if ($account->account_type === 'business' && $account->accountable instanceof Business) {
+            $brand = trim((string) ($account->accountable->brand_name ?? ''));
+            $brandName = $brand !== '' ? $brand : null;
+        }
+
         return [
             'id' => $account->id,
             'code' => $account->code,
             'type' => $account->account_type,
             'entity_type' => $account->account_type,
             'entity_id' => $account->accountable_id,
+            'brand_name' => $brandName,
             'title' => $account->title,
             'phone' => $account->phone ?? '—',
             'email' => $account->email,

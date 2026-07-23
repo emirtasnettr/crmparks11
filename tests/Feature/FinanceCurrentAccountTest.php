@@ -47,7 +47,10 @@ class FinanceCurrentAccountTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('super_admin');
 
-        $business = Business::factory()->create(['company_name' => 'Burger House Gıda Ltd. Şti.']);
+        $business = Business::factory()->create([
+            'company_name' => 'Burger House Gıda Ltd. Şti.',
+            'brand_name' => 'Burger House',
+        ]);
         $courier = Courier::factory()->create(['full_name' => 'Ahmet Yıldız']);
         $agency = Agency::factory()->create(['company_name' => 'Hızlı Kurye Acentesi Ltd. Şti.']);
 
@@ -61,6 +64,7 @@ class FinanceCurrentAccountTest extends TestCase
         $response->assertSee('İşletme Cari');
         $response->assertSee('Ödeme Alındı');
         $response->assertSee('Toplam Alacak');
+        $response->assertSee('Burger House');
         $response->assertSee('Burger House Gıda Ltd. Şti.');
         $response->assertDontSee('Ahmet Yıldız');
         $response->assertDontSee('Hızlı Kurye Acentesi Ltd. Şti.');

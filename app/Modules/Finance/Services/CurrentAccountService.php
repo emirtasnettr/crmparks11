@@ -30,7 +30,7 @@ class CurrentAccountService
     public function filter(array $filters): Collection
     {
         return $this->baseQuery($filters)
-            ->with('movements')
+            ->with(['movements', 'accountable'])
             ->orderBy('code')
             ->get()
             ->map(fn (CurrentAccount $account) => $this->presenter->indexRow($account))
@@ -89,7 +89,7 @@ class CurrentAccountService
     public function find(int $id): ?CurrentAccount
     {
         return CurrentAccount::query()
-            ->with('movements')
+            ->with(['movements', 'accountable'])
             ->find($id);
     }
 
@@ -339,7 +339,14 @@ class CurrentAccountService
                 $query->where(function (Builder $inner) use ($search): void {
                     $inner->whereRaw('LOWER(code) LIKE ?', ["%{$search}%"])
                         ->orWhereRaw('LOWER(title) LIKE ?', ["%{$search}%"])
-                        ->orWhereRaw('LOWER(COALESCE(phone, \'\')) LIKE ?', ["%{$search}%"]);
+                        ->orWhereRaw('LOWER(COALESCE(phone, \'\')) LIKE ?', ["%{$search}%"])
+                        ->orWhere(function (Builder $brandQuery) use ($search): void {
+                            $brandQuery->where('account_type', 'business')
+                                ->whereHasMorph('accountable', [Business::class], function (Builder $business) use ($search): void {
+                                    $business->whereRaw('LOWER(COALESCE(brand_name, \'\')) LIKE ?', ["%{$search}%"])
+                                        ->orWhereRaw('LOWER(COALESCE(company_name, \'\')) LIKE ?', ["%{$search}%"]);
+                                });
+                        });
                 });
             });
     }

@@ -12,6 +12,7 @@
             <div>
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Cari Ekstresi</h3>
                 <p class="mt-0.5 text-sm text-gray-500 dark:text-slate-400">
+                    <span class="font-bold" x-text="selected?.brand_name ? selected.brand_name + ' — ' : ''"></span>
                     <span x-text="selected?.title"></span>
                     <span class="mx-1">·</span>
                     <span class="font-mono text-xs" x-text="selected?.code"></span>

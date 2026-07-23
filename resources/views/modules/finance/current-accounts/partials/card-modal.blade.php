@@ -23,7 +23,14 @@
                 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div class="rounded-lg border border-gray-200 p-4 dark:border-slate-700">
                         <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-slate-400">Cari Bilgileri</p>
-                        <p class="mt-2 text-base font-semibold text-gray-900 dark:text-white" x-text="selected.title"></p>
+                        <template x-if="selected.brand_name">
+                            <p class="mt-2 text-base font-bold text-gray-900 dark:text-white" x-text="selected.brand_name"></p>
+                        </template>
+                        <p
+                            class="text-gray-900 dark:text-white"
+                            :class="selected.brand_name ? 'mt-0.5 text-sm text-gray-600 dark:text-slate-300' : 'mt-2 text-base font-semibold'"
+                            x-text="selected.title"
+                        ></p>
                         <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">
                             <span x-text="selected.type_label"></span>
                             <span class="mx-1">·</span>

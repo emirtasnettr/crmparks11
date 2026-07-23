@@ -110,8 +110,13 @@
                             <td class="whitespace-nowrap px-4 py-3 font-mono text-xs text-gray-600 dark:text-slate-300 sm:px-6">
                                 {{ $account['code'] }}
                             </td>
-                            <td class="max-w-[220px] px-4 py-3">
-                                <p class="line-clamp-2 font-medium text-gray-900 dark:text-white">{{ $account['title'] }}</p>
+                            <td class="max-w-[280px] px-4 py-3">
+                                @if (! $isCourier && filled($account['brand_name'] ?? null))
+                                    <p class="line-clamp-1 font-bold text-gray-900 dark:text-white">{{ $account['brand_name'] }}</p>
+                                    <p class="mt-0.5 line-clamp-2 text-sm text-gray-600 dark:text-slate-300">{{ $account['title'] }}</p>
+                                @else
+                                    <p class="line-clamp-2 font-medium text-gray-900 dark:text-white">{{ $account['title'] }}</p>
+                                @endif
                             </td>
                             <td class="whitespace-nowrap px-4 py-3 text-gray-600 dark:text-slate-300">
                                 {{ $account['phone'] }}
