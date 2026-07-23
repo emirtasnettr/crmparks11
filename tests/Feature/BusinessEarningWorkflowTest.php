@@ -9,6 +9,7 @@ use App\Models\EarningStatus;
 use App\Models\User;
 use App\Modules\Agency\Models\Agency;
 use App\Modules\Business\Models\Business;
+use App\Modules\Business\Services\BusinessEarningService;
 use App\Modules\Courier\Models\Courier;
 use App\Modules\Finance\Models\FinanceExpense;
 use App\Modules\Finance\Models\FinancePayment;
@@ -367,6 +368,24 @@ class BusinessEarningWorkflowTest extends TestCase
         $line->load('status');
         $this->assertSame('approved', $line->status?->code);
         $this->assertSame($user->id, $line->approved_by);
+        $this->assertSame(1, FinanceRevenue::query()->where('earning_line_id', $line->id)->count());
+    }
+
+    public function test_approve_all_pending_when_auto_approves_existing_lines(): void
+    {
+        $this->setApprovalProcess('auto');
+
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $courier = $this->createCourier($user);
+        $line = $this->createEarning($business, $courier, $user, 'pending_review');
+
+        $result = app(BusinessEarningService::class)->approveAllPendingWhenAuto($user);
+
+        $this->assertSame(1, $result['approved']);
+        $line->refresh()->load('status');
+        $this->assertSame('approved', $line->status?->code);
         $this->assertSame(1, FinanceRevenue::query()->where('earning_line_id', $line->id)->count());
     }
 

@@ -120,8 +120,8 @@ class BusinessEarningPresenter
 
     private function approvalProcess(): string
     {
-        $process = $this->settings->group('earnings')->all()['approval_process'] ?? 'dual';
+        $process = $this->settings->group('earnings')->all()['approval_process'] ?? 'auto';
 
-        return in_array($process, ['single', 'dual', 'auto'], true) ? $process : 'dual';
+        return in_array($process, ['single', 'dual', 'auto'], true) ? $process : 'auto';
     }
 }

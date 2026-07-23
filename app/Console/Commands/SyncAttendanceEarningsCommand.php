@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\User;
 use App\Modules\ShiftPlanning\Services\AttendanceEarningSyncService;
+use App\Modules\Business\Services\BusinessEarningService;
 use Illuminate\Console\Command;
 
 class SyncAttendanceEarningsCommand extends Command
@@ -16,7 +17,7 @@ class SyncAttendanceEarningsCommand extends Command
 
     protected $description = 'Tamamlanan vardiya katılımlarından gün + çalışma modeli bazında taslak hakediş satırları üretir/günceller.';
 
-    public function handle(AttendanceEarningSyncService $sync): int
+    public function handle(AttendanceEarningSyncService $sync, BusinessEarningService $earnings): int
     {
         $filters = array_filter([
             'courier_id' => $this->option('courier_id') !== null ? (int) $this->option('courier_id') : null,
@@ -35,6 +36,15 @@ class SyncAttendanceEarningsCommand extends Command
             $result['updated'],
             $result['skipped'],
         ));
+
+        if ($earnings->approvalProcess() === 'auto') {
+            $approved = $earnings->approveAllPendingWhenAuto($actor);
+            $this->info(sprintf(
+                'Otomatik onay: %d onaylandı, %d atlandı.',
+                $approved['approved'],
+                $approved['skipped'],
+            ));
+        }
 
         return self::SUCCESS;
     }

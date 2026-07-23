@@ -147,7 +147,7 @@ class SettingsDefaults
   {
     return [
       'default_period' => 'monthly',
-      'approval_process' => 'dual',
+      'approval_process' => 'auto',
     ];
   }
 

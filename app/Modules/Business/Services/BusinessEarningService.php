@@ -322,9 +322,47 @@ class BusinessEarningService
 
     public function approvalProcess(): string
     {
-        $process = $this->settings->group('earnings')->all()['approval_process'] ?? 'dual';
+        $process = $this->settings->group('earnings')->all()['approval_process'] ?? 'auto';
 
-        return in_array($process, ['single', 'dual', 'auto'], true) ? $process : 'dual';
+        return in_array($process, ['single', 'dual', 'auto'], true) ? $process : 'auto';
+    }
+
+    /**
+     * Otomatik onay açıksa bekleyen (draft / pending_review) satırları onaylar.
+     *
+     * @return array{approved: int, skipped: int}
+     */
+    public function approveAllPendingWhenAuto(?User $actor = null): array
+    {
+        if ($this->approvalProcess() !== 'auto') {
+            return ['approved' => 0, 'skipped' => 0];
+        }
+
+        $user = $actor
+            ?? User::query()->role('super_admin')->orderBy('id')->first();
+
+        if ($user === null) {
+            return ['approved' => 0, 'skipped' => 0];
+        }
+
+        $ids = EarningLine::query()
+            ->whereHas('status', fn (Builder $query) => $query->whereIn('code', ['draft', 'pending_review']))
+            ->orderBy('id')
+            ->pluck('id');
+
+        $approved = 0;
+        $skipped = 0;
+
+        foreach ($ids as $id) {
+            try {
+                $this->approve((int) $id, $user);
+                $approved++;
+            } catch (\Throwable) {
+                $skipped++;
+            }
+        }
+
+        return compact('approved', 'skipped');
     }
 
     private function recordFirstApproval(EarningLine $line, User $user): EarningLine

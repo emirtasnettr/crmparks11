@@ -8,9 +8,11 @@ use App\Models\User;
 use App\Modules\Business\Models\Business;
 use App\Modules\Business\Models\BusinessCommercialContract;
 use App\Modules\Business\Services\BusinessCommercialContractService;
+use App\Modules\Business\Services\BusinessEarningService;
 use App\Modules\ShiftPlanning\Models\BusinessShiftAttendance;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class AttendanceEarningSyncService
 {
@@ -18,6 +20,7 @@ class AttendanceEarningSyncService
 
     public function __construct(
         private readonly BusinessCommercialContractService $commercialContracts,
+        private readonly BusinessEarningService $earnings,
     ) {}
 
     /**
@@ -251,7 +254,7 @@ class AttendanceEarningSyncService
             'agency_payment' => 0,
         ]);
 
-        return DB::transaction(function () use ($payload, $actor, $courierId, $businessId, $workDate, $pricingModel): string {
+        $result = DB::transaction(function () use ($payload, $actor, $courierId, $businessId, $workDate, $pricingModel): array {
             $existing = EarningLine::query()
                 ->with('status')
                 ->where('courier_id', $courierId)
@@ -268,7 +271,7 @@ class AttendanceEarningSyncService
                     ?? EarningStatus::query()->whereKey($existing->status_id)->value('code');
 
                 if (! in_array($code, ['draft', 'pending_review'], true)) {
-                    return 'skipped';
+                    return ['action' => 'skipped', 'line' => null];
                 }
 
                 $existing->update($payload);
@@ -285,14 +288,50 @@ class AttendanceEarningSyncService
                     ->get()
                     ->each(fn (EarningLine $line) => $line->delete());
 
-                return 'updated';
+                return ['action' => 'updated', 'line' => $existing->fresh()];
             }
 
             $payload['created_by'] = $actor?->id;
-            EarningLine::query()->create($payload);
+            $created = EarningLine::query()->create($payload);
 
-            return 'created';
+            return ['action' => 'created', 'line' => $created];
         });
+
+        if (
+            in_array($result['action'], ['created', 'updated'], true)
+            && $result['line'] instanceof EarningLine
+        ) {
+            $this->maybeAutoApprove($result['line'], $actor);
+        }
+
+        return $result['action'];
+    }
+
+    private function maybeAutoApprove(EarningLine $line, ?User $actor): void
+    {
+        if ($this->earnings->approvalProcess() !== 'auto') {
+            return;
+        }
+
+        $user = $actor
+            ?? User::query()->role('super_admin')->orderBy('id')->first();
+
+        if ($user === null) {
+            Log::warning('Attendance earning auto-approve skipped: no actor', [
+                'earning_line_id' => $line->id,
+            ]);
+
+            return;
+        }
+
+        try {
+            $this->earnings->approve((int) $line->id, $user);
+        } catch (\Throwable $e) {
+            Log::warning('Attendance earning auto-approve failed', [
+                'earning_line_id' => $line->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
     }
 
     private function isBusinessOrCourierInactive(int $businessId, int $courierId): bool

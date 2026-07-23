@@ -12,6 +12,9 @@ use App\Modules\Courier\Models\Courier;
 use App\Modules\ShiftPlanning\Models\BusinessShift;
 use App\Modules\ShiftPlanning\Models\BusinessShiftAttendance;
 use App\Modules\ShiftPlanning\Models\BusinessShiftCourier;
+use App\Modules\Finance\Models\FinancePayment;
+use App\Modules\Finance\Models\FinanceRevenue;
+use App\Modules\Setting\Services\SettingsManager;
 use App\Modules\ShiftPlanning\Services\AttendanceEarningSyncService;
 use App\Modules\ShiftPlanning\Services\ShiftAttendanceService;
 use Carbon\Carbon;
@@ -33,6 +36,12 @@ class AttendanceEarningSyncTest extends TestCase
             LookupTableSeeder::class,
             CitySeeder::class,
             RoleAndPermissionSeeder::class,
+        ]);
+
+        // Mevcut sync testleri taslak güncellemeyi doğrular; çift onayda satırlar düzenlenebilir kalır.
+        app(SettingsManager::class)->group('earnings')->save([
+            'default_period' => 'monthly',
+            'approval_process' => 'dual',
         ]);
     }
 
@@ -348,6 +357,50 @@ class AttendanceEarningSyncTest extends TestCase
         $line = EarningLine::query()->where('courier_id', $courier->id)->first();
         $this->assertNotNull($line);
         $this->assertEquals(1200.0, (float) $line->net_courier_payment);
+    }
+
+    public function test_auto_approval_approves_attendance_sync_and_posts_finance(): void
+    {
+        app(SettingsManager::class)->group('earnings')->save([
+            'default_period' => 'monthly',
+            'approval_process' => 'auto',
+        ]);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('super_admin');
+        $courier = $this->createCourier($admin);
+        $business = $this->createBusiness($admin, 'Otomatik Onay Marka');
+
+        $contract = BusinessCommercialContract::factory()->perPackage()->create([
+            'business_id' => $business->id,
+            'start_date' => '2026-07-01',
+            'business_amount' => 110,
+            'courier_amount' => 100,
+            'net_profit' => 10,
+            'status' => 'active',
+            'created_by' => $admin->id,
+        ]);
+
+        $shift = $this->createShift($business, $courier, $admin);
+        $this->seedAttendance($shift, $business, $contract, $courier, '2026-07-18', 'per_package', 2500, 6 * 60);
+
+        $result = app(AttendanceEarningSyncService::class)->sync($admin);
+
+        $this->assertSame(1, $result['created']);
+
+        $line = EarningLine::query()->where('courier_id', $courier->id)->first();
+        $this->assertNotNull($line);
+        $line->load('status');
+        $this->assertSame('approved', $line->status?->code);
+        $this->assertSame($admin->id, $line->approved_by);
+        $this->assertSame(1, FinanceRevenue::query()->where('earning_line_id', $line->id)->count());
+        $this->assertSame(1, FinancePayment::query()->where('earning_line_id', $line->id)->count());
+
+        // Onaylı satır yeniden sync'te güncellenmez
+        $again = app(AttendanceEarningSyncService::class)->sync($admin);
+        $this->assertSame(0, $again['created']);
+        $this->assertSame(0, $again['updated']);
+        $this->assertSame(1, $again['skipped']);
     }
 
     private function createBusiness(User $user, string $brand): Business
