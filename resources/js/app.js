@@ -3179,9 +3179,10 @@ Alpine.data('financeInvoicePage', () => ({
     },
 }));
 
-Alpine.data('financeProfitabilityPage', () => ({
+Alpine.data('financeProfitabilityPage', (preset = {}) => ({
     chartInstances: [],
     themeObserver: null,
+    activeTab: preset.activeTab || 'overview',
 
     init() {
         this.$nextTick(() => this.renderCharts());
@@ -3191,6 +3192,17 @@ Alpine.data('financeProfitabilityPage', () => ({
             attributes: true,
             attributeFilter: ['class'],
         });
+    },
+
+    setTab(name) {
+        this.activeTab = name;
+        const url = new URL(window.location.href);
+        if (name === 'overview') {
+            url.searchParams.delete('tab');
+        } else {
+            url.searchParams.set('tab', name);
+        }
+        window.history.replaceState({}, '', url);
     },
 
     destroy() {

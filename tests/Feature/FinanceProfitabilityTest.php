@@ -44,12 +44,11 @@ class FinanceProfitabilityTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Karlılık Analizi');
-        $response->assertSee('İşletme, kurye ve acente bazlı kârlılığı analiz edin.');
         $response->assertSee('Toplam Gelir');
         $response->assertSee('Toplam Gider');
         $response->assertSee('Net Kâr');
         $response->assertSee('Kâr Marjı');
-        $response->assertSee('Paket Başına Ortalama Kâr');
+        $response->assertSee('Paket Başına Ort. Kâr');
         $response->assertSee('En Karlı İşletme');
         $response->assertSee('En Karlı Acente');
         $response->assertSee('En Karlı Kurye Operasyonu');
@@ -61,8 +60,8 @@ class FinanceProfitabilityTest extends TestCase
         $response->assertSee('İşletme Karlılık Tablosu');
         $response->assertSee('Acente Karlılık Tablosu');
         $response->assertSee('Kurye Maliyet Tablosu');
-        $response->assertSee('İlk 10 En Karlı İşletme');
-        $response->assertSee('İlk 10 En Düşük Karlı İşletme');
+        $response->assertSee('En Karlı İşletmeler');
+        $response->assertSee('En Düşük Karlı İşletmeler');
         $response->assertSee('profitability-chart-trend');
     }
 
