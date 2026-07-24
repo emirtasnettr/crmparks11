@@ -43,7 +43,9 @@ class RevenueService
      */
     public function summarize(array $filters): array
     {
-        $items = $this->filter($filters);
+        $items = $this->filter($filters)->reject(
+            fn (array $row) => ($row['collection_status'] ?? '') === 'cancelled'
+        );
         $today = Carbon::today();
 
         $thisMonth = $items->filter(

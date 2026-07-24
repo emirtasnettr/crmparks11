@@ -5,6 +5,8 @@ namespace App\Modules\Business\Services;
 use App\Core\Helpers\MoneyCalculator;
 use App\Models\EarningLine;
 use App\Modules\Business\Data\BusinessEarningFormData;
+use App\Modules\Finance\Models\FinancePayment;
+use App\Modules\Finance\Models\FinanceRevenue;
 use App\Modules\Setting\Services\SettingsManager;
 use App\Support\EarningStatusMapper;
 
@@ -81,7 +83,7 @@ class BusinessEarningPresenter
             'profit_formatted' => MoneyCalculator::format($profit),
             'can_update' => $this->canUpdate($statusCode),
             'can_approve' => $this->canApprove($line, $statusCode),
-            'can_delete' => $this->canDelete($statusCode),
+            'can_delete' => $this->canDelete($line, $statusCode),
             'needs_second_approval' => $this->needsSecondApproval($line),
         ];
     }
@@ -113,9 +115,26 @@ class BusinessEarningPresenter
             && in_array($line->status?->code, ['draft', 'pending_review'], true);
     }
 
-    private function canDelete(string $statusCode): bool
+    private function canDelete(EarningLine $line, string $statusCode): bool
     {
-        return $this->canUpdate($statusCode);
+        if (! $this->canUpdate($statusCode)) {
+            return false;
+        }
+
+        $hasPaidPayment = FinancePayment::query()
+            ->where('earning_line_id', $line->id)
+            ->where('is_active', true)
+            ->where('paid_amount', '>', 0)
+            ->exists();
+
+        if ($hasPaidPayment) {
+            return false;
+        }
+
+        return ! FinanceRevenue::query()
+            ->where('earning_line_id', $line->id)
+            ->whereIn('collection_status', ['collected', 'partial'])
+            ->exists();
     }
 
     private function approvalProcess(): string

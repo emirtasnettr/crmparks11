@@ -5,11 +5,13 @@ namespace App\Modules\Finance\Services;
 use App\Models\EarningLine;
 use App\Models\User;
 use App\Modules\Business\Data\BusinessEarningFormData;
+use App\Modules\Finance\Models\CurrentAccountMovement;
 use App\Modules\Finance\Models\FinanceExpense;
 use App\Modules\Finance\Models\FinancePayment;
 use App\Modules\Finance\Models\FinanceRevenue;
 use App\Modules\Setting\Services\SettingsManager;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class EarningFinanceSyncService
 {
@@ -17,6 +19,7 @@ class EarningFinanceSyncService
         private readonly RevenueService $revenues,
         private readonly PaymentService $payments,
         private readonly ExpenseService $expenses,
+        private readonly CurrentAccountService $currentAccounts,
         private readonly SettingsManager $settings,
     ) {}
 
@@ -94,6 +97,160 @@ class EarningFinanceSyncService
         });
     }
 
+    /**
+     * Hakediş silinince bağlı finans kayıtlarını ve cari hareketlerini geri alır.
+     *
+     * @throws ValidationException
+     */
+    public function syncOnDelete(EarningLine $line, User $user): void
+    {
+        DB::transaction(function () use ($line, $user): void {
+            $payments = FinancePayment::query()
+                ->where('earning_line_id', $line->id)
+                ->where('is_active', true)
+                ->get();
+
+            foreach ($payments as $payment) {
+                if (round((float) $payment->paid_amount, 2) > 0) {
+                    throw ValidationException::withMessages([
+                        'earning' => 'Ödemesi başlamış hakediş silinemez. Önce finans ödemesini iptal edin.',
+                    ]);
+                }
+
+                $this->reversePaymentLiability($payment, $user);
+                $payment->update([
+                    'is_active' => false,
+                    'status' => 'cancelled',
+                    'earning_line_id' => null,
+                ]);
+            }
+
+            $revenues = FinanceRevenue::query()
+                ->where('earning_line_id', $line->id)
+                ->where('collection_status', '!=', 'cancelled')
+                ->get();
+
+            foreach ($revenues as $revenue) {
+                if (in_array($revenue->collection_status, ['collected', 'partial'], true)) {
+                    throw ValidationException::withMessages([
+                        'earning' => 'Tahsilatı başlamış hakediş geliri silinemez.',
+                    ]);
+                }
+
+                $this->reverseRevenueReceivable($revenue, $user);
+                $revenue->update([
+                    'collection_status' => 'cancelled',
+                    'earning_line_id' => null,
+                    'description' => trim(($revenue->description ?? '').' [hakediş silindi]'),
+                ]);
+            }
+
+            FinanceExpense::query()
+                ->where('earning_line_id', $line->id)
+                ->where('payment_status', '!=', 'cancelled')
+                ->get()
+                ->each(function (FinanceExpense $expense): void {
+                    if (in_array($expense->payment_status, ['paid', 'partial'], true)) {
+                        throw ValidationException::withMessages([
+                            'earning' => 'Ödenmiş ek gideri olan hakediş silinemez.',
+                        ]);
+                    }
+
+                    $expense->update([
+                        'payment_status' => 'cancelled',
+                        'earning_line_id' => null,
+                    ]);
+                });
+        });
+    }
+
+    /**
+     * Soft-delete edilmiş veya kopuk hakediş finans kayıtlarını temizler.
+     *
+     * @return array{payments: int, revenues: int, expenses: int}
+     */
+    public function cleanupOrphanFinance(User $user): array
+    {
+        $payments = 0;
+        $revenues = 0;
+        $expenses = 0;
+
+        EarningLine::onlyTrashed()
+            ->orderBy('id')
+            ->each(function (EarningLine $line) use ($user, &$payments, &$revenues, &$expenses): void {
+                $beforePay = FinancePayment::query()
+                    ->where('earning_line_id', $line->id)
+                    ->where('is_active', true)
+                    ->count();
+                $beforeRev = FinanceRevenue::query()
+                    ->where('earning_line_id', $line->id)
+                    ->where('collection_status', '!=', 'cancelled')
+                    ->count();
+                $beforeExp = FinanceExpense::query()
+                    ->where('earning_line_id', $line->id)
+                    ->where('payment_status', '!=', 'cancelled')
+                    ->count();
+
+                try {
+                    $this->syncOnDelete($line, $user);
+                    $payments += $beforePay;
+                    $revenues += $beforeRev;
+                    $expenses += $beforeExp;
+                } catch (\Throwable $e) {
+                    report($e);
+                }
+            });
+
+        FinancePayment::query()
+            ->whereNotNull('earning_line_id')
+            ->where('is_active', true)
+            ->whereNotIn('earning_line_id', EarningLine::withTrashed()->pluck('id'))
+            ->each(function (FinancePayment $payment) use ($user, &$payments): void {
+                if (round((float) $payment->paid_amount, 2) > 0) {
+                    return;
+                }
+
+                $this->reversePaymentLiability($payment, $user);
+                $payment->update(['is_active' => false, 'status' => 'cancelled', 'earning_line_id' => null]);
+                $payments++;
+            });
+
+        FinanceRevenue::query()
+            ->whereNotNull('earning_line_id')
+            ->where('collection_status', '!=', 'cancelled')
+            ->whereNotIn('earning_line_id', EarningLine::withTrashed()->pluck('id'))
+            ->each(function (FinanceRevenue $revenue) use ($user, &$revenues): void {
+                if (in_array($revenue->collection_status, ['collected', 'partial'], true)) {
+                    return;
+                }
+
+                $this->reverseRevenueReceivable($revenue, $user);
+                $revenue->update([
+                    'collection_status' => 'cancelled',
+                    'earning_line_id' => null,
+                ]);
+                $revenues++;
+            });
+
+        FinanceExpense::query()
+            ->whereNotNull('earning_line_id')
+            ->where('payment_status', '!=', 'cancelled')
+            ->whereNotIn('earning_line_id', EarningLine::withTrashed()->pluck('id'))
+            ->each(function (FinanceExpense $expense) use (&$expenses): void {
+                if (in_array($expense->payment_status, ['paid', 'partial'], true)) {
+                    return;
+                }
+
+                $expense->update([
+                    'payment_status' => 'cancelled',
+                    'earning_line_id' => null,
+                ]);
+                $expenses++;
+            });
+
+        return compact('payments', 'revenues', 'expenses');
+    }
+
     public function alreadySynced(int $earningLineId): bool
     {
         $line = EarningLine::query()->with('courier')->find($earningLineId);
@@ -113,9 +270,94 @@ class EarningFinanceSyncService
             && (! $needsExpense || $this->hasExpense($earningLineId));
     }
 
+    private function reversePaymentLiability(FinancePayment $payment, User $user): void
+    {
+        if ($payment->current_account_id === null) {
+            return;
+        }
+
+        $liability = CurrentAccountMovement::query()
+            ->where('current_account_id', $payment->current_account_id)
+            ->where('type', 'earning')
+            ->where('related_type', FinancePayment::class)
+            ->where('related_id', $payment->id)
+            ->first();
+
+        if ($liability === null) {
+            return;
+        }
+
+        $alreadyReversed = CurrentAccountMovement::query()
+            ->where('current_account_id', $payment->current_account_id)
+            ->where('type', 'debit_note')
+            ->where('related_type', FinancePayment::class)
+            ->where('related_id', $payment->id)
+            ->where('description', 'like', 'Hakediş iptali:%')
+            ->exists();
+
+        if ($alreadyReversed) {
+            return;
+        }
+
+        $this->currentAccounts->createMovement([
+            'current_account_id' => (int) $payment->current_account_id,
+            'transaction_date' => now()->toDateString(),
+            'type' => 'debit_note',
+            'document_no' => $payment->reference,
+            'amount' => (float) $payment->total_amount,
+            'description' => 'Hakediş iptali: '.$payment->reference,
+            'related_type' => FinancePayment::class,
+            'related_id' => $payment->id,
+        ], $user);
+    }
+
+    private function reverseRevenueReceivable(FinanceRevenue $revenue, User $user): void
+    {
+        if ($revenue->current_account_id === null) {
+            return;
+        }
+
+        $receivable = CurrentAccountMovement::query()
+            ->where('current_account_id', $revenue->current_account_id)
+            ->where('related_type', FinanceRevenue::class)
+            ->where('related_id', $revenue->id)
+            ->where('debit', '>', 0)
+            ->first();
+
+        if ($receivable === null) {
+            return;
+        }
+
+        $alreadyReversed = CurrentAccountMovement::query()
+            ->where('current_account_id', $revenue->current_account_id)
+            ->where('type', 'credit_note')
+            ->where('related_type', FinanceRevenue::class)
+            ->where('related_id', $revenue->id)
+            ->where('description', 'like', 'Hakediş iptali:%')
+            ->exists();
+
+        if ($alreadyReversed) {
+            return;
+        }
+
+        $this->currentAccounts->createMovement([
+            'current_account_id' => (int) $revenue->current_account_id,
+            'transaction_date' => now()->toDateString(),
+            'type' => 'credit_note',
+            'document_no' => $revenue->reference,
+            'amount' => (float) $revenue->amount,
+            'description' => 'Hakediş iptali: '.$revenue->reference,
+            'related_type' => FinanceRevenue::class,
+            'related_id' => $revenue->id,
+        ], $user);
+    }
+
     private function hasRevenue(int $earningLineId): bool
     {
-        return FinanceRevenue::query()->where('earning_line_id', $earningLineId)->exists();
+        return FinanceRevenue::query()
+            ->where('earning_line_id', $earningLineId)
+            ->where('collection_status', '!=', 'cancelled')
+            ->exists();
     }
 
     private function hasPayment(int $earningLineId, string $recipientType): bool
@@ -129,7 +371,10 @@ class EarningFinanceSyncService
 
     private function hasExpense(int $earningLineId): bool
     {
-        return FinanceExpense::query()->where('earning_line_id', $earningLineId)->exists();
+        return FinanceExpense::query()
+            ->where('earning_line_id', $earningLineId)
+            ->where('payment_status', '!=', 'cancelled')
+            ->exists();
     }
 
     private function periodLabel(EarningLine $line): string

@@ -28,6 +28,7 @@ class RevenueFormData
             'collected' => 'Tahsil Edildi',
             'pending' => 'Bekliyor',
             'overdue' => 'Gecikmiş',
+            'cancelled' => 'İptal',
         ];
     }
 

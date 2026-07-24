@@ -32,6 +32,7 @@ class ExpenseFormData
             'paid' => 'Ödendi',
             'pending' => 'Bekliyor',
             'overdue' => 'Gecikmiş',
+            'cancelled' => 'İptal',
         ];
     }
 

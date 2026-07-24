@@ -6,11 +6,13 @@ use App\Models\EarningLine;
 use App\Models\EarningStatus;
 use App\Models\User;
 use App\Modules\ActivityLog\Services\ActivityLogService;
+use App\Modules\Courier\Models\Courier;
+use App\Modules\Finance\Models\FinancePayment;
+use App\Modules\Finance\Models\FinanceRevenue;
 use App\Modules\Finance\Services\EarningFinanceSyncService;
 use App\Modules\Notification\Services\EarningNotificationService;
 use App\Modules\Agency\Models\Agency;
 use App\Modules\Business\Models\Business;
-use App\Modules\Courier\Models\Courier;
 use App\Modules\Setting\Services\SettingsManager;
 use App\Support\EarningCalculator;
 use App\Support\EarningListDateRange;
@@ -276,6 +278,8 @@ class BusinessEarningService
                 ]);
             }
 
+            $this->earningFinanceSync->syncOnDelete($line, $user);
+
             $this->activityLog->log(
                 'earning_updated',
                 $line,
@@ -310,7 +314,26 @@ class BusinessEarningService
 
     public function canDelete(EarningLine $line): bool
     {
-        return $this->canUpdate($line);
+        if (! $this->canUpdate($line)) {
+            return false;
+        }
+
+        $hasPaidPayment = FinancePayment::query()
+            ->where('earning_line_id', $line->id)
+            ->where('is_active', true)
+            ->where('paid_amount', '>', 0)
+            ->exists();
+
+        if ($hasPaidPayment) {
+            return false;
+        }
+
+        $hasCollectedRevenue = FinanceRevenue::query()
+            ->where('earning_line_id', $line->id)
+            ->whereIn('collection_status', ['collected', 'partial'])
+            ->exists();
+
+        return ! $hasCollectedRevenue;
     }
 
     public function statusCode(EarningLine $line): string

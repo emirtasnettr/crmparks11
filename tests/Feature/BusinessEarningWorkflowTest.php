@@ -262,6 +262,94 @@ class BusinessEarningWorkflowTest extends TestCase
         $this->assertSoftDeleted('earning_lines', ['id' => $line->id]);
     }
 
+    public function test_deleting_approved_earning_reverses_finance_and_cari(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $courier = $this->createCourier($user);
+        $line = $this->createEarning($business, $courier, $user, 'pending_review');
+
+        $this->actingAs($user)->post(route('businesses.earnings.approve', $line->id))
+            ->assertRedirect();
+
+        $revenue = FinanceRevenue::query()->where('earning_line_id', $line->id)->first();
+        $payment = FinancePayment::query()->where('earning_line_id', $line->id)->first();
+        $this->assertNotNull($revenue);
+        $this->assertNotNull($payment);
+
+        $businessAccount = CurrentAccount::query()
+            ->where('accountable_type', Business::class)
+            ->where('accountable_id', $business->id)
+            ->first();
+        $courierAccount = CurrentAccount::query()
+            ->where('accountable_type', Courier::class)
+            ->where('accountable_id', $courier->id)
+            ->first();
+
+        $this->assertNotNull($businessAccount);
+        $this->assertNotNull($courierAccount);
+
+        $this->actingAs($user)->delete(route('businesses.earnings.destroy', $line->id))
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertSoftDeleted('earning_lines', ['id' => $line->id]);
+
+        $revenue->refresh();
+        $payment->refresh();
+
+        $this->assertSame('cancelled', $revenue->collection_status);
+        $this->assertNull($revenue->earning_line_id);
+        $this->assertFalse($payment->is_active);
+        $this->assertSame('cancelled', $payment->status);
+        $this->assertNull($payment->earning_line_id);
+
+        $this->assertDatabaseHas('current_account_movements', [
+            'current_account_id' => $businessAccount->id,
+            'related_type' => FinanceRevenue::class,
+            'related_id' => $revenue->id,
+            'type' => 'credit_note',
+            'credit' => $revenue->amount,
+        ]);
+
+        $this->assertDatabaseHas('current_account_movements', [
+            'current_account_id' => $courierAccount->id,
+            'related_type' => FinancePayment::class,
+            'related_id' => $payment->id,
+            'type' => 'debit_note',
+            'debit' => $payment->total_amount,
+        ]);
+    }
+
+    public function test_paid_finance_payment_blocks_earning_delete(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+        $business = $this->createBusiness($user);
+        $courier = $this->createCourier($user);
+        $line = $this->createEarning($business, $courier, $user, 'pending_review');
+
+        $this->actingAs($user)->post(route('businesses.earnings.approve', $line->id))
+            ->assertRedirect();
+
+        $payment = FinancePayment::query()->where('earning_line_id', $line->id)->firstOrFail();
+
+        $this->actingAs($user)->post(route('finance.payments.bulk'), [
+            'ids' => [$payment->id],
+            'payment_date' => now()->toDateString(),
+            'payment_method' => 'bank_transfer',
+        ])->assertRedirect();
+
+        $line->refresh()->load('status');
+        $this->assertSame('paid', $line->status?->code);
+
+        $this->actingAs($user)->delete(route('businesses.earnings.destroy', $line->id))
+            ->assertSessionHasErrors('earning');
+
+        $this->assertNotSoftDeleted('earning_lines', ['id' => $line->id]);
+    }
+
     public function test_paid_earning_cannot_be_updated(): void
     {
         $user = User::factory()->create();

@@ -50,6 +50,7 @@ class FinanceDashboardService
     {
         $revenue = (float) FinanceRevenue::query()
             ->whereBetween('revenue_date', [$start->toDateString(), $end->toDateString()])
+            ->where('collection_status', '!=', 'cancelled')
             ->sum('amount');
 
         // Gider = manuel gider kayıtları + kurye/acente hakediş ödemeleri (tahakkuk).
@@ -116,6 +117,7 @@ class FinanceDashboardService
             $revenue[] = (int) FinanceRevenue::query()
                 ->whereYear('revenue_date', $year)
                 ->whereMonth('revenue_date', $month)
+                ->where('collection_status', '!=', 'cancelled')
                 ->sum('amount');
 
             $expense[] = (int) round($this->totalExpenseInRange($monthStart, $monthEnd));
@@ -126,6 +128,7 @@ class FinanceDashboardService
         $businessRevenues = FinanceRevenue::query()
             ->selectRaw('business_id, SUM(amount) as total')
             ->whereYear('revenue_date', $year)
+            ->where('collection_status', '!=', 'cancelled')
             ->groupBy('business_id')
             ->orderByDesc('total')
             ->with('business:id,company_name,brand_name')
@@ -151,6 +154,7 @@ class FinanceDashboardService
         $otherExpense = (int) round((float) FinanceExpense::query()
             ->whereYear('expense_date', $year)
             ->whereNotIn('expense_type', ['courier_earning', 'agency_earning'])
+            ->where('payment_status', '!=', 'cancelled')
             ->sum('amount'));
 
         // Breakdown'ta kurye/acente yalnızca ödemelerden (çift sayım yok).
@@ -180,6 +184,7 @@ class FinanceDashboardService
         $manual = (float) FinanceExpense::query()
             ->whereBetween('expense_date', [$start->toDateString(), $end->toDateString()])
             ->whereNotIn('expense_type', ['courier_earning', 'agency_earning'])
+            ->where('payment_status', '!=', 'cancelled')
             ->sum('amount');
 
         $obligations = $this->paymentExpenseInRange($start, $end);
@@ -310,6 +315,7 @@ class FinanceDashboardService
 
         $revenue = (float) FinanceRevenue::query()
             ->whereDate('revenue_date', $today)
+            ->where('collection_status', '!=', 'cancelled')
             ->sum('amount');
 
         $collectedToday = (float) \App\Modules\Finance\Models\FinanceCollectionPayment::query()
@@ -320,6 +326,7 @@ class FinanceDashboardService
 
         $expense = (float) FinanceExpense::query()
             ->whereDate('expense_date', $today)
+            ->where('payment_status', '!=', 'cancelled')
             ->sum('amount');
 
         $paidToday = (float) \App\Modules\Finance\Models\FinancePaymentLine::query()
